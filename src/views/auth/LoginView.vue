@@ -24,17 +24,17 @@
       novalidate
       @submit.prevent="handleSubmit"
     >
-      <!-- Email (átomo AppInput) -->
+      <!-- Usuario (átomo AppInput) -->
       <AppInput
-        v-model="form.email"
-        label="Correo electrónico"
-        type="email"
-        placeholder="tu@email.com"
-        autocomplete="email"
+        v-model="form.username"
+        label="Usuario"
+        type="text"
+        placeholder="tu.usuario"
+        autocomplete="username"
         :disabled="authStore.loading"
-        :error="errors.email"
+        :error="errors.username"
         size="lg"
-        @blur="validateEmail"
+        @blur="validateUsername"
       >
         <template #icon-left>
           <svg
@@ -43,15 +43,18 @@
             viewBox="0 0 24 24"
             fill="none"
           >
-            <path
-              d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+            <circle
+              cx="12"
+              cy="8"
+              r="4"
               stroke="currentColor"
               stroke-width="1.5"
             />
             <path
-              d="M22 6l-10 7L2 6"
+              d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"
               stroke="currentColor"
               stroke-width="1.5"
+              stroke-linecap="round"
             />
           </svg>
         </template>
@@ -183,22 +186,15 @@ const router    = useRouter()
 
 // ── Estado del formulario ──────────────────────────────────────────────────
 const form = ref({
-  email:    '',
+  username: '',
   password: '',
 })
-const errors       = ref({ email: '', password: '' })
+const errors       = ref({ username: '', password: '' })
 const showPassword = ref(false)
 
 // ── Validaciones en tiempo real ────────────────────────────────────────────
-function validateEmail() {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!form.value.email) {
-    errors.value.email = 'El correo es requerido'
-  } else if (!re.test(form.value.email)) {
-    errors.value.email = 'Formato de correo inválido'
-  } else {
-    errors.value.email = ''
-  }
+function validateUsername() {
+  errors.value.username = form.value.username.trim() ? '' : 'El usuario es requerido'
 }
 
 function validatePassword() {
@@ -213,24 +209,24 @@ function validatePassword() {
 
 // El botón solo se activa cuando ambos campos tienen contenido
 const isFormValid = computed(
-  () => form.value.email.length > 0 && form.value.password.length > 0
+  () => form.value.username.length > 0 && form.value.password.length > 0
 )
 
 // ── Envío ──────────────────────────────────────────────────────────────────
 async function handleSubmit() {
   // Valida antes de enviar
-  validateEmail()
+  validateUsername()
   validatePassword()
-  if (errors.value.email || errors.value.password) return
+  if (errors.value.username || errors.value.password) return
 
   try {
     await authStore.login({
-      email:    form.value.email,
+      username: form.value.username,
       password: form.value.password,
     })
     router.push({ name: 'AppHome' })
   } catch {
-    // El error ya se almacena en authStore.error
+    // El error ya se almacena en authStore.error y se notifica vía toast
   }
 }
 </script>
