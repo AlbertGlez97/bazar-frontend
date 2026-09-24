@@ -1,4 +1,9 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import {
+  createRouter,
+  createWebHistory,
+  type RouteRecordRaw,
+  type RouterHistory,
+} from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 
 const sessionDestination = () => ({ path: useAuthStore().isAuthenticated ? '/app' : '/login' })
@@ -35,16 +40,27 @@ const routes: RouteRecordRaw[] = [
   { path: '/:pathMatch(.*)*', redirect: sessionDestination },
 ]
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
-  scrollBehavior: () => ({ top: 0 }),
-})
+// Factory: every call builds an independent router (own history, own guards).
+// The app uses the singleton exported below. Tests must build one per test:
+// a shared instance keeps its current route between tests, and vue-router
+// skips the guards on a duplicated navigation (pushing the location the
+// router is already at), which silently hid an expired session.
+export function createAppRouter(history: RouterHistory = createWebHistory()) {
+  const router = createRouter({
+    history,
+    routes,
+    scrollBehavior: () => ({ top: 0 }),
+  })
 
-router.beforeEach((to) => {
-  const auth = useAuthStore()
-  if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: 'Login' }
-  if (to.meta.redirectIfAuth && auth.isAuthenticated) return { name: 'AppHome' }
-})
+  router.beforeEach((to) => {
+    const auth = useAuthStore()
+    if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: 'Login' }
+    if (to.meta.redirectIfAuth && auth.isAuthenticated) return { name: 'AppHome' }
+  })
+
+  return router
+}
+
+const router = createAppRouter()
 
 export default router
