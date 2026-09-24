@@ -100,6 +100,14 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      // Las imágenes de producto se sirven fuera del prefijo /api/v1 (ruta
+      // pública `/uploads/products/<uuid>.png`, ver doc/api-contract-for-
+      // frontend.md §1.2) — sin este proxy, en dev el navegador las pide al
+      // propio Vite (puerto 5173) en vez del backend y siempre da 404.
+      '/uploads': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 })
