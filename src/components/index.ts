@@ -58,6 +58,7 @@ export { default as AppPagination       } from './ui/molecules/AppPagination.vue
 export { default as InstallAppButton    } from './ui/molecules/InstallAppButton.vue'
 export { default as FeatureCard         } from './ui/molecules/FeatureCard.vue'
 export { default as ContactForm         } from './ui/molecules/ContactForm.vue'
+export { default as BusinessRegistrationForm } from './ui/molecules/BusinessRegistrationForm.vue'
 
 // ── ORGANISMOS — secciones complejas con lógica propia ───────────────
 export { default as AppModal        } from './ui/organisms/AppModal.vue'
