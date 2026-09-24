@@ -49,7 +49,18 @@ const routes: RouteRecordRaw[] = [
     // elegidos (ver session.store) — toda ruta operativa futura debe
     // agregar esta misma meta.
     meta: { requiresAuth: true, requiresContext: true },
-    children: [{ path: '', name: 'AppHome', component: () => import('@/views/AppHomeView.vue') }],
+    children: [
+      { path: '', name: 'AppHome', component: () => import('@/views/AppHomeView.vue') },
+      {
+        // Catálogo de productos: lectura para cualquier Member; acciones de
+        // gestión (crear/editar/(des)activar) se ocultan en la vista misma
+        // si quien mira no es socio (el backend las rechazaría con 403 de
+        // todas formas).
+        path: 'productos',
+        name: 'ProductCatalog',
+        component: () => import('@/views/products/ProductCatalogView.vue'),
+      },
+    ],
   },
   { path: '/:pathMatch(.*)*', redirect: sessionDestination },
 ]
