@@ -5,6 +5,7 @@ import {
   type RouterHistory,
 } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { useSessionStore } from '@/stores/session.store'
 
 const sessionDestination = () => ({ path: useAuthStore().isAuthenticated ? '/app' : '/login' })
 
@@ -32,9 +33,22 @@ const routes: RouteRecordRaw[] = [
     children: [{ path: '', name: 'Login', component: () => import('@/views/auth/LoginView.vue') }],
   },
   {
+    // Pantalla intermedia obligatoria tras el login: identificar el
+    // dispositivo (una sola vez por tablet) y elegir quién atiende (en cada
+    // sesión). Requiere sesión válida, pero NO deviceId/memberId todavía —
+    // si ya los tiene, `redirectIfContextReady` la salta directo a /app.
+    path: '/seleccionar-contexto',
+    name: 'SelectContext',
+    component: () => import('@/views/SelectContextView.vue'),
+    meta: { requiresAuth: true, redirectIfContextReady: true },
+  },
+  {
     path: '/app',
     component: () => import('@/layouts/AppLayout.vue'),
-    meta: { requiresAuth: true },
+    // requiresContext: además del JWT, exige deviceId y memberId ya
+    // elegidos (ver session.store) — toda ruta operativa futura debe
+    // agregar esta misma meta.
+    meta: { requiresAuth: true, requiresContext: true },
     children: [{ path: '', name: 'AppHome', component: () => import('@/views/AppHomeView.vue') }],
   },
   { path: '/:pathMatch(.*)*', redirect: sessionDestination },
@@ -56,6 +70,10 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
     const auth = useAuthStore()
     if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: 'Login' }
     if (to.meta.redirectIfAuth && auth.isAuthenticated) return { name: 'AppHome' }
+
+    const session = useSessionStore()
+    if (to.meta.requiresContext && !session.isContextReady) return { name: 'SelectContext' }
+    if (to.meta.redirectIfContextReady && session.isContextReady) return { name: 'AppHome' }
   })
 
   return router
