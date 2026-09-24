@@ -1,27 +1,40 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import AuthService from '@/services/auth.service'
-import type { LoginPayload, User } from '@/types/auth.types'
+import { useToastStore } from '@/stores/toast.store'
+import type { LoginPayload } from '@/types/auth.types'
 
-function isUser(value: unknown): value is User {
-  if (!value || typeof value !== 'object') return false
-  const user = value as Partial<User>
-  return typeof user.id === 'string' && user.id.length > 0
-    && typeof user.name === 'string' && typeof user.email === 'string'
-}
+const ACCESS_TOKEN_KEY = 'access_token'
+const EXPIRES_AT_KEY   = 'token_expires_at'
+// El backend no devuelve perfil de usuario — guardamos el username tecleado
+// en el login solo para mostrarlo en el sidebar (AppLayout), no como dato
+// verificado por el servidor.
+const USERNAME_KEY = 'auth_username'
 
 function clearStorage() {
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('user')
+  localStorage.removeItem(ACCESS_TOKEN_KEY)
+  localStorage.removeItem(EXPIRES_AT_KEY)
+  localStorage.removeItem(USERNAME_KEY)
 }
 
-function restoreSession(): { token: string; user: User } | null {
+interface StoredSession {
+  token:     string
+  expiresAt: number
+  username:  string | null
+}
+
+function restoreSession(): StoredSession | null {
   try {
-    const token = localStorage.getItem('access_token')
-    const user: unknown = JSON.parse(localStorage.getItem('user') ?? 'null')
-    if (token?.trim() && isUser(user)) return { token, user }
+    const token       = localStorage.getItem(ACCESS_TOKEN_KEY)
+    const expiresAtRaw = localStorage.getItem(EXPIRES_AT_KEY)
+    const expiresAt    = expiresAtRaw ? Number(expiresAtRaw) : NaN
+    const username      = localStorage.getItem(USERNAME_KEY)
+
+    if (token?.trim() && Number.isFinite(expiresAt) && expiresAt > Date.now()) {
+      return { token, expiresAt, username }
+    }
   } catch {
-    // Invalid JSON is a logged-out session, not an application startup error.
+    // Storage corrupto ⇒ se trata como sesión cerrada, no como error de arranque.
   }
   clearStorage()
   return null
@@ -29,30 +42,50 @@ function restoreSession(): { token: string; user: User } | null {
 
 export const useAuthStore = defineStore('auth', () => {
   const session = restoreSession()
-  const token = ref<string | null>(session?.token ?? null)
-  const user = ref<User | null>(session?.user ?? null)
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  // Local credentials do not imply server-side JWT validation.
-  const isAuthenticated = computed(() => !!token.value && !!user.value)
+
+  const token     = ref<string | null>(session?.token ?? null)
+  const expiresAt = ref<number | null>(session?.expiresAt ?? null)
+  const username  = ref<string | null>(session?.username ?? null)
+  const loading   = ref(false)
+  const error     = ref<string | null>(null)
+
+  // Sesión válida = hay token Y aún no venció. Permite detectar sesión
+  // expirada sin depender de una llamada al servidor.
+  const isAuthenticated = computed(
+    () => !!token.value && !!expiresAt.value && expiresAt.value > Date.now()
+  )
 
   async function login(payload: LoginPayload) {
     loading.value = true
     error.value = null
     try {
       const data = await AuthService.login(payload)
-      if (!data.accessToken?.trim() || !isUser(data.usuario)) {
+      if (!data.accessToken?.trim() || !Number.isFinite(data.expiresIn)) {
         throw new Error('Invalid login response')
       }
-      localStorage.setItem('access_token', data.accessToken)
-      localStorage.setItem('user', JSON.stringify(data.usuario))
-      token.value = data.accessToken
-      user.value = data.usuario
+
+      const expiry = Date.now() + data.expiresIn * 1000
+      localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken)
+      localStorage.setItem(EXPIRES_AT_KEY, String(expiry))
+      localStorage.setItem(USERNAME_KEY, payload.username)
+
+      token.value     = data.accessToken
+      expiresAt.value = expiry
+      username.value  = payload.username
     } catch (cause) {
       logout()
-      const message = (cause as { response?: { data?: { message?: unknown } } } | null)
+      const status = (cause as { response?: { status?: number } } | null)?.response?.status
+      const serverMessage = (cause as { response?: { data?: { message?: unknown } } } | null)
         ?.response?.data?.message
-      error.value = typeof message === 'string' ? message : 'Error desconocido'
+
+      error.value = status === 401
+        ? 'Usuario o contraseña incorrectos'
+        : typeof serverMessage === 'string'
+          ? serverMessage
+          : 'No se pudo iniciar sesión, intenta de nuevo'
+
+      // Notifica el fallo también vía el sistema global de toasts.
+      useToastStore().error(error.value)
       throw cause
     } finally {
       loading.value = false
@@ -60,11 +93,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
-    token.value = null
-    user.value = null
-    error.value = null
+    token.value     = null
+    expiresAt.value = null
+    username.value  = null
+    error.value     = null
     clearStorage()
   }
 
-  return { token, user, loading, error, isAuthenticated, login, logout }
+  return { token, expiresAt, username, loading, error, isAuthenticated, login, logout }
 })

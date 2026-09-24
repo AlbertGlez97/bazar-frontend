@@ -61,7 +61,7 @@
       <div class="sidebar__footer">
         <!-- Avatar (átomo AppAvatar) -->
         <AppAvatar
-          :name="authStore.user?.name ?? 'U'"
+          :name="authStore.username ?? 'U'"
           size="sm"
           class="sidebar__avatar"
         />
@@ -69,8 +69,7 @@
           v-if="!sidebarCollapsed"
           class="sidebar__user"
         >
-          <span class="sidebar__user-name">{{ authStore.user?.name ?? 'Usuario' }}</span>
-          <span class="sidebar__user-email">{{ authStore.user?.email }}</span>
+          <span class="sidebar__user-name">{{ authStore.username ?? 'Usuario' }}</span>
         </div>
         <!-- Botón logout (AppButton ghost) -->
         <AppButton
@@ -235,7 +234,6 @@ function handleLogout() {
   overflow: hidden;
 }
 .sidebar__user-name  { display: block; font-size: var(--font-size-sm); font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sidebar__user-email { display: block; font-size: var(--font-size-xs); opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .sidebar__logout {
   color:   var(--color-sidebar-text) !important;

@@ -1,54 +1,136 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from '../auth.store'
+import { useToastStore } from '../toast.store'
 import AuthService from '@/services/auth.service'
+
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn() } }))
-const user = { id: '1', name: 'Ana', email: 'a@test.com' }
-const payload = { email: user.email, password: 'password' }
-beforeEach(() => { localStorage.clear(); setActivePinia(createPinia()); vi.clearAllMocks() })
-describe('local session', () => {
-  it('starts logged out', () => expect(useAuthStore().isAuthenticated).toBe(false))
-  it('restores a complete local session without a request', () => {
-    localStorage.setItem('access_token', 'token'); localStorage.setItem('user', JSON.stringify(user))
-    expect(useAuthStore().user).toEqual(user)
-    expect(useAuthStore().isAuthenticated).toBe(true)
+
+const payload = { username: 'ana', password: 'secret123' }
+const validResponse = { accessToken: 'jwt-token', tokenType: 'Bearer', expiresIn: 3600 }
+
+beforeEach(() => {
+  localStorage.clear()
+  setActivePinia(createPinia())
+  vi.clearAllMocks()
+})
+
+describe('auth session (contrato real bazar-api)', () => {
+  it('starts logged out', () => {
+    expect(useAuthStore().isAuthenticated).toBe(false)
+  })
+
+  it('restores a valid, non-expired local session without a request', () => {
+    localStorage.setItem('access_token', 'jwt-token')
+    localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
+
+    const auth = useAuthStore()
+    expect(auth.isAuthenticated).toBe(true)
     expect(AuthService.login).not.toHaveBeenCalled()
   })
-  it.each(['', '{', 'null', '[]', '"text"', '{}', '{"id":1}', '{"id":""}', '{"id":"1","name":1}', '{"id":"1","name":"Ana","email":1}'])('rejects invalid user storage %s', (raw) => {
-    localStorage.setItem('access_token', 'token'); localStorage.setItem('user', raw)
-    expect(useAuthStore().isAuthenticated).toBe(false)
-    expect(localStorage.getItem('user')).toBeNull(); expect(localStorage.getItem('access_token')).toBeNull()
+
+  it('treats an expired token as logged out and clears storage', () => {
+    localStorage.setItem('access_token', 'jwt-token')
+    localStorage.setItem('token_expires_at', String(Date.now() - 1_000))
+
+    const auth = useAuthStore()
+    expect(auth.isAuthenticated).toBe(false)
+    expect(localStorage.getItem('access_token')).toBeNull()
+    expect(localStorage.getItem('token_expires_at')).toBeNull()
   })
+
   it.each([null, '', '   '])('rejects missing or blank token %s', (token) => {
     if (token !== null) localStorage.setItem('access_token', token)
-    localStorage.setItem('user', JSON.stringify(user))
+    localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
     expect(useAuthStore().isAuthenticated).toBe(false)
-    expect(localStorage.getItem('user')).toBeNull()
   })
-  it('clears token-only storage', () => {
-    localStorage.setItem('access_token', 'token')
-    expect(useAuthStore().isAuthenticated).toBe(false)
-    expect(localStorage.getItem('access_token')).toBeNull()
-  })
-  it('persists login and clears logout', async () => {
-    vi.mocked(AuthService.login).mockResolvedValue({ accessToken: 'token', usuario: user })
-    const auth = useAuthStore(); const pending = auth.login(payload)
-    expect(auth.loading).toBe(true); await pending
-    expect(auth.isAuthenticated).toBe(true); expect(auth.loading).toBe(false)
-    expect(JSON.parse(localStorage.getItem('user')!)).toEqual(user)
-    auth.logout(); expect(auth.isAuthenticated).toBe(false)
-    expect(localStorage.getItem('user')).toBeNull(); expect(localStorage.getItem('access_token')).toBeNull()
-  })
-  it.each([{ response: { data: { message: 'Denied' } } }, new Error('offline'), null, { response: { data: { message: ['bad'] } } }])('resets state after login error', async (cause) => {
-    vi.mocked(AuthService.login).mockRejectedValue(cause)
+
+  it('login exitoso guarda el token y calcula la expiración a partir de expiresIn', async () => {
+    vi.mocked(AuthService.login).mockResolvedValue(validResponse)
+    const before = Date.now()
+
     const auth = useAuthStore()
-    await expect(auth.login(payload)).rejects.toEqual(cause)
-    expect(auth.loading).toBe(false); expect(auth.isAuthenticated).toBe(false)
-    expect(auth.error).toBeTruthy()
+    const pending = auth.login(payload)
+    expect(auth.loading).toBe(true)
+    await pending
+
+    expect(auth.loading).toBe(false)
+    expect(auth.isAuthenticated).toBe(true)
+    expect(auth.token).toBe('jwt-token')
+    expect(localStorage.getItem('access_token')).toBe('jwt-token')
+
+    const storedExpiry = Number(localStorage.getItem('token_expires_at'))
+    // expiresIn=3600s ⇒ el timestamp guardado debe caer ~3600000ms adelante
+    expect(storedExpiry).toBeGreaterThanOrEqual(before + 3600_000)
+    expect(storedExpiry).toBeLessThanOrEqual(Date.now() + 3600_000)
+    expect(auth.expiresAt).toBe(storedExpiry)
   })
-  it.each([{ accessToken: '', usuario: user }, { accessToken: 't', usuario: null }])('rejects incomplete login responses', async (response) => {
+
+  it('login fallido (401) no guarda token y expone el error', async () => {
+    vi.mocked(AuthService.login).mockRejectedValue({ response: { status: 401 } })
+
+    const auth = useAuthStore()
+    await expect(auth.login(payload)).rejects.toEqual({ response: { status: 401 } })
+
+    expect(auth.loading).toBe(false)
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.token).toBeNull()
+    expect(localStorage.getItem('access_token')).toBeNull()
+    expect(auth.error).toBe('Usuario o contraseña incorrectos')
+  })
+
+  it('login fallido (401) notifica el error vía el store de toasts', async () => {
+    vi.mocked(AuthService.login).mockRejectedValue({ response: { status: 401 } })
+
+    const auth = useAuthStore()
+    await expect(auth.login(payload)).rejects.toBeTruthy()
+
+    const toast = useToastStore()
+    expect(toast.toasts).toHaveLength(1)
+    expect(toast.toasts[0]).toMatchObject({ type: 'error', message: 'Usuario o contraseña incorrectos' })
+  })
+
+  it('login fallido por error de red usa un mensaje genérico', async () => {
+    vi.mocked(AuthService.login).mockRejectedValue(new Error('Network Error'))
+
+    const auth = useAuthStore()
+    await expect(auth.login(payload)).rejects.toBeTruthy()
+    expect(auth.error).toBe('No se pudo iniciar sesión, intenta de nuevo')
+  })
+
+  it('login fallido usa el mensaje del servidor cuando está disponible', async () => {
+    vi.mocked(AuthService.login).mockRejectedValue({
+      response: { status: 400, data: { message: 'Usuario bloqueado' } },
+    })
+
+    const auth = useAuthStore()
+    await expect(auth.login(payload)).rejects.toBeTruthy()
+    expect(auth.error).toBe('Usuario bloqueado')
+  })
+
+  it.each([
+    { accessToken: '', tokenType: 'Bearer', expiresIn: 3600 },
+    { accessToken: 't', tokenType: 'Bearer', expiresIn: Number.NaN },
+  ])('rechaza respuestas de login incompletas', async (response) => {
     vi.mocked(AuthService.login).mockResolvedValue(response as never)
-    await expect(useAuthStore().login(payload)).rejects.toThrow('Invalid login response')
-    expect(useAuthStore().isAuthenticated).toBe(false)
+    const auth = useAuthStore()
+    await expect(auth.login(payload)).rejects.toThrow('Invalid login response')
+    expect(auth.isAuthenticated).toBe(false)
+  })
+
+  it('logout limpia token, expiración y username', async () => {
+    vi.mocked(AuthService.login).mockResolvedValue(validResponse)
+    const auth = useAuthStore()
+    await auth.login(payload)
+    expect(auth.isAuthenticated).toBe(true)
+
+    auth.logout()
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.token).toBeNull()
+    expect(auth.expiresAt).toBeNull()
+    expect(auth.username).toBeNull()
+    expect(localStorage.getItem('access_token')).toBeNull()
+    expect(localStorage.getItem('token_expires_at')).toBeNull()
+    expect(localStorage.getItem('auth_username')).toBeNull()
   })
 })
