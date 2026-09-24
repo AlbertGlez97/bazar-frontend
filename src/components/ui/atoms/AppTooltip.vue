@@ -79,6 +79,7 @@ interface Props {
   placement?: 'top' | 'bottom'
 }
 const props = withDefaults(defineProps<Props>(), {
+  ariaLabel: undefined,
   placement: 'top',
 })
 

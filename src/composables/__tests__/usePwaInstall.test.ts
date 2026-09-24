@@ -17,9 +17,21 @@ const TestComponent = defineComponent({
   template: '<div />',
 })
 
+// Superficie del composable tal como la expone el vm del wrapper (refs desenvueltas)
+interface PwaInstallVm {
+  canPrompt: boolean
+  platform: string
+  isInstalled: boolean
+  promptInstall: () => Promise<'accepted' | 'dismissed' | 'unsupported'>
+}
+
 // Fake BeforeInstallPromptEvent
 function makeFakePromptEvent(outcome: 'accepted' | 'dismissed' = 'accepted') {
-  const event = new Event('beforeinstallprompt') as any
+  const event = new Event('beforeinstallprompt') as Event & {
+    platforms: string[]
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
+    prompt: ReturnType<typeof vi.fn>
+  }
   event.preventDefault = vi.fn()
   event.platforms = ['web']
   event.userChoice = Promise.resolve({ outcome, platform: 'web' })
@@ -37,7 +49,7 @@ describe('usePwaInstall', () => {
 
   it('retorna las propiedades esperadas', () => {
     const wrapper = shallowMount(TestComponent)
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as unknown as PwaInstallVm
     expect(vm.canPrompt).toBeDefined()
     expect(vm.platform).toBeDefined()
     expect(vm.isInstalled).toBeDefined()
@@ -46,14 +58,14 @@ describe('usePwaInstall', () => {
 
   it('detecta la plataforma como desktop en jsdom', () => {
     const wrapper = shallowMount(TestComponent)
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as unknown as PwaInstallVm
     // jsdom no tiene iOS/Android UA
     expect(['desktop', 'unknown']).toContain(vm.platform)
   })
 
   it('canPrompt es false inicialmente (sin evento)', () => {
     const wrapper = shallowMount(TestComponent)
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as unknown as PwaInstallVm
     expect(vm.canPrompt).toBe(false)
   })
 
@@ -62,13 +74,13 @@ describe('usePwaInstall', () => {
     const fakeEvent = makeFakePromptEvent()
     window.dispatchEvent(fakeEvent)
     await wrapper.vm.$nextTick()
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as unknown as PwaInstallVm
     expect(vm.canPrompt).toBe(true)
   })
 
   it('promptInstall retorna "unsupported" si no hay installEvent', async () => {
     const wrapper = shallowMount(TestComponent)
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as unknown as PwaInstallVm
     const result = await vm.promptInstall()
     expect(result).toBe('unsupported')
   })
@@ -79,7 +91,7 @@ describe('usePwaInstall', () => {
     window.dispatchEvent(fakeEvent)
     await wrapper.vm.$nextTick()
 
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as unknown as PwaInstallVm
     const result = await vm.promptInstall()
     expect(result).toBe('accepted')
   })
@@ -90,7 +102,7 @@ describe('usePwaInstall', () => {
     window.dispatchEvent(fakeEvent)
     await wrapper.vm.$nextTick()
 
-    const vm = wrapper.vm as any
+    const vm = wrapper.vm as unknown as PwaInstallVm
     await vm.promptInstall()
     expect(vm.canPrompt).toBe(false)
   })

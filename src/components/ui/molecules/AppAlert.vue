@@ -142,6 +142,7 @@ withDefaults(defineProps<{
 }>(), {
   type:        'info',
   show:        true,
+  title:       undefined,
   dismissible: false,
 })
 

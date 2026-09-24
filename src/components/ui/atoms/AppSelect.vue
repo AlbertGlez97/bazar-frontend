@@ -65,9 +65,12 @@ withDefaults(defineProps<{
   disabled?:    boolean
   size?:        'sm' | 'md' | 'lg'
 }>(), {
-  modelValue: '',
-  disabled:   false,
-  size:       'md',
+  modelValue:  '',
+  label:       undefined,
+  error:       undefined,
+  placeholder: undefined,
+  disabled:    false,
+  size:        'md',
 })
 
 defineEmits<{ 'update:modelValue': [v: string] }>()

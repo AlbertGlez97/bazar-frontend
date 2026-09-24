@@ -104,6 +104,7 @@ const props = withDefaults(defineProps<{
   confirmLabel?: string
   closeOnBackdrop?: boolean
 }>(), {
+  subtitle:         undefined,
   size:             'md',
   hideClose:        false,
   hideFooter:       false,
@@ -125,7 +126,7 @@ function onBackdropClick() { if (props.closeOnBackdrop) close() }
 function lockScroll()   { document.body.style.overflow = 'hidden' }
 function unlockScroll() { document.body.style.overflow = '' }
 
-watch(() => props.modelValue, v => { v ? lockScroll() : unlockScroll() }, { immediate: true })
+watch(() => props.modelValue, v => { if (v) lockScroll(); else unlockScroll() }, { immediate: true })
 
 // Cerrar con Escape
 function onKeydown(e: KeyboardEvent) { if (e.key === 'Escape') close() }

@@ -68,6 +68,9 @@ withDefaults(defineProps<{
   size?:        'sm' | 'md' | 'lg'
 }>(), {
   modelValue:  '',
+  label:       undefined,
+  error:       undefined,
+  placeholder: undefined,
   type:        'text',
   disabled:    false,
   size:        'md',

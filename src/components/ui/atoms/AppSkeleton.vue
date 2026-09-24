@@ -23,6 +23,8 @@ withDefaults(defineProps<{
   rounded?: boolean
 }>(), {
   variant: 'rect',
+  width:   undefined,
+  height:  undefined,
   rounded: false,
 })
 </script>

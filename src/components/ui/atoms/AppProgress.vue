@@ -37,6 +37,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   color:     'primary',
   showLabel: false,
+  height:    undefined,
 })
 
 // Limita el valor al rango 0-100

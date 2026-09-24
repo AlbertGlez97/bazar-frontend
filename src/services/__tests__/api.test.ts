@@ -4,6 +4,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import api from '@/services/api'
 import type { InternalAxiosRequestConfig, AxiosError } from 'axios'
 
+// Axios no tipa los `handlers` internos de los interceptores; los describimos aquí
+interface RequestHandlers {
+  handlers: { fulfilled: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig }[]
+}
+interface ResponseHandlers {
+  handlers: {
+    fulfilled: (response: unknown) => unknown
+    rejected: (error: AxiosError) => Promise<never>
+  }[]
+}
+
 describe('api — interceptores Axios', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -22,7 +33,7 @@ describe('api — interceptores Axios', () => {
     // Simular la config que pasaría el interceptor de solicitud
     const config = { headers: {} as Record<string, string> } as InternalAxiosRequestConfig
     // Acceder al primer handler del interceptor de solicitud
-    const handler = (api.interceptors.request as any).handlers[0]
+    const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
     const result = handler.fulfilled(config)
 
     expect(result.headers.Authorization).toBe('Bearer jwt-test-token')
@@ -30,7 +41,7 @@ describe('api — interceptores Axios', () => {
 
   it('NO agrega Authorization header si no hay token', () => {
     const config = { headers: {} as Record<string, string> } as InternalAxiosRequestConfig
-    const handler = (api.interceptors.request as any).handlers[0]
+    const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
     const result = handler.fulfilled(config)
 
     expect(result.headers.Authorization).toBeUndefined()
@@ -40,7 +51,7 @@ describe('api — interceptores Axios', () => {
 
   it('pasa la respuesta sin modificaciones en el interceptor fulfilled', () => {
     const response = { data: { ok: true }, status: 200 }
-    const handler = (api.interceptors.response as any).handlers[0]
+    const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
     const result = handler.fulfilled(response)
 
     expect(result).toEqual(response)
@@ -62,7 +73,7 @@ describe('api — interceptores Axios', () => {
       config:   { url: '/dashboard/data' },
     } as AxiosError
 
-    const handler = (api.interceptors.response as any).handlers[0]
+    const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
     await expect(handler.rejected(error)).rejects.toBeDefined()
 
     expect(localStorage.getItem('access_token')).toBeNull()
@@ -77,7 +88,7 @@ describe('api — interceptores Axios', () => {
       config:   { url: '/auth/login' },
     } as AxiosError
 
-    const handler = (api.interceptors.response as any).handlers[0]
+    const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
     await expect(handler.rejected(error)).rejects.toBeDefined()
 
     // El token NO se debe borrar cuando el 401 viene de /auth/login
@@ -92,7 +103,7 @@ describe('api — interceptores Axios', () => {
       config:   { url: '/budgets' },
     } as AxiosError
 
-    const handler = (api.interceptors.response as any).handlers[0]
+    const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
     await expect(handler.rejected(error)).rejects.toBeDefined()
 
     expect(localStorage.getItem('access_token')).toBe('jwt-xxx')

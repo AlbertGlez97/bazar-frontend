@@ -61,7 +61,7 @@ withDefaults(defineProps<{
   flat?:      boolean
   noPadding?: boolean
   accent?:    'primary' | 'success' | 'warning' | 'danger'
-}>(), { hoverable: false, flat: false, noPadding: false })
+}>(), { title: undefined, subtitle: undefined, hoverable: false, flat: false, noPadding: false, accent: undefined })
 </script>
 
 <style scoped>
