@@ -27,7 +27,7 @@ Preserve generic UI, `toast.store.ts`, PWA installation, `assets/main.css`, Axio
 
 ## Work unit
 
-- [ ] **T01 — Remove the finance domain and deliver a verified reusable shell.** Delete the authorized modules/dependencies, adjust shell/auth/routing and affected tests, install dependencies, verify, and create a Conventional Commit with code/tests/docs together.
+- [x] **T01 — Remove the finance domain and deliver a verified reusable shell.** Completed and verified in `ca698bb` (`refactor: remove personal finance domain and preserve reusable shell`), with code, tests, and this task record together.
 
 ### Acceptance and checks
 
@@ -45,7 +45,7 @@ Preserve generic UI, `toast.store.ts`, PWA installation, `assets/main.css`, Axio
 
 ## Progress and evidence
 
-- Original state committed as `739731a`; implementation and independent verification complete, local commit pending. Removed 73 files (finance views/stores/services/types/calculators/tests, E2EE, landing/guide/register/recovery and finance-only Excel utility).
+- Original state committed as `739731a`; implementation and independent verification complete, cleanup committed locally as `ca698bb`. Removed 73 files (finance views/stores/services/types/calculators/tests, E2EE, landing/guide/register/recovery and finance-only Excel utility).
 - Install: command-scoped TLS=1 npm install succeeded. Initial sandbox install failed EPERM and left incomplete node_modules; exact-lockfile npm ci repaired it after one transient EBUSY retry. No retained dependency versions changed: removed only BIP39 and exclusive transitives @scure/base and @noble/hashes.
 - npm run build: PASS, vue-tsc and Vite/PWA output generated. Added src/pwa-env.d.ts for missing existing virtual module declarations and explicit vi/afterEach test imports; strict configuration unchanged.
 - npm run test:run: PASS, 13 files / 103 tests. Includes local-session invalid/missing storage, login/logout, root/unknown/private route behavior. No old profile request or crypto dependency.
@@ -59,10 +59,10 @@ Preserve generic UI, `toast.store.ts`, PWA installation, `assets/main.css`, Axio
 - Parent spot check: `npm run build` PASS (TypeScript, Vite, and PWA generation). Initial sandbox access denial was resolved by running the same command with approved escalation and TLS=1; no source changes were required.
 - Native review assessment: UNAVAILABLE. `gentle-ai review assess --cwd <frontend> --json` returned unknown command `review`. No review switch was enabled, no approval claimed; writer checks and independent verification are the evidence of record.
 - Follow-up outside cleanup scope: browsers denying the localStorage API itself can still fail session initialization; this behavior already existed before cleanup. Auth integration should harden denied-storage handling. Existing tests cover malformed/missing stored content.
-- Cleanup commit: pending. Staged authored change count (excluding generated package-lock.json): 303 additions + 23,003 deletions = 23,306 lines across the cohesive unit; 73 deleted files, 19 modified files, and 4 added files including this record. Covered by the approved size exception.
+- Cleanup commit: `ca698bb`. Committed authored change count (excluding generated package-lock.json): 303 additions + 23,003 deletions = 23,306 lines across the cohesive unit; 73 deleted files, 19 modified files, and 4 added files including this record. Covered by the approved size exception. This follow-up changes only the completion evidence, not the verified application.
 - Rollback boundary: revert the cleanup work-unit commit to restore the original frontend; backend is unrelated and unchanged.
 - Memory mirror: `odd/frontend-cleanup/tasks`; repository locator: `odd/tasks/frontend-cleanup.md`.
 
 ## Next step
 
-Create the authorized local cleanup commit, record its identity, and hand off the preserved shell for a separate bazar-auth/catalog/ventas task. Do not push.
+Wait for explicit push authorization. Bazar authentication/context integration and catalog/sales implementation remain separate future work; current login is still the legacy contract. The verification dev server has been stopped.
