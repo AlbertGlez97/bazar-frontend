@@ -19,7 +19,8 @@ Add ESLint (Vue 3 + TypeScript, flat config) to the cleaned frontend, report `np
 - [x] **T02 — Fix lint findings (style/convention only).** No structural changes; `npm run test:run` and `npm run build` still pass.
 - [x] **T03 — `npm audit` report (read-only).** 11 findings, unchanged: 6 moderate, 5 high, 0 critical. See Progress.
 - [x] **T04 — Pre-push verification (local checks).** `.gitignore` covers `node_modules`, `dist`, `.env` (not `.env.example`), `coverage/`; branch has the real history; status clean.
-- [ ] **T05 — Publish to `origin/main`.** Blocked until credential is confirmed and the remote is verified empty.
+- [x] **T05 — Publish to `origin/main`.** Done after the user authorized the read-only `git ls-remote` and then the push (no force). See Progress.
+- [x] **T06 — Non-breaking `npm audit fix` (no `--force`), authorized by the user after T05.** On branch `chore/npm-audit-fix`; not pushed.
 
 ## Acceptance and checks
 
@@ -45,10 +46,12 @@ Add ESLint (Vue 3 + TypeScript, flat config) to the cleaned frontend, report `np
 - T02 commit: `2bb2aba` (`style: resolve remaining eslint findings`). Slice = `9a35172`, `f5540ac`, `2bb2aba` on base `8cca68a`.
 - T04 local checks passed: HEAD is `chore/remove-personal-finance` with the real history (`739731a`, `ca698bb`, `8cca68a` plus the three slice commits), `git status` clean, `.gitignore` complete.
 - **Native review: UNAVAILABLE for this slice.** `gentle-ai review status ... --base-ref=8cca68a --committed-only=true` failed safely before any mutation (`operation_failed`, `mutation_outcome: not_started`, `retry_safe: true`): the RAR authority path is owned by a different Windows account. Verified read-only: `.git` is owned by `DESKTOP-B5904QS\CodexSandboxOffline`, while the current user is `DESKTOP-B5904QS\albertogdlc` (project folders above `.git` are owned by the current user). No ownership was changed and no approval is claimed; functional checks and the writer/parent verification above are the evidence of record. Decision pending for the user: fix `.git` ownership (for example `takeown`/`icacls` on `.git`) and rerun the preflight, or continue under ordinary repository policy.
-- Also pending: T05 needs a confirmed credential/session for GitHub and a decision on the non-empty-remote question below.
+- T05: the user authorized `git ls-remote origin` with the ambient git credentials. The remote had only `refs/heads/chore/remove-personal-finance` at `8cca68a` (also its HEAD) and no `main`. After a second explicit authorization I ran `git branch -M main` (local `main` moved `739731a` to `faedffb`, a fast-forward) and `git push -u origin main` without force: `[new branch] main -> main`. Verification with `git ls-remote`: `refs/heads/main` is `faedffb`, equal to the local HEAD, and `git log origin/main` shows the real history (`ca698bb`, `8cca68a`, then the four lint commits), not a replacement "first commit". The remote branch `chore/remove-personal-finance` is untouched. The remote default branch (HEAD) still points to `chore/remove-personal-finance` until changed in the GitHub settings.
+- T06: `npm audit fix` without `--force` lowered the audit from 11 (6 moderate, 5 high) to 6 (5 moderate, 1 high). Only `package-lock.json` changed; `package.json` is untouched. 18 transitive entries moved within their ranges (`brace-expansion` 1.1.16/2.1.2/5.0.7 to 1.1.21/2.1.7/5.0.12, `browserslist` 4.28.6 to 4.29.1, `fast-uri` 3.1.4 to 3.1.8, `nanoid` 3.3.16 to 3.3.19, `postcss` 8.5.21 to 8.5.28, plus `baseline-browser-mapping`, `caniuse-lite`, `electron-to-chromium`, `node-releases`, `update-browserslist-db`); no package added or removed. Checks: `npm run lint` exit 0, `npm run test:run` 13 files / 103 tests, `npm run build` OK (24 precache entries), `git diff --check` clean. Remaining 6 need major or breaking changes and were left as is: `sharp` (high, direct; fix is 0.35.4), `vitest`, `@vitest/coverage-v8`, `@vitest/mocker` (moderate; fix is vitest 5.x), `exceljs` and `uuid` (moderate; npm only offers a downgrade to exceljs 3.4.0, and `exceljs`/`pdfmake` are not imported anywhere in `src/`).
+- Still pending for the user: `.git` ownership (`CodexSandboxOffline`) blocks the native review preflight; GitHub default branch; whether to push `chore/npm-audit-fix` or open a pull request.
 
 ## Next step
 
-Wait for the user: (1) confirm which GitHub credential/session to use so the remote can be inspected read-only (`git ls-remote`), (2) decide about the existing remote-tracking branch, (3) decide about the `.git` ownership. Then T05 (no force-push).
+Wait for the user's decision on the pending items above. No push of `chore/npm-audit-fix` is authorized yet.
 
 Memory mirror: `odd/frontend-lint-and-publish/tasks`; repository locator: `odd/tasks/frontend-lint-and-publish.md`.
