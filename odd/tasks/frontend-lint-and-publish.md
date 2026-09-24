@@ -18,7 +18,7 @@ Add ESLint (Vue 3 + TypeScript, flat config) to the cleaned frontend, report `np
 - [x] **T01 — Configure ESLint flat config and `lint` script.** RED first: `npm run lint` fails because the script is missing.
 - [x] **T02 — Fix lint findings (style/convention only).** No structural changes; `npm run test:run` and `npm run build` still pass.
 - [x] **T03 — `npm audit` report (read-only).** 11 findings, unchanged: 6 moderate, 5 high, 0 critical. See Progress.
-- [ ] **T04 — Pre-push verification.** `.gitignore` covers `node_modules`, `dist`, `.env` (not `.env.example`), `coverage/`; branch has the real history; status clean.
+- [x] **T04 — Pre-push verification (local checks).** `.gitignore` covers `node_modules`, `dist`, `.env` (not `.env.example`), `coverage/`; branch has the real history; status clean.
 - [ ] **T05 — Publish to `origin/main`.** Blocked until credential is confirmed and the remote is verified empty.
 
 ## Acceptance and checks
@@ -42,8 +42,13 @@ Add ESLint (Vue 3 + TypeScript, flat config) to the cleaned frontend, report `np
 - T04 partial: `.gitignore` already ignores `node_modules`, `dist`, `dist-ssr`, `.env`, `.env.*.local`, `coverage/` and keeps `.env.example` tracked (verified with `git check-ignore`); nothing added. Local `main` is at `739731a`, an ancestor of HEAD.
 - **Discrepancy found**: the remote-tracking ref `origin/chore/remove-personal-finance` exists locally at `8cca68a`, so that branch was pushed or fetched at some point. The remote is therefore probably not empty; not yet verified because no remote call has been authorized.
 
+- T02 commit: `2bb2aba` (`style: resolve remaining eslint findings`). Slice = `9a35172`, `f5540ac`, `2bb2aba` on base `8cca68a`.
+- T04 local checks passed: HEAD is `chore/remove-personal-finance` with the real history (`739731a`, `ca698bb`, `8cca68a` plus the three slice commits), `git status` clean, `.gitignore` complete.
+- **Native review: UNAVAILABLE for this slice.** `gentle-ai review status ... --base-ref=8cca68a --committed-only=true` failed safely before any mutation (`operation_failed`, `mutation_outcome: not_started`, `retry_safe: true`): the RAR authority path is owned by a different Windows account. Verified read-only: `.git` is owned by `DESKTOP-B5904QS\CodexSandboxOffline`, while the current user is `DESKTOP-B5904QS\albertogdlc` (project folders above `.git` are owned by the current user). No ownership was changed and no approval is claimed; functional checks and the writer/parent verification above are the evidence of record. Decision pending for the user: fix `.git` ownership (for example `takeown`/`icacls` on `.git`) and rerun the preflight, or continue under ordinary repository policy.
+- Also pending: T05 needs a confirmed credential/session for GitHub and a decision on the non-empty-remote question below.
+
 ## Next step
 
-Close the slice: native review preflight for base `8cca68a` (three commits), then T04 status check and T05 only after the user decides on the non-empty-remote question and credential.
+Wait for the user: (1) confirm which GitHub credential/session to use so the remote can be inspected read-only (`git ls-remote`), (2) decide about the existing remote-tracking branch, (3) decide about the `.git` ownership. Then T05 (no force-push).
 
 Memory mirror: `odd/frontend-lint-and-publish/tasks`; repository locator: `odd/tasks/frontend-lint-and-publish.md`.
