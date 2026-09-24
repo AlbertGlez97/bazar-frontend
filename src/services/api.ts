@@ -1,5 +1,6 @@
 // Instancia central de Axios con interceptor JWT
 import axios from 'axios'
+import { useSessionStore } from '@/stores/session.store'
 
 // Base URL tomada de la variable de entorno Vite
 const api = axios.create({
@@ -7,12 +8,26 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// ── Interceptor de solicitud: añade el token JWT si existe ──
+// ── Interceptor de solicitud: añade el token JWT + contexto (member/device) ──
+// `useSessionStore()` se llama DENTRO del handler (no a nivel de módulo) para
+// que el Pinia activo ya exista cuando de verdad se dispare una petición
+// (main.ts instala Pinia antes del router/mount). Si falta memberId/deviceId
+// simplemente no se agregan los headers: el backend responde 403 para las
+// rutas que los exigen (ContextGuard/SocioGuard), no hace falta anticiparlo aquí.
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  const session = useSessionStore()
+  if (session.memberId) {
+    config.headers['x-member-id'] = session.memberId
+  }
+  if (session.deviceId) {
+    config.headers['x-device-id'] = session.deviceId
+  }
+
   return config
 })
 
@@ -30,9 +45,15 @@ api.interceptors.response.use(
       url.includes('/auth/login') || url.includes('/auth/register')
 
     if (status === 401 && !isAuthEndpoint) {
-      // Token expirado en ruta autenticada: limpiamos credenciales
+      // Token expirado en ruta autenticada: limpiamos credenciales.
+      // (Antes esto borraba una clave 'user' que ya no existe desde que se
+      // adaptó el store al contrato real del backend — se corrige aquí.)
       localStorage.removeItem('access_token')
-      localStorage.removeItem('user')
+      localStorage.removeItem('token_expires_at')
+      localStorage.removeItem('auth_username')
+      // La persona seleccionada debe reconfirmarse al volver a iniciar
+      // sesión; el dispositivo (físico, fijo) NO se limpia aquí.
+      useSessionStore().clearMember()
       // Solo redirigimos si aún no estamos en /login (evita recargas innecesarias)
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login'

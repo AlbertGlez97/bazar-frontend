@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 
 // ── Importar el módulo REAL (no mockeado) ────────────────────────────────────
 import api from '@/services/api'
+import { useSessionStore } from '@/stores/session.store'
 import type { InternalAxiosRequestConfig, AxiosError } from 'axios'
 
 // Axios no tipa los `handlers` internos de los interceptores; los describimos aquí
@@ -18,11 +20,14 @@ interface ResponseHandlers {
 describe('api — interceptores Axios', () => {
   beforeEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
+    setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
   afterEach(() => {
     localStorage.clear()
+    sessionStorage.clear()
   })
 
   // ── Interceptor de solicitud ──────────────────────────────────────────────
@@ -47,6 +52,28 @@ describe('api — interceptores Axios', () => {
     expect(result.headers.Authorization).toBeUndefined()
   })
 
+  it('agrega x-member-id y x-device-id si el session store ya los tiene', () => {
+    const session = useSessionStore()
+    session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
+
+    const config = { headers: {} as Record<string, string> } as InternalAxiosRequestConfig
+    const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
+    const result = handler.fulfilled(config)
+
+    expect(result.headers['x-member-id']).toBe('m-1')
+    expect(result.headers['x-device-id']).toBe('d-1')
+  })
+
+  it('NO agrega x-member-id/x-device-id si el session store todavía no los tiene', () => {
+    const config = { headers: {} as Record<string, string> } as InternalAxiosRequestConfig
+    const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
+    const result = handler.fulfilled(config)
+
+    expect(result.headers['x-member-id']).toBeUndefined()
+    expect(result.headers['x-device-id']).toBeUndefined()
+  })
+
   // ── Interceptor de respuesta ──────────────────────────────────────────────
 
   it('pasa la respuesta sin modificaciones en el interceptor fulfilled', () => {
@@ -57,9 +84,14 @@ describe('api — interceptores Axios', () => {
     expect(result).toEqual(response)
   })
 
-  it('en un 401 de endpoint autenticado: limpia localStorage', async () => {
+  it('en un 401 de endpoint autenticado: limpia localStorage y la persona seleccionada', async () => {
     localStorage.setItem('access_token', 'jwt-xxx')
-    localStorage.setItem('user', JSON.stringify({ id: 'u-1' }))
+    localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
+    localStorage.setItem('auth_username', 'ana')
+
+    const session = useSessionStore()
+    session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
 
     // Mock para evitar redirección real
     const originalHref = window.location.href
@@ -77,7 +109,12 @@ describe('api — interceptores Axios', () => {
     await expect(handler.rejected(error)).rejects.toBeDefined()
 
     expect(localStorage.getItem('access_token')).toBeNull()
-    expect(localStorage.getItem('user')).toBeNull()
+    expect(localStorage.getItem('token_expires_at')).toBeNull()
+    expect(localStorage.getItem('auth_username')).toBeNull()
+    // La persona debe reconfirmarse al volver a entrar, pero el dispositivo
+    // (físico, fijo) sobrevive a un token expirado.
+    expect(session.memberId).toBeNull()
+    expect(session.deviceId).toBe('d-1')
   })
 
   it('en un 401 de /auth/login: NO limpia localStorage', async () => {

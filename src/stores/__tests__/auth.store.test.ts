@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from '../auth.store'
 import { useToastStore } from '../toast.store'
+import { useSessionStore } from '../session.store'
 import AuthService from '@/services/auth.service'
 
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn() } }))
@@ -132,5 +133,20 @@ describe('auth session (contrato real bazar-api)', () => {
     expect(localStorage.getItem('access_token')).toBeNull()
     expect(localStorage.getItem('token_expires_at')).toBeNull()
     expect(localStorage.getItem('auth_username')).toBeNull()
+  })
+
+  it('logout limpia la persona seleccionada pero conserva el dispositivo identificado', async () => {
+    const session = useSessionStore()
+    session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
+
+    vi.mocked(AuthService.login).mockResolvedValue(validResponse)
+    const auth = useAuthStore()
+    await auth.login(payload)
+
+    auth.logout()
+
+    expect(session.memberId).toBeNull()
+    expect(session.deviceId).toBe('d-1')
   })
 })

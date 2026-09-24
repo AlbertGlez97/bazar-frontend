@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import AuthService from '@/services/auth.service'
 import { useToastStore } from '@/stores/toast.store'
+import { useSessionStore } from '@/stores/session.store'
 import type { LoginPayload } from '@/types/auth.types'
 
 const ACCESS_TOKEN_KEY = 'access_token'
@@ -98,6 +99,11 @@ export const useAuthStore = defineStore('auth', () => {
     username.value  = null
     error.value     = null
     clearStorage()
+    // Decisión: la persona seleccionada (member) se limpia con el logout —
+    // debe reconfirmarse quién vende en la siguiente sesión — pero el
+    // dispositivo identificado NO, porque es una propiedad física de la
+    // tablet, independiente de qué cuenta esté abierta en ella.
+    useSessionStore().clearOnLogout()
   }
 
   return { token, expiresAt, username, loading, error, isAuthenticated, login, logout }
