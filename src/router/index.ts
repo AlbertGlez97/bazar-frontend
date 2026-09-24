@@ -14,11 +14,11 @@ const routes: RouteRecordRaw[] = [
     meta: { redirectIfAuth: true },
   },
   {
-    // Placeholder: el formulario real de registro de negocio (conectado a
-    // POST /business-registration) se implementará en la siguiente vista.
+    // Formulario real de registro de negocio: crea una solicitud pendiente
+    // de aprobación manual, sin autenticar ni abrir sesión.
     path: '/registro-negocio',
     name: 'BusinessRegistration',
-    component: () => import('@/views/BusinessRegistrationPlaceholderView.vue'),
+    component: () => import('@/views/business/RegisterBusinessView.vue'),
   },
   {
     path: '/login',

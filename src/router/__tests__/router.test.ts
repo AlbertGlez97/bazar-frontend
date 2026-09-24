@@ -13,16 +13,21 @@ describe('session routing', () => {
   it.each(['/unknown', '/dashboard', '/register', '/app', '/login'])('sends logged-out %s to login', async (path) => {
     await router.push(path); expect(router.currentRoute.value.name).toBe('Login')
   })
-  it('allows logged-out visitors to reach the business registration placeholder', async () => {
+  it('allows logged-out visitors to reach the business registration form', async () => {
     await router.push('/registro-negocio'); expect(router.currentRoute.value.name).toBe('BusinessRegistration')
   })
   it.each(['/', '/unknown', '/login', '/app'])('sends restored-session %s to shell', async (path) => {
     localStorage.setItem('access_token', 'token')
-    localStorage.setItem('user', JSON.stringify({ id: '1', name: 'Ana', email: 'a@test.com' }))
+    localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
     await router.push(path); expect(router.currentRoute.value.name).toBe('AppHome')
   })
+  it('sends an expired-session visitor to login instead of the shell', async () => {
+    localStorage.setItem('access_token', 'token')
+    localStorage.setItem('token_expires_at', String(Date.now() - 1_000))
+    await router.push('/app'); expect(router.currentRoute.value.name).toBe('Login')
+  })
   it('logout returns to login and prevents shell reentry', async () => {
-    const auth = useAuthStore(); auth.token = 't'; auth.user = { id: '1', name: 'Ana', email: 'a@test.com' }
+    const auth = useAuthStore(); auth.token = 't'; auth.expiresAt = Date.now() + 60_000
     await router.push('/app'); auth.logout(); await router.push('/login'); await router.push('/app')
     expect(router.currentRoute.value.name).toBe('Login')
   })
