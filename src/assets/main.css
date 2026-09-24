@@ -64,6 +64,7 @@
   --sidebar-width:       240px;
   --sidebar-width-collapsed: 64px;
   --header-height:       64px;
+  --container-max-width: 72rem;
 }
 
 /* ─── Reset base ────────────────────────────────────────────────── */
@@ -121,6 +122,13 @@ ul, ol { list-style: none; }
   border-radius: var(--radius-md);
   padding:       var(--spacing-lg);
   box-shadow:    var(--shadow-sm);
+}
+
+/* Contenedor centrado de ancho máximo — usado en secciones de la landing */
+.container {
+  width:      100%;
+  max-width:  var(--container-max-width);
+  margin:     0 auto;
 }
 
 /* Botón primario */
