@@ -7,6 +7,7 @@
     <label
       v-if="label"
       class="app-select__label"
+      :for="fieldId()"
     >{{ label }}</label>
 
     <div class="app-select__field-row">
@@ -15,7 +16,7 @@
         :class="`app-select--${size}`"
         :value="modelValue"
         :disabled="disabled"
-        v-bind="$attrs"
+        v-bind="{ ...$attrs, id: fieldId() }"
         @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
       >
         <option
@@ -55,7 +56,13 @@
 </template>
 
 <script setup lang="ts">
+import { useAttrs } from 'vue'
+import { useFieldId } from '@/composables/useFieldId'
+
 defineOptions({ inheritAttrs: false })
+
+// id que enlaza <label for> con el <select> (explícito del padre o generado)
+const fieldId = useFieldId(useAttrs())
 
 withDefaults(defineProps<{
   modelValue?:  string | number

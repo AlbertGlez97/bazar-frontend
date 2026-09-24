@@ -57,6 +57,21 @@ describe('BusinessRegistrationForm', () => {
     ])
   })
 
+  it('asocia todos los labels con un control y sin ids repetidos (accesibilidad)', () => {
+    // attachTo: el navegador resuelve label.control sobre el documento
+    const wrapper = mount(BusinessRegistrationForm, { attachTo: document.body })
+    const labels = wrapper.findAll('label')
+    const ids = wrapper.findAll('input').map((i) => i.attributes('id'))
+
+    expect(labels.length).toBeGreaterThan(0)
+    for (const label of labels) {
+      expect((label.element as HTMLLabelElement).control).not.toBeNull()
+    }
+    expect(ids.every(Boolean)).toBe(true)
+    expect(new Set(ids).size).toBe(ids.length)
+    wrapper.unmount()
+  })
+
   it('deshabilita el botón de envío mientras loading es true', () => {
     const wrapper = mount(BusinessRegistrationForm, { props: { loading: true } })
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()

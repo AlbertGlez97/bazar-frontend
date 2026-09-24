@@ -55,6 +55,20 @@ describe('login form', () => {
     wrapper.unmount()
   })
 
+  it('asocia cada label con su control (accesibilidad)', () => {
+    // attachTo: el navegador resuelve label.control sobre el documento
+    const wrapper = mount(LoginView, {
+      global: { plugins: [createTestingPinia({ createSpy: vi.fn })] },
+      attachTo: document.body,
+    })
+    const labelOf = (text: string) =>
+      wrapper.findAll('label').find((l) => l.text() === text)?.element as HTMLLabelElement
+
+    expect(labelOf('Usuario').control).toBe(wrapper.get('input[autocomplete=username]').element)
+    expect(labelOf('Contraseña').control).toBe(wrapper.get('input[type=password]').element)
+    wrapper.unmount()
+  })
+
   it('alterna la visibilidad de la contraseña', async () => {
     const wrapper = render()
     await wrapper.get('.login__eye-btn').trigger('click')

@@ -8,6 +8,7 @@
     <label
       v-if="label"
       class="app-textarea__label"
+      :for="fieldId()"
     >{{ label }}</label>
 
     <textarea
@@ -16,7 +17,7 @@
       :disabled="disabled"
       :placeholder="placeholder"
       :rows="rows"
-      v-bind="$attrs"
+      v-bind="{ ...$attrs, id: fieldId() }"
       @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
 
@@ -31,8 +32,14 @@
 </template>
 
 <script setup lang="ts">
+import { useAttrs } from 'vue'
+import { useFieldId } from '@/composables/useFieldId'
+
 // Desactiva herencia automática de attrs para evitar duplicar atributos en el wrapper
 defineOptions({ inheritAttrs: false })
+
+// id que enlaza <label for> con el <textarea> (explícito del padre o generado)
+const fieldId = useFieldId(useAttrs())
 
 withDefaults(defineProps<{
   modelValue?:  string

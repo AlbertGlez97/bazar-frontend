@@ -40,6 +40,21 @@ describe('ContactForm', () => {
     ])
   })
 
+  it('asocia todos los labels con un control y sin ids repetidos (accesibilidad)', () => {
+    // attachTo: el navegador resuelve label.control sobre el documento
+    const wrapper = mount(ContactForm, { attachTo: document.body })
+    const labels = wrapper.findAll('label')
+    const ids = wrapper.findAll('input, textarea').map((c) => c.attributes('id'))
+
+    expect(labels.length).toBeGreaterThan(0)
+    for (const label of labels) {
+      expect((label.element as HTMLLabelElement).control).not.toBeNull()
+    }
+    expect(ids.every(Boolean)).toBe(true)
+    expect(new Set(ids).size).toBe(ids.length)
+    wrapper.unmount()
+  })
+
   it('muestra el mensaje de confirmación simulado tras un envío válido', async () => {
     const wrapper = mount(ContactForm)
 

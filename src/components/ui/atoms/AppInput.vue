@@ -8,6 +8,7 @@
     <label
       v-if="label"
       class="app-input__label"
+      :for="fieldId()"
     >{{ label }}</label>
 
     <div class="app-input__field-row">
@@ -31,7 +32,7 @@
         :value="modelValue"
         :disabled="disabled"
         :placeholder="placeholder"
-        v-bind="$attrs"
+        v-bind="{ ...$attrs, id: fieldId() }"
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       >
 
@@ -55,8 +56,14 @@
 </template>
 
 <script setup lang="ts">
+import { useAttrs } from 'vue'
+import { useFieldId } from '@/composables/useFieldId'
+
 // Desactiva herencia automática de attrs para evitar duplicar atributos en el wrapper
 defineOptions({ inheritAttrs: false })
+
+// id que enlaza <label for> con el <input> (explícito del padre o generado)
+const fieldId = useFieldId(useAttrs())
 
 withDefaults(defineProps<{
   modelValue?:  string | number
