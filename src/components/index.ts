@@ -49,14 +49,20 @@ export { default as AppProgress } from './ui/atoms/AppProgress.vue'
 export { default as AppAvatar   } from './ui/atoms/AppAvatar.vue'
 export { default as AppSkeleton } from './ui/atoms/AppSkeleton.vue'
 export { default as AppTooltip  } from './ui/atoms/AppTooltip.vue'
+export { default as AppTextarea } from './ui/atoms/AppTextarea.vue'
 
 // ── MOLÉCULAS — combinación de átomos, responsabilidad única ─────────
 export { default as AppAlert            } from './ui/molecules/AppAlert.vue'
 export { default as AppToast            } from './ui/molecules/AppToast.vue'
 export { default as AppPagination       } from './ui/molecules/AppPagination.vue'
 export { default as InstallAppButton    } from './ui/molecules/InstallAppButton.vue'
+export { default as FeatureCard         } from './ui/molecules/FeatureCard.vue'
+export { default as ContactForm         } from './ui/molecules/ContactForm.vue'
 
 // ── ORGANISMOS — secciones complejas con lógica propia ───────────────
-export { default as AppModal       } from './ui/organisms/AppModal.vue'
-export { default as AppCard        } from './ui/organisms/AppCard.vue'
-export { default as AppKebabMenu   } from './ui/organisms/AppKebabMenu.vue'
+export { default as AppModal        } from './ui/organisms/AppModal.vue'
+export { default as AppCard         } from './ui/organisms/AppCard.vue'
+export { default as AppKebabMenu    } from './ui/organisms/AppKebabMenu.vue'
+export { default as LandingHero     } from './ui/organisms/LandingHero.vue'
+export { default as FeaturesSection } from './ui/organisms/FeaturesSection.vue'
+export { default as ContactSection  } from './ui/organisms/ContactSection.vue'

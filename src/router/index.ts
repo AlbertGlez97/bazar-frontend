@@ -4,7 +4,22 @@ import { useAuthStore } from '@/stores/auth.store'
 const sessionDestination = () => ({ path: useAuthStore().isAuthenticated ? '/app' : '/login' })
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', redirect: sessionDestination },
+  // Landing pública: cualquier visitante puede verla. Si ya hay sesión activa,
+  // `redirectIfAuth` lo manda directo al panel (ver guard más abajo) en vez de
+  // mostrarle la página de marketing.
+  {
+    path: '/',
+    name: 'Landing',
+    component: () => import('@/views/LandingView.vue'),
+    meta: { redirectIfAuth: true },
+  },
+  {
+    // Placeholder: el formulario real de registro de negocio (conectado a
+    // POST /business-registration) se implementará en la siguiente vista.
+    path: '/registro-negocio',
+    name: 'BusinessRegistration',
+    component: () => import('@/views/BusinessRegistrationPlaceholderView.vue'),
+  },
   {
     path: '/login',
     component: () => import('@/layouts/AuthLayout.vue'),
