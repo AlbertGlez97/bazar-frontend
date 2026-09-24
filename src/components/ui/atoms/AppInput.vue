@@ -1,12 +1,21 @@
 <template>
   <!-- Átomo: campo de texto con soporte de label, error, íconos y tamaños -->
-  <div class="app-input-wrap" :class="{ 'app-input-wrap--error': !!error, 'app-input-wrap--disabled': disabled }">
+  <div
+    class="app-input-wrap"
+    :class="{ 'app-input-wrap--error': !!error, 'app-input-wrap--disabled': disabled }"
+  >
     <!-- Label opcional -->
-    <label v-if="label" class="app-input__label">{{ label }}</label>
+    <label
+      v-if="label"
+      class="app-input__label"
+    >{{ label }}</label>
 
     <div class="app-input__field-row">
       <!-- Ícono izquierdo (slot) -->
-      <span v-if="$slots['icon-left']" class="app-input__icon app-input__icon--left">
+      <span
+        v-if="$slots['icon-left']"
+        class="app-input__icon app-input__icon--left"
+      >
         <slot name="icon-left" />
       </span>
 
@@ -15,7 +24,7 @@
         class="app-input"
         :class="[
           `app-input--${size}`,
-          { 'app-input--icon-left':  !!$slots['icon-left']  },
+          { 'app-input--icon-left': !!$slots['icon-left'] },
           { 'app-input--icon-right': !!$slots['icon-right'] },
         ]"
         :type="type"
@@ -24,16 +33,24 @@
         :placeholder="placeholder"
         v-bind="$attrs"
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
-      />
+      >
 
       <!-- Ícono derecho (slot) — se usa para toggle de password, iconos de estado, etc. -->
-      <span v-if="$slots['icon-right']" class="app-input__icon app-input__icon--right">
+      <span
+        v-if="$slots['icon-right']"
+        class="app-input__icon app-input__icon--right"
+      >
         <slot name="icon-right" />
       </span>
     </div>
 
     <!-- Mensaje de error -->
-    <p v-if="error" class="app-input__error">{{ error }}</p>
+    <p
+      v-if="error"
+      class="app-input__error"
+    >
+      {{ error }}
+    </p>
   </div>
 </template>
 

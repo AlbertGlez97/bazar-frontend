@@ -1,21 +1,29 @@
 <template>
   <!-- Layout principal con sidebar lateral y área de contenido -->
-  <div class="app-layout" :class="{ 'app-layout--collapsed': sidebarCollapsed }">
-
+  <div
+    class="app-layout"
+    :class="{ 'app-layout--collapsed': sidebarCollapsed }"
+  >
     <!-- ── Sidebar ──────────────────────────────────────────────── -->
     <aside class="sidebar">
       <!-- Cabecera del sidebar -->
       <div class="sidebar__header">
-        <span v-if="!sidebarCollapsed" class="sidebar__logo">💰 FinanzasApp</span>
-        <span v-else class="sidebar__logo-icon">💰</span>
+        <span
+          v-if="!sidebarCollapsed"
+          class="sidebar__logo"
+        >💰 FinanzasApp</span>
+        <span
+          v-else
+          class="sidebar__logo-icon"
+        >💰</span>
         <!-- Botón colapsar/expandir (AppButton ghost) -->
         <AppButton
           variant="ghost"
           size="sm"
           icon-only
           class="sidebar__toggle"
-          @click="toggleSidebar"
           :title="sidebarCollapsed ? 'Expandir' : 'Colapsar'"
+          @click="toggleSidebar"
         >
           {{ sidebarCollapsed ? '→' : '←' }}
         </AppButton>
@@ -31,13 +39,22 @@
           active-class="sidebar__link--active"
         >
           <span class="sidebar__link-icon">{{ item.icon }}</span>
-          <span v-if="!sidebarCollapsed" class="sidebar__link-label">{{ item.label }}</span>
+          <span
+            v-if="!sidebarCollapsed"
+            class="sidebar__link-label"
+          >{{ item.label }}</span>
         </RouterLink>
       </nav>
 
       <!-- Install PWA (solo se renderiza si el browser es instalable o iOS) -->
-      <div v-if="!sidebarCollapsed" class="sidebar__install">
-        <InstallAppButton label="📱 Instalar app" variant="ghost" />
+      <div
+        v-if="!sidebarCollapsed"
+        class="sidebar__install"
+      >
+        <InstallAppButton
+          label="📱 Instalar app"
+          variant="ghost"
+        />
       </div>
 
       <!-- Pie del sidebar: usuario + avatar + logout -->
@@ -48,7 +65,10 @@
           size="sm"
           class="sidebar__avatar"
         />
-        <div v-if="!sidebarCollapsed" class="sidebar__user">
+        <div
+          v-if="!sidebarCollapsed"
+          class="sidebar__user"
+        >
           <span class="sidebar__user-name">{{ authStore.user?.name ?? 'Usuario' }}</span>
           <span class="sidebar__user-email">{{ authStore.user?.email }}</span>
         </div>
@@ -58,8 +78,8 @@
           size="sm"
           icon-only
           class="sidebar__logout"
-          @click="handleLogout"
           title="Cerrar sesión"
+          @click="handleLogout"
         >
           🚪
         </AppButton>
@@ -70,7 +90,9 @@
     <main class="app-main">
       <!-- Encabezado superior -->
       <header class="app-header">
-        <h2 class="app-header__title">{{ currentRouteTitle }}</h2>
+        <h2 class="app-header__title">
+          {{ currentRouteTitle }}
+        </h2>
         <span class="app-header__date">{{ formattedDate }}</span>
       </header>
 
@@ -79,8 +101,6 @@
         <RouterView />
       </div>
     </main>
-
-
   </div>
 </template>
 

@@ -1,32 +1,48 @@
 <template>
   <!-- Molécula: control de paginación con páginas calculadas automáticamente -->
-  <nav class="app-pagination" aria-label="Paginación" v-if="totalPages > 1">
+  <nav
+    v-if="totalPages > 1"
+    class="app-pagination"
+    aria-label="Paginación"
+  >
     <!-- Anterior -->
     <button
       class="app-pag-btn"
       :disabled="currentPage <= 1"
-      @click="emit('update:currentPage', currentPage - 1)"
       aria-label="Página anterior"
-    >‹</button>
+      @click="emit('update:currentPage', currentPage - 1)"
+    >
+      ‹
+    </button>
 
     <!-- Páginas con elipsis -->
-    <template v-for="(page, i) in pages" :key="i">
-      <span v-if="page === '...'" class="app-pag-ellipsis">…</span>
+    <template
+      v-for="(page, i) in pages"
+      :key="i"
+    >
+      <span
+        v-if="page === '...'"
+        class="app-pag-ellipsis"
+      >…</span>
       <button
         v-else
         class="app-pag-btn"
         :class="{ 'app-pag-btn--active': page === currentPage }"
         @click="emit('update:currentPage', page as number)"
-      >{{ page }}</button>
+      >
+        {{ page }}
+      </button>
     </template>
 
     <!-- Siguiente -->
     <button
       class="app-pag-btn"
       :disabled="currentPage >= totalPages"
-      @click="emit('update:currentPage', currentPage + 1)"
       aria-label="Página siguiente"
-    >›</button>
+      @click="emit('update:currentPage', currentPage + 1)"
+    >
+      ›
+    </button>
   </nav>
 </template>
 

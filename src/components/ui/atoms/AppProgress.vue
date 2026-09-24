@@ -1,7 +1,13 @@
 <template>
   <!-- Átomo: barra de progreso lineal con porcentaje y colores semánticos -->
-  <div class="app-progress" :class="{ 'app-progress--with-label': showLabel }">
-    <div class="app-progress__track" :style="{ height: trackHeight }">
+  <div
+    class="app-progress"
+    :class="{ 'app-progress--with-label': showLabel }"
+  >
+    <div
+      class="app-progress__track"
+      :style="{ height: trackHeight }"
+    >
       <div
         class="app-progress__bar"
         :class="`app-progress__bar--${color}`"
@@ -10,9 +16,12 @@
         aria-valuemin="0"
         aria-valuemax="100"
         role="progressbar"
-      ></div>
+      />
     </div>
-    <span v-if="showLabel" class="app-progress__label">{{ clampedValue }}%</span>
+    <span
+      v-if="showLabel"
+      class="app-progress__label"
+    >{{ clampedValue }}%</span>
   </div>
 </template>
 

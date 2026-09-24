@@ -1,15 +1,26 @@
 <template>
   <!-- Layout de autenticación con el mismo fondo oscuro "Developer Blue" del layout -->
   <div class="auth-layout">
-
     <!-- Fondo decorativo — mismo grid + blobs del layout -->
-    <div class="auth-layout__grid"  aria-hidden="true"></div>
-    <div class="auth-layout__blob auth-layout__blob--1" aria-hidden="true"></div>
-    <div class="auth-layout__blob auth-layout__blob--2" aria-hidden="true"></div>
+    <div
+      class="auth-layout__grid"
+      aria-hidden="true"
+    />
+    <div
+      class="auth-layout__blob auth-layout__blob--1"
+      aria-hidden="true"
+    />
+    <div
+      class="auth-layout__blob auth-layout__blob--2"
+      aria-hidden="true"
+    />
 
     <!-- Header con logo enlazado al login -->
     <header class="auth-layout__header">
-      <RouterLink to="/login" class="auth-logo">
+      <RouterLink
+        to="/login"
+        class="auth-logo"
+      >
         <span class="auth-logo__badge">$</span>
         <span class="auth-logo__name">FinanzasApp</span>
       </RouterLink>
@@ -17,17 +28,14 @@
 
     <!-- Tarjeta del formulario -->
     <main class="auth-layout__card">
-
       <!-- Vista hija (Login) -->
       <RouterView />
-
     </main>
 
     <!-- Footer mínimo -->
     <footer class="auth-layout__footer">
       Construido con NestJS · Vue 3 · PostgreSQL
     </footer>
-
   </div>
 </template>
 

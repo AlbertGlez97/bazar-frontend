@@ -7,8 +7,8 @@
       `app-btn--${variant}`,
       `app-btn--${size}`,
       {
-        'app-btn--loading':   loading,
-        'app-btn--block':     block,
+        'app-btn--loading': loading,
+        'app-btn--block': block,
         'app-btn--icon-only': iconOnly,
       },
     ]"
@@ -16,7 +16,11 @@
     v-bind="$attrs"
   >
     <!-- Spinner de carga — reemplaza el slot cuando loading=true -->
-    <span v-if="loading" class="app-btn__spinner" aria-hidden="true"></span>
+    <span
+      v-if="loading"
+      class="app-btn__spinner"
+      aria-hidden="true"
+    />
     <slot v-else />
   </component>
 </template>

@@ -5,28 +5,57 @@
       <div
         v-if="modelValue"
         class="app-modal-backdrop"
-        @click.self="onBackdropClick"
         role="dialog"
         :aria-modal="true"
         :aria-labelledby="titleId"
+        @click.self="onBackdropClick"
       >
-        <div class="app-modal" :class="`app-modal--${size}`">
-
+        <div
+          class="app-modal"
+          :class="`app-modal--${size}`"
+        >
           <!-- Header -->
           <div class="app-modal__header">
             <div>
-              <h2 :id="titleId" class="app-modal__title">{{ title }}</h2>
-              <p v-if="subtitle" class="app-modal__subtitle">{{ subtitle }}</p>
+              <h2
+                :id="titleId"
+                class="app-modal__title"
+              >
+                {{ title }}
+              </h2>
+              <p
+                v-if="subtitle"
+                class="app-modal__subtitle"
+              >
+                {{ subtitle }}
+              </p>
             </div>
             <button
               v-if="!hideClose"
               type="button"
               class="app-modal__close"
-              @click="close"
               aria-label="Cerrar"
+              @click="close"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+              >
+                <line
+                  x1="18"
+                  y1="6"
+                  x2="6"
+                  y2="18"
+                /><line
+                  x1="6"
+                  y1="6"
+                  x2="18"
+                  y2="18"
+                />
               </svg>
             </button>
           </div>
@@ -37,15 +66,25 @@
           </div>
 
           <!-- Footer (slot o botones por defecto) -->
-          <div v-if="$slots.footer || !hideFooter" class="app-modal__footer">
+          <div
+            v-if="$slots.footer || !hideFooter"
+            class="app-modal__footer"
+          >
             <slot name="footer">
-              <button class="btn btn-ghost" @click="close">Cancelar</button>
-              <button class="btn btn-primary" @click="emit('confirm')">
+              <button
+                class="btn btn-ghost"
+                @click="close"
+              >
+                Cancelar
+              </button>
+              <button
+                class="btn btn-primary"
+                @click="emit('confirm')"
+              >
                 {{ confirmLabel }}
               </button>
             </slot>
           </div>
-
         </div>
       </div>
     </Transition>

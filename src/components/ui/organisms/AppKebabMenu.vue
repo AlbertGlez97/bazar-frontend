@@ -29,10 +29,30 @@
     >
       <!-- Tres puntos verticales — más sobrio que el horizontal '···' y
            menos invasivo visualmente entre badges/acciones del card. -->
-      <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="5"  r="1.6" fill="currentColor"/>
-        <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
-        <circle cx="12" cy="19" r="1.6" fill="currentColor"/>
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          cx="12"
+          cy="5"
+          r="1.6"
+          fill="currentColor"
+        />
+        <circle
+          cx="12"
+          cy="12"
+          r="1.6"
+          fill="currentColor"
+        />
+        <circle
+          cx="12"
+          cy="19"
+          r="1.6"
+          fill="currentColor"
+        />
       </svg>
     </button>
 
@@ -54,7 +74,10 @@
         :class="{ 'kebab__item--danger': opt.variant === 'danger' }"
         @click.stop="select(opt)"
       >
-        <span class="kebab__icon" v-if="opt.icon">{{ opt.icon }}</span>
+        <span
+          v-if="opt.icon"
+          class="kebab__icon"
+        >{{ opt.icon }}</span>
         <span class="kebab__label">{{ opt.label }}</span>
       </li>
     </ul>

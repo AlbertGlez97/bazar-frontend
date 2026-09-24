@@ -18,11 +18,24 @@
     </button>
 
     <!-- Modal iOS — instrucciones manuales -->
-    <div v-if="iosModalOpen" class="install-modal" role="dialog" @click.self="iosModalOpen = false">
+    <div
+      v-if="iosModalOpen"
+      class="install-modal"
+      role="dialog"
+      @click.self="iosModalOpen = false"
+    >
       <div class="install-modal__content">
-        <button class="install-modal__close" @click="iosModalOpen = false" aria-label="Cerrar">✕</button>
+        <button
+          class="install-modal__close"
+          aria-label="Cerrar"
+          @click="iosModalOpen = false"
+        >
+          ✕
+        </button>
 
-        <h3 class="install-modal__title">Instalar en tu iPhone/iPad</h3>
+        <h3 class="install-modal__title">
+          Instalar en tu iPhone/iPad
+        </h3>
         <p class="install-modal__sub">
           Apple no permite instalación automática. Sigue estos 3 pasos en Safari:
         </p>

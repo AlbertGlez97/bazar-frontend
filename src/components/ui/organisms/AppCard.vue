@@ -4,30 +4,49 @@
     class="app-card"
     :class="{
       'app-card--hoverable': hoverable,
-      'app-card--flat':      flat,
+      'app-card--flat': flat,
       [`app-card--accent-${accent}`]: !!accent,
     }"
   >
     <!-- Header: título + slot de acción derecha -->
-    <div v-if="title || $slots.header || $slots['header-right']" class="app-card__header">
+    <div
+      v-if="title || $slots.header || $slots['header-right']"
+      class="app-card__header"
+    >
       <div class="app-card__header-left">
         <slot name="header">
-          <p class="app-card__title">{{ title }}</p>
-          <p v-if="subtitle" class="app-card__subtitle">{{ subtitle }}</p>
+          <p class="app-card__title">
+            {{ title }}
+          </p>
+          <p
+            v-if="subtitle"
+            class="app-card__subtitle"
+          >
+            {{ subtitle }}
+          </p>
         </slot>
       </div>
-      <div v-if="$slots['header-right']" class="app-card__header-right">
+      <div
+        v-if="$slots['header-right']"
+        class="app-card__header-right"
+      >
         <slot name="header-right" />
       </div>
     </div>
 
     <!-- Cuerpo principal -->
-    <div class="app-card__body" :class="{ 'app-card__body--padded': !noPadding }">
+    <div
+      class="app-card__body"
+      :class="{ 'app-card__body--padded': !noPadding }"
+    >
       <slot />
     </div>
 
     <!-- Footer: acciones -->
-    <div v-if="$slots.footer" class="app-card__footer">
+    <div
+      v-if="$slots.footer"
+      class="app-card__footer"
+    >
       <slot name="footer" />
     </div>
   </div>

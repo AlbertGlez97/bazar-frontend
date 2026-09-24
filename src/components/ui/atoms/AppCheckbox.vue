@@ -1,6 +1,9 @@
 <template>
   <!-- Átomo: checkbox estilizado con label -->
-  <label class="app-checkbox" :class="{ 'app-checkbox--disabled': disabled }">
+  <label
+    class="app-checkbox"
+    :class="{ 'app-checkbox--disabled': disabled }"
+  >
     <input
       class="app-checkbox__input"
       type="checkbox"
@@ -8,14 +11,28 @@
       :disabled="disabled"
       v-bind="$attrs"
       @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
-    />
+    >
     <!-- Ícono de check personalizado -->
-    <span class="app-checkbox__box" aria-hidden="true">
-      <svg v-if="modelValue" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#fff" stroke-width="2">
-        <polyline points="2 6 5 9 10 3"/>
+    <span
+      class="app-checkbox__box"
+      aria-hidden="true"
+    >
+      <svg
+        v-if="modelValue"
+        width="10"
+        height="10"
+        viewBox="0 0 12 12"
+        fill="none"
+        stroke="#fff"
+        stroke-width="2"
+      >
+        <polyline points="2 6 5 9 10 3" />
       </svg>
     </span>
-    <span v-if="$slots.default" class="app-checkbox__label"><slot /></span>
+    <span
+      v-if="$slots.default"
+      class="app-checkbox__label"
+    ><slot /></span>
   </label>
 </template>
 

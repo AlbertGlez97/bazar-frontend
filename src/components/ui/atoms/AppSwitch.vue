@@ -1,6 +1,9 @@
 <template>
   <!-- Átomo: toggle switch on/off con label opcional -->
-  <label class="app-switch" :class="{ 'app-switch--disabled': disabled }">
+  <label
+    class="app-switch"
+    :class="{ 'app-switch--disabled': disabled }"
+  >
     <input
       class="app-switch__input"
       type="checkbox"
@@ -8,12 +11,18 @@
       :disabled="disabled"
       v-bind="$attrs"
       @change="$emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
-    />
+    >
     <!-- Track + thumb del toggle -->
-    <span class="app-switch__track" aria-hidden="true">
-      <span class="app-switch__thumb"></span>
+    <span
+      class="app-switch__track"
+      aria-hidden="true"
+    >
+      <span class="app-switch__thumb" />
     </span>
-    <span v-if="$slots.default" class="app-switch__label"><slot /></span>
+    <span
+      v-if="$slots.default"
+      class="app-switch__label"
+    ><slot /></span>
   </label>
 </template>
 

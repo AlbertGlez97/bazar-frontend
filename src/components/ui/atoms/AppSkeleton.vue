@@ -7,11 +7,11 @@
       { 'app-skeleton--rounded': rounded },
     ]"
     :style="{
-      width:  width  ? (typeof width  === 'number' ? width  + 'px' : width)  : undefined,
+      width: width ? (typeof width === 'number' ? width + 'px' : width) : undefined,
       height: height ? (typeof height === 'number' ? height + 'px' : height) : undefined,
     }"
     aria-hidden="true"
-  ></div>
+  />
 </template>
 
 <script setup lang="ts">

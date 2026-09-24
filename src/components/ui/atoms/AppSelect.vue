@@ -1,7 +1,13 @@
 <template>
   <!-- Átomo: select nativo estilizado — idéntico en apariencia al AppInput -->
-  <div class="app-select-wrap" :class="{ 'app-select-wrap--error': !!error, 'app-select-wrap--disabled': disabled }">
-    <label v-if="label" class="app-select__label">{{ label }}</label>
+  <div
+    class="app-select-wrap"
+    :class="{ 'app-select-wrap--error': !!error, 'app-select-wrap--disabled': disabled }"
+  >
+    <label
+      v-if="label"
+      class="app-select__label"
+    >{{ label }}</label>
 
     <div class="app-select__field-row">
       <select
@@ -12,18 +18,39 @@
         v-bind="$attrs"
         @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
       >
-        <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
+        <option
+          v-if="placeholder"
+          value=""
+          disabled
+        >
+          {{ placeholder }}
+        </option>
         <slot />
       </select>
       <!-- Flecha decorativa -->
-      <span class="app-select__arrow" aria-hidden="true">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="6 9 12 15 18 9"/>
+      <span
+        class="app-select__arrow"
+        aria-hidden="true"
+      >
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <polyline points="6 9 12 15 18 9" />
         </svg>
       </span>
     </div>
 
-    <p v-if="error" class="app-select__error">{{ error }}</p>
+    <p
+      v-if="error"
+      class="app-select__error"
+    >
+      {{ error }}
+    </p>
   </div>
 </template>
 
