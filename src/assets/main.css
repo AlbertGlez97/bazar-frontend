@@ -1,0 +1,341 @@
+/* ─── Variables globales de diseño ─────────────────────────────── */
+:root {
+  /* Colores principales */
+  --color-primary:        #2563eb;
+  --color-primary-dark:   #1d4ed8;
+  --color-primary-light:  #dbeafe;
+
+  /* Semánticos */
+  --color-success:        #16a34a;
+  --color-success-light:  #dcfce7;
+  --color-danger:         #dc2626;
+  --color-danger-light:   #fee2e2;
+  --color-warning:        #d97706;
+  --color-warning-light:  #fef3c7;
+  --color-info:           #0891b2;
+  --color-info-light:     #cffafe;
+
+  /* Neutros */
+  --color-bg:             #f8fafc;
+  --color-surface:        #ffffff;
+  --color-border:         #e2e8f0;
+  --color-text:           #0f172a;
+  --color-text-muted:     #64748b;
+  --color-text-light:     #94a3b8;
+
+  /* Sidebar */
+  --color-sidebar-bg:     #0f172a;
+  --color-sidebar-text:   #cbd5e1;
+  --color-sidebar-active: #2563eb;
+
+  /* Espaciados */
+  --spacing-xs:    4px;
+  --spacing-sm:    8px;
+  --spacing-md:   16px;
+  --spacing-lg:   24px;
+  --spacing-xl:   32px;
+  --spacing-2xl:  48px;
+
+  /* Tipografía */
+  --font-family:   'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-xs:  12px;
+  --font-size-sm:  14px;
+  --font-size-md:  16px;
+  --font-size-lg:  20px;
+  --font-size-xl:  24px;
+  --font-size-2xl: 32px;
+
+  /* Bordes */
+  --radius-sm:   6px;
+  --radius-md:  10px;
+  --radius-lg:  16px;
+  --radius-xl:  20px;
+  --radius-full: 9999px;
+
+  /* Sombras */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:  0 4px 12px rgba(0,0,0,.10);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,.12);
+
+  /* Transiciones */
+  --transition: 0.2s ease;
+
+  /* Layout */
+  --sidebar-width:       240px;
+  --sidebar-width-collapsed: 64px;
+  --header-height:       64px;
+}
+
+/* ─── Reset base ────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font-family);
+  font-size:   var(--font-size-md);
+  color:       var(--color-text);
+  background:  var(--color-bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  font-size:   inherit;
+}
+
+ul, ol { list-style: none; }
+
+/* ─── Clases utilitarias ────────────────────────────────────────── */
+
+/* Flex */
+.flex        { display: flex; }
+.flex-col    { display: flex; flex-direction: column; }
+.items-center{ align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-sm      { gap: var(--spacing-sm); }
+.gap-md      { gap: var(--spacing-md); }
+.gap-lg      { gap: var(--spacing-lg); }
+
+/* Texto */
+.text-muted  { color: var(--color-text-muted); }
+.text-sm     { font-size: var(--font-size-sm); }
+.text-lg     { font-size: var(--font-size-lg); }
+.font-bold   { font-weight: 700; }
+.font-medium { font-weight: 500; }
+
+/* Tarjeta base */
+.card {
+  background:    var(--color-surface);
+  border:        1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding:       var(--spacing-lg);
+  box-shadow:    var(--shadow-sm);
+}
+
+/* Botón primario */
+.btn {
+  display:         inline-flex;
+  align-items:     center;
+  gap:             var(--spacing-sm);
+  padding:         10px var(--spacing-md);
+  border-radius:   var(--radius-sm);
+  font-size:       var(--font-size-sm);
+  font-weight:     600;
+  transition:      background var(--transition), opacity var(--transition);
+  white-space:     nowrap;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color:      #fff;
+}
+.btn-primary:hover { background: var(--color-primary-dark); }
+
+.btn-ghost {
+  background: transparent;
+  color:      var(--color-text-muted);
+  border:     1px solid var(--color-border);
+}
+.btn-ghost:hover { background: var(--color-bg); }
+
+.btn-danger {
+  background: var(--color-danger);
+  color:      #fff;
+}
+.btn-danger:hover { opacity: .88; }
+
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Inputs */
+.input {
+  width:         100%;
+  padding:       10px var(--spacing-md);
+  border:        1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size:     var(--font-size-sm);
+  color:         var(--color-text);
+  background:    var(--color-surface);
+  transition:    border-color var(--transition);
+  outline:       none;
+}
+.input:focus { border-color: var(--color-primary); }
+
+/* Badge de estado */
+.badge {
+  display:         inline-block;
+  padding:         2px 10px;
+  border-radius:   var(--radius-full);
+  font-size:       var(--font-size-xs);
+  font-weight:     600;
+  text-transform:  uppercase;
+  letter-spacing:  .4px;
+}
+.badge-success  { background: var(--color-success-light); color: var(--color-success); }
+.badge-danger   { background: var(--color-danger-light);  color: var(--color-danger); }
+.badge-warning  { background: var(--color-warning-light); color: var(--color-warning); }
+.badge-info     { background: var(--color-info-light);    color: var(--color-info); }
+
+/* Barra de progreso */
+.progress-bar {
+  width:         100%;
+  height:        8px;
+  background:    var(--color-border);
+  border-radius: var(--radius-full);
+  overflow:      hidden;
+}
+.progress-bar__fill {
+  height:        100%;
+  border-radius: var(--radius-full);
+  background:    var(--color-primary);
+  transition:    width 0.4s ease;
+}
+
+/* Loader */
+.spinner {
+  width:  24px;
+  height: 24px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Texto de error en formularios */
+.field-error {
+  color:     var(--color-danger);
+  font-size: var(--font-size-xs);
+  margin-top: var(--spacing-xs);
+}
+
+/* ── Alias de espaciado (compatibilidad con componentes atómicos) ── */
+:root {
+  --space-xs: var(--spacing-xs);
+  --space-sm: var(--spacing-sm);
+  --space-md: var(--spacing-md);
+  --space-lg: var(--spacing-lg);
+  --space-xl: var(--spacing-xl);
+  --radius:   var(--radius-sm);
+}
+
+/* ── Alerta base (usada fuera del componente AppAlert) ─────────── */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: var(--font-size-xs);
+}
+.alert-error   { background: var(--color-danger-light);  color: var(--color-danger);  border-color: #fecaca; }
+.alert-success { background: var(--color-success-light); color: var(--color-success); border-color: #bbf7d0; }
+.alert-warning { background: var(--color-warning-light); color: var(--color-warning); border-color: #fde68a; }
+
+/* ── Botones de acción icon-only (editar / eliminar) ─────────────────
+   Vive en main.css para que los componentes con <style scoped> puedan
+   reutilizar la clase directamente. Se usa en filas de tabla y zonas de
+   acciones de cards. Tamaño y radio fijos, color base neutro, hover por
+   variante. */
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  border: none;
+  background-color: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.btn-action svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.btn-action:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* Variante editar — acento azul muy suave en hover */
+.btn-action--edit:hover {
+  background-color: #EFF6FF;
+  color: var(--color-primary);
+}
+
+/* Variante eliminar — acento rojo muy suave en hover */
+.btn-action--delete:hover {
+  background-color: #FEF2F2;
+  color: #DC2626;
+}
+
+/* ── Botón de ayuda contextual (❓) ───────────────────────────────────
+   Se usa en la cabecera de cada vista principal (Dashboard, Presupuesto,
+   Deudas, etc.) para abrir el AppHelpDrawer con el artículo de la guía
+   correspondiente al contexto. Comparte tamaño y radio con .btn-action
+   pero tiene borde sutil para diferenciar visualmente: las acciones de
+   fila son neutras, esta es un punto de entrada a docs y vale la pena
+   que se lea como "tiene un comportamiento propio". */
+.btn-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.btn-help:hover {
+  background-color: rgba(59, 130, 246, 0.08);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+.btn-help:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+
+/* ── Botón de exportación a Excel (📥) ────────────────────────────────
+   CTA pequeño en la cabecera del Dashboard que dispara la generación
+   del reporte financiero anual. Verde para asociarse con "guardar /
+   confiable" y diferenciarse del azul-info de .btn-help. */
+.btn-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background-color: #16A34A;
+  color: #FFFFFF;
+  font-family: 'Arial', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  white-space: nowrap;
+}
+.btn-export:hover:not(:disabled)         { background-color: #15803D; }
+.btn-export:focus-visible                { outline: 2px solid #15803D; outline-offset: 1px; }
+.btn-export:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.alert-info    { background: #eff6ff;                    color: var(--color-primary); border-color: #bfdbfe; }
