@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 
 const pushMock    = vi.fn()
-const routeMock   = { name: 'Dashboard' }
+const routeMock   = { name: 'AppHome' }
 
 vi.mock('vue-router', () => ({
   useRouter:  () => ({ push: pushMock }),
@@ -47,20 +47,18 @@ describe('AppLayout', () => {
     expect(vm.sidebarCollapsed).toBe(false)
   })
 
-  it('navItems contiene las 5 rutas principales', () => {
+  it('navItems contiene solo la ruta de inicio', () => {
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as any
-    expect(vm.navItems).toHaveLength(5)
+    expect(vm.navItems).toHaveLength(1)
     const routes = vm.navItems.map((i: any) => i.to)
-    expect(routes).toContain('/dashboard')
-    expect(routes).toContain('/debts')
-    expect(routes).toContain('/savings')
+    expect(routes).toContain('/app')
   })
 
   it('currentRouteTitle resuelve el nombre de la ruta actual', () => {
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as any
-    expect(vm.currentRouteTitle).toBe('Dashboard')
+    expect(vm.currentRouteTitle).toBe('Inicio')
   })
 
   it('currentRouteTitle usa FinanzasApp como fallback para rutas desconocidas', () => {
@@ -68,7 +66,7 @@ describe('AppLayout', () => {
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as any
     expect(vm.currentRouteTitle).toBe('FinanzasApp')
-    routeMock.name = 'Dashboard'
+    routeMock.name = 'AppHome'
   })
 
   it('formattedDate devuelve una cadena no vacía', () => {
@@ -78,10 +76,10 @@ describe('AppLayout', () => {
     expect(vm.formattedDate.length).toBeGreaterThan(0)
   })
 
-  it('handleLogout llama a logout() y redirige a Landing', () => {
+  it('handleLogout llama a logout() y redirige a Login', () => {
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as any
     vm.handleLogout()
-    expect(pushMock).toHaveBeenCalledWith({ name: 'Landing' })
+    expect(pushMock).toHaveBeenCalledWith({ name: 'Login' })
   })
 })

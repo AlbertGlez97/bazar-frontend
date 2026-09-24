@@ -43,15 +43,6 @@
       ]"
     >
       {{ text }}
-      <!-- Link opcional a artículo de la guía financiera -->
-      <router-link
-        v-if="learnMoreSlug"
-        :to="{ name: 'GuideArticle', params: { slug: learnMoreSlug } }"
-        class="tooltip-learn-more"
-        @click.stop
-      >
-        Saber más →
-      </router-link>
     </span>
   </span>
 </template>
@@ -63,8 +54,6 @@ interface Props {
   text: string
   ariaLabel?: string
   placement?: 'top' | 'bottom'
-  /** Slug de artículo en /guia/:slug. Muestra botón "Saber más →" si se provee. */
-  learnMoreSlug?: string
 }
 const props = withDefaults(defineProps<Props>(), {
   placement: 'top',
@@ -327,21 +316,6 @@ void props
   opacity: 1;
   pointer-events: auto;
 }
-
-/* ── Link "Saber más" al artículo de la guía ──────────────────────────── */
-.tooltip-learn-more {
-  display: inline-block;
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--color-border);
-  width: 100%;
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  text-decoration: none;
-  cursor: pointer;
-}
-.tooltip-learn-more:hover { opacity: 0.85; }
 
 /* En móviles angostos, el bubble no debe salirse de la pantalla */
 @media (max-width: 480px) {

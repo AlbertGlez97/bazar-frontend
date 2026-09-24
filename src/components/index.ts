@@ -54,12 +54,9 @@ export { default as AppTooltip  } from './ui/atoms/AppTooltip.vue'
 export { default as AppAlert            } from './ui/molecules/AppAlert.vue'
 export { default as AppToast            } from './ui/molecules/AppToast.vue'
 export { default as AppPagination       } from './ui/molecules/AppPagination.vue'
-export { default as EmergencyKit        } from './ui/molecules/EmergencyKit.vue'
-export { default as PhraseConfirmation  } from './ui/molecules/PhraseConfirmation.vue'
 export { default as InstallAppButton    } from './ui/molecules/InstallAppButton.vue'
 
 // ── ORGANISMOS — secciones complejas con lógica propia ───────────────
 export { default as AppModal       } from './ui/organisms/AppModal.vue'
 export { default as AppCard        } from './ui/organisms/AppCard.vue'
 export { default as AppKebabMenu   } from './ui/organisms/AppKebabMenu.vue'
-export { default as AppHelpDrawer  } from './ui/organisms/AppHelpDrawer.vue'

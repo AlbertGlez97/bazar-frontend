@@ -1,15 +1,15 @@
 <template>
-  <!-- Layout de autenticación con el mismo fondo oscuro "Developer Blue" de la Landing -->
+  <!-- Layout de autenticación con el mismo fondo oscuro "Developer Blue" del layout -->
   <div class="auth-layout">
 
-    <!-- Fondo decorativo — mismo grid + blobs que la Landing -->
+    <!-- Fondo decorativo — mismo grid + blobs del layout -->
     <div class="auth-layout__grid"  aria-hidden="true"></div>
     <div class="auth-layout__blob auth-layout__blob--1" aria-hidden="true"></div>
     <div class="auth-layout__blob auth-layout__blob--2" aria-hidden="true"></div>
 
-    <!-- Header con logo enlazado a la Landing -->
+    <!-- Header con logo enlazado al login -->
     <header class="auth-layout__header">
-      <RouterLink to="/" class="auth-logo">
+      <RouterLink to="/login" class="auth-logo">
         <span class="auth-logo__badge">$</span>
         <span class="auth-logo__name">FinanzasApp</span>
       </RouterLink>
@@ -18,7 +18,7 @@
     <!-- Tarjeta del formulario -->
     <main class="auth-layout__card">
 
-      <!-- Vista hija (Login o Register) -->
+      <!-- Vista hija (Login) -->
       <RouterView />
 
     </main>
@@ -36,7 +36,7 @@
 </script>
 
 <style scoped>
-/* ── Tokens del mismo sistema de la Landing ────────────────── */
+/* ── Tokens del mismo sistema del layout ────────────────── */
 .auth-layout {
   --al-bg:         #080d17;
   --al-surface:    #0e1623;
@@ -101,7 +101,7 @@
   max-width: 440px;
 }
 
-/* Logo — idéntico al de la Landing Page */
+/* Logo — idéntico al del layout Page */
 .auth-logo {
   display: inline-flex;
   align-items: center;

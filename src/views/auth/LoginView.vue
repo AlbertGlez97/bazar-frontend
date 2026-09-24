@@ -84,28 +84,8 @@
         Iniciar sesión
       </AppButton>
 
-      <!-- Link de recuperación con Recovery Phrase -->
-      <RouterLink to="/recuperar" class="login__forgot">
-        ¿Olvidaste tu contraseña?
-      </RouterLink>
 
     </form>
-
-    <!-- Divisor -->
-    <div class="login__divider">
-      <span>¿Aún no tienes cuenta?</span>
-    </div>
-
-    <!-- Link a Registro (AppButton como RouterLink) -->
-    <AppButton
-      tag="RouterLink"
-      to="/register"
-      variant="secondary"
-      size="lg"
-      block
-    >
-      Crear cuenta gratis
-    </AppButton>
 
     <!-- Footer de seguridad -->
     <p class="login__security">
@@ -122,12 +102,9 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
-import { useToastStore } from '@/stores/toast.store'
 import { AppButton, AppInput, AppAlert } from '@/components'
 
 const authStore = useAuthStore()
-// useToastStore nos permite disparar notificaciones no bloqueantes desde la vista (R31)
-const toast     = useToastStore()
 const router    = useRouter()
 
 // ── Estado del formulario ──────────────────────────────────────────────────
@@ -177,12 +154,7 @@ async function handleSubmit() {
       email:    form.value.email,
       password: form.value.password,
     })
-    // Si el crypto subsystem falló (pero el backend respondió OK), avisamos sin bloquear la sesión (R31)
-    if (authStore.cryptoWarning) {
-      toast.info(authStore.cryptoWarning)
-    }
-    // Login exitoso → redirige al dashboard (siempre, incluso con cryptoWarning)
-    router.push({ name: 'Dashboard' })
+    router.push({ name: 'AppHome' })
   } catch {
     // El error ya se almacena en authStore.error
   }
@@ -227,32 +199,6 @@ async function handleSubmit() {
   transition: color var(--transition);
 }
 .login__eye-btn:hover { color: var(--color-text); }
-
-/* ── Link de recuperación ────────────────────────────────────── */
-.login__forgot {
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--color-primary);
-  text-decoration: none;
-  padding: 4px 0;
-}
-.login__forgot:hover { text-decoration: underline; }
-
-/* ── Divisor ────────────────────────────────────────────────── */
-.login__divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
-.login__divider::before,
-.login__divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--color-border);
-}
 
 /* ── Footer de seguridad ────────────────────────────────────── */
 .login__security {

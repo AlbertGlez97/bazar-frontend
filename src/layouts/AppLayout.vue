@@ -80,8 +80,6 @@
       </div>
     </main>
 
-    <!-- Toasts globales — usa Teleport to body, visible en toda la app -->
-    <AppToast />
 
   </div>
 </template>
@@ -90,7 +88,7 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
-import { AppButton, AppAvatar, AppToast, InstallAppButton } from '@/components'
+import { AppButton, AppAvatar, InstallAppButton } from '@/components'
 
 const authStore = useAuthStore()
 const router    = useRouter()
@@ -102,22 +100,12 @@ function toggleSidebar() { sidebarCollapsed.value = !sidebarCollapsed.value }
 
 // Navegación principal
 const navItems = [
-  { to: '/dashboard', label: 'Dashboard',   icon: '📊' },
-  { to: '/budget',    label: 'Presupuesto', icon: '📋' },
-  { to: '/debts',     label: 'Deudas',      icon: '💳' },
-  { to: '/savings',   label: 'Ahorros',     icon: '🐷' },
-  { to: '/guia',      label: 'Guía',        icon: '📖' },
+  { to: '/app', label: 'Inicio', icon: '🏠' },
 ]
 
 // Título dinámico según la ruta actual
 const routeTitles: Record<string, string> = {
-  Dashboard:     'Dashboard',
-  Budget:        'Presupuesto Mensual',
-  Debts:         'Gestión de Deudas',
-  Savings:       'Metas de Ahorro',
-  GuideHome:     'Guía financiera',
-  GuideArticle:  'Guía financiera',
-  Landing:       'FinanzasApp',
+  AppHome: 'Inicio',
 }
 const currentRouteTitle = computed(
   () => routeTitles[route.name as string] ?? 'FinanzasApp'
@@ -130,10 +118,10 @@ const formattedDate = computed(() =>
   })
 )
 
-// Cierra sesión y redirige a la landing
+// Cierra sesión y redirige al login
 function handleLogout() {
   authStore.logout()
-  router.push({ name: 'Landing' })
+  router.push({ name: 'Login' })
 }
 </script>
 
