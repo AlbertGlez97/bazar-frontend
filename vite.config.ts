@@ -1,11 +1,25 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
+import { APP_NAME, APP_DESCRIPTION } from './src/config/app'
+
+// index.html no puede importar módulos: recibe nombre y descripción de la app
+// por placeholders que se sustituyen aquí, para no duplicar los literales.
+function appBrandHtml(): Plugin {
+  return {
+    name: 'app-brand-html',
+    transformIndexHtml: (html) =>
+      html
+        .replaceAll('%APP_NAME%', APP_NAME)
+        .replaceAll('%APP_DESCRIPTION%', APP_DESCRIPTION),
+  }
+}
 
 export default defineConfig({
   plugins: [
     vue(),
+    appBrandHtml(),
 
     // ── PWA: manifest + service worker con estrategias Workbox ──
     VitePWA({
@@ -14,9 +28,9 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'icons/*.png'],
 
       manifest: {
-        name:              'FinanzasApp — Gestión financiera con cifrado E2EE',
-        short_name:        'FinanzasApp',
-        description:       'Tu plata, tus reglas. Presupuesto, deudas y ahorros con cifrado de extremo a extremo.',
+        name:              APP_NAME,
+        short_name:        APP_NAME,
+        description:       APP_DESCRIPTION,
         theme_color:       '#2563eb',   // azul de brand (barra de estado móvil)
         background_color:  '#080d17',   // fondo dark del splash
         display:           'standalone',
@@ -24,7 +38,7 @@ export default defineConfig({
         lang:              'es',
         scope:             '/',
         start_url:         '/',
-        categories:        ['finance', 'productivity'],
+        categories:        ['business', 'productivity'],
         icons: [
           { src: '/icons/192.png',          sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/icons/512.png',          sizes: '512x512', type: 'image/png', purpose: 'any' },
@@ -53,7 +67,7 @@ export default defineConfig({
               !url.pathname.startsWith('/api/v1/auth/'),
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'finanzas-api-cache',
+              cacheName: 'bazar-api-cache',
               networkTimeoutSeconds: 3,
               expiration: {
                 maxEntries:    60,

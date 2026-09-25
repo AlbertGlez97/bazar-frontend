@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
+import { APP_NAME } from '@/config/app'
 
 vi.mock('vue-router', () => ({
   RouterLink: { template: '<a><slot /></a>' },
@@ -19,8 +20,8 @@ describe('AuthLayout', () => {
     expect(wrapper.text()).toContain('NestJS')
   })
 
-  it('renderiza el header con el logo', () => {
+  it('renderiza el header con el nombre de la app', () => {
     const wrapper = shallowMount(AuthLayout)
-    expect(wrapper.text()).toContain('FinanzasApp')
+    expect(wrapper.text()).toContain(APP_NAME)
   })
 })

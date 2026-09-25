@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
+import { APP_NAME } from '@/config/app'
 
 const pushMock    = vi.fn()
 const routeMock   = { name: 'AppHome' }
@@ -77,11 +78,11 @@ describe('AppLayout', () => {
     routeMock.name = 'AppHome'
   })
 
-  it('currentRouteTitle usa FinanzasApp como fallback para rutas desconocidas', () => {
+  it('currentRouteTitle usa el nombre de la app como fallback para rutas desconocidas', () => {
     routeMock.name = 'Unknown'
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as unknown as AppLayoutVm
-    expect(vm.currentRouteTitle).toBe('FinanzasApp')
+    expect(vm.currentRouteTitle).toBe(APP_NAME)
     routeMock.name = 'AppHome'
   })
 

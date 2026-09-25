@@ -11,11 +11,11 @@
         <span
           v-if="!sidebarCollapsed"
           class="sidebar__logo"
-        >💰 FinanzasApp</span>
+        >{{ APP_NAME }}</span>
         <span
           v-else
           class="sidebar__logo-icon"
-        >💰</span>
+        >{{ appInitial }}</span>
         <!-- Botón colapsar/expandir (AppButton ghost) -->
         <AppButton
           variant="ghost"
@@ -109,10 +109,14 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { AppButton, AppAvatar, InstallAppButton } from '@/components'
+import { APP_NAME } from '@/config/app'
 
 const authStore = useAuthStore()
 const router    = useRouter()
 const route     = useRoute()
+
+// Con el sidebar colapsado el logo se reduce a la inicial del nombre
+const appInitial = APP_NAME.charAt(0)
 
 // Colapso del sidebar
 const sidebarCollapsed = ref(false)
@@ -133,7 +137,7 @@ const routeTitles: Record<string, string> = {
   ProductCatalog: 'Productos',
 }
 const currentRouteTitle = computed(
-  () => routeTitles[route.name as string] ?? 'FinanzasApp'
+  () => routeTitles[route.name as string] ?? APP_NAME
 )
 
 // Fecha actual formateada
@@ -185,7 +189,7 @@ function handleLogout() {
 }
 
 .sidebar__logo      { font-weight: 700; font-size: var(--font-size-sm); white-space: nowrap; }
-.sidebar__logo-icon { font-size: 20px; }
+.sidebar__logo-icon { font-size: 20px; font-weight: 700; }
 
 /* AppButton hereda las clases del sidebar para colores del sidebar */
 .sidebar__toggle {

@@ -21,8 +21,11 @@
         to="/login"
         class="auth-logo"
       >
-        <span class="auth-logo__badge">$</span>
-        <span class="auth-logo__name">FinanzasApp</span>
+        <span
+          class="auth-logo__badge"
+          aria-hidden="true"
+        >{{ appInitial }}</span>
+        <span class="auth-logo__name">{{ APP_NAME }}</span>
       </RouterLink>
     </header>
 
@@ -40,7 +43,10 @@
 </template>
 
 <script setup lang="ts">
-// Sin lógica adicional — solo contiene la vista hija
+import { APP_NAME } from '@/config/app'
+
+// El badge del logo muestra la inicial del nombre de la app
+const appInitial = APP_NAME.charAt(0)
 </script>
 
 <style scoped>
