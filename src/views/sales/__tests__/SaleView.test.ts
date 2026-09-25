@@ -407,8 +407,39 @@ describe('SaleView — efectivo y cambio', () => {
     expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('ok')
     expect(wrapper.get('.cart-summary__change').text()).toBe('$0.01')
 
-    await payWith(wrapper, '100,50')
+    await payWith(wrapper, '100.50')
     expect(wrapper.get('.cart-summary__change').text()).toBe('$80.51')
+  })
+
+  it('la coma agrupa miles: "1,000" son mil pesos y "1,000.50" mil pesos con cincuenta centavos', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla') // $19.99
+
+    await payWith(wrapper, '1,000')
+    expect(useCartStore().cashReceivedMinor).toBe(100000)
+    expect(wrapper.get('.cart-summary__change').text()).toBe('$980.01')
+    expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
+
+    await payWith(wrapper, '1,000.50')
+    expect(useCartStore().cashReceivedMinor).toBe(100050)
+    expect(wrapper.get('.cart-summary__change').text()).toBe('$980.51')
+  })
+
+  it('un monto ambiguo ("100,50") no se adivina: avisa, conserva lo escrito y bloquea "Cobrar"', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await payWith(wrapper, '100')
+    expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
+
+    await payWith(wrapper, '100,50')
+    expect(useCartStore().cashInvalid).toBe(true)
+    expect(wrapper.get('.cash-input__error').text()).toContain('1,000.50')
+    expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('100,50')
+    expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
+
+    await payWith(wrapper, '100.50')
+    expect(wrapper.find('.cash-input__error').exists()).toBe(false)
+    expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
   })
 
   it('"Cobrar" se enciende justo cuando el efectivo alcanza (>= total)', async () => {

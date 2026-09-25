@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { displayToMinor } from '@/utils/money'
+import { parseCashInput } from '@/utils/money'
 import type { Product, ProductType } from '@/types/product.types'
 
 /**
@@ -52,6 +52,8 @@ function lineCap(line: CartLine): number {
 export const useCartStore = defineStore('cart', () => {
   const lines = ref<CartLine[]>([])
   const cashReceivedMinor = ref(0)
+  /** El texto de efectivo capturado es ambiguo o no es un monto: el cobro se bloquea. */
+  const cashInvalid = ref(false)
 
   function find(productId: string): CartLine | undefined {
     return lines.value.find((line) => line.productId === productId)
@@ -76,10 +78,14 @@ export const useCartStore = defineStore('cart', () => {
   /**
    * Se puede cobrar con carrito no vacío y efectivo suficiente. Un total que
    * no cabe en el máximo de efectivo del contrato nunca alcanza, así que
-   * queda fuera solo.
+   * queda fuera solo. Un efectivo ambiguo (`cashInvalid`) también bloquea:
+   * no se cobra con un monto que hubo que adivinar.
    */
   const canCharge = computed(
-    () => !isEmpty.value && totalMinor.value <= MAX_MINOR_UNITS && cashReceivedMinor.value >= totalMinor.value,
+    () => !isEmpty.value
+      && !cashInvalid.value
+      && totalMinor.value <= MAX_MINOR_UNITS
+      && cashReceivedMinor.value >= totalMinor.value,
   )
 
   /**
@@ -166,24 +172,34 @@ export const useCartStore = defineStore('cart', () => {
   function setCashMinor(minor: number): void {
     const whole = Number.isFinite(minor) ? Math.trunc(minor) : 0
     cashReceivedMinor.value = Math.min(MAX_MINOR_UNITS, Math.max(0, whole))
+    cashInvalid.value = false
   }
 
   /**
-   * Efectivo desde lo que la persona escribió ("100", "100.5", "100,50").
-   * Texto sin forma de número (o negativo) cuenta como 0.
+   * Efectivo desde lo que la persona escribió, con la convención de México:
+   * coma = miles, punto = decimal ("1,000", "1,000.50", "100.5"). Si el texto
+   * es ambiguo o no es un monto ("100,50", "abc") NO se adivina: el efectivo
+   * queda en 0 y `cashInvalid` bloquea el cobro hasta que se corrija.
    */
   function setCashFromDisplay(text: string): void {
-    setCashMinor(displayToMinor(text))
+    const minor = parseCashInput(text)
+    if (minor === null) {
+      cashReceivedMinor.value = 0
+      cashInvalid.value = true
+      return
+    }
+    setCashMinor(minor)
   }
 
   /** Venta nueva: vacía el carrito y el efectivo. */
   function clear(): void {
     lines.value = []
     cashReceivedMinor.value = 0
+    cashInvalid.value = false
   }
 
   return {
-    lines, cashReceivedMinor,
+    lines, cashReceivedMinor, cashInvalid,
     isEmpty, itemCount, totalMinor, changeMinor, missingMinor, canCharge, signature,
     add, increment, decrement, setQuantity, remove, setCashMinor, setCashFromDisplay, clear,
   }

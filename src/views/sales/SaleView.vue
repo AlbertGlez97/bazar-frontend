@@ -114,7 +114,7 @@ import { useSaleCatalogStore } from '@/stores/sale-catalog.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { saleCartRefusalMessage, saleScanAddedMessage, saleScanUnknownMessage } from '@/config/voice'
-import { displayToMinor, minorToDisplay } from '@/utils/money'
+import { minorToDisplay, parseCashInput } from '@/utils/money'
 import type { Product } from '@/types/product.types'
 import { describeCheckoutResult } from './sale-result'
 
@@ -191,8 +191,10 @@ function onCashText(text: string) {
 }
 
 // Si el efectivo cambia por otro camino (venta nueva, tope del contrato), el campo lo refleja.
+// Un texto ambiguo se queda tal cual (con su aviso) para que la persona lo corrija.
 watch(() => cart.cashReceivedMinor, (minor) => {
-  if (displayToMinor(cashText.value) !== minor) cashText.value = textOf(minor)
+  if (cart.cashInvalid) return
+  if (parseCashInput(cashText.value) !== minor) cashText.value = textOf(minor)
 })
 
 // ── QR ───────────────────────────────────────────────────────────────────

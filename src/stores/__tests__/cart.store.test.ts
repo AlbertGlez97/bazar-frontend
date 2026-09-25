@@ -254,19 +254,71 @@ describe('cart.store — efectivo capturado como texto', () => {
   it.each([
     ['100', 10000],
     ['100.5', 10050],
-    ['100,50', 10050],
+    ['1,000', 100000],
+    ['1,000.50', 100050],
+    ['1000', 100000],
+    ['1000.5', 100050],
     ['  100.50  ', 10050],
     ['0.10', 10],
-    ['10.005', 1001],
+    ['$100', 10000],
     ['', 0],
-    ['abc', 0],
-    ['1e5', 0],
-    ['-20', 0],
-    ['$100', 0],
-  ])('setCashFromDisplay(%j) -> %i centavos', (text, expected) => {
+  ])('setCashFromDisplay(%j) -> %i centavos y es un monto válido', (text, expected) => {
     const cart = useCartStore()
     cart.setCashFromDisplay(text)
     expect(cart.cashReceivedMinor).toBe(expected)
+    expect(cart.cashInvalid).toBe(false)
+  })
+
+  it.each(['abc', '1e5', '-20', '100,50', '1,5', '1.2.3', '1.000,50', '10.005'])(
+    'setCashFromDisplay(%j) es ambiguo o inválido: efectivo 0 y marcado como inválido',
+    (text) => {
+      const cart = useCartStore()
+      cart.setCashMinor(5000)
+      cart.setCashFromDisplay(text)
+      expect(cart.cashReceivedMinor).toBe(0)
+      expect(cart.cashInvalid).toBe(true)
+    },
+  )
+
+  it('un texto ambiguo bloquea el cobro aunque el total sea 0 (no se adivina el monto)', () => {
+    const cart = useCartStore()
+    cart.add(product({ unitPriceMinor: 0 }))
+    expect(cart.canCharge).toBe(true)
+
+    cart.setCashFromDisplay('1,5')
+    expect(cart.canCharge).toBe(false)
+  })
+
+  it('"1,000" alcanza para un total de $1,000.00 (la coma agrupa miles)', () => {
+    const cart = useCartStore()
+    cart.add(product({ unitPriceMinor: 100000 }))
+    cart.setCashFromDisplay('1,000')
+    expect(cart.cashReceivedMinor).toBe(100000)
+    expect(cart.canCharge).toBe(true)
+    expect(cart.changeMinor).toBe(0)
+  })
+
+  it('corregir el texto vuelve a permitir el cobro', () => {
+    const cart = useCartStore()
+    cart.add(product({ unitPriceMinor: 5000 }))
+    cart.setCashFromDisplay('100,50')
+    expect(cart.canCharge).toBe(false)
+    cart.setCashFromDisplay('100.50')
+    expect(cart.cashInvalid).toBe(false)
+    expect(cart.canCharge).toBe(true)
+  })
+
+  it('fijar el efectivo en centavos o vaciar la venta limpia el estado de inválido', () => {
+    const cart = useCartStore()
+    cart.setCashFromDisplay('1,5')
+    expect(cart.cashInvalid).toBe(true)
+    cart.setCashMinor(2000)
+    expect(cart.cashInvalid).toBe(false)
+
+    cart.setCashFromDisplay('abc')
+    expect(cart.cashInvalid).toBe(true)
+    cart.clear()
+    expect(cart.cashInvalid).toBe(false)
   })
 
   it('topa el efectivo en el máximo del contrato (entero de 32 bits)', () => {

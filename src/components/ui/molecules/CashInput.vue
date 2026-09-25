@@ -23,9 +23,21 @@
         placeholder="0.00"
         :value="modelValue"
         :disabled="disabled"
+        :aria-invalid="isUnclear ? 'true' : undefined"
+        :aria-describedby="isUnclear ? errorId : undefined"
         @input="onInput"
       >
     </div>
+    <!-- Monto ambiguo ("100,50"): no se adivina, se pide escribirlo bien. El
+         cobro ya está bloqueado en el store (`cashInvalid`). -->
+    <p
+      v-if="isUnclear"
+      :id="errorId"
+      class="cash-input__error"
+      role="alert"
+    >
+      {{ VOICE.sale.cashUnclear }}
+    </p>
 
     <div class="cash-input__chips">
       <button
@@ -55,7 +67,8 @@
 
 <script setup lang="ts">
 import { computed, useId } from 'vue'
-import { minorToDisplay, sanitizeCashText } from '@/utils/money'
+import { VOICE } from '@/config/voice'
+import { minorToDisplay, parseCashInput, sanitizeCashText } from '@/utils/money'
 
 const props = withDefaults(defineProps<{
   /** Texto del campo (lo que la persona escribió) */
@@ -76,6 +89,10 @@ const emit = defineEmits<{
 const BILLS = [20, 50, 100, 200, 500] as const
 
 const inputId = useId()
+const errorId = `${inputId}-error`
+
+/** Texto capturado que no se puede leer con certeza (mismo criterio que el store). */
+const isUnclear = computed(() => parseCashInput(props.modelValue) === null)
 
 /** "150" si el total es entero, "125.50" si tiene centavos. */
 const exactText = computed(() => {
@@ -127,6 +144,8 @@ function onInput(event: Event) {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 .cash-input__control:disabled { opacity: 0.5; cursor: not-allowed; }
+.cash-input__control[aria-invalid='true'] { border-color: var(--color-danger); }
+.cash-input__error { margin: 0; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-danger); }
 
 /* Atajos: fila que envuelve, cada uno de al menos 44 px */
 .cash-input__chips { display: flex; flex-wrap: wrap; gap: var(--spacing-xs) var(--spacing-sm); }

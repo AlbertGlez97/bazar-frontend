@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CashInput from '../CashInput.vue'
-import { displayToMinor, sanitizeCashText } from '@/utils/money'
+import { parseCashInput, sanitizeCashText } from '@/utils/money'
 
 function mountCash(props: { modelValue?: string; totalMinor?: number; disabled?: boolean } = {}) {
   return mount(CashInput, { props: { modelValue: '', totalMinor: 0, ...props } })
@@ -18,10 +18,15 @@ const lastEmitted = (w: ReturnType<typeof mountCash>) => {
   return all[all.length - 1]?.[0]
 }
 
+// El limpiador solo quita lo que no puede ser parte de un monto (letras, símbolos)
+// y topa dígitos; NO reinterpreta comas ni puntos: lo que se ve en el campo es lo
+// que se lee, y si es ambiguo lo rechaza `parseCashInput`.
 describe('sanitizeCashText', () => {
   it.each([
     ['100', '100'],
     ['100.5', '100.5'],
+    ['1,000', '1,000'],
+    ['1,000.50', '1,000.50'],
     ['100,50', '100,50'],
     ['', ''],
     ['abc', ''],
@@ -29,26 +34,31 @@ describe('sanitizeCashText', () => {
     ['-20', '20'],
     ['1e5', '15'],
     ['12.345', '12.34'],
-    ['12,999', '12,99'],
-    ['1,000.50', '1000.50'],
-    ['1.000,50', '1000,50'],
-    ['1,000,000', '1000000'],
-    ['1.2.3', '123'],
-    ['.5', '0.5'],
-    [',5', '0,5'],
+    ['12,999', '12,999'],
+    ['1.000,50', '1.000,50'],
+    ['1,000,000', '1,000,000'],
+    ['1.2.3', '1.2.3'],
+    ['.5', '.5'],
+    [',5', ',5'],
     ['100.', '100.'],
     ['1234567890.55', '12345678.55'],
     ['123456789012', '12345678'],
+    ['12,345,678.90', '12,345,678.90'],
   ])('%j -> %j', (typed, expected) => {
     expect(sanitizeCashText(typed)).toBe(expected)
   })
 
-  it('lo que devuelve lo entiende el parser de la tienda (displayToMinor) con dinero exacto', () => {
-    expect(displayToMinor(sanitizeCashText('100'))).toBe(10000)
-    expect(displayToMinor(sanitizeCashText('100.5'))).toBe(10050)
-    expect(displayToMinor(sanitizeCashText('100,50'))).toBe(10050)
-    expect(displayToMinor(sanitizeCashText('$1,000.50'))).toBe(100050)
-    expect(displayToMinor(sanitizeCashText('19.99'))).toBe(1999)
+  it('lo que devuelve lo entiende parseCashInput con dinero exacto (coma = miles, punto = decimal)', () => {
+    expect(parseCashInput(sanitizeCashText('100'))).toBe(10000)
+    expect(parseCashInput(sanitizeCashText('100.5'))).toBe(10050)
+    expect(parseCashInput(sanitizeCashText('1,000'))).toBe(100000)
+    expect(parseCashInput(sanitizeCashText('$1,000.50'))).toBe(100050)
+    expect(parseCashInput(sanitizeCashText('19.99'))).toBe(1999)
+  })
+
+  it('lo ambiguo NO se adivina: pasa tal cual y parseCashInput lo rechaza', () => {
+    expect(parseCashInput(sanitizeCashText('100,50'))).toBeNull()
+    expect(parseCashInput(sanitizeCashText('1.000,50'))).toBeNull()
   })
 })
 
@@ -78,6 +88,25 @@ describe('CashInput — campo', () => {
     expect(lastEmitted(wrapper)).toBe(emitted)
   })
 
+  it('un monto válido no muestra aviso', () => {
+    const wrapper = mountCash({ modelValue: '1,000.50' })
+    expect(wrapper.find('.cash-input__error').exists()).toBe(false)
+    expect(wrapper.get('input').attributes('aria-invalid')).toBeUndefined()
+  })
+
+  it('un campo vacío no muestra aviso', () => {
+    expect(mountCash({ modelValue: '' }).find('.cash-input__error').exists()).toBe(false)
+  })
+
+  it.each(['100,50', '1,5', '1.2.3', '1.000,50'])('%j es ambiguo: avisa cómo escribirlo y marca el campo', (text) => {
+    const wrapper = mountCash({ modelValue: text })
+    const error = wrapper.get('.cash-input__error')
+    expect(error.text()).toContain('1,000.50')
+    const input = wrapper.get('input')
+    expect(input.attributes('aria-invalid')).toBe('true')
+    expect(input.attributes('aria-describedby')).toBe(error.attributes('id'))
+  })
+
   it('quita la basura: emite el texto limpio y corrige lo que se ve en el campo', async () => {
     const wrapper = mountCash()
     const input = await type(wrapper, '$ 1a0b0')
@@ -104,7 +133,7 @@ describe('CashInput — atajos', () => {
     const wrapper = mountCash({ totalMinor: 12550 })
     await chips(wrapper)[3].trigger('click')
     expect(lastEmitted(wrapper)).toBe('100')
-    expect(displayToMinor(lastEmitted(wrapper) as string)).toBe(10000)
+    expect(parseCashInput(lastEmitted(wrapper) as string)).toBe(10000)
   })
 
   it('"Justo" emite el total exacto (entero sin decimales, o con dos)', async () => {
@@ -115,7 +144,7 @@ describe('CashInput — atajos', () => {
     const cents = mountCash({ totalMinor: 12550 })
     await chips(cents)[0].trigger('click')
     expect(lastEmitted(cents)).toBe('125.50')
-    expect(displayToMinor(lastEmitted(cents) as string)).toBe(12550)
+    expect(parseCashInput(lastEmitted(cents) as string)).toBe(12550)
 
     const odd = mountCash({ totalMinor: 1999 })
     await chips(odd)[0].trigger('click')

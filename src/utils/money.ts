@@ -54,43 +54,67 @@ export function displayToMinor(display: string | number): number {
 const MAX_CASH_INT_DIGITS = 8
 
 /**
- * Limpia lo que la persona escribe (o pega) en el campo de efectivo y deja un
- * texto que `displayToMinor` entiende: solo dígitos y un separador decimal,
- * con a lo más dos decimales.
- * - Quita todo lo que no es dígito, punto o coma ("$ 1 500", "-20", "1e5").
- * - Un solo separador es el decimal ("100,50" -> "100,50"; el teclado numérico
- *   de un celular en español ofrece la coma).
- * - Punto y coma juntos: el ÚLTIMO es el decimal y el otro es de miles
- *   ("1,000.50" -> "1000.50", "1.000,50" -> "1000,50").
- * - Varios del mismo tipo son de miles ("1,000,000" -> "1000000").
- * - Empezar por el separador antepone un 0 (".5" -> "0.5"), que si no vale 0.
+ * Limpia lo que la persona escribe (o pega) en el campo de efectivo: quita lo
+ * que no puede ser parte de un monto (letras, símbolos, espacios: "$ 1 500",
+ * "-20", "1e5") y topa los dígitos (8 enteros, 2 decimales).
+ *
+ * NO reinterpreta comas ni puntos: lo que queda en el campo es lo que se lee,
+ * y si es ambiguo ("100,50") lo rechaza `parseCashInput` en vez de adivinar.
  */
 export function sanitizeCashText(input: string): string {
   const kept = input.replace(/[^\d.,]/g, '')
 
-  const lastDot = kept.lastIndexOf('.')
-  const lastComma = kept.lastIndexOf(',')
-  let decimalIndex = -1
-  if (lastDot >= 0 && lastComma >= 0) {
-    decimalIndex = Math.max(lastDot, lastComma)
-  } else {
-    const separator = lastDot >= 0 ? '.' : ','
-    const count = kept.split(separator).length - 1
-    if (count === 1) decimalIndex = kept.indexOf(separator)
+  const dot = kept.indexOf('.')
+  const integerPart = dot >= 0 ? kept.slice(0, dot) : kept
+  let rest = dot >= 0 ? kept.slice(dot) : ''
+
+  // Tope de dígitos enteros (las comas de miles no cuentan).
+  let digits = 0
+  let integer = ''
+  for (const char of integerPart) {
+    if (char !== ',') {
+      if (digits >= MAX_CASH_INT_DIGITS) continue
+      digits += 1
+    }
+    integer += char
   }
 
-  let integer: string
-  let decimals = ''
-  let separator = ''
-  if (decimalIndex >= 0) {
-    integer = kept.slice(0, decimalIndex).replace(/[.,]/g, '')
-    separator = kept[decimalIndex]
-    decimals = kept.slice(decimalIndex + 1).replace(/[.,]/g, '').slice(0, 2)
-  } else {
-    integer = kept.replace(/[.,]/g, '')
-  }
+  // Máximo dos decimales; con más de un punto o una coma después del punto el
+  // texto ya es inválido y se deja como está para que se vea y se rechace.
+  if (/^\.\d*$/.test(rest)) rest = rest.slice(0, 3)
 
-  integer = integer.slice(0, MAX_CASH_INT_DIGITS)
-  if (!separator) return integer
-  return `${integer || '0'}${separator}${decimals}`
+  return integer + rest
+}
+
+// Entero (con miles bien agrupados o sin agrupar) y hasta 2 decimales tras el
+// punto; o solo decimales (".5"). Un punto final ("1000.") es texto a medias.
+const CASH_TEXT_RE = /^(?:(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{0,2}))?|\.(\d{1,2}))$/
+
+/**
+ * Efectivo que la persona escribió -> centavos, con la convención de México
+ * (es-MX): la COMA agrupa miles y el PUNTO es el decimal. "1,000" -> 100000,
+ * "1,000.50" -> 100050, "1000.5" -> 100050.
+ *
+ * Falla hacia el lado seguro: si el texto es ambiguo o no tiene forma de
+ * monto devuelve `null` en vez de adivinar. Ejemplos que rechaza: "100,50"
+ * (¿100.50 o 10,050?), "1,5", "1.000,50" (convención europea), "10.005"
+ * (no hay fracciones de centavo), "-20", "1e5".
+ * - Vacío o solo espacios: 0 (todavía no se captura nada).
+ * - Un "$" al inicio se tolera.
+ * - La coma solo vale como separador de miles bien puesto (grupos de 3).
+ *
+ * Reutiliza `displayToMinor` para pasar a centavos con dinero exacto (sin
+ * aritmética de floats).
+ */
+export function parseCashInput(text: string): number | null {
+  if (typeof text !== 'string') return null
+  const raw = text.trim().replace(/^\$\s*/, '')
+  if (raw === '') return 0
+
+  const match = CASH_TEXT_RE.exec(raw)
+  if (!match) return null
+
+  const integer = (match[1] ?? '0').replace(/,/g, '')
+  const decimals = match[2] ?? match[3] ?? ''
+  return displayToMinor(decimals ? `${integer}.${decimals}` : integer)
 }
