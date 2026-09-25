@@ -1,8 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
+import { APP_NAME } from '@/config/app'
 import AppLayout from '@/layouts/AppLayout.vue'
 
 // A diferencia de AppLayout.test.ts (que mockea vue-router), aquí se usa un
@@ -64,5 +65,29 @@ describe('AppLayout navegación', () => {
   it('el título de la barra superior en /app/productos es "Productos"', async () => {
     const wrapper = await mountAt('/app/productos')
     expect(wrapper.find('.app-header__title').text()).toBe('Productos')
+  })
+
+  it('el logo enlaza al inicio de la app y muestra el nombre sin emoji', async () => {
+    const wrapper = await mountAt('/app/productos')
+    const brand = wrapper.get('a.sidebar__brand')
+    expect(brand.attributes('href')).toBe('/app')
+    expect(brand.text()).toBe(APP_NAME)
+    expect(wrapper.text()).not.toContain('💰')
+  })
+
+  it('con el sidebar colapsado el logo sigue siendo un enlace con nombre accesible', async () => {
+    const wrapper = await mountAt('/app')
+    await wrapper.get('.sidebar__toggle').trigger('click')
+    const brand = wrapper.get('a.sidebar__brand')
+    expect(brand.attributes('href')).toBe('/app')
+    expect(brand.attributes('aria-label')).toBe(APP_NAME)
+    expect(brand.text()).toBe(APP_NAME.charAt(0))
+  })
+
+  it('al hacer clic en el logo desde otra vista vuelve a /app', async () => {
+    const wrapper = await mountAt('/app/productos')
+    await wrapper.get('a.sidebar__brand').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.app-header__title').text()).toBe('Inicio')
   })
 })

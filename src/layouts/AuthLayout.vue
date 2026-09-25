@@ -15,10 +15,10 @@
       aria-hidden="true"
     />
 
-    <!-- Header con logo enlazado al login -->
+    <!-- Header con logo enlazado a la landing -->
     <header class="auth-layout__header">
       <RouterLink
-        to="/login"
+        to="/"
         class="auth-logo"
       >
         <span
@@ -121,6 +121,11 @@ const appInitial = APP_NAME.charAt(0)
   align-items: center;
   gap: 10px;
   text-decoration: none;
+}
+.auth-logo:focus-visible {
+  outline: 2px solid var(--al-blue-light);
+  outline-offset: 4px;
+  border-radius: 9px;
 }
 .auth-logo__badge {
   width: 34px; height: 34px;

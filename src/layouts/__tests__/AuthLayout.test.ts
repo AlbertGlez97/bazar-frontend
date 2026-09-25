@@ -1,27 +1,57 @@
-import { describe, it, expect, vi } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { describe, it, expect } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import { APP_NAME } from '@/config/app'
-
-vi.mock('vue-router', () => ({
-  RouterLink: { template: '<a><slot /></a>' },
-  RouterView: { template: '<div />' },
-}))
-
 import AuthLayout from '@/layouts/AuthLayout.vue'
 
+// Router real: que el logo lleve a "/" depende de cómo vue-router resuelve el
+// enlace y la navegación, algo que un mock de RouterLink no puede comprobar.
+// AuthLayout se monta directo (no como ruta) para que su <RouterView> no se
+// renderice a sí mismo.
+async function mountAtLogin() {
+  const stub = { template: '<div />' }
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/', name: 'Landing', component: stub },
+      { path: '/login', name: 'Login', component: stub },
+    ],
+  })
+  router.push('/login')
+  await router.isReady()
+  const wrapper = mount(AuthLayout, { global: { plugins: [router] } })
+  return { wrapper, router }
+}
+
 describe('AuthLayout', () => {
-  it('se monta y renderiza el layout', () => {
-    const wrapper = shallowMount(AuthLayout)
+  it('se monta y renderiza el layout', async () => {
+    const { wrapper } = await mountAtLogin()
     expect(wrapper.find('.auth-layout').exists()).toBe(true)
   })
 
-  it('contiene el footer con la stack tecnológica', () => {
-    const wrapper = shallowMount(AuthLayout)
+  it('contiene el footer con la stack tecnológica', async () => {
+    const { wrapper } = await mountAtLogin()
     expect(wrapper.text()).toContain('NestJS')
   })
 
-  it('renderiza el header con el nombre de la app', () => {
-    const wrapper = shallowMount(AuthLayout)
-    expect(wrapper.text()).toContain(APP_NAME)
+  it('renderiza el header con el nombre de la app', async () => {
+    const { wrapper } = await mountAtLogin()
+    expect(wrapper.get('.auth-logo').text()).toContain(APP_NAME)
+  })
+
+  it('el logo es un enlace a la landing "/"', async () => {
+    const { wrapper } = await mountAtLogin()
+    const logo = wrapper.get('a.auth-logo')
+    expect(logo.attributes('href')).toBe('/')
+    // El badge es decorativo: el nombre accesible del enlace es solo APP_NAME
+    expect(logo.get('.auth-logo__badge').attributes('aria-hidden')).toBe('true')
+  })
+
+  it('al hacer clic en el logo navega a "/"', async () => {
+    const { wrapper, router } = await mountAtLogin()
+    expect(router.currentRoute.value.path).toBe('/login')
+    await wrapper.get('a.auth-logo').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.path).toBe('/')
   })
 })

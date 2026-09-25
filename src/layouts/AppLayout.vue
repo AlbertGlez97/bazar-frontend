@@ -8,14 +8,22 @@
     <aside class="sidebar">
       <!-- Cabecera del sidebar -->
       <div class="sidebar__header">
-        <span
-          v-if="!sidebarCollapsed"
-          class="sidebar__logo"
-        >{{ APP_NAME }}</span>
-        <span
-          v-else
-          class="sidebar__logo-icon"
-        >{{ appInitial }}</span>
+        <!-- Logo: vuelve al inicio de la app. Colapsado solo muestra la inicial,
+             por eso el nombre accesible es siempre APP_NAME -->
+        <RouterLink
+          to="/app"
+          class="sidebar__brand"
+          :aria-label="APP_NAME"
+        >
+          <span
+            v-if="!sidebarCollapsed"
+            class="sidebar__logo"
+          >{{ APP_NAME }}</span>
+          <span
+            v-else
+            class="sidebar__logo-icon"
+          >{{ appInitial }}</span>
+        </RouterLink>
         <!-- Botón colapsar/expandir (AppButton ghost) -->
         <AppButton
           variant="ghost"
@@ -188,6 +196,15 @@ function handleLogout() {
   height:         var(--header-height);
 }
 
+.sidebar__brand {
+  color:         inherit;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+.sidebar__brand:focus-visible {
+  outline:        2px solid var(--color-sidebar-active);
+  outline-offset: 2px;
+}
 .sidebar__logo      { font-weight: 700; font-size: var(--font-size-sm); white-space: nowrap; }
 .sidebar__logo-icon { font-size: 20px; font-weight: 700; }
 
