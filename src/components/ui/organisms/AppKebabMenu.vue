@@ -258,7 +258,7 @@ onBeforeUnmount(_unbindGlobalClosers)
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius, 8px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  box-shadow: var(--shadow-pop);
   font-size: 0.85rem;
 }
 
@@ -300,5 +300,5 @@ onBeforeUnmount(_unbindGlobalClosers)
 
 /* ── Variante danger ──────────────────────────────────────────────────── */
 .kebab__item--danger        { color: var(--color-danger); }
-.kebab__item--danger:hover  { background: rgba(239, 68, 68, .08); }
+.kebab__item--danger:hover  { background: var(--color-danger-soft); }
 </style>

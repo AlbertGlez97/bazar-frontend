@@ -34,18 +34,20 @@ withDefaults(defineProps<{
 }
 
 /* ── Variante outline (por defecto) ───────────────────────────────── */
-.app-badge--blue   { color: var(--color-primary);  background: rgba(37,99,235,.1);   border-color: rgba(37,99,235,.25); }
-.app-badge--green  { color: var(--color-success);  background: rgba(16,185,129,.1);  border-color: rgba(16,185,129,.25); }
-.app-badge--red    { color: var(--color-danger);   background: rgba(239,68,68,.1);   border-color: rgba(239,68,68,.25); }
-.app-badge--amber  { color: #d97706;               background: rgba(234,179,8,.1);   border-color: rgba(234,179,8,.25); }
-.app-badge--gray   { color: var(--color-text-muted); background: var(--color-border); border-color: var(--color-border); }
-.app-badge--purple { color: #7c3aed;               background: rgba(124,58,237,.1);  border-color: rgba(124,58,237,.25); }
+/* Los nombres de color son parte de la API del átomo (se conservan); cada uno
+   apunta a un token de marca: blue = informativo (talavera), purple = rosa. */
+.app-badge--blue   { color: var(--color-info);     background: var(--color-info-soft);    border-color: color-mix(in srgb, var(--color-info) 30%, transparent); }
+.app-badge--green  { color: var(--color-success);  background: var(--color-success-soft); border-color: color-mix(in srgb, var(--color-success) 30%, transparent); }
+.app-badge--red    { color: var(--color-danger);   background: var(--color-danger-soft);  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); }
+.app-badge--amber  { color: var(--color-warning);  background: var(--color-warning-soft); border-color: color-mix(in srgb, var(--color-warning) 30%, transparent); }
+.app-badge--gray   { color: var(--color-text-muted); background: var(--color-surface-alt); border-color: var(--color-border); }
+.app-badge--purple { color: var(--color-rosa);     background: var(--color-surface);      border-color: var(--color-rosa); }
 
 /* ── Variante filled (fondo sólido) ───────────────────────────────── */
-.app-badge--filled.app-badge--blue   { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
-.app-badge--filled.app-badge--green  { background: var(--color-success); color: #fff; border-color: var(--color-success); }
-.app-badge--filled.app-badge--red    { background: var(--color-danger);  color: #fff; border-color: var(--color-danger);  }
-.app-badge--filled.app-badge--amber  { background: #d97706;              color: #fff; border-color: #d97706;              }
-.app-badge--filled.app-badge--gray   { background: var(--color-text-muted); color: #fff; border-color: var(--color-text-muted); }
-.app-badge--filled.app-badge--purple { background: #7c3aed;              color: #fff; border-color: #7c3aed;              }
+.app-badge--filled.app-badge--blue   { background: var(--color-info);    color: var(--color-on-primary); border-color: var(--color-info); }
+.app-badge--filled.app-badge--green  { background: var(--color-success); color: var(--color-on-primary); border-color: var(--color-success); }
+.app-badge--filled.app-badge--red    { background: var(--color-danger);  color: var(--color-on-primary); border-color: var(--color-danger);  }
+.app-badge--filled.app-badge--amber  { background: var(--color-accent);  color: var(--color-on-accent);  border-color: var(--color-accent);  }
+.app-badge--filled.app-badge--gray   { background: var(--color-text-muted); color: var(--color-on-primary); border-color: var(--color-text-muted); }
+.app-badge--filled.app-badge--purple { background: var(--color-rosa);    color: var(--color-on-primary); border-color: var(--color-rosa);    }
 </style>

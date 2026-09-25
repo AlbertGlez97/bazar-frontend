@@ -74,7 +74,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
 .app-textarea {
   width:            100%;
   background:       var(--color-surface);
-  border:           1px solid var(--color-border);
+  border:           1px solid var(--color-border-strong);
   border-radius:    var(--radius-sm);
   color:            var(--color-text);
   font-family:      inherit;
@@ -88,9 +88,9 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
 }
 .app-textarea:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
-.app-textarea::placeholder { color: var(--color-text-muted); opacity: .7; }
+.app-textarea::placeholder { color: var(--color-text-subtle); opacity: 1; }
 .app-textarea:disabled     { opacity: .5; cursor: not-allowed; }
 
 @media (min-width: 768px) {
@@ -100,7 +100,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
 /* Estado de error */
 .app-textarea-wrap--error .app-textarea { border-color: var(--color-danger); }
 .app-textarea-wrap--error .app-textarea:focus {
-  box-shadow: 0 0 0 3px rgba(239,68,68,.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 22%, transparent);
 }
 .app-textarea__error {
   font-size: 0.8125rem;

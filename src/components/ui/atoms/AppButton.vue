@@ -68,6 +68,7 @@ defineOptions({ inheritAttrs: true })
                    border-color var(--transition), opacity var(--transition);
   line-height:     1.2;
 }
+.app-btn:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 .app-btn:disabled,
 .app-btn--loading { opacity: .6; cursor: not-allowed; pointer-events: none; }
 .app-btn--block   { width: 100%; }
@@ -79,7 +80,7 @@ defineOptions({ inheritAttrs: true })
 .app-btn--lg { padding: 0.75rem  1.25rem;  font-size: 1rem;      min-height: 2.75rem; }
 .app-btn--xl { padding: 0.875rem 1.5rem;   font-size: 1.0625rem; min-height: 3rem;    }
 
-/* Mobile: elevá touch targets de tamaños principales a ≥ 44px (Apple HIG) */
+/* Mobile: eleva touch targets de tamaños principales a ≥ 44px (Apple HIG) */
 @media (max-width: 767px) {
   .app-btn--md,
   .app-btn--lg,
@@ -96,20 +97,21 @@ defineOptions({ inheritAttrs: true })
 /* ── Variantes sólidas ────────────────────────────────────────────── */
 .app-btn--primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   border-color: var(--color-primary);
 }
 .app-btn--primary:hover:not(:disabled):not(.app-btn--loading) {
-  filter: brightness(1.1);
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 .app-btn--secondary {
   background: transparent;
   color: var(--color-text);
-  border-color: var(--color-border);
+  border-color: var(--color-border-strong);
 }
 .app-btn--secondary:hover:not(:disabled):not(.app-btn--loading) {
-  background: var(--color-border);
+  background: var(--color-surface-alt);
 }
 
 .app-btn--ghost {
@@ -118,63 +120,63 @@ defineOptions({ inheritAttrs: true })
   border-color: transparent;
 }
 .app-btn--ghost:hover:not(:disabled):not(.app-btn--loading) {
-  background: rgba(255,255,255,.07);
+  background: color-mix(in srgb, currentColor 10%, transparent);
   color: var(--color-text);
 }
 
 .app-btn--danger {
   background: var(--color-danger);
-  color: #fff;
+  color: var(--color-on-primary);
   border-color: var(--color-danger);
 }
 .app-btn--danger:hover:not(:disabled):not(.app-btn--loading) {
-  filter: brightness(1.1);
+  filter: brightness(.9);
 }
 
 .app-btn--success {
   background: var(--color-success);
-  color: #fff;
+  color: var(--color-on-primary);
   border-color: var(--color-success);
 }
 .app-btn--success:hover:not(:disabled):not(.app-btn--loading) {
-  filter: brightness(1.1);
+  filter: brightness(.9);
 }
 
 /* ── Variantes soft (fondo semitransparente) ──────────────────────── */
 .app-btn--soft-primary {
-  background: rgba(37,99,235,.1);
-  color: var(--color-primary);
-  border-color: rgba(37,99,235,.2);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 .app-btn--soft-primary:hover:not(:disabled):not(.app-btn--loading) {
-  background: rgba(37,99,235,.18);
+  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface));
 }
 
 .app-btn--soft-danger {
-  background: rgba(239,68,68,.1);
+  background: var(--color-danger-soft);
   color: var(--color-danger);
-  border-color: rgba(239,68,68,.2);
+  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
 }
 .app-btn--soft-danger:hover:not(:disabled):not(.app-btn--loading) {
-  background: rgba(239,68,68,.18);
+  background: color-mix(in srgb, var(--color-danger) 18%, var(--color-surface));
 }
 
 .app-btn--soft-success {
-  background: rgba(16,185,129,.1);
+  background: var(--color-success-soft);
   color: var(--color-success);
-  border-color: rgba(16,185,129,.2);
+  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
 }
 .app-btn--soft-success:hover:not(:disabled):not(.app-btn--loading) {
-  background: rgba(16,185,129,.18);
+  background: color-mix(in srgb, var(--color-success) 18%, var(--color-surface));
 }
 
 .app-btn--soft-warning {
-  background: rgba(234,179,8,.1);
-  color: #ca8a04;
-  border-color: rgba(234,179,8,.2);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
 }
 .app-btn--soft-warning:hover:not(:disabled):not(.app-btn--loading) {
-  background: rgba(234,179,8,.18);
+  background: color-mix(in srgb, var(--color-accent) 40%, var(--color-surface));
 }
 
 /* ── Spinner de carga ─────────────────────────────────────────────── */
@@ -182,7 +184,7 @@ defineOptions({ inheritAttrs: true })
   display:       inline-block;
   width:         14px;
   height:        14px;
-  border:        2px solid rgba(255,255,255,.35);
+  border:        2px solid color-mix(in srgb, currentColor 30%, transparent);
   border-top-color: currentColor;
   border-radius: 50%;
   animation:     btn-spin .65s linear infinite;

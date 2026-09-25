@@ -74,7 +74,7 @@ withDefaults(defineProps<{
   transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
 }
 .app-card--hoverable { cursor: pointer; }
-.app-card--hoverable:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: #cbd5e1; }
+.app-card--hoverable:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--color-border-strong); }
 .app-card--flat { box-shadow: none; }
 
 /* Acento superior por color semántico */

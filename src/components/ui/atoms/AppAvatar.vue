@@ -27,10 +27,8 @@ const initials = computed(() => {
 })
 
 // Color determinístico basado en el nombre — mismo nombre = mismo color
-const PALETTE = [
-  '#2563eb', '#7c3aed', '#db2777', '#dc2626',
-  '#d97706', '#059669', '#0891b2', '#4f46e5',
-]
+// Tokens --color-avatar-N (main.css): todos garantizan texto blanco AA.
+const PALETTE = [1, 2, 3, 4, 5, 6].map((n) => `var(--color-avatar-${n})`)
 const avatarColor = computed(() => {
   let hash = 0
   for (const ch of props.name) hash = (hash * 31 + ch.charCodeAt(0)) & 0xffffffff
@@ -44,7 +42,7 @@ const avatarColor = computed(() => {
   align-items:     center;
   justify-content: center;
   border-radius:   var(--radius-full, 9999px);
-  color:           #fff;
+  color:           var(--color-on-primary);
   font-weight:     600;
   flex-shrink:     0;
   user-select:     none;

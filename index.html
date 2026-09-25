@@ -6,7 +6,7 @@
     <meta name="description" content="%APP_DESCRIPTION%" />
 
     <!-- ── Branding / splash en iOS / status bar en Android ────────── -->
-    <meta name="theme-color" content="#2563eb" />
+    <meta name="theme-color" content="%THEME_COLOR%" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="%APP_NAME%" />
@@ -15,7 +15,18 @@
     <!-- ── Iconos ────────────────────────────────────────────────── -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-180.png" />
-    <link rel="mask-icon" href="/favicon.svg" color="#2563eb" />
+    <link rel="mask-icon" href="/favicon.svg" color="%THEME_COLOR%" />
+
+    <!-- ── Tipografía de marca: Bricolage Grotesque (títulos, logotipo) y
+         Figtree (texto). Solo los pesos usados; display=swap muestra el texto
+         con la fuente del sistema mientras cargan. El SW ya cachea estas
+         fuentes (vite.config.ts). ─────────────────────────────────────── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;500;600;700&display=swap"
+    />
 
     <title>%APP_NAME%</title>
   </head>

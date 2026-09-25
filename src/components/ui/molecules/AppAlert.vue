@@ -163,23 +163,23 @@ defineEmits<{ dismiss: [] }>()
 
 /* Colores por tipo */
 .app-alert--info {
-  background:   rgba(37,99,235,.08);
-  border-color: rgba(37,99,235,.2);
-  color:        var(--color-primary);
+  background:   var(--color-info-soft);
+  border-color: color-mix(in srgb, var(--color-info) 30%, transparent);
+  color:        var(--color-info);
 }
 .app-alert--success {
-  background:   rgba(16,185,129,.08);
-  border-color: rgba(16,185,129,.2);
+  background:   var(--color-success-soft);
+  border-color: color-mix(in srgb, var(--color-success) 30%, transparent);
   color:        var(--color-success);
 }
 .app-alert--warning {
-  background:   rgba(234,179,8,.08);
-  border-color: rgba(234,179,8,.2);
-  color:        #ca8a04;
+  background:   var(--color-warning-soft);
+  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
+  color:        var(--color-warning);
 }
 .app-alert--error {
-  background:   rgba(239,68,68,.08);
-  border-color: rgba(239,68,68,.2);
+  background:   var(--color-danger-soft);
+  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);
   color:        var(--color-danger);
 }
 

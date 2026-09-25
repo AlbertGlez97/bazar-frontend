@@ -93,7 +93,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
   width:         100%;
   appearance:    none;
   background:    var(--color-surface);
-  border:        1px solid var(--color-border);
+  border:        1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
   color:         var(--color-text);
   font-family:   inherit;
@@ -107,7 +107,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
 }
 .app-select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
 .app-select:disabled { opacity: .5; cursor: not-allowed; }
 
@@ -135,7 +135,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
   border-color: var(--color-danger);
 }
 .app-select-wrap--error .app-select:focus {
-  box-shadow: 0 0 0 3px rgba(239,68,68,.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 22%, transparent);
 }
 .app-select__error { font-size: 0.8125rem; color: var(--color-danger); margin: 0; line-height: 1.3; }
 .app-select-wrap--disabled { opacity: .6; }

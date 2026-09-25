@@ -103,28 +103,29 @@ async function handleClick() {
   gap: 8px;
   padding: 12px 20px;
   border: none;
-  background: var(--color-primary, #2563eb);
-  color: white;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
   border-radius: 8px;
   font-size: 0.92rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 16px rgba(37, 99, 235, 0.3);
+  box-shadow: var(--shadow-md);
   transition: transform 0.15s, box-shadow 0.15s;
 }
 .install-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 22px rgba(37, 99, 235, 0.4);
+  background: var(--color-primary-hover);
+  box-shadow: var(--shadow-lg);
 }
 .install-btn--ghost {
   background: transparent;
-  color: var(--color-text, #f0f4ff);
-  border: 1px solid var(--color-border, #1c2a3e);
+  color: inherit;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
   box-shadow: none;
 }
 .install-btn--ghost:hover {
-  border-color: var(--color-primary, #2563eb);
-  background: rgba(37, 99, 235, 0.08);
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, currentColor 10%, transparent);
 }
 .install-btn__icon { font-size: 1.1rem; line-height: 1; }
 
@@ -133,7 +134,7 @@ async function handleClick() {
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(8, 13, 23, 0.82);
+  background: var(--color-overlay);
   backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
@@ -142,13 +143,13 @@ async function handleClick() {
 }
 .install-modal__content {
   position: relative;
-  background: var(--color-surface, #fff);
-  color: var(--color-text, #0f172a);
+  background: var(--color-surface);
+  color: var(--color-text);
   border-radius: 16px;
   padding: 28px;
   max-width: 440px;
   width: 100%;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-pop);
 }
 .install-modal__close {
   position: absolute;
@@ -156,12 +157,12 @@ async function handleClick() {
   background: transparent;
   border: none;
   font-size: 1.2rem;
-  color: var(--color-text-muted, #64748b);
+  color: var(--color-text-muted);
   cursor: pointer;
   padding: 6px 10px;
   border-radius: 6px;
 }
-.install-modal__close:hover { background: rgba(0,0,0,0.05); }
+.install-modal__close:hover { background: var(--color-surface-alt); }
 
 .install-modal__title {
   font-size: 1.2rem;
@@ -170,7 +171,7 @@ async function handleClick() {
 }
 .install-modal__sub {
   font-size: 0.9rem;
-  color: var(--color-text-muted, #64748b);
+  color: var(--color-text-muted);
   margin: 0 0 18px;
   line-height: 1.45;
 }
@@ -185,8 +186,8 @@ async function handleClick() {
 }
 .install-modal__steps li {
   padding: 12px 14px;
-  background: rgba(37, 99, 235, 0.06);
-  border-left: 3px solid var(--color-primary, #2563eb);
+  background: var(--color-primary-soft);
+  border-left: 3px solid var(--color-primary);
   border-radius: 6px;
   font-size: 0.9rem;
   line-height: 1.5;
@@ -194,7 +195,7 @@ async function handleClick() {
 .install-modal__icon {
   display: inline-block;
   padding: 2px 8px;
-  background: rgba(37, 99, 235, 0.15);
+  background: var(--color-surface);
   border-radius: 4px;
   font-weight: 700;
   margin: 0 4px;
@@ -202,9 +203,9 @@ async function handleClick() {
 
 .install-modal__note {
   font-size: 0.82rem;
-  color: var(--color-text-muted, #64748b);
-  background: rgba(234, 179, 8, 0.08);
-  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: var(--color-text-muted);
+  background: var(--color-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 60%, transparent);
   border-radius: 6px;
   padding: 10px 12px;
   line-height: 1.45;

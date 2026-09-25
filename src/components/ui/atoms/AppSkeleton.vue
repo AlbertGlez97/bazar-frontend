@@ -34,7 +34,7 @@ withDefaults(defineProps<{
   background: linear-gradient(
     90deg,
     var(--color-border) 25%,
-    rgba(255,255,255,.06) 50%,
+    var(--color-surface-alt) 50%,
     var(--color-border) 75%
   );
   background-size: 400% 100%;

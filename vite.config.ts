@@ -2,17 +2,18 @@ import { defineConfig, type Plugin } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath, URL } from 'node:url'
-import { APP_NAME, APP_DESCRIPTION } from './src/config/app'
+import { APP_NAME, APP_DESCRIPTION, THEME_COLOR, BACKGROUND_COLOR } from './src/config/app'
 
-// index.html no puede importar módulos: recibe nombre y descripción de la app
-// por placeholders que se sustituyen aquí, para no duplicar los literales.
+// index.html no puede importar módulos: recibe nombre, descripción y color de
+// marca por placeholders que se sustituyen aquí, para no duplicar los literales.
 function appBrandHtml(): Plugin {
   return {
     name: 'app-brand-html',
     transformIndexHtml: (html) =>
       html
         .replaceAll('%APP_NAME%', APP_NAME)
-        .replaceAll('%APP_DESCRIPTION%', APP_DESCRIPTION),
+        .replaceAll('%APP_DESCRIPTION%', APP_DESCRIPTION)
+        .replaceAll('%THEME_COLOR%', THEME_COLOR),
   }
 }
 
@@ -31,8 +32,8 @@ export default defineConfig({
         name:              APP_NAME,
         short_name:        APP_NAME,
         description:       APP_DESCRIPTION,
-        theme_color:       '#2563eb',   // azul de brand (barra de estado móvil)
-        background_color:  '#080d17',   // fondo dark del splash
+        theme_color:       THEME_COLOR,        // terracota de marca (barra de estado móvil)
+        background_color:  BACKGROUND_COLOR,   // crema de marca (splash)
         display:           'standalone',
         orientation:       'portrait',
         lang:              'es',
@@ -67,7 +68,7 @@ export default defineConfig({
               !url.pathname.startsWith('/api/v1/auth/'),
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'bazar-api-cache',
+              cacheName: 'marchanta-api-cache',
               networkTimeoutSeconds: 3,
               expiration: {
                 maxEntries:    60,
@@ -77,7 +78,7 @@ export default defineConfig({
             },
           },
 
-          // ── Fuentes de Google Fonts (si se usan en el futuro) ──
+          // ── Fuentes de Google Fonts (Bricolage Grotesque + Figtree, ver index.html) ──
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
             handler: 'CacheFirst',

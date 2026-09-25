@@ -71,7 +71,7 @@ const trackHeight = computed(() => {
 }
 .app-progress__bar--primary { background: var(--color-primary); }
 .app-progress__bar--success { background: var(--color-success); }
-.app-progress__bar--warning { background: #eab308; }
+.app-progress__bar--warning { background: var(--color-accent); }
 .app-progress__bar--danger  { background: var(--color-danger);  }
 
 .app-progress__label {

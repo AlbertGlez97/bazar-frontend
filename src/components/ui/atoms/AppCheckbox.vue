@@ -23,7 +23,7 @@
         height="10"
         viewBox="0 0 12 12"
         fill="none"
-        stroke="#fff"
+        stroke="currentColor"
         stroke-width="2"
       >
         <polyline points="2 6 5 9 10 3" />
@@ -65,7 +65,7 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
 .app-checkbox__box {
   width:         1.25rem;                /* 20px — antes 16 */
   height:        1.25rem;
-  border:        1.5px solid var(--color-border);
+  border:        1.5px solid var(--color-border-strong);
   border-radius: 0.25rem;
   background:    var(--color-surface);
   flex-shrink:   0;
@@ -75,6 +75,7 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
   transition:    background var(--transition), border-color var(--transition);
 }
 .app-checkbox__input:checked ~ .app-checkbox__box {
+  color:        var(--color-on-primary);
   background:   var(--color-primary);
   border-color: var(--color-primary);
 }

@@ -106,7 +106,7 @@ const pages = computed(() => {
 .app-pag-btn--active {
   background:   var(--color-primary);
   border-color: var(--color-primary);
-  color:        #fff;
+  color:        var(--color-on-primary);
   font-weight:  600;
 }
 .app-pag-btn:disabled { opacity: .4; cursor: not-allowed; }

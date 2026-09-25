@@ -236,8 +236,8 @@ void props
   width: 1.5rem;                              /* 24px — visual */
   height: 1.5rem;
   border-radius: 50%;
-  background: rgba(37, 99, 235, .12);
-  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-hover);
   cursor: pointer;
   transition: background .15s ease, color .15s ease, transform .15s ease;
   position: relative;
@@ -254,7 +254,7 @@ void props
 .tooltip-trigger:hover,
 .tooltip-trigger:focus-visible {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   outline: none;
   transform: scale(1.1);
 }
@@ -274,7 +274,7 @@ void props
   color: var(--color-text);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .2);
+  box-shadow: var(--shadow-pop);
   font-size: 0.8rem;
   font-weight: 400;
   line-height: 1.45;

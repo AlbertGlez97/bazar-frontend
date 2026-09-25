@@ -163,9 +163,9 @@ const toastStore = useToastStore()
 
 /* Colores por tipo */
 .app-toast--info    { background: var(--color-surface); border-color: var(--color-border);         color: var(--color-text); }
-.app-toast--success { background: rgba(16,185,129,.12);  border-color: rgba(16,185,129,.3);  color: var(--color-success); }
-.app-toast--warning { background: rgba(234,179,8,.12);   border-color: rgba(234,179,8,.3);   color: #ca8a04; }
-.app-toast--error   { background: rgba(239,68,68,.12);   border-color: rgba(239,68,68,.3);   color: var(--color-danger); }
+.app-toast--success { background: var(--color-success-soft); border-color: color-mix(in srgb, var(--color-success) 30%, transparent); color: var(--color-success); }
+.app-toast--warning { background: var(--color-warning-soft); border-color: color-mix(in srgb, var(--color-warning) 30%, transparent); color: var(--color-warning); }
+.app-toast--error   { background: var(--color-danger-soft);  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent);  color: var(--color-danger); }
 
 .app-toast__icon    { flex-shrink: 0; }
 .app-toast__message { flex: 1; line-height: 1.4; }

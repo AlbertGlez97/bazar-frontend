@@ -137,7 +137,7 @@ onUnmounted(() => { document.removeEventListener('keydown', onKeydown); unlockSc
 <style scoped>
 .app-modal-backdrop {
   position: fixed; inset: 0;
-  background: rgba(15,23,42,.55);
+  background: var(--color-overlay);
   backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
@@ -149,7 +149,7 @@ onUnmounted(() => { document.removeEventListener('keydown', onKeydown); unlockSc
 .app-modal {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0,0,0,.05);
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-height: 90vh;
   overflow: hidden;

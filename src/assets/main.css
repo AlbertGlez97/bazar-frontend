@@ -1,32 +1,92 @@
-/* ─── Variables globales de diseño ─────────────────────────────── */
-:root {
-  /* Colores principales */
-  --color-primary:        #2563eb;
-  --color-primary-dark:   #1d4ed8;
-  --color-primary-light:  #dbeafe;
+/* ─── La Marchanta · tokens de diseño ────────────────────────────────
+   Fuente de verdad de la identidad visual. Guía completa y razones en
+   doc/brand-guidelines.md. Reglas:
+   - Los componentes usan SOLO tokens semánticos (--color-*), nunca hex ni
+     rgb() sueltos ni la escala cruda (--crema-*, --terracota-*, ...).
+   - Los pares texto/fondo documentados cumplen WCAG AA; lo comprueba
+     src/config/__tests__/brand-tokens.test.ts leyendo este archivo. */
 
-  /* Semánticos */
-  --color-success:        #16a34a;
-  --color-success-light:  #dcfce7;
-  --color-danger:         #dc2626;
-  --color-danger-light:   #fee2e2;
-  --color-warning:        #d97706;
-  --color-warning-light:  #fef3c7;
-  --color-info:           #0891b2;
-  --color-info-light:     #cffafe;
+:root {
+  /* ── Escala cruda (inspirada en un mercado real) ─────────────────── */
+  /* Crema / papel de estraza: los neutros son cálidos, nunca gris frío. */
+  --crema-50:  #fffdf9;
+  --crema-100: #faf4e8;
+  --crema-200: #f2e8d5;
+  --crema-300: #eadfcb;
+  --crema-400: #e3d5bc;
+  --crema-600: #8c7a62;
+  /* Café: texto y superficies oscuras. */
+  --cafe-600:  #75604e;
+  --cafe-700:  #6a5443;
+  --cafe-900:  #2b1d14;
+  /* Terracota: color de marca (barro cocido, toldos). */
+  --terracota-100: #f9e3d2;
+  --terracota-600: #b8501c;
+  --terracota-700: #983e12;
+  /* Maíz / mostaza: acento cálido. */
+  --maiz-100: #fbebc0;
+  --maiz-400: #f0b429;
+  --maiz-800: #8a5300;
+  /* Verde nopal. */
+  --nopal-100: #dff0df;
+  --nopal-700: #2f6b3f;
+  /* Chile (rojo): solo para errores y acciones destructivas. */
+  --chile-100: #fbe4e1;
+  --chile-700: #b3261e;
+  /* Azul talavera: solo informativo, con moderación. */
+  --talavera-100: #ddeff4;
+  --talavera-700: #1d6a82;
+  /* Rosa mexicano: detalle decorativo, nunca color de acción. */
+  --rosa-600: #d81b75;
+
+  /* ── Tokens semánticos ───────────────────────────────────────────── */
+  /* Marca y acción */
+  --color-primary:        var(--terracota-600);
+  --color-primary-hover:  var(--terracota-700);
+  --color-primary-soft:   var(--terracota-100);
+  --color-on-primary:     #ffffff;
+  --color-accent:         var(--maiz-400);
+  --color-accent-soft:    var(--maiz-100);
+  --color-on-accent:      var(--cafe-900);
+  --color-secondary:      var(--nopal-700);
+  --color-rosa:           var(--rosa-600);
+
+  /* Estados */
+  --color-success:        var(--nopal-700);
+  --color-success-soft:   var(--nopal-100);
+  --color-danger:         var(--chile-700);
+  --color-danger-soft:    var(--chile-100);
+  --color-warning:        var(--maiz-800);
+  --color-warning-soft:   var(--maiz-100);
+  --color-info:           var(--talavera-700);
+  --color-info-soft:      var(--talavera-100);
 
   /* Neutros */
-  --color-bg:             #f8fafc;
-  --color-surface:        #ffffff;
-  --color-border:         #e2e8f0;
-  --color-text:           #0f172a;
-  --color-text-muted:     #64748b;
-  --color-text-light:     #94a3b8;
+  --color-bg:             var(--crema-100);
+  --color-surface:        var(--crema-50);
+  --color-surface-alt:    var(--crema-200);
+  --color-border:         var(--crema-400);
+  --color-border-strong:  var(--crema-600);
+  --color-text:           var(--cafe-900);
+  --color-text-muted:     var(--cafe-700);
+  --color-text-subtle:    var(--cafe-600);
 
-  /* Sidebar */
-  --color-sidebar-bg:     #0f172a;
-  --color-sidebar-text:   #cbd5e1;
-  --color-sidebar-active: #2563eb;
+  /* Interacción */
+  --color-focus-ring:     var(--terracota-700);
+  --color-overlay:        rgba(43, 29, 20, .55);
+
+  /* Barra lateral (oscura, café) */
+  --color-sidebar-bg:     var(--cafe-900);
+  --color-sidebar-text:   var(--crema-300);
+  --color-sidebar-active: var(--maiz-400);
+
+  /* Avatares: fondos con texto blanco (AA) */
+  --color-avatar-1:       var(--terracota-600);
+  --color-avatar-2:       var(--nopal-700);
+  --color-avatar-3:       var(--talavera-700);
+  --color-avatar-4:       var(--rosa-600);
+  --color-avatar-5:       var(--cafe-700);
+  --color-avatar-6:       var(--maiz-800);
 
   /* Espaciados */
   --spacing-xs:    4px;
@@ -36,8 +96,12 @@
   --spacing-xl:   32px;
   --spacing-2xl:  48px;
 
-  /* Tipografía */
-  --font-family:   'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Tipografía: una cara con carácter para marca y títulos, otra muy legible
+     para todo lo demás. Se cargan desde Google Fonts en index.html; los
+     fallbacks del sistema mantienen la app usable sin red. */
+  --font-display: 'Bricolage Grotesque', 'Trebuchet MS', 'Segoe UI', system-ui, sans-serif;
+  --font-body:    'Figtree', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family:  var(--font-body);
   --font-size-xs:  12px;
   --font-size-sm:  14px;
   --font-size-md:  16px;
@@ -52,10 +116,11 @@
   --radius-xl:  20px;
   --radius-full: 9999px;
 
-  /* Sombras */
-  --shadow-sm:  0 1px 3px rgba(0,0,0,.08);
-  --shadow-md:  0 4px 12px rgba(0,0,0,.10);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,.12);
+  /* Sombras (tinte café, no negro puro) */
+  --shadow-sm:  0 1px 3px rgba(43, 29, 20, .08);
+  --shadow-md:  0 4px 12px rgba(43, 29, 20, .10);
+  --shadow-lg:  0 8px 24px rgba(43, 29, 20, .14);
+  --shadow-pop: 0 8px 24px rgba(43, 29, 20, .20);
 
   /* Transiciones */
   --transition: 0.2s ease;
@@ -73,12 +138,19 @@
 html { font-size: 16px; }
 
 body {
-  font-family: var(--font-family);
+  font-family: var(--font-body);
   font-size:   var(--font-size-md);
   color:       var(--color-text);
   background:  var(--color-bg);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Títulos: cara de marca */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: 1.15;
+  letter-spacing: -.01em;
 }
 
 a { color: inherit; text-decoration: none; }
@@ -96,6 +168,12 @@ input, select, textarea {
 }
 
 ul, ol { list-style: none; }
+
+/* Foco visible para todo lo interactivo que no defina el suyo */
+:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
 
 /* ─── Clases utilitarias ────────────────────────────────────────── */
 
@@ -146,20 +224,20 @@ ul, ol { list-style: none; }
 
 .btn-primary {
   background: var(--color-primary);
-  color:      #fff;
+  color:      var(--color-on-primary);
 }
-.btn-primary:hover { background: var(--color-primary-dark); }
+.btn-primary:hover { background: var(--color-primary-hover); }
 
 .btn-ghost {
   background: transparent;
   color:      var(--color-text-muted);
   border:     1px solid var(--color-border);
 }
-.btn-ghost:hover { background: var(--color-bg); }
+.btn-ghost:hover { background: var(--color-surface-alt); }
 
 .btn-danger {
   background: var(--color-danger);
-  color:      #fff;
+  color:      var(--color-on-primary);
 }
 .btn-danger:hover { opacity: .88; }
 
@@ -169,7 +247,7 @@ ul, ol { list-style: none; }
 .input {
   width:         100%;
   padding:       10px var(--spacing-md);
-  border:        1px solid var(--color-border);
+  border:        1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
   font-size:     var(--font-size-sm);
   color:         var(--color-text);
@@ -189,10 +267,10 @@ ul, ol { list-style: none; }
   text-transform:  uppercase;
   letter-spacing:  .4px;
 }
-.badge-success  { background: var(--color-success-light); color: var(--color-success); }
-.badge-danger   { background: var(--color-danger-light);  color: var(--color-danger); }
-.badge-warning  { background: var(--color-warning-light); color: var(--color-warning); }
-.badge-info     { background: var(--color-info-light);    color: var(--color-info); }
+.badge-success  { background: var(--color-success-soft); color: var(--color-success); }
+.badge-danger   { background: var(--color-danger-soft);  color: var(--color-danger); }
+.badge-warning  { background: var(--color-warning-soft); color: var(--color-warning); }
+.badge-info     { background: var(--color-info-soft);    color: var(--color-info); }
 
 /* Barra de progreso */
 .progress-bar {
@@ -247,9 +325,10 @@ ul, ol { list-style: none; }
   border: 1px solid transparent;
   font-size: var(--font-size-xs);
 }
-.alert-error   { background: var(--color-danger-light);  color: var(--color-danger);  border-color: #fecaca; }
-.alert-success { background: var(--color-success-light); color: var(--color-success); border-color: #bbf7d0; }
-.alert-warning { background: var(--color-warning-light); color: var(--color-warning); border-color: #fde68a; }
+.alert-error   { background: var(--color-danger-soft);  color: var(--color-danger);  border-color: color-mix(in srgb, var(--color-danger) 30%, transparent); }
+.alert-success { background: var(--color-success-soft); color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 30%, transparent); }
+.alert-warning { background: var(--color-warning-soft); color: var(--color-warning); border-color: color-mix(in srgb, var(--color-warning) 30%, transparent); }
+.alert-info    { background: var(--color-info-soft);    color: var(--color-info);    border-color: color-mix(in srgb, var(--color-info) 30%, transparent); }
 
 /* ── Botones de acción icon-only (editar / eliminar) ─────────────────
    Vive en main.css para que los componentes con <style scoped> puedan
@@ -275,75 +354,29 @@ ul, ol { list-style: none; }
   height: 16px;
   display: block;
 }
-.btn-action:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.btn-action:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 1px; }
 
-/* Variante editar — acento azul muy suave en hover */
+/* Variante editar — acento terracota muy suave en hover */
 .btn-action--edit:hover {
-  background-color: #EFF6FF;
-  color: var(--color-primary);
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-hover);
 }
 
 /* Variante eliminar — acento rojo muy suave en hover */
 .btn-action--delete:hover {
-  background-color: #FEF2F2;
-  color: #DC2626;
+  background-color: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 
-/* ── Botón de ayuda contextual (❓) ───────────────────────────────────
-   Se usa en la cabecera de cada vista principal (Dashboard, Presupuesto,
-   Deudas, etc.) para abrir el AppHelpDrawer con el artículo de la guía
-   correspondiente al contexto. Comparte tamaño y radio con .btn-action
-   pero tiene borde sutil para diferenciar visualmente: las acciones de
-   fila son neutras, esta es un punto de entrada a docs y vale la pena
-   que se lea como "tiene un comportamiento propio". */
-.btn-help {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
+/* ── Toldo de la marca ───────────────────────────────────────────────
+   Franjas maíz/crema con festón semicircular (mismo motivo que el isotipo).
+   Decorativo: usar con aria-hidden. Alto total 32px; los 16px de abajo son
+   el festón. */
+.brand-awning {
   height: 32px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid var(--color-border);
-  background-color: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.95rem;
-  line-height: 1;
-  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  background:
+    radial-gradient(circle at 16px 0, var(--color-accent) 15.5px, transparent 16px) 0 16px / 64px 16px repeat-x,
+    radial-gradient(circle at 48px 0, var(--color-surface) 15.5px, transparent 16px) 0 16px / 64px 16px repeat-x,
+    linear-gradient(90deg, var(--color-accent) 50%, var(--color-surface) 50%) 0 0 / 64px 16px repeat-x;
+  filter: drop-shadow(0 1px 0 var(--color-border-strong));
 }
-.btn-help:hover {
-  background-color: rgba(59, 130, 246, 0.08);
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-.btn-help:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
-
-/* ── Botón de exportación a Excel (📥) ────────────────────────────────
-   CTA pequeño en la cabecera del Dashboard que dispara la generación
-   del reporte financiero anual. Verde para asociarse con "guardar /
-   confiable" y diferenciarse del azul-info de .btn-help. */
-.btn-export {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  background-color: #16A34A;
-  color: #FFFFFF;
-  font-family: 'Arial', sans-serif;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.15s ease, opacity 0.15s ease;
-  white-space: nowrap;
-}
-.btn-export:hover:not(:disabled)         { background-color: #15803D; }
-.btn-export:focus-visible                { outline: 2px solid #15803D; outline-offset: 1px; }
-.btn-export:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.alert-info    { background: #eff6ff;                    color: var(--color-primary); border-color: #bfdbfe; }

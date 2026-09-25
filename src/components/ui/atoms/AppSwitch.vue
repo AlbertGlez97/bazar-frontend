@@ -58,7 +58,7 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
   width:         2.75rem;               /* 44px */
   height:        1.5rem;                /* 24px */
   border-radius: var(--radius-full, 9999px);
-  background:    var(--color-border);
+  background:    var(--color-border-strong);
   flex-shrink:   0;
   transition:    background var(--transition);
 }
@@ -74,8 +74,8 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
   width:         1.25rem;               /* 20px */
   height:        1.25rem;
   border-radius: 50%;
-  background:    #fff;
-  box-shadow:    0 1px 3px rgba(0,0,0,.2);
+  background:    var(--color-surface);
+  box-shadow:    var(--shadow-sm);
   transition:    transform var(--transition);
 }
 .app-switch__input:checked ~ .app-switch__track .app-switch__thumb {

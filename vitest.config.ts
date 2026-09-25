@@ -16,6 +16,9 @@ export default defineConfig({
     environment: 'jsdom',
     // Archivo de configuración global (importaciones automáticas de matchers)
     setupFiles: ['./src/test/setup.ts'],
+    // Vitest reemplaza el CSS por un string vacío salvo que se incluya aquí;
+    // brand-tokens.test.ts necesita leer main.css como texto (`?raw`).
+    css: { include: [/assets\/main\.css/] },
     // Activa las APIs de test globales (describe, it, expect) sin necesidad de importarlas
     globals: true,
     // Resuelve archivos de tipos correctamente

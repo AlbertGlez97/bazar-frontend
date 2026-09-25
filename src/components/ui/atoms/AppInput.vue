@@ -105,7 +105,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
 .app-input {
   width:            100%;
   background:       var(--color-surface);
-  border:           1px solid var(--color-border);
+  border:           1px solid var(--color-border-strong);
   border-radius:    var(--radius-sm);
   color:            var(--color-text);
   font-family:      inherit;
@@ -118,9 +118,9 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
 }
 .app-input:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 22%, transparent);
 }
-.app-input::placeholder { color: var(--color-text-muted); opacity: .7; }
+.app-input::placeholder { color: var(--color-text-subtle); opacity: 1; }
 .app-input:disabled     { opacity: .5; cursor: not-allowed; }
 
 /* Tamaños — mobile mantiene 16px para evitar zoom, ajusta solo padding/height */
@@ -162,7 +162,7 @@ defineEmits<{ 'update:modelValue': [v: string] }>()
   border-color: var(--color-danger);
 }
 .app-input-wrap--error .app-input:focus {
-  box-shadow: 0 0 0 3px rgba(239,68,68,.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 22%, transparent);
 }
 .app-input__error {
   font-size: 0.8125rem;   /* 13px — mejor legibilidad mobile */
