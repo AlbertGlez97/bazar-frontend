@@ -39,7 +39,7 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 
 - [x] **A1.1 — Direct deps (`uuid`, `idb`, `fake-indexeddb` dev) + sales types + `sales.service` (POST/GET) + sale payload/id builder (UUID v7).**
 - [x] **A1.2 — Cart logic (`cart.store`): add/increment/decrement/remove, stock limits, exact total and change (money tests).**
-- [ ] **A1.3 — IndexedDB layer + offline queue + sync engine (states, headers per record, idempotent replay, mutex, triggers).**
+- [x] **A1.3 — IndexedDB layer + offline queue + sync engine (states, headers per record, idempotent replay, mutex, triggers).**
 - [ ] **A1.4 — Sale catalog loader/store (all pages, client search + category, IDB snapshot, local stock decrement).**
 - [ ] **A1.5 — Submit orchestration (`useSaleCheckout` or store action): online/offline/network-error/conflict/400 outcomes.**
 - [ ] **A2.1 — QR scanner (library choice recorded) + scan component.**
@@ -61,6 +61,12 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - RED: `cart.store.test.ts` failed to load (`Failed to resolve import "../cart.store"`; 0 tests ran).
 - GREEN: 39 tests passed (exact money: 3 x 19.99 = 5997, 10 + 20 = 30, price 0 with cash 0 chargeable, cash "100" / "100.5" / "100,50" / "" / "abc" / "-20" / "1e5", clamp to 2147483647, 500-line and 100000-quantity contract limits). `vue-tsc -b` and `eslint src/stores` clean.
 - Decisions: mutations return `{ ok: true } | { ok: false, reason }` with reasons `out-of-stock | already-in-cart | max-stock | min-quantity | not-in-cart | cart-full`. `decrement` at 1 keeps 1 (`min-quantity`); removal is explicit `remove`. `increment` of an `unica` is `max-stock`. `clear()` empties lines AND cash. Added `setQuantity`, `setCashMinor` and a `signature` computed (`cash|sorted productId:quantity`) that A1.5 uses to know when the cart changed and a new sale id is needed (idempotency compares cash + productId/quantity set, not prices).
+
+### A1.3
+
+- RED: `local-db.test.ts`, `sales-queue.test.ts` and `sales-sync.test.ts` failed to load (`Failed to resolve import`; 0 tests ran). After implementing local-db, queue and engine, the first run of `sales-sync.test.ts` showed 8 failures caused by a test-harness bug (`expected "spy" to be called 1 times, but got 0 times`: the helper returned the default mock instead of the overriding one); fixed in the test, not in the code. `sales-sync-scheduler.test.ts` was written before its implementation but I ran it only after implementing it; RED was then observed retroactively by moving the implementation away (suite failed to load, 0 tests ran). `sales-queue.store.test.ts` failed to load before the store existed.
+- GREEN: the five new suites pass (55 tests for local-db + queue + engine, 18 scheduler, 11 queue store = 84). Full suite at that point: 63 files / 777 tests passed. `vue-tsc -b` and `eslint src` clean.
+- Decisions: layout = `services/local-db.ts` (idb wrapper, snapshot helpers), `services/sales-queue.ts`, `services/sales-sync.ts` (pure engine `createSalesSync(deps)`), `services/sales-sync-scheduler.ts` (pure timers and backoff), `stores/sales-queue.store.ts` (Pinia wiring with the real deps). `enqueue` returns `{ ok: true, record, alreadyQueued } | { ok: false, reason: 'storage-unavailable' }`; the other queue functions throw `LocalDbUnavailableError`; the snapshot helpers return `false` / `null`. Concurrent `syncPendingSales()` calls share the in-flight run (one send per record); `navigator.locks.request(..., { ifAvailable: true })` guards several tabs (`locked-elsewhere` when another tab holds it, and a broken `locks` falls back to running). The engine refuses to send without a session token (`not-authenticated`) so a queued sale never triggers the 401 redirect. Backoff 30 s, 60 s, 120 s, 240 s, capped at 300 s; `offline` and `locked-elsewhere` do not count as failures. The timer only runs while there are pending records and the browser is online. There is no module-level `syncPendingSales()`: use `useSalesQueueStore().syncNow()` (or `createSalesSync` with injected deps).
 
 ## Next step
 
