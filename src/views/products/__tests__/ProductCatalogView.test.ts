@@ -147,6 +147,62 @@ describe('ProductCatalogView', () => {
     await vi.waitFor(() => expect(ProductsService.deactivateProduct).toHaveBeenCalledWith('p-1'))
   })
 
+  describe('editar un producto', () => {
+    async function openEditModal(wrapper: ReturnType<typeof mount>) {
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Editar'))
+      await wrapper.findAll('button').find((b) => b.text() === 'Editar')?.trigger('click')
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Guardar cambios'))
+    }
+    const modalIsOpen = (wrapper: ReturnType<typeof mount>) => wrapper.text().includes('Guardar cambios')
+    const toastMessages = async () => (await import('@/stores/toast.store')).useToastStore().toasts.map((t) => t.message)
+
+    it('no envía ninguna petición si el formulario no tiene cambios y cierra el modal sin avisos', async () => {
+      // El API responde 400 "At least one editable field is required" a un
+      // PATCH {}; por eso un guardado sin cambios no llama al servicio, cierra
+      // el modal en silencio y no muestra ni error ni un "actualizado" falso.
+      setMember('socio')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await openEditModal(wrapper)
+
+      await wrapper.find('form').trigger('submit')
+
+      await vi.waitFor(() => expect(modalIsOpen(wrapper)).toBe(false))
+      expect(ProductsService.updateProduct).not.toHaveBeenCalled()
+      expect(ProductsService.uploadProductImage).not.toHaveBeenCalled()
+      expect(await toastMessages()).toEqual([])
+    })
+
+    it('un cambio de imagen sin otros cambios sube la imagen sin enviar PATCH', async () => {
+      setMember('socio')
+      vi.mocked(ProductsService.uploadProductImage).mockResolvedValue(product({ image: '/uploads/x.png' }))
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await openEditModal(wrapper)
+
+      const file = new File(['x'], 'a.png', { type: 'image/png' })
+      const fileInput = wrapper.find('input[type="file"]').element as HTMLInputElement
+      Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+      await wrapper.find('input[type="file"]').trigger('change')
+      await wrapper.find('form').trigger('submit')
+
+      await vi.waitFor(() => expect(ProductsService.uploadProductImage).toHaveBeenCalledWith('p-1', file))
+      expect(ProductsService.updateProduct).not.toHaveBeenCalled()
+      await vi.waitFor(() => expect(modalIsOpen(wrapper)).toBe(false))
+      expect(await toastMessages()).toContain('Producto actualizado')
+    })
+
+    it('con un campo cambiado sí envía solo ese campo', async () => {
+      setMember('socio')
+      vi.mocked(ProductsService.updateProduct).mockResolvedValue(product({ name: 'Nuevo' }))
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await openEditModal(wrapper)
+
+      await wrapper.find('input[placeholder="Ej. Consola PS5 usada"]').setValue('Nuevo')
+      await wrapper.find('form').trigger('submit')
+
+      await vi.waitFor(() => expect(ProductsService.updateProduct).toHaveBeenCalledExactlyOnceWith('p-1', { name: 'Nuevo' }))
+    })
+  })
+
   it('el diálogo de desactivación dice dónde reactivar el producto', async () => {
     setMember('socio')
     const wrapper = mount(ProductCatalogView, mountOptions)

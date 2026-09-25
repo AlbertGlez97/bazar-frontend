@@ -108,11 +108,25 @@ function openEditModal(product: Product) {
 
 async function handleFormSubmit(payload: ProductFormSubmitPayload) {
   const { imageFile, ...rest } = payload
+
+  // Edición sin campos cambiados: PATCH /products/:id responde 400 "At least
+  // one editable field is required" a un body vacío. Decisión: no se envía la
+  // petición y, si tampoco hay imagen nueva, el modal se cierra en silencio
+  // (sin error ni un "actualizado" que no ocurrió). Una imagen nueva sí cuenta
+  // como cambio: se sube por su endpoint aparte, sin el PATCH.
+  const isEdit = !!editingProduct.value
+  if (isEdit && Object.keys(rest).length === 0 && !imageFile) {
+    isFormModalOpen.value = false
+    return
+  }
+
   isSubmitting.value = true
   try {
     let product: Product
     if (editingProduct.value) {
-      product = await store.updateProduct(editingProduct.value.id, rest)
+      product = Object.keys(rest).length === 0
+        ? editingProduct.value
+        : await store.updateProduct(editingProduct.value.id, rest)
     } else {
       product = await store.createProduct(rest as Parameters<typeof store.createProduct>[0])
     }
