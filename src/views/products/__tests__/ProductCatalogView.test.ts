@@ -146,4 +146,111 @@ describe('ProductCatalogView', () => {
     await confirmButton?.trigger('click')
     await vi.waitFor(() => expect(ProductsService.deactivateProduct).toHaveBeenCalledWith('p-1'))
   })
+
+  it('el diálogo de desactivación dice dónde reactivar el producto', async () => {
+    setMember('socio')
+    const wrapper = mount(ProductCatalogView, mountOptions)
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Desactivar')?.trigger('click')
+    expect(wrapper.text()).toContain('Mostrar inactivos')
+  })
+
+  describe('productos inactivos (solo socios)', () => {
+    const inactive = () => product({ id: 'p-off', name: 'Apagado', active: false })
+
+    it('muestra el interruptor "Mostrar inactivos" a socios', async () => {
+      setMember('socio')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      expect(wrapper.text()).toContain('Mostrar inactivos')
+    })
+
+    it('oculta el interruptor "Mostrar inactivos" a colaboradores', async () => {
+      setMember('colaborador')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      expect(wrapper.text()).not.toContain('Mostrar inactivos')
+    })
+
+    it('al activar el interruptor recarga con includeInactive y vuelve a la página 1', async () => {
+      setMember('socio')
+      vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [product()], total: 100, page: 3, limit: 20 })
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Mostrar inactivos'))
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+
+      await wrapper.find('input[type="checkbox"]').setValue(true)
+
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, includeInactive: true }),
+      ))
+    })
+
+    it('un colaborador nunca pide includeInactive, aunque el store lo traiga activado', async () => {
+      setMember('colaborador')
+      const { useProductsStore } = await import('@/stores/products.store')
+      useProductsStore().includeInactive = true
+      mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      expect(vi.mocked(ProductsService.listProducts).mock.calls[0][0]?.includeInactive).toBeUndefined()
+    })
+
+    it('un producto inactivo se ve como inactivo y ofrece "Reactivar" al socio', async () => {
+      setMember('socio')
+      vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [inactive()], total: 1, page: 1, limit: 20 })
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Apagado'))
+
+      expect(wrapper.text()).toContain('Inactivo')
+      expect(wrapper.findAll('button').some((b) => b.text() === 'Reactivar')).toBe(true)
+      expect(wrapper.findAll('button').some((b) => b.text() === 'Desactivar')).toBe(false)
+    })
+
+    it('no ofrece "Reactivar" en productos activos', async () => {
+      setMember('socio')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+      expect(wrapper.findAll('button').some((b) => b.text() === 'Reactivar')).toBe(false)
+    })
+
+    it('un colaborador no ve "Reactivar" ni siquiera si le llega un producto inactivo', async () => {
+      setMember('colaborador')
+      vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [inactive()], total: 1, page: 1, limit: 20 })
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Apagado'))
+      expect(wrapper.text()).not.toContain('Reactivar')
+    })
+
+    it('reactiva llamando al endpoint y refresca el listado con el producto activo', async () => {
+      setMember('socio')
+      vi.mocked(ProductsService.listProducts).mockResolvedValueOnce({ items: [inactive()], total: 1, page: 1, limit: 20 })
+      vi.mocked(ProductsService.reactivateProduct).mockResolvedValue(product({ id: 'p-off', name: 'Apagado' }))
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Reactivar'))
+
+      vi.mocked(ProductsService.listProducts).mockResolvedValue({
+        items: [product({ id: 'p-off', name: 'Apagado' })], total: 1, page: 1, limit: 20,
+      })
+      await wrapper.findAll('button').find((b) => b.text() === 'Reactivar')?.trigger('click')
+
+      await vi.waitFor(() => expect(ProductsService.reactivateProduct).toHaveBeenCalledWith('p-off'))
+      await vi.waitFor(() => expect(wrapper.text()).not.toContain('Inactivo'))
+      expect(ProductsService.listProducts).toHaveBeenCalledTimes(2)
+    })
+
+    it('si la reactivación falla avisa con un toast de error y no se rompe', async () => {
+      setMember('socio')
+      vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [inactive()], total: 1, page: 1, limit: 20 })
+      vi.mocked(ProductsService.reactivateProduct).mockRejectedValue(new Error('boom'))
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Reactivar'))
+
+      await wrapper.findAll('button').find((b) => b.text() === 'Reactivar')?.trigger('click')
+
+      const { useToastStore } = await import('@/stores/toast.store')
+      await vi.waitFor(() => expect(useToastStore().toasts.map((t) => t.message))
+        .toContain('No se pudo reactivar el producto'))
+    })
+  })
 })

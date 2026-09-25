@@ -79,6 +79,21 @@ describe('ProductCatalogGrid', () => {
     expect(wrapper.emitted('update:page')?.[0]).toEqual([2])
   })
 
+  it('no muestra el interruptor "Mostrar inactivos" por defecto', () => {
+    const wrapper = mount(ProductCatalogGrid, { props: { products: [], page: 1, totalPages: 1 } })
+    expect(wrapper.text()).not.toContain('Mostrar inactivos')
+  })
+
+  it('muestra el interruptor "Mostrar inactivos" y emite update:includeInactive al activarlo', async () => {
+    const wrapper = mount(ProductCatalogGrid, {
+      props: { products: [], page: 1, totalPages: 1, showInactiveToggle: true },
+    })
+    expect(wrapper.text()).toContain('Mostrar inactivos')
+
+    await wrapper.find('input[type="checkbox"]').setValue(true)
+    expect(wrapper.emitted('update:includeInactive')?.[0]).toEqual([true])
+  })
+
   it('reenvía edit/deactivate/reactivate desde ProductCard', async () => {
     const p = product({ id: 'p-9' })
     const wrapper = mount(ProductCatalogGrid, {

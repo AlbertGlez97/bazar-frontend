@@ -22,7 +22,10 @@
       :total-pages="store.totalPages"
       :loading="store.loading"
       :show-actions="isSocio"
+      :show-inactive-toggle="isSocio"
+      :include-inactive="store.includeInactive"
       @search="handleSearch"
+      @update:include-inactive="handleIncludeInactive"
       @update:page="handlePageChange"
       @edit="openEditModal"
       @deactivate="openDeactivateConfirm"
@@ -44,7 +47,7 @@
     >
       ¿Seguro que quieres desactivar
       <strong>{{ productPendingDeactivation?.name }}</strong>? Podrás
-      reactivarlo después desde el catálogo.
+      reactivarlo después desde el catálogo, activando «Mostrar inactivos».
     </AppModal>
   </div>
 </template>
@@ -74,8 +77,16 @@ const isConfirmModalOpen = ref(false)
 const productPendingDeactivation = ref<Product | null>(null)
 
 onMounted(() => {
-  store.fetchProducts().catch(() => toast.error('No se pudo cargar el catálogo de productos'))
+  // El store sobrevive al cierre de sesión: un colaborador que entra después
+  // de un socio no debe heredar "Mostrar inactivos" (no tendría cómo apagarlo).
+  const includeInactive = isSocio.value && store.includeInactive
+  store.fetchProducts({ includeInactive }).catch(() => toast.error('No se pudo cargar el catálogo de productos'))
 })
+
+// Cambiar el filtro invalida la paginación actual: se vuelve a la página 1.
+function handleIncludeInactive(value: boolean) {
+  store.fetchProducts({ page: 1, includeInactive: value }).catch(() => toast.error('No se pudo cargar el catálogo de productos'))
+}
 
 function handleSearch(term: string) {
   store.fetchProducts({ page: 1, search: term }).catch(() => toast.error('No se pudo buscar productos'))

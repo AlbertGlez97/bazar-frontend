@@ -7,6 +7,14 @@
         placeholder="Buscar productos..."
         @update:model-value="handleSearchInput"
       />
+      <!-- Solo socios: el backend ignora includeInactive para colaboradores -->
+      <AppSwitch
+        v-if="showInactiveToggle"
+        :model-value="includeInactive"
+        @update:model-value="$emit('update:includeInactive', $event)"
+      >
+        Mostrar inactivos
+      </AppSwitch>
     </div>
 
     <p
@@ -49,6 +57,7 @@
 import { ref } from 'vue'
 import type { Product } from '@/types/product.types'
 import AppInput from '../atoms/AppInput.vue'
+import AppSwitch from '../atoms/AppSwitch.vue'
 import ProductCard from '../molecules/ProductCard.vue'
 import AppPagination from '../molecules/AppPagination.vue'
 
@@ -58,17 +67,23 @@ const props = withDefaults(defineProps<{
   totalPages: number
   loading?: boolean
   showActions?: boolean
+  /** Muestra el interruptor "Mostrar inactivos" (solo socios) */
+  showInactiveToggle?: boolean
+  includeInactive?: boolean
   /** ms de debounce antes de emitir "search" — evita disparar una petición por cada tecla */
   debounceMs?: number
 }>(), {
   loading: false,
   showActions: false,
+  showInactiveToggle: false,
+  includeInactive: false,
   debounceMs: 350,
 })
 
 const emit = defineEmits<{
   search: [term: string]
   'update:page': [page: number]
+  'update:includeInactive': [value: boolean]
   edit: [product: Product]
   deactivate: [product: Product]
   reactivate: [product: Product]
@@ -93,6 +108,13 @@ defineExpose({ handleSearchInput })
   gap: var(--spacing-lg);
 }
 .product-catalog-grid__toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+.product-catalog-grid__toolbar > :first-child {
+  flex: 1 1 16rem;
   max-width: 24rem;
 }
 .product-catalog-grid__status {
