@@ -25,7 +25,7 @@
         type="success"
         title="Solicitud enviada"
       >
-        Tu solicitud fue enviada. Te notificaremos por correo cuando sea aprobada.
+        Tu solicitud fue enviada. Si es aprobada, recibirás tus credenciales de acceso.
       </AppAlert>
     </div>
   </section>

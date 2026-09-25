@@ -86,7 +86,7 @@ async function handleDeviceSubmit(payload: DeviceIdentifyPayload) {
   } catch (cause) {
     const status = (cause as { response?: { status?: number } } | null)?.response?.status
     deviceError.value = status === 403
-      ? 'Este dispositivo no está autorizado. Pide a un socio que lo configure.'
+      ? 'Este dispositivo no está autorizado. Contacta a soporte.'
       : 'No se pudo verificar el dispositivo, intenta de nuevo'
   } finally {
     deviceLoading.value = false

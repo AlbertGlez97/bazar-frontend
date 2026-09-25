@@ -45,7 +45,9 @@ describe('RegisterBusinessView', () => {
     expect(BusinessRegistrationService.register).toHaveBeenCalledExactlyOnceWith(payload)
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.text()).toContain('Solicitud enviada')
-    expect(wrapper.text()).toContain('Te notificaremos por correo cuando sea aprobada')
+    expect(wrapper.text()).toContain('Si es aprobada, recibirás tus credenciales de acceso.')
+    // No se promete aviso alguno: el rechazo no notifica a nadie.
+    expect(wrapper.text()).not.toContain('notificaremos')
   })
 
   it('si el servicio falla, mantiene el formulario y notifica por toast', async () => {

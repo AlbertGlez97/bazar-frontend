@@ -69,7 +69,9 @@ describe('SelectContextView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('no está autorizado')
+    expect(wrapper.text()).toContain('Este dispositivo no está autorizado. Contacta a soporte.')
+    // No promete una vía que no existe (ningún socio puede autorizar dispositivos).
+    expect(wrapper.text()).not.toContain('socio que lo configure')
     expect(MembersService.list).not.toHaveBeenCalled()
     expect(useSessionStore().isDeviceIdentified).toBe(false)
   })

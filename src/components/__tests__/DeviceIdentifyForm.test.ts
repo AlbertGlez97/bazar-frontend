@@ -35,10 +35,10 @@ describe('DeviceIdentifyForm', () => {
 
   it('muestra el mensaje de error (ej. 403) que le pasa el padre', () => {
     const wrapper = mount(DeviceIdentifyForm, {
-      props: { error: 'Este dispositivo no está autorizado. Contacta a un socio.' },
+      props: { error: 'Este dispositivo no está autorizado. Contacta a soporte.' },
     })
 
-    expect(wrapper.text()).toContain('Este dispositivo no está autorizado. Contacta a un socio.')
+    expect(wrapper.text()).toContain('Este dispositivo no está autorizado. Contacta a soporte.')
   })
 
   it('no muestra ninguna alerta cuando no hay error', () => {
