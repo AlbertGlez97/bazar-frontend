@@ -9,12 +9,20 @@ import AppLayout from '@/layouts/AppLayout.vue'
 
 // Selector de modo dentro del layout: el switch y el indicador usan los
 // componentes reales; solo se stubean los ajenos al tema (avatar, instalar).
+vi.mock('@/stores/sales-queue.store', () => ({
+  useSalesQueueStore: () => ({
+    pendingCount: 0, needsReviewCount: 0, needsReviewRecords: [], isSyncing: false,
+    start: vi.fn(), stop: vi.fn(), dismissReview: vi.fn(),
+  }),
+}))
+
 vi.mock('@/components', async () => ({
   AppButton:        { template: '<button><slot /></button>' },
   AppAvatar:        { template: '<div />' },
   InstallAppButton: { template: '<div />' },
   AppBadge:         (await import('@/components/ui/atoms/AppBadge.vue')).default,
   UiModeSwitch:     (await import('@/components/ui/organisms/UiModeSwitch.vue')).default,
+  SyncStatusIndicator: (await import('@/components/ui/organisms/SyncStatusIndicator.vue')).default,
 }))
 
 let device: MockDevice | null = null

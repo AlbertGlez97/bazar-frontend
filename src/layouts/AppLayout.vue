@@ -118,6 +118,14 @@
           >
             {{ uiMode.isVenta ? 'Modo Venta' : 'Modo Gestión' }}
           </AppBadge>
+          <!-- Cola de ventas offline: calmada, y sin nada que mostrar cuando no hay pendientes -->
+          <SyncStatusIndicator
+            :pending-count="salesQueue.pendingCount"
+            :needs-review-count="salesQueue.needsReviewCount"
+            :is-syncing="salesQueue.isSyncing"
+            :records="salesQueue.needsReviewRecords"
+            @dismiss="dismissReview"
+          />
         </div>
         <span class="app-header__date">{{ formattedDate }}</span>
       </header>
@@ -131,18 +139,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
-import { AppBadge, AppButton, AppAvatar, InstallAppButton, UiModeSwitch } from '@/components'
+import { useSessionStore } from '@/stores/session.store'
+import { useSalesQueueStore } from '@/stores/sales-queue.store'
+import { AppBadge, AppButton, AppAvatar, InstallAppButton, UiModeSwitch, SyncStatusIndicator } from '@/components'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 import { APP_NAME } from '@/config/app'
+import { getNavItems } from './nav-items'
 
 const authStore = useAuthStore()
 // El modo se inicializa al crearse el store (antes de que la vista hija
 // renderice): sugerencia del dispositivo la primera vez, preferencia guardada después.
 const uiMode    = useUiModeStore()
+const session   = useSessionStore()
+const salesQueue = useSalesQueueStore()
 const router    = useRouter()
 const route     = useRoute()
 
@@ -156,19 +169,40 @@ const startsOnPhone = typeof window !== 'undefined'
 const sidebarCollapsed = ref(startsOnPhone)
 function toggleSidebar() { sidebarCollapsed.value = !sidebarCollapsed.value }
 
-// Navegación principal
+// Navegación principal, derivada del modo (ver ./nav-items.ts: ahí se agregan
+// ítems nuevos). "Vender" siempre está; su lugar cambia con el modo.
 // `exact`: '/app' es prefijo de todas las rutas operativas y, por cómo
 // vue-router resuelve el hijo con path '', quedaría resaltado en cualquiera
 // de ellas; "Inicio" solo se marca activo en la ruta exacta.
-const navItems = [
-  { to: '/app', label: 'Inicio', icon: '🏠', exact: true },
-  { to: '/app/productos', label: 'Productos', icon: '📦', exact: false },
-]
+const navItems = computed(() =>
+  getNavItems(uiMode.currentMode, { isSocio: session.member?.role === 'socio' }),
+)
+
+// La cola de ventas offline se sincroniza mientras el shell autenticado está
+// montado: al abrir la app, al volver la conexión y cada tanto mientras haya
+// pendientes. Si algo falla al arrancar, el shell sigue funcionando.
+onMounted(async () => {
+  try {
+    await salesQueue.start()
+  } catch {
+    // Sin cola local (por ejemplo IndexedDB no disponible) las ventas siguen en línea.
+  }
+})
+onUnmounted(() => salesQueue.stop())
+
+async function dismissReview(id: string) {
+  try {
+    await salesQueue.dismissReview(id)
+  } catch {
+    // Si no se pudo descartar, el registro sigue en la lista y se puede intentar de nuevo.
+  }
+}
 
 // Título dinámico según la ruta actual
 const routeTitles: Record<string, string> = {
   AppHome: 'Inicio',
   ProductCatalog: 'Productos',
+  Sale: 'Vender',
 }
 const currentRouteTitle = computed(
   () => routeTitles[route.name as string] ?? APP_NAME
@@ -203,6 +237,11 @@ function handleLogout() {
 .app-layout--collapsed {
   grid-template-columns: var(--sidebar-width-collapsed) 1fr;
 }
+
+/* Ancho que ocupa la barra: lo leen las vistas que fijan barras propias al borde
+   de la pantalla (la barra de cobro de la venta en celular). */
+.app-layout { --app-sidebar-offset: var(--sidebar-width); }
+.app-layout--collapsed { --app-sidebar-offset: var(--sidebar-width-collapsed); }
 
 /* Colapsado no cabe el isotipo y el botón en una fila: se apilan */
 .app-layout--collapsed .sidebar__header {

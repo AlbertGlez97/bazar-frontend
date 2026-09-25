@@ -118,4 +118,15 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     expectAtLeast44('SyncStatusIndicator.vue', '.sync-status__dismiss', ['min-width', 'min-height'])
     expectAtLeast44('SyncStatusIndicator.vue', '.sync-status .sync-status__close', ['min-height'])
   })
+
+  it('pantallas de resultado: el botón principal y el secundario miden 56 px y el detalle 44', () => {
+    expectAtLeast44('SaleResult.vue', '.sale-result .sale-result__primary', ['min-height'])
+    expectAtLeast44('SaleResult.vue', '.sale-result .sale-result__secondary', ['min-height'])
+    expectAtLeast44('SaleResult.vue', '.sale-result__detail summary', ['min-height'])
+  })
+
+  it('pantalla de venta (celular): el botón de la barra mide 56 px y "Seguir agregando" 44', () => {
+    expectAtLeast44('SaleView.vue', '.sale-view .sale-view__bar-button', ['min-height'])
+    expectAtLeast44('SaleView.vue', '.sale-view__close', ['min-height'])
+  })
 })

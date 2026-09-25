@@ -3,6 +3,7 @@ import {
   VOICE,
   cameraErrorMessage,
   catalogSnapshotMessage,
+  saleCartRefusalMessage,
   saleChargeHint,
   salesSyncingMessage,
   isNetworkError,
@@ -210,5 +211,70 @@ describe('salesSyncingMessage', () => {
 
   it('con cero no hay mensaje', () => {
     expect(salesSyncingMessage(0)).toBe('')
+  })
+})
+
+describe('saleCartRefusalMessage (avisos al tocar un producto)', () => {
+  const reasons = ['out-of-stock', 'already-in-cart', 'max-stock', 'min-quantity', 'not-in-cart', 'cart-full'] as const
+
+  it('cada motivo tiene un mensaje propio en español, sin jerga ni exclamaciones', () => {
+    const seen = new Set<string>()
+    for (const reason of reasons) {
+      const text = saleCartRefusalMessage(reason, 'Café')
+      expect(text, reason).toMatch(/[.]$/)
+      expect(text, reason).not.toMatch(/out-of-stock|max-stock|error|inválid|!/i)
+      seen.add(text)
+    }
+    expect(seen.size).toBe(reasons.length)
+  })
+
+  it('nombra el producto cuando se sabe', () => {
+    expect(saleCartRefusalMessage('out-of-stock', 'Café de olla')).toBe('Café de olla está agotado.')
+    expect(saleCartRefusalMessage('already-in-cart', 'Radio')).toBe('Radio es una pieza única y ya está en tu venta.')
+    expect(saleCartRefusalMessage('max-stock', 'Pan')).toBe('Ya no hay más piezas de Pan.')
+  })
+
+  it('sin nombre usa una frase genérica que también se entiende', () => {
+    expect(saleCartRefusalMessage('out-of-stock')).toBe('Ese producto está agotado.')
+    expect(saleCartRefusalMessage('already-in-cart')).toBe('Esa pieza única ya está en tu venta.')
+    expect(saleCartRefusalMessage('max-stock')).toBe('Ya no hay más piezas de ese producto.')
+  })
+
+  it('bajar de uno explica cómo quitar el producto', () => {
+    expect(saleCartRefusalMessage('min-quantity')).toContain('Quitar')
+  })
+
+  it('un motivo desconocido no rompe', () => {
+    expect(saleCartRefusalMessage('otro' as never)).toBe('No pudimos hacer ese cambio. Intenta de nuevo.')
+  })
+})
+
+describe('copy de las pantallas de resultado (VOICE.saleResult)', () => {
+  it('el éxito confirma con un hecho, sin "¡Éxito!"', () => {
+    expect(VOICE.saleResult.successTitle).toBe('Venta registrada')
+    expect(VOICE.saleResult.successTitle).not.toMatch(/éxito|!/i)
+  })
+
+  it('guardada sin señal se siente como éxito: promete que se envía sola', () => {
+    expect(VOICE.saleResult.savedTitle).toBe('Listo, ya quedó')
+    expect(VOICE.saleResult.savedBody).toMatch(/guardada/)
+    expect(VOICE.saleResult.savedBody).toMatch(/sola/)
+    expect(VOICE.saleResult.savedBody + VOICE.saleResult.savedTitle).not.toMatch(/error|falló|no se pudo/i)
+  })
+
+  it('el conflicto NO suena a venta cobrada y dice qué hacer con el producto y el dinero', () => {
+    expect(VOICE.saleResult.conflictTitle).not.toMatch(/registrada|anotada|cobrada|listo/i)
+    expect(VOICE.saleResult.conflictAction).toMatch(/no entregues el producto/i)
+    expect(VOICE.saleResult.conflictAction).toMatch(/devuelve el dinero/i)
+    expect(VOICE.saleResult.conflictAction).toMatch(/socio/i)
+    expect(VOICE.saleResult.conflictAction).not.toMatch(/tu culpa|te equivocaste/i)
+  })
+
+  it('cada pantalla tiene un botón principal con verbo', () => {
+    expect(VOICE.saleResult.newSale).toBe('Nueva venta')
+    expect(VOICE.saleResult.newSaleAfterConflict).toBe('Entendido, nueva venta')
+    expect(VOICE.saleResult.back).toBe('Regresar a la venta')
+    expect(VOICE.saleResult.login).toBe('Iniciar sesión')
+    expect(VOICE.saleResult.retry).toBe('Intentar de nuevo')
   })
 })

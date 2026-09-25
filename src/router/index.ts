@@ -69,6 +69,14 @@ const routes: RouteRecordRaw[] = [
         name: 'ProductCatalog',
         component: () => import('@/views/products/ProductCatalogView.vue'),
       },
+      {
+        // Pantalla de venta (catálogo + carrito + cobro, con cola offline).
+        // Alcanzable en CUALQUIER modo de interfaz: quien vende no debe toparse
+        // con redirecciones ni callejones sin salida por estar en Modo Gestión.
+        path: 'venta',
+        name: 'Sale',
+        component: () => import('@/views/sales/SaleView.vue'),
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: sessionDestination },

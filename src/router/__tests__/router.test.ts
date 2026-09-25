@@ -53,6 +53,28 @@ describe('session routing', () => {
     restoreAuthSession()
     await router.push('/app'); expect(router.currentRoute.value.name).toBe('SelectContext')
   })
+  // Pantalla de venta: alcanzable en cualquier modo (no hay redirecciones sin salida).
+  it('allows an authenticated visitor with full context to reach the sale screen /app/venta', async () => {
+    restoreFullSession()
+    await router.push('/app/venta'); expect(router.currentRoute.value.name).toBe('Sale')
+    expect(router.currentRoute.value.path).toBe('/app/venta')
+  })
+  it('sends a logged-out visitor at /app/venta to login', async () => {
+    await router.push('/app/venta'); expect(router.currentRoute.value.name).toBe('Login')
+  })
+  it('sends an authenticated visitor without device/member from /app/venta to /seleccionar-contexto', async () => {
+    restoreAuthSession()
+    await router.push('/app/venta'); expect(router.currentRoute.value.name).toBe('SelectContext')
+  })
+  it('the sale route is a child of the /app layout and is lazy-loaded', () => {
+    // La meta se hereda del padre '/app' (auth + contexto): se lee ya resuelta.
+    const resolved = router.resolve('/app/venta')
+    expect(resolved.meta.requiresAuth).toBe(true)
+    expect(resolved.meta.requiresContext).toBe(true)
+    expect(resolved.matched.map((r) => r.path)).toEqual(['/app', '/app/venta'])
+    const route = router.getRoutes().find((r) => r.name === 'Sale')!
+    expect(route.components?.default).toBeTypeOf('function')
+  })
   it('allows an authenticated visitor with full context to reach /app', async () => {
     restoreFullSession()
     await router.push('/app'); expect(router.currentRoute.value.name).toBe('AppHome')

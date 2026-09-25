@@ -129,11 +129,11 @@ function onInput(event: Event) {
 .cash-input__control:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Atajos: fila que envuelve, cada uno de al menos 44 px */
-.cash-input__chips { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
+.cash-input__chips { display: flex; flex-wrap: wrap; gap: var(--spacing-xs) var(--spacing-sm); }
 .cash-input__chip {
   min-width: 44px;
   min-height: 44px;
-  padding: 0 var(--spacing-md);
+  padding: 0 var(--spacing-sm);
   font-family: inherit;
   font-size: var(--font-size-md);
   font-weight: 700;

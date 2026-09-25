@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { h } from 'vue'
@@ -9,6 +9,14 @@ import AppLayout from '@/layouts/AppLayout.vue'
 // A diferencia de AppLayout.test.ts (que mockea vue-router), aquí se usa un
 // router real: el estado activo de los enlaces depende de cómo vue-router
 // compara rutas, y un mock no puede detectar que "Inicio" siga resaltado.
+// La cola de ventas (IndexedDB, red) no es asunto de estas pruebas.
+vi.mock('@/stores/sales-queue.store', () => ({
+  useSalesQueueStore: () => ({
+    pendingCount: 0, needsReviewCount: 0, needsReviewRecords: [], isSyncing: false,
+    start: vi.fn(), stop: vi.fn(), dismissReview: vi.fn(),
+  }),
+}))
+
 vi.mock('@/components', async () => ({
   AppButton:        { template: '<button><slot /></button>' },
   AppAvatar:        { template: '<div />' },
@@ -16,7 +24,10 @@ vi.mock('@/components', async () => ({
   // Reales: el selector de modo y su indicador no dependen de nada externo
   AppBadge:         (await import('@/components/ui/atoms/AppBadge.vue')).default,
   UiModeSwitch:     (await import('@/components/ui/organisms/UiModeSwitch.vue')).default,
+  SyncStatusIndicator: (await import('@/components/ui/organisms/SyncStatusIndicator.vue')).default,
 }))
+
+beforeEach(() => localStorage.clear())
 
 async function mountAt(path: string) {
   const stub = { template: '<div />' }
@@ -32,6 +43,7 @@ async function mountAt(path: string) {
         children: [
           { path: '', name: 'AppHome', component: stub },
           { path: 'productos', name: 'ProductCatalog', component: stub },
+          { path: 'venta', name: 'Sale', component: stub },
         ],
       },
     ],
@@ -44,11 +56,61 @@ async function mountAt(path: string) {
 const activeLabels = (wrapper: Awaited<ReturnType<typeof mountAt>>) =>
   wrapper.findAll('.sidebar__link--active').map((l) => l.text())
 
+const linkLabels = (wrapper: Awaited<ReturnType<typeof mountAt>>) =>
+  wrapper.findAll('a.sidebar__link').map((l) => `${l.get('.sidebar__link-icon').text()} ${l.get('.sidebar__link-label').text()}`)
+
 describe('AppLayout navegación', () => {
+  it('Modo Gestión: Inicio, Productos y después Vender', async () => {
+    localStorage.setItem('la-marchanta-ui-mode', 'gestion')
+    const wrapper = await mountAt('/app')
+    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '🛒 Vender'])
+  })
+
+  it('Modo Venta: Vender va primero', async () => {
+    localStorage.setItem('la-marchanta-ui-mode', 'venta')
+    const wrapper = await mountAt('/app')
+    expect(linkLabels(wrapper)).toEqual(['🛒 Vender', '🏠 Inicio', '📦 Productos'])
+  })
+
+  it('Vender siempre está a la vista, en cualquier modo', async () => {
+    for (const mode of ['venta', 'gestion']) {
+      localStorage.setItem('la-marchanta-ui-mode', mode)
+      const wrapper = await mountAt('/app')
+      expect(linkLabels(wrapper).some((label) => label.includes('Vender'))).toBe(true)
+    }
+  })
+
+  it('cambiar de modo reordena el menú en el momento', async () => {
+    localStorage.setItem('la-marchanta-ui-mode', 'gestion')
+    const wrapper = await mountAt('/app')
+    await wrapper.get('.sidebar__mode button[aria-label="Modo Venta"]').trigger('click')
+    expect(linkLabels(wrapper)[0]).toContain('Vender')
+  })
+
+  it('en /app/venta solo "Vender" está activo, no "Inicio"', async () => {
+    const wrapper = await mountAt('/app/venta')
+    expect(activeLabels(wrapper)).toHaveLength(1)
+    expect(activeLabels(wrapper)[0]).toContain('Vender')
+  })
+
+  it('el título de la barra superior en /app/venta es "Vender"', async () => {
+    const wrapper = await mountAt('/app/venta')
+    expect(wrapper.get('.app-header__title').text()).toBe('Vender')
+  })
+
+  it('Modo Venta y Modo Gestión no ofrecen aún un ítem de Reportes (lo agrega otro cambio)', async () => {
+    for (const mode of ['venta', 'gestion']) {
+      localStorage.setItem('la-marchanta-ui-mode', mode)
+      const wrapper = await mountAt('/app')
+      expect(wrapper.find('.sidebar__nav').text()).not.toMatch(/Reportes/)
+    }
+  })
+
   it('muestra los enlaces a Inicio y Productos con sus rutas', async () => {
     const wrapper = await mountAt('/app')
     const links = wrapper.findAll('a.sidebar__link')
-    expect(links).toHaveLength(2)
+    expect(links).toHaveLength(3)
+    expect(links.find((l) => l.text().includes('Vender'))?.attributes('href')).toBe('/app/venta')
     expect(links.find((l) => l.text().includes('Productos'))?.attributes('href')).toBe('/app/productos')
     expect(links.find((l) => l.text().includes('Inicio'))?.attributes('href')).toBe('/app')
   })

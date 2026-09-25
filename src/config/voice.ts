@@ -34,7 +34,31 @@ export const VOICE = {
     syncPayloadConflict: 'Esta venta ya se había guardado con otros datos y no pudimos volver a enviarla. Un socio puede revisarla.',
     syncRejectedGeneric: 'El servidor no pudo registrar esta venta. Un socio puede revisarla.',
     /** 201/200 `rechazada_por_conflicto`: perdió la carrera por la última pieza. */
+    /** No se intentó cobrar: falta algo (la UI apaga el botón, esto es la red de seguridad). */
+    blockedEmptyCart: 'La venta está vacía. Agrega un producto para poder cobrar.',
+    blockedMissingContext: 'Falta saber quién vende o en qué dispositivo. Vuelve a elegirlo e intenta de nuevo.',
     conflict: 'Otra venta se llevó la última pieza de un producto justo antes que esta, así que no se cobró. Un socio la revisará en incidencias.',
+  },
+  /** Pantallas de resultado del cobro (cada una con un solo botón principal). */
+  saleResult: {
+    successTitle: 'Venta registrada',
+    totalLabel: 'Total',
+    changeLabel: 'Cambio a entregar',
+    noChange: 'Sin cambio',
+    newSale: 'Nueva venta',
+    savedTitle: 'Listo, ya quedó',
+    savedBody: 'Sin señal, pero tu venta está guardada y se manda sola cuando haya internet.',
+    conflictTitle: 'Esta venta no se pudo cobrar',
+    conflictAction: 'Si ya cobraste, devuelve el dinero y no entregues el producto. Avisa a un socio.',
+    conflictDetail: 'Detalle para el socio',
+    newSaleAfterConflict: 'Entendido, nueva venta',
+    rejectedTitle: 'No pudimos registrar la venta',
+    back: 'Regresar a la venta',
+    authNeededTitle: 'Tu venta está guardada',
+    login: 'Iniciar sesión',
+    failedToSaveTitle: 'No se guardó la venta',
+    retry: 'Intentar de nuevo',
+    blockedTitle: 'Todavía no se puede cobrar',
   },
   /** Lector de QR: textos fijos de la pantalla; las fallas de cámara salen de `cameraErrorMessage`. */
   scan: {
@@ -176,4 +200,34 @@ export function catalogSnapshotMessage(savedAtIso: string, now: Date = new Date(
 export function salesSyncingMessage(count: number): string {
   if (count <= 0) return ''
   return count === 1 ? 'Enviando 1 venta…' : `Enviando ${count} ventas…`
+}
+
+/** Motivos por los que el carrito rechaza un cambio (espejo de `CartRefusal` en cart.store). */
+export type SaleCartRefusal =
+  | 'out-of-stock'
+  | 'already-in-cart'
+  | 'max-stock'
+  | 'min-quantity'
+  | 'not-in-cart'
+  | 'cart-full'
+
+/** Aviso corto y amable cuando el carrito no acepta el cambio; nunca un texto técnico. */
+export function saleCartRefusalMessage(reason: SaleCartRefusal, productName?: string): string {
+  const name = productName?.trim()
+  switch (reason) {
+    case 'out-of-stock':
+      return name ? `${name} está agotado.` : 'Ese producto está agotado.'
+    case 'already-in-cart':
+      return name ? `${name} es una pieza única y ya está en tu venta.` : 'Esa pieza única ya está en tu venta.'
+    case 'max-stock':
+      return name ? `Ya no hay más piezas de ${name}.` : 'Ya no hay más piezas de ese producto.'
+    case 'min-quantity':
+      return 'Para quitar el producto toca «Quitar».'
+    case 'not-in-cart':
+      return 'Ese producto ya no está en tu venta.'
+    case 'cart-full':
+      return 'Tu venta ya tiene demasiados productos. Cóbrala y empieza otra.'
+    default:
+      return 'No pudimos hacer ese cambio. Intenta de nuevo.'
+  }
 }

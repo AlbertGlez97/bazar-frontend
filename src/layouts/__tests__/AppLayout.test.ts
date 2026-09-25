@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { mount, shallowMount } from '@vue/test-utils'
 import { APP_NAME } from '@/config/app'
 
 const pushMock    = vi.fn()
@@ -19,6 +19,18 @@ vi.mock('@/stores/auth.store', () => ({
   }),
 }))
 
+// Cola de ventas offline: el shell la arranca y la detiene; aquí solo se observa eso.
+const salesQueue = vi.hoisted(() => ({
+  pendingCount: 0,
+  needsReviewCount: 0,
+  needsReviewRecords: [] as unknown[],
+  isSyncing: false,
+  start: vi.fn(),
+  stop: vi.fn(),
+  dismissReview: vi.fn(),
+}))
+vi.mock('@/stores/sales-queue.store', () => ({ useSalesQueueStore: () => salesQueue }))
+
 vi.mock('@/components', () => ({
   AppBadge:         { template: '<span><slot /></span>' },
   AppButton:        { template: '<button><slot /></button>' },
@@ -26,6 +38,7 @@ vi.mock('@/components', () => ({
   AppToast:         { template: '<div />' },
   InstallAppButton: { template: '<div />' },
   UiModeSwitch:     { template: '<div />' },
+  SyncStatusIndicator: { props: ['pendingCount', 'needsReviewCount', 'isSyncing', 'records'], template: '<div class="sync-stub" />' },
 }))
 
 import AppLayout from '@/layouts/AppLayout.vue'
@@ -94,10 +107,39 @@ describe('AppLayout', () => {
     expect(vm.sidebarCollapsed).toBe(false)
   })
 
-  it('navItems contiene inicio y el catálogo de productos', () => {
+  it('navItems contiene inicio, productos y vender (Modo Gestión: vender al final)', () => {
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as unknown as AppLayoutVm
-    expect(vm.navItems.map((i) => i.to)).toEqual(['/app', '/app/productos'])
+    expect(vm.navItems.map((i) => i.to)).toEqual(['/app', '/app/productos', '/app/venta'])
+  })
+
+  it('currentRouteTitle muestra "Vender" en la pantalla de venta', () => {
+    routeMock.name = 'Sale'
+    const wrapper = shallowMount(AppLayout)
+    const vm = wrapper.vm as unknown as AppLayoutVm
+    expect(vm.currentRouteTitle).toBe('Vender')
+    routeMock.name = 'AppHome'
+  })
+
+  it('arranca la sincronización de ventas al montar y la detiene al desmontar', () => {
+    const wrapper = shallowMount(AppLayout)
+    expect(salesQueue.start).toHaveBeenCalledTimes(1)
+    expect(salesQueue.stop).not.toHaveBeenCalled()
+    wrapper.unmount()
+    expect(salesQueue.stop).toHaveBeenCalledTimes(1)
+  })
+
+  it('si arrancar la cola falla, el shell sigue funcionando', async () => {
+    salesQueue.start.mockRejectedValueOnce(new Error('idb'))
+    const wrapper = shallowMount(AppLayout)
+    await Promise.resolve()
+    expect(wrapper.exists()).toBe(true)
+  })
+
+  it('muestra el indicador de sincronización en la cabecera', () => {
+    // mount (no shallowMount): así el componente de la cabecera se renderiza de verdad
+    const wrapper = mount(AppLayout)
+    expect(wrapper.find('.app-header .sync-stub').exists()).toBe(true)
   })
 
   it('currentRouteTitle resuelve el nombre de la ruta actual', () => {

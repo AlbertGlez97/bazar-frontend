@@ -229,6 +229,21 @@ function confirmClear() {
 
 .sale-cart__payment { display: flex; flex-direction: column; gap: var(--spacing-md); }
 
+/* Con pantalla alta, resumen + efectivo + "Cobrar" se quedan pegados abajo del
+   carrito mientras la lista de productos se desplaza: "Cobrar" nunca queda
+   escondido. Solo con pantalla muy alta: en una tablet de 800 px el bloque
+   ocuparía casi todo el panel y dejaría la lista sin espacio (ahí fluye normal). */
+@media (min-height: 900px) {
+  .sale-cart__payment {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding-top: var(--spacing-md);
+    background: var(--color-bg);
+    border-top: 2px solid var(--color-border);
+  }
+}
+
 /* La acción principal de la pantalla: 56 px, ancho completo. Doble clase para
    ganarle en especificidad a los tamaños de AppButton (incluida su regla móvil). */
 .sale-cart .sale-cart__charge { min-height: 3.5rem; font-size: 1.25rem; font-weight: 800; }
