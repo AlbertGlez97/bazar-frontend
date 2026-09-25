@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { VOICE, isNetworkError, saleSuccessMessage } from '@/config/voice'
+import {
+  VOICE,
+  isNetworkError,
+  saleConflictMessage,
+  saleSavedOfflineMessage,
+  saleSuccessMessage,
+  salesNeedReviewMessage,
+  salesPendingMessage,
+} from '@/config/voice'
 
 describe('saleSuccessMessage (patrón de confirmación de venta)', () => {
   it('dice el hecho concreto: qué se anotó y cuánto', () => {
@@ -32,5 +40,63 @@ describe('mensajes de error compartidos', () => {
     expect(isNetworkError(new Error('Network Error'))).toBe(true)
     expect(isNetworkError(null)).toBe(true)
     expect(isNetworkError({ response: { status: 500 } })).toBe(false)
+  })
+})
+
+describe('copy de ventas (VOICE.sale)', () => {
+  const entries = Object.entries(VOICE.sale)
+
+  it('todo mensaje está en español, sin "¡Éxito!", códigos HTTP ni texto crudo del servidor', () => {
+    for (const [key, text] of entries) {
+      expect(text, key).not.toMatch(/éxito|exito|error \d{3}|\b[45]\d\d\b/i)
+      expect(text, key).not.toMatch(/insufficient|deactivated|exist in this context|payload/i)
+      expect(text.trim().length, key).toBeGreaterThan(10)
+    }
+  })
+
+  it('los errores dicen qué hacer (verbo de acción) y no culpan a la persona', () => {
+    for (const key of ['insufficientStock', 'cashInsufficient', 'productDeactivated', 'productMissing', 'rejectedGeneric'] as const) {
+      expect(VOICE.sale[key], key).toMatch(/Quít|Revisa|Ajusta|Intenta|Baja|Vuelve/)
+      expect(VOICE.sale[key], key).not.toMatch(/tu culpa|te equivocaste|error tuyo/i)
+    }
+  })
+
+  it('la sesión vencida promete que la venta sigue guardada', () => {
+    expect(VOICE.sale.authNeeded).toMatch(/guardada/)
+    expect(VOICE.sale.authNeeded).toMatch(/inicia sesión/i)
+  })
+})
+
+describe('saleSavedOfflineMessage', () => {
+  it('se siente como éxito: hecho concreto, cuánto y cuándo se envía', () => {
+    const msg = saleSavedOfflineMessage({ totalMinor: 25000, changeMinor: 5000 })
+    expect(msg).toBe('Venta guardada: $250.00. Cambio: $50.00. Se enviará sola en cuanto haya internet.')
+    expect(msg).not.toMatch(/error|falló|no se pudo/i)
+  })
+
+  it('omite el cambio cuando es cero', () => {
+    expect(saleSavedOfflineMessage({ totalMinor: 100, changeMinor: 0 })).not.toContain('Cambio')
+  })
+})
+
+describe('saleConflictMessage', () => {
+  it('nunca suena a venta cobrada y explica el siguiente paso', () => {
+    const msg = saleConflictMessage()
+    expect(msg).not.toMatch(/anotada|guardada|cobrada/i)
+    expect(msg).toMatch(/socio/i)
+  })
+})
+
+describe('salesPendingMessage / salesNeedReviewMessage', () => {
+  it('singular y plural', () => {
+    expect(salesPendingMessage(1)).toBe('1 venta pendiente de sincronizar')
+    expect(salesPendingMessage(3)).toBe('3 ventas pendientes de sincronizar')
+    expect(salesNeedReviewMessage(1)).toMatch(/^1 venta /)
+    expect(salesNeedReviewMessage(2)).toMatch(/^2 ventas /)
+  })
+
+  it('con cero devuelven cadena vacía (no hay nada que avisar)', () => {
+    expect(salesPendingMessage(0)).toBe('')
+    expect(salesNeedReviewMessage(0)).toBe('')
   })
 })
