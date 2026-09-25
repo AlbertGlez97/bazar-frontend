@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSalesReport, sharePercent, UNKNOWN_SELLER } from '../sales-report'
+import { buildSalesReport, roleLabel, sharePercent, UNKNOWN_SELLER } from '../sales-report'
 import type { SalesByMemberReport, SalesByPeriodReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
@@ -153,6 +153,14 @@ describe('buildSalesReport — per person', () => {
   it('does not list people without sales in the detail', () => {
     const report = build([sale({ memberId: 'm-ana' })])
     expect(report.people.map((p) => p.memberId)).toEqual(['m-ana'])
+  })
+})
+
+describe('roleLabel', () => {
+  it('gives the Spanish label of each role, and a dash when unknown', () => {
+    expect(roleLabel('socio')).toBe('Socio')
+    expect(roleLabel('colaborador')).toBe('Colaborador')
+    expect(roleLabel(null)).toBe('—')
   })
 })
 

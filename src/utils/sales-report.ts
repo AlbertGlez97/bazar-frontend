@@ -13,6 +13,13 @@ import type { Sale } from '@/types/sale.types'
 /** Nombre que se imprime cuando el vendedor no se puede resolver. */
 export const UNKNOWN_SELLER = 'Sin nombre'
 
+/** Rol en español para tablas y archivos. */
+export function roleLabel(role: MemberRole | null): string {
+  if (role === 'socio') return 'Socio'
+  if (role === 'colaborador') return 'Colaborador'
+  return '—'
+}
+
 export interface BuildSalesReportInput {
   /** Reporte de sales-by-period del rango (extremos normalizados y totales oficiales). */
   period: SalesByPeriodReport
