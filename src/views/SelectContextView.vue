@@ -5,12 +5,12 @@
   >
     <div class="select-context__inner container">
       <h1 class="select-context__title">
-        {{ sessionStore.isDeviceIdentified ? '¿Quién atiende?' : 'Identifica este dispositivo' }}
+        {{ sessionStore.isDeviceIdentified ? '¿Quién atiende hoy?' : 'Identifica este dispositivo' }}
       </h1>
       <p class="select-context__subtitle">
         {{ sessionStore.isDeviceIdentified
-          ? 'Selecciona tu nombre para continuar.'
-          : 'Este paso ocurre una sola vez por dispositivo.' }}
+          ? 'Toca tu nombre para seguir.'
+          : 'Solo lo haces una vez por dispositivo.' }}
       </p>
 
       <!-- Paso 1: identificar el dispositivo (solo si aún no está guardado
@@ -30,7 +30,7 @@
           v-if="membersLoading"
           class="select-context__loading"
         >
-          Cargando personas…
+          Cargando a tu equipo…
         </p>
         <MemberSelector
           v-else
@@ -86,8 +86,8 @@ async function handleDeviceSubmit(payload: DeviceIdentifyPayload) {
   } catch (cause) {
     const status = (cause as { response?: { status?: number } } | null)?.response?.status
     deviceError.value = status === 403
-      ? 'Este dispositivo no está autorizado. Contacta a soporte.'
-      : 'No se pudo verificar el dispositivo, intenta de nuevo'
+      ? 'Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.'
+      : 'No pudimos verificar el dispositivo. Intenta de nuevo en un momento.'
   } finally {
     deviceLoading.value = false
   }
@@ -98,7 +98,7 @@ async function loadMembers() {
   try {
     members.value = await MembersService.list()
   } catch {
-    toast.error('No se pudo cargar la lista de personas, intenta de nuevo')
+    toast.error('No pudimos cargar la lista de personas. Intenta de nuevo.')
   } finally {
     membersLoading.value = false
   }

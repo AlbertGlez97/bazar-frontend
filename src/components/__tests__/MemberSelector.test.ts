@@ -38,7 +38,7 @@ describe('MemberSelector', () => {
 
   it('muestra un mensaje cuando la lista está vacía', () => {
     const wrapper = mount(MemberSelector, { props: { members: [] } })
-    expect(wrapper.text()).toContain('No hay personas activas para seleccionar')
+    expect(wrapper.text()).toContain('No hay personas activas para elegir')
   })
 
   it('deshabilita las tarjetas mientras loading es true', () => {

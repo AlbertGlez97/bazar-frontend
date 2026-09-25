@@ -80,10 +80,10 @@ export const useAuthStore = defineStore('auth', () => {
         ?.response?.data?.message
 
       error.value = status === 401
-        ? 'Usuario o contraseña incorrectos'
+        ? 'Ese usuario o contraseña no coincide. Revísalos e intenta de nuevo.'
         : typeof serverMessage === 'string'
           ? serverMessage
-          : 'No se pudo iniciar sesión, intenta de nuevo'
+          : 'No pudimos iniciar tu sesión. Intenta de nuevo en un momento.'
 
       // Notifica el fallo también vía el sistema global de toasts.
       useToastStore().error(error.value)

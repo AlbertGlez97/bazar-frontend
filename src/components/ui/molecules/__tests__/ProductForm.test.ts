@@ -30,8 +30,8 @@ describe('ProductForm', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(wrapper.emitted('submit')).toBeUndefined()
-    expect(wrapper.text()).toContain('El nombre es obligatorio')
-    expect(wrapper.text()).toContain('Captura un precio válido')
+    expect(wrapper.text()).toContain('Ponle un nombre al producto.')
+    expect(wrapper.text()).toContain('Escribe un precio mayor a 0.')
   })
 
   it('modo creación: tipo "unica" fija existencia inicial en 1 y deshabilitada', () => {

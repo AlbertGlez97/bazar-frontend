@@ -66,7 +66,7 @@ describe('products.store', () => {
 
     await expect(store.fetchProducts()).rejects.toThrow('network')
     expect(store.loading).toBe(false)
-    expect(store.error).toBe('No se pudo cargar el catálogo de productos')
+    expect(store.error).toBe('No pudimos cargar tu catálogo. Intenta de nuevo.')
   })
 
   it('totalPages se calcula a partir de total y limit (mínimo 1)', async () => {

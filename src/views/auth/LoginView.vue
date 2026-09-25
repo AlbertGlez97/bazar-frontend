@@ -3,10 +3,10 @@
     <!-- Título -->
     <div class="login__header">
       <h2 class="login__title">
-        Bienvenido de vuelta
+        Pásale
       </h2>
       <p class="login__subtitle">
-        Ingresa tus credenciales para continuar
+        Entra con el usuario y la contraseña de tu negocio.
       </p>
     </div>
 
@@ -151,7 +151,7 @@
         :loading="authStore.loading"
         :disabled="!isFormValid"
       >
-        Iniciar sesión
+        Entrar
       </AppButton>
     </form>
 
@@ -194,14 +194,14 @@ const showPassword = ref(false)
 
 // ── Validaciones en tiempo real ────────────────────────────────────────────
 function validateUsername() {
-  errors.value.username = form.value.username.trim() ? '' : 'El usuario es requerido'
+  errors.value.username = form.value.username.trim() ? '' : 'Escribe tu usuario.'
 }
 
 function validatePassword() {
   if (!form.value.password) {
-    errors.value.password = 'La contraseña es requerida'
+    errors.value.password = 'Escribe tu contraseña.'
   } else if (form.value.password.length < 6) {
-    errors.value.password = 'Mínimo 6 caracteres'
+    errors.value.password = 'Tu contraseña tiene al menos 6 caracteres.'
   } else {
     errors.value.password = ''
   }
@@ -242,11 +242,10 @@ async function handleSubmit() {
 /* ── Header ────────────────────────────────────────────────── */
 .login__header { text-align: center; }
 .login__title {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
   color: var(--color-text);
   margin-bottom: 6px;
-  letter-spacing: -.3px;
 }
 .login__subtitle {
   font-size: 14px;
@@ -276,8 +275,8 @@ async function handleSubmit() {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 11px;
-  color: var(--color-text-light);
+  font-size: 12px;
+  color: var(--color-text-subtle);
   text-align: center;
 }
 </style>

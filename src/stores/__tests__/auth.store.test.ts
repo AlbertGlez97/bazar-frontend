@@ -77,7 +77,7 @@ describe('auth session (contrato real bazar-api)', () => {
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.token).toBeNull()
     expect(localStorage.getItem('access_token')).toBeNull()
-    expect(auth.error).toBe('Usuario o contraseña incorrectos')
+    expect(auth.error).toBe('Ese usuario o contraseña no coincide. Revísalos e intenta de nuevo.')
   })
 
   it('login fallido (401) notifica el error vía el store de toasts', async () => {
@@ -88,7 +88,7 @@ describe('auth session (contrato real bazar-api)', () => {
 
     const toast = useToastStore()
     expect(toast.toasts).toHaveLength(1)
-    expect(toast.toasts[0]).toMatchObject({ type: 'error', message: 'Usuario o contraseña incorrectos' })
+    expect(toast.toasts[0]).toMatchObject({ type: 'error', message: 'Ese usuario o contraseña no coincide. Revísalos e intenta de nuevo.' })
   })
 
   it('login fallido por error de red usa un mensaje genérico', async () => {
@@ -96,7 +96,7 @@ describe('auth session (contrato real bazar-api)', () => {
 
     const auth = useAuthStore()
     await expect(auth.login(payload)).rejects.toBeTruthy()
-    expect(auth.error).toBe('No se pudo iniciar sesión, intenta de nuevo')
+    expect(auth.error).toBe('No pudimos iniciar tu sesión. Intenta de nuevo en un momento.')
   })
 
   it('login fallido usa el mensaje del servidor cuando está disponible', async () => {

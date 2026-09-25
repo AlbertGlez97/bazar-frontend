@@ -31,11 +31,11 @@ async function registerServiceWorkerWithUpdatePrompt() {
       // onNeedRefresh se dispara cuando hay una versión nueva del SW esperando
       onNeedRefresh() {
         const toast = useToastStore()
-        toast.info('Hay una nueva versión disponible. Recargá la página para aplicarla.')
+        toast.info('Hay una versión nueva. Recarga la página para verla.')
       },
       onOfflineReady() {
         const toast = useToastStore()
-        toast.success('La app está lista para funcionar sin conexión.')
+        toast.success('La app ya abre sin internet. Los datos sí necesitan conexión.')
       },
     })
   } catch (err) {

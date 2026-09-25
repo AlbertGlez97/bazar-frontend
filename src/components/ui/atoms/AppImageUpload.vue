@@ -85,13 +85,13 @@ function handleChange(event: Event) {
   }
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    localError.value = 'Solo se aceptan imágenes PNG, JPEG o WebP'
+    localError.value = 'Solo aceptamos imágenes PNG, JPEG o WebP.'
     resetSelection()
     return
   }
 
   if (file.size > props.maxSizeBytes) {
-    localError.value = 'La imagen no debe pesar más de 5 MB'
+    localError.value = 'La imagen pesa más de 5 MB. Prueba con una más ligera.'
     resetSelection()
     return
   }

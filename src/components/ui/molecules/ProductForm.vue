@@ -176,19 +176,19 @@ function validate(): boolean {
   errors.value = {}
   formError.value = ''
 
-  if (!name.value.trim()) errors.value.name = 'El nombre es obligatorio'
+  if (!name.value.trim()) errors.value.name = 'Ponle un nombre al producto.'
 
   const unitPriceMinor = displayToMinor(unitPriceDisplay.value)
   if (!unitPriceDisplay.value.trim() || unitPriceMinor <= 0) {
-    errors.value.unitPriceMinor = 'Captura un precio válido mayor a 0'
+    errors.value.unitPriceMinor = 'Escribe un precio mayor a 0.'
   }
 
   if (!isEditMode.value && tipo.value === 'cantidad' && (!initialStock.value || initialStock.value < 0)) {
-    errors.value.initialStock = 'Captura una existencia inicial válida'
+    errors.value.initialStock = 'Escribe cuántas piezas tienes.'
   }
 
   const hasErrors = Object.keys(errors.value).length > 0
-  if (hasErrors) formError.value = 'Revisa los campos marcados antes de continuar'
+  if (hasErrors) formError.value = 'Revisa los campos marcados para continuar.'
   return !hasErrors
 }
 

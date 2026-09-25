@@ -187,7 +187,7 @@ describe('ProductCatalogView', () => {
       await vi.waitFor(() => expect(ProductsService.uploadProductImage).toHaveBeenCalledWith('p-1', file))
       expect(ProductsService.updateProduct).not.toHaveBeenCalled()
       await vi.waitFor(() => expect(modalIsOpen(wrapper)).toBe(false))
-      expect(await toastMessages()).toContain('Producto actualizado')
+      expect(await toastMessages()).toContain('Listo, producto actualizado.')
     })
 
     it('con un campo cambiado sí envía solo ese campo', async () => {
@@ -306,7 +306,7 @@ describe('ProductCatalogView', () => {
 
       const { useToastStore } = await import('@/stores/toast.store')
       await vi.waitFor(() => expect(useToastStore().toasts.map((t) => t.message))
-        .toContain('No se pudo reactivar el producto'))
+        .toContain('No pudimos reactivar el producto. Intenta de nuevo.'))
     })
   })
 })

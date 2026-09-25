@@ -55,6 +55,26 @@ describe('login form', () => {
     wrapper.unmount()
   })
 
+  it('saluda en la voz de la marca y explica qué se pide', () => {
+    const wrapper = render()
+    expect(wrapper.get('.login__title').text()).toBe('Pásale')
+    expect(wrapper.get('.login__subtitle').text()).toBe('Entra con el usuario y la contraseña de tu negocio.')
+    expect(wrapper.get('form button[type=submit]').text()).toContain('Entrar')
+    wrapper.unmount()
+  })
+
+  it('cada validación dice qué falta, con su propio mensaje', async () => {
+    const wrapper = render()
+    await wrapper.get('input[autocomplete=username]').trigger('blur')
+    await wrapper.get('input[type=password]').trigger('blur')
+    expect(wrapper.text()).toContain('Escribe tu usuario.')
+    expect(wrapper.text()).toContain('Escribe tu contraseña.')
+    await wrapper.get('input[type=password]').setValue('123')
+    await wrapper.get('input[type=password]').trigger('blur')
+    expect(wrapper.text()).toContain('Tu contraseña tiene al menos 6 caracteres.')
+    wrapper.unmount()
+  })
+
   it('el aviso de seguridad no nombra JWT ni algoritmos de hash', () => {
     const wrapper = render()
     const notice = wrapper.get('.login__security').text()

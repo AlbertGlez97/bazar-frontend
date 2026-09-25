@@ -69,7 +69,7 @@ describe('SelectContextView', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Este dispositivo no está autorizado. Contacta a soporte.')
+    expect(wrapper.text()).toContain('Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.')
     // No promete una vía que no existe (ningún socio puede autorizar dispositivos).
     expect(wrapper.text()).not.toContain('socio que lo configure')
     expect(MembersService.list).not.toHaveBeenCalled()
@@ -121,7 +121,7 @@ describe('SelectContextView', () => {
     const toast = useToastStore()
     expect(toast.toasts).toHaveLength(1)
     expect(toast.toasts[0]).toMatchObject({
-      type: 'error', message: 'No se pudo cargar la lista de personas, intenta de nuevo',
+      type: 'error', message: 'No pudimos cargar la lista de personas. Intenta de nuevo.',
     })
   })
 })

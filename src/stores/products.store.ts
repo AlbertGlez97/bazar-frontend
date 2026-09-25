@@ -55,7 +55,7 @@ export const useProductsStore = defineStore('products', () => {
       page.value = response.page
       limit.value = response.limit
     } catch (cause) {
-      error.value = 'No se pudo cargar el catálogo de productos'
+      error.value = 'No pudimos cargar tu catálogo. Intenta de nuevo.'
       throw cause
     } finally {
       loading.value = false

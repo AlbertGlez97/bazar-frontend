@@ -21,13 +21,13 @@
       v-if="loading"
       class="product-catalog-grid__status"
     >
-      Cargando productos...
+      Cargando tu catálogo…
     </p>
     <p
       v-else-if="products.length === 0"
       class="product-catalog-grid__status"
     >
-      No se encontraron productos.
+      No encontramos productos por aquí.
     </p>
 
     <div

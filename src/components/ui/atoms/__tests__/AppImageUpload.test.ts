@@ -38,7 +38,7 @@ describe('AppImageUpload', () => {
 
     await selectFile(wrapper, file)
 
-    expect(wrapper.text()).toContain('Solo se aceptan imágenes')
+    expect(wrapper.text()).toContain('Solo aceptamos imágenes')
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null])
   })
 
@@ -49,7 +49,7 @@ describe('AppImageUpload', () => {
 
     await selectFile(wrapper, bigFile)
 
-    expect(wrapper.text()).toContain('no debe pesar más de 5 MB')
+    expect(wrapper.text()).toContain('pesa más de 5 MB')
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null])
   })
 

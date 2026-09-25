@@ -18,8 +18,8 @@ describe('DeviceIdentifyForm', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(wrapper.emitted('submit')).toBeUndefined()
-    expect(wrapper.text()).toContain('El identificador es requerido')
-    expect(wrapper.text()).toContain('El nombre del dispositivo es requerido')
+    expect(wrapper.text()).toContain('Escribe el identificador del dispositivo.')
+    expect(wrapper.text()).toContain('Escribe el nombre del dispositivo.')
   })
 
   it('emite submit con el payload correcto cuando los datos son válidos', async () => {
@@ -35,10 +35,10 @@ describe('DeviceIdentifyForm', () => {
 
   it('muestra el mensaje de error (ej. 403) que le pasa el padre', () => {
     const wrapper = mount(DeviceIdentifyForm, {
-      props: { error: 'Este dispositivo no está autorizado. Contacta a soporte.' },
+      props: { error: 'Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.' },
     })
 
-    expect(wrapper.text()).toContain('Este dispositivo no está autorizado. Contacta a soporte.')
+    expect(wrapper.text()).toContain('Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.')
   })
 
   it('no muestra ninguna alerta cuando no hay error', () => {

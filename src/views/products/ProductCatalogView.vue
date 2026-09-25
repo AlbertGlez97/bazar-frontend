@@ -5,7 +5,7 @@
   <div class="product-catalog-view">
     <div class="product-catalog-view__header">
       <h1 class="product-catalog-view__title">
-        Catálogo de productos
+        Tu catálogo
       </h1>
       <AppButton
         v-if="isSocio"
@@ -46,8 +46,8 @@
       @confirm="handleConfirmDeactivate"
     >
       ¿Seguro que quieres desactivar
-      <strong>{{ productPendingDeactivation?.name }}</strong>? Podrás
-      reactivarlo después desde el catálogo, activando «Mostrar inactivos».
+      <strong>{{ productPendingDeactivation?.name }}</strong>? Después lo
+      puedes reactivar desde el catálogo, con «Mostrar inactivos».
     </AppModal>
   </div>
 </template>
@@ -80,20 +80,20 @@ onMounted(() => {
   // El store sobrevive al cierre de sesión: un colaborador que entra después
   // de un socio no debe heredar "Mostrar inactivos" (no tendría cómo apagarlo).
   const includeInactive = isSocio.value && store.includeInactive
-  store.fetchProducts({ includeInactive }).catch(() => toast.error('No se pudo cargar el catálogo de productos'))
+  store.fetchProducts({ includeInactive }).catch(() => toast.error('No pudimos cargar tu catálogo. Intenta de nuevo.'))
 })
 
 // Cambiar el filtro invalida la paginación actual: se vuelve a la página 1.
 function handleIncludeInactive(value: boolean) {
-  store.fetchProducts({ page: 1, includeInactive: value }).catch(() => toast.error('No se pudo cargar el catálogo de productos'))
+  store.fetchProducts({ page: 1, includeInactive: value }).catch(() => toast.error('No pudimos cargar tu catálogo. Intenta de nuevo.'))
 }
 
 function handleSearch(term: string) {
-  store.fetchProducts({ page: 1, search: term }).catch(() => toast.error('No se pudo buscar productos'))
+  store.fetchProducts({ page: 1, search: term }).catch(() => toast.error('No pudimos buscar. Intenta de nuevo.'))
 }
 
 function handlePageChange(page: number) {
-  store.fetchProducts({ page }).catch(() => toast.error('No se pudo cambiar de página'))
+  store.fetchProducts({ page }).catch(() => toast.error('No pudimos cambiar de página. Intenta de nuevo.'))
 }
 
 function openCreateModal() {
@@ -139,14 +139,14 @@ async function handleFormSubmit(payload: ProductFormSubmitPayload) {
       try {
         await store.uploadProductImage(product.id, imageFile)
       } catch {
-        toast.error('El producto se guardó, pero la imagen no pudo subirse. Intenta subirla de nuevo editando el producto.')
+        toast.error('El producto quedó guardado, pero la foto no se pudo subir. Edítalo y vuelve a intentarlo.')
       }
     }
 
-    toast.success(editingProduct.value ? 'Producto actualizado' : 'Producto creado')
+    toast.success(editingProduct.value ? 'Listo, producto actualizado.' : 'Listo, ya quedó en tu catálogo.')
     isFormModalOpen.value = false
   } catch {
-    toast.error('No se pudo guardar el producto')
+    toast.error('No pudimos guardar el producto. Intenta de nuevo.')
   } finally {
     isSubmitting.value = false
   }
@@ -161,9 +161,9 @@ async function handleConfirmDeactivate() {
   if (!productPendingDeactivation.value) return
   try {
     await store.deactivateProduct(productPendingDeactivation.value.id)
-    toast.success('Producto desactivado')
+    toast.success('Producto desactivado. Lo encuentras en «Mostrar inactivos».')
   } catch {
-    toast.error('No se pudo desactivar el producto')
+    toast.error('No pudimos desactivar el producto. Intenta de nuevo.')
   } finally {
     isConfirmModalOpen.value = false
     productPendingDeactivation.value = null
@@ -173,9 +173,9 @@ async function handleConfirmDeactivate() {
 async function handleReactivate(product: Product) {
   try {
     await store.reactivateProduct(product.id)
-    toast.success('Producto reactivado')
+    toast.success('Listo, producto reactivado.')
   } catch {
-    toast.error('No se pudo reactivar el producto')
+    toast.error('No pudimos reactivar el producto. Intenta de nuevo.')
   }
 }
 </script>

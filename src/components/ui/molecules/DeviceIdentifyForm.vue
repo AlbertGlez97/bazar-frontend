@@ -9,9 +9,9 @@
     @submit.prevent="handleSubmit"
   >
     <p class="device-identify-form__hint">
-      Este dispositivo todavía no está identificado. Pide a un socio el
-      <strong>identificador</strong> y <strong>nombre</strong> exactos con los
-      que autorizó esta tablet o teléfono.
+      Este dispositivo aún no está identificado. Pídele a un socio el
+      <strong>identificador</strong> y el <strong>nombre</strong> exactos con
+      los que autorizó esta tablet o teléfono.
     </p>
 
     <AppInput
@@ -81,11 +81,11 @@ const form = reactive({ identifier: '', name: '' })
 const errors = reactive({ identifier: '', name: '' })
 
 function validateIdentifier() {
-  errors.identifier = form.identifier.trim() ? '' : 'El identificador es requerido'
+  errors.identifier = form.identifier.trim() ? '' : 'Escribe el identificador del dispositivo.'
 }
 
 function validateName() {
-  errors.name = form.name.trim() ? '' : 'El nombre del dispositivo es requerido'
+  errors.name = form.name.trim() ? '' : 'Escribe el nombre del dispositivo.'
 }
 
 function isValid() {

@@ -29,19 +29,19 @@ describe('ProductCatalogGrid', () => {
       props: { products: [product({ id: 'p-1' }), product({ id: 'p-2' })], page: 1, totalPages: 1 },
     })
     expect(wrapper.findAll('.product-card').length).toBe(2)
-    expect(wrapper.text()).not.toContain('No se encontraron productos')
+    expect(wrapper.text()).not.toContain('No encontramos productos')
   })
 
   it('muestra mensaje cuando no hay productos', () => {
     const wrapper = mount(ProductCatalogGrid, { props: { products: [], page: 1, totalPages: 1 } })
-    expect(wrapper.text()).toContain('No se encontraron productos')
+    expect(wrapper.text()).toContain('No encontramos productos')
   })
 
   it('muestra estado de carga', () => {
     const wrapper = mount(ProductCatalogGrid, {
       props: { products: [], page: 1, totalPages: 1, loading: true },
     })
-    expect(wrapper.text()).toContain('Cargando productos')
+    expect(wrapper.text()).toContain('Cargando tu catálogo')
   })
 
   it('emite "search" tras el debounce, no en cada tecla', async () => {

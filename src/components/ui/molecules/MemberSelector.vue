@@ -11,7 +11,7 @@
       v-if="!members.length && !loading"
       class="member-selector__empty"
     >
-      No hay personas activas para seleccionar. Contacta a un socio.
+      No hay personas activas para elegir. Habla con un socio.
     </p>
 
     <button

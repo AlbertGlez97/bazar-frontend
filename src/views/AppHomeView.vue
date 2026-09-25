@@ -1,5 +1,8 @@
 <template>
   <section aria-label="Inicio">
-    <p>Los módulos del bazar estarán disponibles próximamente.</p>
+    <p>
+      Aquí van a aparecer tus ventas, comisiones y deudas. Todavía las estamos
+      armando; por ahora, échale un ojo a tu catálogo de productos.
+    </p>
   </section>
 </template>
