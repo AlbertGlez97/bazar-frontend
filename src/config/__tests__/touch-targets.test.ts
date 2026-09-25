@@ -84,4 +84,22 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
   it('lector de QR: "Listo" e "Intentar de nuevo" miden 56 px de alto', () => {
     expectAtLeast44('QrScannerModal.vue', '.qr-scanner__action', ['min-height'])
   })
+
+  it('QuantityStepper: "−" y "+" miden 44x44 (56x56 en el carrito)', () => {
+    expectAtLeast44('QuantityStepper.vue', '.quantity-stepper__btn', ['min-width', 'min-height'])
+    expectAtLeast44('QuantityStepper.vue', '.quantity-stepper--lg .quantity-stepper__btn', ['min-width', 'min-height'])
+  })
+
+  it('carrito: el botón "Quitar" de cada línea mide 44x44', () => {
+    expectAtLeast44('CartLineItem.vue', '.cart-line__remove', ['min-width', 'min-height'])
+  })
+
+  it('efectivo: el campo mide 56 px y los atajos 44x44', () => {
+    expectAtLeast44('CashInput.vue', '.cash-input__control', ['min-height'])
+    expectAtLeast44('CashInput.vue', '.cash-input__chip', ['min-width', 'min-height'])
+  })
+
+  it('filtro de categorías: cada botón mide 44x44', () => {
+    expectAtLeast44('CategoryQuickFilter.vue', '.category-filter__btn', ['min-width', 'min-height'])
+  })
 })

@@ -52,6 +52,7 @@ export { default as AppTooltip  } from './ui/atoms/AppTooltip.vue'
 export { default as AppTextarea } from './ui/atoms/AppTextarea.vue'
 export { default as AppImageUpload } from './ui/atoms/AppImageUpload.vue'
 export { default as BrandLogo   } from './ui/atoms/BrandLogo.vue'
+export { default as QuantityStepper } from './ui/atoms/QuantityStepper.vue'
 
 // ── MOLÉCULAS — combinación de átomos, responsabilidad única ─────────
 export { default as AppAlert            } from './ui/molecules/AppAlert.vue'
@@ -64,6 +65,10 @@ export { default as DeviceIdentifyForm } from './ui/molecules/DeviceIdentifyForm
 export { default as MemberSelector      } from './ui/molecules/MemberSelector.vue'
 export { default as ProductCard         } from './ui/molecules/ProductCard.vue'
 export { default as ProductForm         } from './ui/molecules/ProductForm.vue'
+export { default as CartLineItem        } from './ui/molecules/CartLineItem.vue'
+export { default as CartSummary         } from './ui/molecules/CartSummary.vue'
+export { default as CashInput          } from './ui/molecules/CashInput.vue'
+export { default as CategoryQuickFilter } from './ui/molecules/CategoryQuickFilter.vue'
 
 // ── ORGANISMOS — secciones complejas con lógica propia ───────────────
 export { default as AppModal        } from './ui/organisms/AppModal.vue'

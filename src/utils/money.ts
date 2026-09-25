@@ -49,3 +49,48 @@ export function displayToMinor(display: string | number): number {
 
   return sign === '-' ? -cents : cents
 }
+
+/** Dígitos enteros máximos del efectivo: el contrato tope en 21,474,836.47 (2147483647 centavos). */
+const MAX_CASH_INT_DIGITS = 8
+
+/**
+ * Limpia lo que la persona escribe (o pega) en el campo de efectivo y deja un
+ * texto que `displayToMinor` entiende: solo dígitos y un separador decimal,
+ * con a lo más dos decimales.
+ * - Quita todo lo que no es dígito, punto o coma ("$ 1 500", "-20", "1e5").
+ * - Un solo separador es el decimal ("100,50" -> "100,50"; el teclado numérico
+ *   de un celular en español ofrece la coma).
+ * - Punto y coma juntos: el ÚLTIMO es el decimal y el otro es de miles
+ *   ("1,000.50" -> "1000.50", "1.000,50" -> "1000,50").
+ * - Varios del mismo tipo son de miles ("1,000,000" -> "1000000").
+ * - Empezar por el separador antepone un 0 (".5" -> "0.5"), que si no vale 0.
+ */
+export function sanitizeCashText(input: string): string {
+  const kept = input.replace(/[^\d.,]/g, '')
+
+  const lastDot = kept.lastIndexOf('.')
+  const lastComma = kept.lastIndexOf(',')
+  let decimalIndex = -1
+  if (lastDot >= 0 && lastComma >= 0) {
+    decimalIndex = Math.max(lastDot, lastComma)
+  } else {
+    const separator = lastDot >= 0 ? '.' : ','
+    const count = kept.split(separator).length - 1
+    if (count === 1) decimalIndex = kept.indexOf(separator)
+  }
+
+  let integer: string
+  let decimals = ''
+  let separator = ''
+  if (decimalIndex >= 0) {
+    integer = kept.slice(0, decimalIndex).replace(/[.,]/g, '')
+    separator = kept[decimalIndex]
+    decimals = kept.slice(decimalIndex + 1).replace(/[.,]/g, '').slice(0, 2)
+  } else {
+    integer = kept.replace(/[.,]/g, '')
+  }
+
+  integer = integer.slice(0, MAX_CASH_INT_DIGITS)
+  if (!separator) return integer
+  return `${integer || '0'}${separator}${decimals}`
+}
