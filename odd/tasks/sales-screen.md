@@ -135,7 +135,7 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - Deviations from the brief: (1) title "Venta registrada" has no exclamation marks: `doc/brand-guidelines.md` §5 rule 6 forbids filler exclamations and asks for a concrete fact. (2) Copy for `cart.add` refusals lives in `voice.ts` (`saleCartRefusalMessage`) instead of the view. (3) Once the scanner adds a product the modal stays open (several products in a row) and answers each read in its own live region, instead of a toast.
 - Design tweak after looking at the screen in Edge: the sticky payment block of the cart only applies on screens at least 900 px high (at 800 px it left the product list with ~90 px); the bar total is 24 px so it no longer overlaps the button.
 
-### A2.5 (commit A2_5_HASH)
+### A2.5 (commit fc2673e)
 
 - Docs: `doc/brand-guidelines.md` gained the sale-screen patterns (copy examples for offline / conflict / refusals / QR / camera, the calm offline tone, a "Pantalla de venta" section in §7 with layout, big-number pattern, "nothing impossible to attempt", cash input, the result-screens table and the QR behavior) and four new rows in the code map (screen, components, logic, voice, nav table) plus the two guards.
 - Final checks (run after the last code change): `npm run build` exit 0 (vue-tsc + vite build, PWA precache 50 entries / 1,587.93 KiB including the 1,093 kB `zxing_reader-*.wasm`), `npm run lint` exit 0, `npm run test:run` exit 0 with 80 files / 1204 tests (baseline before A2 was 65 files / 844 tests: +15 files, +360 tests).
