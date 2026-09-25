@@ -224,6 +224,29 @@ Pensada para alguien que no se lleva bien con las computadoras: se siente como u
 - **Modales propios.** El lector de QR, la lista de ventas por revisar y la confirmación de "Vaciar" ocultan la X de `AppModal` (28 px, por debajo del mínimo) y ofrecen botones de tamaño completo.
 - **Lector de QR.** Cámara trasera; el contenido del QR es el id del producto. Una lectura repetida dentro de 1.5 s cuenta una sola vez; el modal sigue abierto para escanear varios productos y responde a cada lectura en una región viva. Al cerrar se apagan todas las pistas de la cámara.
 
+### Reportes y exportaciones
+
+Vista de gestión (solo socios, solo Modo Gestión, `/app/reportes`): más densa que la de venta, pero con los mismos objetivos de 44 px en todo lo que se toca.
+
+- **Tabla densa de gestión.** `<table>` real con `<caption>` ("Por persona"), `<th scope="col">`, texto de 14 px, cifras alineadas a la derecha con `font-variant-numeric: tabular-nums`, y el rol como `AppBadge` (socio en maíz, colaborador en gris: texto y color). Sin ventas no hay tabla: "Todavía no hay ventas en este periodo."
+- **Periodo.** Atajos Hoy (por defecto), Ayer, Esta semana y Este mes, más dos fechas con "Actualizar" (o Enter). Los atajos consultan al instante; las fechas a la medida, solo al confirmar. Todo se calcula en **hora de negocio (UTC-6 fijo)**, nunca en la zona del dispositivo (`src/utils/business-time.ts`): la semana va de domingo a sábado, igual que la del servidor, y tanto "Esta semana" como "Este mes" terminan **hoy**. Un rango invertido o con fecha final futura se rechaza con un mensaje y no consulta (el servidor respondería 200 con ceros).
+- **Ver no es bajar.** Los totales salen de los dos reportes de la API (agregados). El detalle por venta (`GET /sales`, paginado, sin filtro por fecha) solo se junta al pedir el primer archivo del periodo y se reutiliza para el segundo; tiene un tope de 100 páginas (10,000 ventas) con aviso.
+- **Importes.** Siempre centavos enteros; en pantalla y en el PDF, `formatMinorMoney`: `$1,250.00` (con separador de miles, exacto, sin `Intl`). `minorToDisplay` (`125.50`) sigue siendo para campos de captura. En Excel el importe es un número de pesos con formato `"$"#,##0.00`, y la suma se hace en centavos y se convierte al final.
+- **Fechas.** `dd/mm/aaaa` y, con hora, `dd/mm/aaaa hh:mm` de 24 h, siempre en hora de negocio. En Excel son fechas reales con ese formato.
+- **Nombres de archivo.** `ventas-la-marchanta-AAAA-MM-DD.pdf|xlsx` para un día y `ventas-la-marchanta-AAAA-MM-DD_a_AAAA-MM-DD.pdf|xlsx` para un rango (`reportFileName`, `src/utils/report-files.ts`).
+- **PDF (`pdfmake`).** A4 vertical, Roboto (la que trae pdfmake, sin CDN, funciona sin internet), isotipo, nombre del negocio y periodo arriba, tabla con encabezado terracota, resumen por persona, total al final y "Página N de M". Los colores viven en `src/config/report-palette.ts` (un `.ts` no lee CSS): son copias de los tokens de `main.css` y `report-palette.test.ts` falla si alguno se desvía.
+- **Excel (`exceljs`).** Hoja "Ventas" (encabezado terracota, panel congelado, filtro, fila de totales con `SUM`), "Por persona" y "Resumen". Los nombres se guardan como **texto plano** (formato `@`): uno que empiece con `=`, `+`, `-` o `@` nunca se vuelve fórmula.
+- **Librerías pesadas, bajo demanda.** `pdfmake`, sus fuentes y `exceljs` (~2.8 MB) se cargan con `import()` al pulsar el botón, quedan **fuera del precaché** del service worker (`globIgnores`) y se cachean al primer uso (`export-libs`, CacheFirst).
+- **Honestidad.** El nombre del negocio de los archivos es `APP_NAME` (la API no lo expone). Si el detalle no cuadra con el reporte (entraron ventas mientras se preparaba) o se llegó al tope, la pantalla y el archivo lo dicen; nunca se imprimen cifras que no cuadran en silencio.
+
+| Situación | Sí | No |
+|---|---|---|
+| Rango invertido | "La fecha inicial es posterior a la final. Cámbialas para ver el reporte." | "Rango inválido" |
+| Sin ventas | "Todavía no hay ventas en este periodo." | "No se encontraron resultados." |
+| Preparando un archivo | "Preparando tu archivo…" | "Cargando…" |
+| Archivo listo | "Listo, se descargó ventas-la-marchanta-2026-09-24.pdf." | "¡Éxito!" |
+| No se pudo generar | "No pudimos preparar tu archivo. Intenta de nuevo en un momento." | "Error al generar el PDF" |
+
 ## 8. Dónde vive cada cosa
 
 | Qué | Dónde |
@@ -243,5 +266,9 @@ Pensada para alguien que no se lleva bien con las computadoras: se siente como u
 | Componentes de la venta | Átomo `QuantityStepper`; moléculas `CartLineItem`, `CartSummary`, `CashInput`, `CategoryQuickFilter`; organismos `SaleCart`, `SaleCatalogPicker`, `SaleResult`, `QrScannerModal`, `SyncStatusIndicator` (todos presentacionales, en `src/components/ui/`) |
 | Lógica de la venta | `src/stores/cart.store.ts`, `sale-catalog.store.ts`, `checkout.store.ts`, `sales-queue.store.ts`; cola en IndexedDB (`services/local-db.ts`, `sales-queue.ts`, `sales-sync.ts`); lector de QR en `services/qr-scanner.ts` (`barcode-detector`, WASM empaquetado y precacheado) |
 | Voz de la venta | `src/config/voice.ts`: `saleSuccessMessage`, `saleSavedOfflineMessage`, `saleConflictMessage`, `saleChargeHint`, `saleCartRefusalMessage`, `salesPendingMessage`, `salesNeedReviewMessage`, `cameraErrorMessage`, `VOICE.saleResult`, `VOICE.scan` |
-| Menú lateral | `src/layouts/nav-items.ts` (tabla declarativa por modo; un ítem nuevo es una fila) |
-| Guardas automáticas | `src/config/__tests__/brand-tokens.test.ts` (contraste, tipografía, color de manifest), `no-hardcoded-colors.test.ts`, `touch-targets.test.ts` (objetivos de 44 px, incluye los componentes de la venta), `pwa-precache.test.ts` (el `.wasm` del lector de QR está precacheado), `app.test.ts` |
+| Reportes | `src/views/reports/ReportsView.vue` (contenedor), molécula `ReportRangePicker`, organismo `SalesReportSummary`, ruta `Reports` en `/app/reportes` (meta `requiresSocio` + `requiresGestion`, comprobada en el guard de `router/index.ts` y otra vez en la vista) |
+| Lógica de los reportes | `src/services/reports.service.ts`, `sales-report-collector.ts` (pagina `GET /sales` hasta el inicio del periodo), `src/utils/business-time.ts` (UTC-6), `src/utils/sales-report.ts` (modelo común del PDF y el Excel), `src/utils/report-files.ts` (nombres y `saveBlob`), `src/types/report.types.ts` |
+| Exportadores | `src/services/pdf-report.ts` (definición pura + `renderPdfBlob` con `pdfmake` bajo demanda), `src/services/excel-report.ts` (datos puros + `buildWorkbook` con `exceljs` bajo demanda), paleta en `src/config/report-palette.ts` |
+| Voz de los reportes | `src/config/voice.ts`: `VOICE.reports`, `reportRangeMessage`, `reportLoadErrorMessage`, `reportDownloadErrorMessage`, `reportDownloadDoneMessage`; importes con `formatMinorMoney` (`src/utils/money.ts`) |
+| Menú lateral | `src/layouts/nav-items.ts` (tabla declarativa por modo; un ítem nuevo es una fila; "Reportes" solo para socios en Modo Gestión) |
+| Guardas automáticas | `src/config/__tests__/brand-tokens.test.ts` (contraste, tipografía, color de manifest), `no-hardcoded-colors.test.ts`, `touch-targets.test.ts` (objetivos de 44 px, incluye los componentes de la venta), `pwa-precache.test.ts` (el `.wasm` del lector de QR está precacheado y las librerías de exportación no), `report-palette.test.ts` (colores del PDF/Excel = tokens), `app.test.ts` |
