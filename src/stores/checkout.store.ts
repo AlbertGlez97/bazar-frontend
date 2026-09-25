@@ -175,7 +175,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
     let response
     try {
-      response = await SalesService.createSale(current.payload)
+      response = await SalesService.createSale(current.payload, { handleAuthLocally: true })
     } catch (error) {
       switch (classifySaleError(error)) {
         case 'business':

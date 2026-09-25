@@ -127,6 +127,15 @@ describe('checkout.store — cobro bloqueado', () => {
 })
 
 describe('checkout.store — cobro en línea', () => {
+  it('pide que un 401 no redirija al login: la venta se guarda y la pantalla lo explica', async () => {
+    const { checkout } = await readySale()
+
+    await checkout.charge()
+
+    expect(createSale).toHaveBeenCalledTimes(1)
+    expect(createSale.mock.calls[0][1]).toEqual({ handleAuthLocally: true })
+  })
+
   it('201 completada: success con los valores del SERVIDOR y stock local descontado', async () => {
     const { catalog, cart, checkout } = await readySale()
     createSale.mockImplementation(async (payload) => completed(payload, 201, 6000)) // el servidor cobró distinto

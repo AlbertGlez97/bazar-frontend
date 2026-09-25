@@ -28,10 +28,18 @@ const SalesService = {
    * (deben coincidir con el cuerpo o el servidor responde 403) y no de la
    * sesión actual, que puede ser de otra persona cuando se sincroniza la cola.
    * Los errores de Axios se propagan tal cual: clasifícalos con `classifySaleError`.
+   * `handleAuthLocally`: un 401 no cierra la sesión ni redirige (lo usa el cobro
+   * interactivo, que guarda la venta y muestra "auth-needed"); la cola en
+   * segundo plano lo deja en falso y conserva la redirección al login.
    */
-  async createSale(payload: CreateSalePayload): Promise<CreateSaleResult> {
+  async createSale(
+    payload: CreateSalePayload,
+    options: { handleAuthLocally?: boolean } = {},
+  ): Promise<CreateSaleResult> {
     const response = await api.post<unknown>('/sales', payload, {
       headers: { 'x-member-id': payload.memberId, 'x-device-id': payload.deviceId },
+      // Cobro interactivo: un 401 no debe sacar a la persona de la pantalla a media venta.
+      ...(options.handleAuthLocally ? { skipAuthRedirect: true } : {}),
     })
 
     if (!isSale(response.data) || response.data.id !== payload.id) {

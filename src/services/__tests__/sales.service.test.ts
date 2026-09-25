@@ -58,6 +58,17 @@ describe('SalesService.createSale', () => {
     })
   })
 
+  it('con handleAuthLocally pide que un 401 no cierre la sesión ni redirija (cobro interactivo)', async () => {
+    vi.mocked(api.post).mockResolvedValue({ status: 201, data: completed })
+
+    await SalesService.createSale(payload, { handleAuthLocally: true })
+
+    expect(api.post).toHaveBeenCalledExactlyOnceWith('/sales', payload, {
+      headers: { 'x-member-id': payload.memberId, 'x-device-id': payload.deviceId },
+      skipAuthRedirect: true,
+    })
+  })
+
   it('201 completada: outcome completed, httpStatus 201, replayed false', async () => {
     vi.mocked(api.post).mockResolvedValue({ status: 201, data: completed })
 
