@@ -34,7 +34,7 @@ Infrastructure for a "Modo Venta" / "Modo Gestión" selector: suggestion from de
 - [x] **T2 — `uiMode.store` + tests.**
 - [x] **T3 — `ProductCard` `size` + `ProductCatalogGrid` `mode` + view wiring + tests.**
 - [x] **T4 — `UiModeSwitch` molecule + `AppLayout` integration (switch and visible mode indicator) + tests.**
-- [ ] **T5 — Brand guidelines (non-blocking warning pattern) + this record.**
+- [x] **T5 — Brand guidelines (non-blocking warning pattern) + this record.**
 - [ ] **T6 — Final checks (build, lint, test) and manual browser pass.**
 
 ## Evidence
@@ -45,6 +45,7 @@ Commit hashes are recorded in the final record (T6), since a commit cannot conta
 - **T2**: `src/stores/uiMode.store.ts` (`currentMode`, `isVenta`, `setMode`; key `la-marchanta-ui-mode`; try/catch around every localStorage access). Observed: `npx vitest run src/stores/__tests__/uiMode` = 13 tests passed (venta on small touch, gestion on large non-touch, one-signal-only cases, no matchMedia, first-run persisted, saved preference respected and not rewritten, invalid value treated as absent, persists on change, survives store re-creation, throwing localStorage on read/write); `eslint src` and `vue-tsc -b` clean.
 - **T3**: `ProductCard` `size`, `AppPagination` `size`, `ProductCatalogGrid` `mode`, `ProductCatalogView` wiring (`useUiModeStore`, hides "+ Nuevo producto" and inactive handling in venta), tests for card sizes, grid modes, view in both modes x both roles plus live mode switching, `AppPagination` tests, touch-target CSS guard. Observed: full `npx vitest run` = 52 files / 562 tests passed; `eslint .` and `vue-tsc -b` clean.
 - **T4**: `UiModeSwitch.vue` (organism, exported from the barrel), `AppLayout` integration (switch + `AppBadge` indicator), `UiModeSwitch.test.ts` (warning on touch+small, confirm proceeds, cancel/Escape change nothing, venta never warns, no warning on large / touch-only / small-only / no matchMedia, same-mode click is a no-op, device re-evaluated at click time, compact names), `AppLayout.mode.test.ts` (switch rendered, indicator per mode, store + persistence, warning flow in the layout, collapsed sidebar), CSS guard extended for the switch, existing AppLayout test mocks extended. Observed: full `npx vitest run` = 54 files / 589 tests passed; `eslint .` exit 0; `vue-tsc -b` clean.
+- **T5**: `doc/brand-guidelines.md` gained section 7 "Interacción" (mode selector behavior and catalog differences, the reusable non-blocking warning pattern with copy example, 44x44 touch targets) and the old section 7 code map became section 8 with rows for the store, composable, switch, catalog and the new guard test. Observed: no other file references the renumbered section; no code changed in this commit.
 
 ## Next step
 

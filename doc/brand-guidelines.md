@@ -146,7 +146,55 @@ El **formulario de registro de negocio** (`BusinessRegistrationForm`) es el prim
 
 **Versiones**: `vee-validate` 4.15.1 (última estable) no soporta Standard Schema (solo la beta 5.x), así que se usa `@vee-validate/zod` (`toTypedSchema`), que exige `zod` ^3.24: `zod` 3.25.76. Cuando vee-validate 5 sea estable, el adaptador sobra y se puede pasar a `zod` 4.
 
-## 7. Dónde vive cada cosa
+## 7. Interacción
+
+Tres piezas que se repiten en toda la app: el selector de modo, el aviso no bloqueante y el tamaño mínimo de lo que se toca.
+
+### Modo Venta y Modo Gestión
+
+Dos presentaciones de la misma app, no dos apps. **Venta** es la vista de mostrador: táctil, grande y visual. **Gestión** es la de administrar (editar, desactivar, dar de alta).
+
+- **Solo se sugiere, nunca se decide.** La primera vez, un dispositivo táctil de pantalla pequeña (`pointer: coarse` o `maxTouchPoints > 0`, y viewport de menos de 900 px) arranca en Venta; todo lo demás, en Gestión. La sugerencia se guarda en ese momento y, desde entonces, **manda la preferencia guardada**: nunca se pisa con una nueva sugerencia. Un valor guardado inválido se trata como si no hubiera.
+- **Se puede cambiar cuando quieras** con el selector de la barra lateral (bajo el logo). Con la barra colapsada se vuelve una columna de íconos de 44x44 px con nombre accesible ("Modo Venta", "Modo Gestión"). Cambiar a Venta no avisa jamás; cambiar a Gestión avisa solo en un dispositivo táctil de pantalla pequeña (ver el patrón de abajo).
+- **Nunca ambiguo**: la cabecera muestra siempre una etiqueta con el modo activo ("Modo Venta" en maíz, "Modo Gestión" en gris). Es texto y color, no solo color.
+- **Qué cambia en el catálogo** (`ProductCatalogGrid` recibe `mode`; la vista lee el store y se lo pasa):
+
+| | Gestión (como siempre) | Venta |
+|---|---|---|
+| Tarjetas | Normales | Grandes: imagen 4:3, nombre y precio grandes (precio en `--font-display`) |
+| Disponibilidad | "Disponible" / "Agotado" / "N en existencia" | Solo "Disponible" / "Agotado" |
+| Acciones (editar, desactivar, reactivar) | Solo socios | Ocultas para todos, socios incluidos |
+| "Mostrar inactivos" y "+ Nuevo producto" | Solo socios | Ocultos; el catálogo se pide solo con productos activos |
+| Buscador | Normal | Grande (56 px) y siempre visible arriba |
+| Paginación | Normal | Botones de 44x44 px |
+
+  La regla de colaborador (sin acciones de gestión) es independiente del modo y sigue igual en ambos. Costo y proveedor no se muestran en ningún modo.
+
+### Aviso no bloqueante
+
+Cuando una acción **es válida pero probablemente no es lo que la persona quiere**, se avisa; no se prohíbe. El patrón:
+
+1. **Avisa** con una pregunta clara en el título, no con un error.
+2. **Explica** por qué en dos o tres frases cortas, en tono cálido y de tú, sin regañar ni asustar.
+3. **Da dos salidas explícitas y del mismo tamaño**: seguir ("Entiendo, quiero seguir") o cancelar ("Mejor no"). El botón principal (terracota) es la opción segura; la otra va como secundaria, igual de visible.
+4. **Nunca bloquea**: seguir siempre funciona. La decisión es de la persona.
+5. **Cancelar no hace nada**: Escape y tocar fuera equivalen a "Mejor no". No se muestra la X de cerrar si es un objetivo chico en el dispositivo que lo dispara.
+
+Úsalo cuando el costo de equivocarse es incomodidad (una vista mal adaptada), no pérdida de datos. Para acciones destructivas usa la confirmación de siempre ("Sí, desactivar"), donde chile marca el riesgo.
+
+**Ejemplo (Modo Gestión desde un celular)**
+
+> **¿Seguro que quieres entrar a Gestión?**
+> Estás en una pantalla chica y táctil. Gestión sirve para administrar el catálogo y se trabaja mucho mejor desde una computadora. Si lo necesitas, puedes entrar de todos modos y volver a Venta cuando quieras.
+> [Entiendo, quiero seguir] [**Mejor no**]
+
+Implementación de referencia: `UiModeSwitch.vue` sobre `AppModal` con su slot `footer`. Un aviso nuevo reutiliza esa misma forma (título, explicación, dos botones), no un modal distinto.
+
+### Objetivos táctiles
+
+**Todo lo que se toca mide al menos 44x44 px** (`min-height` y `min-width`, en px o rem): botones del selector de modo, buscador y paginación en Venta, botones de los avisos. Los átomos ya lo hacen en móvil (`AppButton` md/lg/xl) o con su variante grande (`AppInput size="lg"`, `AppPagination size="lg"`, `AppButton size="lg"`). Un control táctil nuevo debe declararlo en su CSS y sumarse a `src/config/__tests__/touch-targets.test.ts`, que comprueba ese contrato (jsdom no calcula layout, así que la medición real es una revisión en navegador).
+
+## 8. Dónde vive cada cosa
 
 | Qué | Dónde |
 |---|---|
@@ -158,4 +206,7 @@ El **formulario de registro de negocio** (`BusinessRegistrationForm`) es el prim
 | Landing | `src/views/LandingView.vue` + organismos `LandingHero`, `FeaturesSection`, `AudienceSection`, `LandingStory`, `HowItWorksSection`, `LandingCta` |
 | Voz compartida | `src/config/voice.ts` |
 | Formulario de registro | `BusinessRegistrationForm.vue` (molécula), `RegisterBusinessView.vue`, `src/validation/business-registration.schema.ts` |
-| Guardas automáticas | `src/config/__tests__/brand-tokens.test.ts` (contraste, tipografía, color de manifest), `no-hardcoded-colors.test.ts`, `app.test.ts` |
+| Modo de interfaz (Venta / Gestión) | `src/stores/uiMode.store.ts` (preferencia en `la-marchanta-ui-mode`, sugerencia inicial), `src/composables/useDeviceCapabilities.ts` (táctil y pantalla pequeña, breakpoint `SMALL_SCREEN_MAX_WIDTH`), `src/types/ui-mode.types.ts` |
+| Selector de modo y aviso no bloqueante | `src/components/ui/organisms/UiModeSwitch.vue` (en `AppLayout`, barra lateral) e indicador `AppBadge` en la cabecera |
+| Catálogo según el modo | `ProductCatalogView.vue` (lee el store), `ProductCatalogGrid.vue` (`mode`), `ProductCard.vue` (`size`), `AppPagination.vue` (`size`) |
+| Guardas automáticas | `src/config/__tests__/brand-tokens.test.ts` (contraste, tipografía, color de manifest), `no-hardcoded-colors.test.ts`, `touch-targets.test.ts` (objetivos de 44 px), `app.test.ts` |
