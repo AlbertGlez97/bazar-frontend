@@ -75,6 +75,48 @@ describe('ProductCard', () => {
     expect(wrapper.emitted('deactivate')?.[0]).toEqual([baseProduct])
   })
 
+  describe('tamaño (size)', () => {
+    it('por defecto es "default" y no usa la variante grande', () => {
+      const wrapper = mount(ProductCard, { props: { product: baseProduct } })
+      expect(wrapper.get('.product-card').classes()).toContain('product-card--default')
+      expect(wrapper.get('.product-card').classes()).not.toContain('product-card--large')
+    })
+
+    it('size="large" aplica la variante grande y conserva nombre y precio', () => {
+      const wrapper = mount(ProductCard, { props: { product: baseProduct, size: 'large' } })
+      expect(wrapper.get('.product-card').classes()).toContain('product-card--large')
+      expect(wrapper.get('.product-card').classes()).not.toContain('product-card--default')
+      expect(wrapper.get('.product-card__name').text()).toBe('Consola PS5 usada')
+      expect(wrapper.get('.product-card__price').text()).toBe('$8500.00')
+    })
+
+    it('en grande la disponibilidad se simplifica a Disponible / Agotado también para tipo cantidad', () => {
+      const cantidad = { ...baseProduct, tipo: 'cantidad' as const, stock: 7, initialStock: 10 }
+      const disponible = mount(ProductCard, { props: { product: cantidad, size: 'large' } })
+      expect(disponible.text()).toContain('Disponible')
+      expect(disponible.text()).not.toContain('en existencia')
+
+      const agotado = mount(ProductCard, { props: { product: { ...cantidad, stock: 0 }, size: 'large' } })
+      expect(agotado.text()).toContain('Agotado')
+    })
+
+    it('en tamaño normal tipo cantidad sigue mostrando las existencias', () => {
+      const wrapper = mount(ProductCard, {
+        props: { product: { ...baseProduct, tipo: 'cantidad', stock: 7, initialStock: 10 }, size: 'default' },
+      })
+      expect(wrapper.text()).toContain('7 en existencia')
+    })
+
+    it('no expone costo ni proveedor en ningún tamaño', () => {
+      const withPrivate = { ...baseProduct, purchaseCostMinor: 500000, supplier: 'Proveedor Secreto' }
+      for (const size of ['default', 'large'] as const) {
+        const text = mount(ProductCard, { props: { product: withPrivate, size } }).text()
+        expect(text).not.toContain('Proveedor Secreto')
+        expect(text).not.toContain('5000.00')
+      }
+    })
+  })
+
   it('emite "reactivate" cuando el producto está inactivo', async () => {
     const inactive = { ...baseProduct, active: false }
     const wrapper = mount(ProductCard, { props: { product: inactive, showActions: true } })

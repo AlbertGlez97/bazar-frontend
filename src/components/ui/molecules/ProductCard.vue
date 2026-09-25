@@ -5,7 +5,10 @@
        clase utilitaria `.card` ya definida en assets/main.css. -->
   <div
     class="card product-card"
-    :class="{ 'product-card--inactive': !product.active }"
+    :class="[
+      `product-card--${size}`,
+      { 'product-card--inactive': !product.active },
+    ]"
   >
     <div class="product-card__media">
       <img
@@ -81,11 +84,20 @@ import type { Product } from '@/types/product.types'
 import AppBadge from '../atoms/AppBadge.vue'
 import AppButton from '../atoms/AppButton.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   product: Product
   /** Solo los socios pueden editar/(des)activar (el backend lo rechazaría igual, pero no tiene sentido mostrarlo a colaboradores) */
   showActions?: boolean
-}>()
+  /**
+   * `large` es la presentación de Modo Venta: imagen y tipografía grandes y
+   * disponibilidad simplificada (Disponible / Agotado), pensada para tocarse
+   * y leerse de un vistazo en el mostrador.
+   */
+  size?: 'default' | 'large'
+}>(), {
+  showActions: false,
+  size: 'default',
+})
 
 defineEmits<{
   edit: [product: Product]
@@ -94,9 +106,10 @@ defineEmits<{
 }>()
 
 // tipo="unica" siempre tiene stock 1 (o 0 si ya se vendió); tipo="cantidad"
-// muestra el número real de existencias.
+// muestra el número real de existencias. En tamaño grande (venta) solo importa
+// saber si se puede vender: Disponible / Agotado.
 const stockLabel = computed(() => {
-  if (props.product.tipo === 'unica') {
+  if (props.product.tipo === 'unica' || props.size === 'large') {
     return props.product.stock > 0 ? 'Disponible' : 'Agotado'
   }
   return `${props.product.stock} en existencia`
@@ -138,4 +151,13 @@ const stockBadgeColor = computed(() => (props.product.stock > 0 ? 'green' : 'red
   border-top: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
+
+/* Tamaño grande (Modo Venta): más aire, imagen 4:3 y tipografía de marca en
+   nombre y precio para leerlos de un vistazo. */
+.product-card--large .product-card__media { aspect-ratio: 4 / 3; }
+.product-card--large .product-card__placeholder { font-size: 4rem; }
+.product-card--large .product-card__body { padding: var(--spacing-md) var(--spacing-lg) var(--spacing-lg); gap: var(--spacing-sm); }
+.product-card--large .product-card__name { font-size: var(--font-size-lg); line-height: 1.25; }
+.product-card--large .product-card__price { font-family: var(--font-display); font-size: var(--font-size-xl); line-height: 1.1; }
+.product-card--large :deep(.app-badge) { align-self: flex-start; font-size: var(--font-size-sm); padding: 0.25rem 0.75rem; }
 </style>

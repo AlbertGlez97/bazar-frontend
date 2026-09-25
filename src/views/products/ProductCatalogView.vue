@@ -7,8 +7,9 @@
       <h1 class="product-catalog-view__title">
         Tu catálogo
       </h1>
+      <!-- Alta de productos es gestión: en Modo Venta no se ofrece -->
       <AppButton
-        v-if="isSocio"
+        v-if="isSocio && !isVenta"
         variant="primary"
         @click="openCreateModal"
       >
@@ -21,6 +22,7 @@
       :page="store.page"
       :total-pages="store.totalPages"
       :loading="store.loading"
+      :mode="uiMode.currentMode"
       :show-actions="isSocio"
       :show-inactive-toggle="isSocio"
       :include-inactive="store.includeInactive"
@@ -53,16 +55,21 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { AppButton, AppModal, ProductCatalogGrid, ProductFormModal } from '@/components'
 import { useProductsStore } from '@/stores/products.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
+import { useUiModeStore } from '@/stores/uiMode.store'
 import type { Product, ProductFormSubmitPayload } from '@/types/product.types'
 
 const store = useProductsStore()
 const session = useSessionStore()
 const toast = useToastStore()
+const uiMode = useUiModeStore()
+
+// El modo lo decide el store (y la persona); el grid solo lo presenta.
+const isVenta = computed(() => uiMode.currentMode === 'venta')
 
 // Los colaboradores no pueden crear/editar/(des)activar productos (el
 // backend lo rechazaría con 403 de todas formas), así que se ocultan esas
@@ -79,8 +86,17 @@ const productPendingDeactivation = ref<Product | null>(null)
 onMounted(() => {
   // El store sobrevive al cierre de sesión: un colaborador que entra después
   // de un socio no debe heredar "Mostrar inactivos" (no tendría cómo apagarlo).
-  const includeInactive = isSocio.value && store.includeInactive
+  // En Modo Venta tampoco: lo inactivo es cosa de gestión y nunca se ofrece
+  // para vender, así que se pide el catálogo solo con productos activos.
+  const includeInactive = isSocio.value && !isVenta.value && store.includeInactive
   store.fetchProducts({ includeInactive }).catch(() => toast.error('No pudimos cargar tu catálogo. Intenta de nuevo.'))
+})
+
+// Cambiar a Modo Venta con "Mostrar inactivos" encendido: se apaga el filtro y
+// se recarga para que los inactivos desaparezcan. Volver a gestión no necesita
+// recargar (el listado ya es de activos y el interruptor queda apagado).
+watch(isVenta, (venta) => {
+  if (venta && store.includeInactive) handleIncludeInactive(false)
 })
 
 // Cambiar el filtro invalida la paginación actual: se vuelve a la página 1.

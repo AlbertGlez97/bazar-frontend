@@ -3,6 +3,7 @@
   <nav
     v-if="totalPages > 1"
     class="app-pagination"
+    :class="`app-pagination--${size}`"
     aria-label="Paginación"
   >
     <!-- Anterior -->
@@ -53,7 +54,9 @@ const props = withDefaults(defineProps<{
   currentPage: number
   totalPages:  number
   siblings?:   number   // páginas a mostrar a cada lado de la actual
-}>(), { siblings: 1 })
+  /** `lg`: botones de al menos 44x44 px para uso táctil (Modo Venta) */
+  size?:       'md' | 'lg'
+}>(), { siblings: 1, size: 'md' })
 
 const emit = defineEmits<{ 'update:currentPage': [page: number] }>()
 
@@ -110,6 +113,16 @@ const pages = computed(() => {
   font-weight:  600;
 }
 .app-pag-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* Táctil: área mínima de 44x44 px (guía de marca, "Objetivos táctiles") */
+.app-pagination--lg { gap: var(--spacing-sm); flex-wrap: wrap; justify-content: center; }
+.app-pagination--lg .app-pag-btn {
+  min-width:  44px;
+  min-height: 44px;
+  height:     44px;
+  padding:    0 var(--spacing-sm);
+  font-size:  var(--font-size-md);
+}
 
 .app-pag-ellipsis {
   color:     var(--color-text-muted);

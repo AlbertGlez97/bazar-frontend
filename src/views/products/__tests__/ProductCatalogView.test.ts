@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import ProductCatalogView from '../ProductCatalogView.vue'
 import ProductsService from '@/services/products.service'
 import { useSessionStore } from '@/stores/session.store'
+import { useUiModeStore } from '@/stores/uiMode.store'
 import type { Product } from '@/types/product.types'
 
 vi.mock('@/services/products.service', () => ({
@@ -43,11 +44,149 @@ function setMember(role: 'socio' | 'colaborador') {
 }
 
 beforeEach(() => {
+  // El modo de interfaz se persiste: sin limpiar, un test dejaría "venta" al siguiente.
+  localStorage.clear()
   setActivePinia(createPinia())
   vi.clearAllMocks()
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock')
   globalThis.URL.revokeObjectURL = vi.fn()
   vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [product()], total: 1, page: 1, limit: 20 })
+})
+
+describe('ProductCatalogView según el modo de interfaz', () => {
+  const buttonTexts = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('button').map((b) => b.text())
+  const lastListCall = () => vi.mocked(ProductsService.listProducts).mock.calls.at(-1)?.[0]
+
+  describe('gestión (por defecto)', () => {
+    it('socio: tarjetas normales, acciones, "Mostrar inactivos" y "Nuevo producto"', async () => {
+      setMember('socio')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+
+      expect(wrapper.find('.product-card--default').exists()).toBe(true)
+      expect(wrapper.find('.product-card--large').exists()).toBe(false)
+      expect(buttonTexts(wrapper)).toEqual(expect.arrayContaining(['Editar', 'Desactivar']))
+      expect(wrapper.text()).toContain('Mostrar inactivos')
+      expect(wrapper.text()).toContain('Nuevo producto')
+    })
+
+    it('colaborador: sin acciones, sin "Mostrar inactivos" y sin "Nuevo producto"', async () => {
+      setMember('colaborador')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Producto'))
+
+      expect(wrapper.find('.product-card--default').exists()).toBe(true)
+      expect(wrapper.find('.product-card__footer').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Mostrar inactivos')
+      expect(wrapper.text()).not.toContain('Nuevo producto')
+    })
+  })
+
+  describe('venta', () => {
+    beforeEach(() => useUiModeStore().setMode('venta'))
+
+    it('socio: tarjetas grandes y nada de gestión (acciones, inactivos, alta)', async () => {
+      setMember('socio')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
+
+      expect(wrapper.find('.product-card--default').exists()).toBe(false)
+      expect(wrapper.find('.product-card__footer').exists()).toBe(false)
+      const texts = buttonTexts(wrapper)
+      expect(texts).not.toContain('Editar')
+      expect(texts).not.toContain('Desactivar')
+      expect(texts).not.toContain('Reactivar')
+      expect(wrapper.text()).not.toContain('Mostrar inactivos')
+      expect(wrapper.text()).not.toContain('Nuevo producto')
+    })
+
+    it('colaborador: también ve tarjetas grandes y nada de gestión', async () => {
+      setMember('colaborador')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
+
+      expect(wrapper.find('.product-card__footer').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Mostrar inactivos')
+      expect(wrapper.text()).not.toContain('Nuevo producto')
+    })
+
+    it('el buscador sigue visible y con el tamaño grande', async () => {
+      setMember('socio')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      expect(wrapper.get('input[placeholder="Buscar productos..."]').classes()).toContain('app-input--lg')
+    })
+
+    it('no pide productos inactivos aunque el store traiga "Mostrar inactivos" encendido', async () => {
+      setMember('socio')
+      const { useProductsStore } = await import('@/stores/products.store')
+      useProductsStore().includeInactive = true
+      mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      expect(lastListCall()?.includeInactive).toBeUndefined()
+      expect(useProductsStore().includeInactive).toBe(false)
+    })
+  })
+
+  describe('cambio de modo con la vista montada', () => {
+    it('gestión → venta oculta la gestión y apaga "Mostrar inactivos" recargando solo activos', async () => {
+      setMember('socio')
+      const { useProductsStore } = await import('@/stores/products.store')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+
+      await wrapper.find('input[type="checkbox"]').setValue(true)
+      await vi.waitFor(() => expect(lastListCall()?.includeInactive).toBe(true))
+      vi.mocked(ProductsService.listProducts).mockClear()
+
+      useUiModeStore().setMode('venta')
+
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalledTimes(1))
+      expect(lastListCall()).toEqual(expect.objectContaining({ page: 1, includeInactive: undefined }))
+      expect(useProductsStore().includeInactive).toBe(false)
+      await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
+      expect(wrapper.text()).not.toContain('Nuevo producto')
+      expect(wrapper.text()).not.toContain('Desactivar')
+    })
+
+    it('gestión → venta sin filtro de inactivos no recarga', async () => {
+      setMember('socio')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+      vi.mocked(ProductsService.listProducts).mockClear()
+
+      useUiModeStore().setMode('venta')
+      await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
+
+      expect(ProductsService.listProducts).not.toHaveBeenCalled()
+    })
+
+    it('venta → gestión devuelve las acciones al socio', async () => {
+      setMember('socio')
+      useUiModeStore().setMode('venta')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
+
+      useUiModeStore().setMode('gestion')
+
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+      expect(wrapper.text()).toContain('Nuevo producto')
+      expect(wrapper.text()).toContain('Mostrar inactivos')
+    })
+
+    it('venta → gestión no da acciones a un colaborador', async () => {
+      setMember('colaborador')
+      useUiModeStore().setMode('venta')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
+
+      useUiModeStore().setMode('gestion')
+
+      await vi.waitFor(() => expect(wrapper.find('.product-card--default').exists()).toBe(true))
+      expect(wrapper.find('.product-card__footer').exists()).toBe(false)
+      expect(wrapper.text()).not.toContain('Nuevo producto')
+    })
+  })
 })
 
 describe('ProductCatalogView', () => {
