@@ -1,8 +1,39 @@
 import { describe, it, expect } from 'vitest'
 import {
-  minorToDisplay, displayToMinor, parseCashInput,
+  minorToDisplay, displayToMinor, formatMinorMoney, parseCashInput,
   addMinor, subtractMinor, multiplyMinor, sumMinor, changeDueMinor, shortfallMinor,
 } from '../money'
+
+describe('formatMinorMoney', () => {
+  it.each([
+    [125000, '$1,250.00'],
+    [12550, '$125.50'],
+    [0, '$0.00'],
+    [1, '$0.01'],
+    [99, '$0.99'],
+    [100000, '$1,000.00'],
+    [99999, '$999.99'],
+    [123456789, '$1,234,567.89'],
+    [2147483647, '$21,474,836.47'],
+  ])('formats %i cents with a "$" and thousands separators, exactly', (minor, expected) => {
+    expect(formatMinorMoney(minor)).toBe(expected)
+  })
+
+  it('keeps the sign in front of the currency symbol', () => {
+    expect(formatMinorMoney(-12550)).toBe('-$125.50')
+    expect(formatMinorMoney(-100000)).toBe('-$1,000.00')
+  })
+
+  it('returns "$0.00" for non-finite values, like minorToDisplay', () => {
+    expect(formatMinorMoney(Number.NaN)).toBe('$0.00')
+  })
+
+  it('agrees with minorToDisplay on the digits', () => {
+    for (const minor of [1, 7, 10, 99, 100, 101, 5555, 123456, 2147483647]) {
+      expect(formatMinorMoney(minor).replace(/[$,]/g, '')).toBe(minorToDisplay(minor))
+    }
+  })
+})
 
 describe('minorToDisplay', () => {
   it.each([

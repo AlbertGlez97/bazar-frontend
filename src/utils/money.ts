@@ -80,6 +80,23 @@ export function minorToDisplay(minor: number): string {
   return (minor / 100).toFixed(2)
 }
 
+/**
+ * Centavos (entero) -> texto de moneda para vistas y archivos: `125000 ->
+ * "$1,250.00"`. Es la ÚNICA presentación con separador de miles (PDF, vista de
+ * reportes y valores impresos), y es exacta: trabaja con la parte entera y los
+ * centavos por separado, sin dividir a flotantes ni depender del `Intl` del
+ * dispositivo (los reportes deben verse igual en cualquier equipo).
+ * El signo va delante del símbolo: `-$125.50`.
+ */
+export function formatMinorMoney(minor: number): string {
+  if (!Number.isFinite(minor)) return '$0.00'
+  const negative = minor < 0
+  const abs = Math.abs(Math.trunc(minor))
+  const pesos = String(Math.floor(abs / 100)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const cents = String(abs % 100).padStart(2, '0')
+  return `${negative ? '-' : ''}$${pesos}.${cents}`
+}
+
 // Regex de un número decimal simple: signo opcional, parte entera obligatoria,
 // hasta un separador decimal (punto o coma) con cualquier cantidad de dígitos.
 const NUMERIC_RE = /^(-?)(\d+)(?:[.,](\d*))?$/
