@@ -7,7 +7,7 @@ import FeaturesSection from '@/components/ui/organisms/FeaturesSection.vue'
 describe('FeaturesSection', () => {
   it('renderiza el título de la sección', () => {
     const wrapper = mount(FeaturesSection)
-    expect(wrapper.text()).toContain('Hecho para cómo realmente vendes')
+    expect(wrapper.text()).toContain('Lo que hace por tu negocio')
   })
 
   it('renderiza varias FeatureCard', () => {
@@ -18,8 +18,15 @@ describe('FeaturesSection', () => {
 
   it('incluye los beneficios clave del sistema', () => {
     const wrapper = mount(FeaturesSection)
-    expect(wrapper.text()).toContain('Funciona sin internet')
-    expect(wrapper.text()).toContain('Fiado y apartados con seguimiento')
-    expect(wrapper.text()).toContain('Comisiones automáticas')
+    expect(wrapper.text()).toContain('Tu catálogo, ordenado')
+    expect(wrapper.text()).toContain('Ventas en un momento')
+    expect(wrapper.text()).toContain('Comisiones sin calculadora')
+    expect(wrapper.text()).toContain('Fiado y apartados')
+    expect(wrapper.text()).toContain('Sin sorpresas con el inventario')
+  })
+
+  it('no promete funciones que la API no tiene', () => {
+    const text = mount(FeaturesSection).text()
+    expect(text).not.toMatch(/sin internet|offline|reportes|notificaci/i)
   })
 })

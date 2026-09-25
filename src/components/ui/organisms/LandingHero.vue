@@ -5,25 +5,19 @@
     aria-label="Presentación"
   >
     <div class="landing-hero__inner container">
+      <p class="landing-hero__eyebrow">
+        Para changarros, bazares y tianguis
+      </p>
       <h1 class="landing-hero__title">
-        El sistema de punto de venta hecho para tu bazar
+        Tú atiendes a tu clientela.
+        <span class="landing-hero__accent">Nosotros llevamos las cuentas.</span>
       </h1>
       <p class="landing-hero__subtitle">
-        Vende rápido, controla lo que se lleva fiado y sabe exactamente cuánto
-        vendió cada colaborador — todo desde tu celular, incluso sin internet.
-        Pensado para negocios pequeños que venden en bazares, tianguis y
-        puestos, con o sin socios y ayudantes.
+        Catálogo, ventas, comisiones y deudas en un solo lugar, sin libretas ni
+        cuentas a mano. Se abre desde el navegador de tu celular o tu tablet.
       </p>
 
       <div class="landing-hero__actions">
-        <AppButton
-          :tag="RouterLink"
-          :to="{ name: 'Login' }"
-          variant="secondary"
-          size="lg"
-        >
-          Iniciar sesión
-        </AppButton>
         <AppButton
           :tag="RouterLink"
           :to="{ name: 'BusinessRegistration' }"
@@ -32,7 +26,20 @@
         >
           Registra tu negocio
         </AppButton>
+        <AppButton
+          :tag="RouterLink"
+          :to="{ name: 'Login' }"
+          variant="secondary"
+          size="lg"
+        >
+          Ya tengo cuenta
+        </AppButton>
       </div>
+
+      <p class="landing-hero__note">
+        Revisamos cada solicitud a mano. Si todo va bien, te mandamos tu
+        usuario y contraseña por correo.
+      </p>
     </div>
   </section>
 </template>
@@ -48,7 +55,7 @@ import { RouterLink } from 'vue-router'
 
 <style scoped>
 .landing-hero {
-  background: linear-gradient(180deg, var(--color-primary-light) 0%, var(--color-bg) 100%);
+  background: linear-gradient(180deg, var(--color-accent-soft) 0%, var(--color-bg) 100%);
   padding: var(--spacing-2xl) var(--spacing-md);
 }
 
@@ -60,16 +67,37 @@ import { RouterLink } from 'vue-router'
   gap: var(--spacing-lg);
 }
 
+.landing-hero__eyebrow {
+  display: inline-block;
+  padding: 4px 14px;
+  border: 1.5px solid var(--color-rosa);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
 .landing-hero__title {
-  font-size:     var(--font-size-2xl);
+  font-size:     2rem;
   font-weight:   800;
   color:         var(--color-text);
-  max-width:     40rem;
-  letter-spacing: -.5px;
+  max-width:     44rem;
+  letter-spacing: -.02em;
+  text-wrap: balance;
+}
+
+/* El remate de la frase lleva el subrayado ondulado de la marca (rosa) */
+.landing-hero__accent {
+  display: inline-block;
+  color: var(--color-primary-hover);
+  text-decoration: underline wavy var(--color-rosa);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 8px;
 }
 
 .landing-hero__subtitle {
-  font-size:  var(--font-size-md);
+  font-size:  1.0625rem;
   color:      var(--color-text-muted);
   max-width:  38rem;
   line-height: 1.6;
@@ -82,7 +110,14 @@ import { RouterLink } from 'vue-router'
   gap: var(--spacing-md);
 }
 
+.landing-hero__note {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  max-width: 30rem;
+}
+
 @media (min-width: 768px) {
-  .landing-hero__title { font-size: 2.5rem; }
+  .landing-hero { padding: 4.5rem var(--spacing-md); }
+  .landing-hero__title { font-size: 3rem; }
 }
 </style>

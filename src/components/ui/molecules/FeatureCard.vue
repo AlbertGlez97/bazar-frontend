@@ -40,13 +40,20 @@ defineProps<{
 }
 
 .feature-card__icon {
-  font-size: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  font-size: 1.5rem;
   line-height: 1;
 }
 
 .feature-card__title {
   font-size:   var(--font-size-lg);
-  font-weight: 700;
+  font-weight: 800;
   color:       var(--color-text);
 }
 

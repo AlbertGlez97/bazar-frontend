@@ -1,16 +1,15 @@
 <template>
-  <!-- Organismo: sección "por qué elegirnos" — agrupa las FeatureCard -->
+  <!-- Organismo: sección de beneficios — agrupa las FeatureCard -->
   <section
     class="features-section"
-    aria-label="Por qué elegirnos"
+    aria-label="Lo que hace por tu negocio"
   >
     <div class="features-section__inner container">
       <h2 class="features-section__title">
-        Hecho para cómo realmente vendes
+        Lo que hace por tu negocio
       </h2>
       <p class="features-section__subtitle">
-        Nada de funciones de escaparate: esto es lo que ya usan negocios como
-        el tuyo.
+        Nada de funciones de adorno: esto es lo que ya puedes llevar aquí.
       </p>
 
       <div class="features-section__grid">
@@ -27,47 +26,48 @@
 </template>
 
 <script setup lang="ts">
-// Organismo: contenido de marketing estático basado en funcionalidad real
-// del backend (venta rápida, offline-first, auditoría, fiado, comisiones,
-// reportes). No se inventan features que no existan todavía.
+// Organismo: contenido de marketing estático. Solo se afirma lo que existe en
+// la API hoy (catálogo, ventas, comisiones, deudas, incidencias; ver
+// doc/api-contract-for-frontend.md). No se prometen funciones que no existan:
+// nada de "sin internet", "reportes" ni notificaciones.
 import FeatureCard from '@/components/ui/molecules/FeatureCard.vue'
 
 const features = [
   {
-    icon: '⚡',
-    title: 'Venta rápida, multiartículo',
+    icon: '📦',
+    title: 'Tu catálogo, ordenado',
     description:
-      'Registra varios productos en una sola venta en segundos, ideal para el ritmo de un puesto de bazar.',
+      'Guarda cada producto con su precio, existencia, categoría, proveedor y foto. Lo buscas en cuanto lo necesitas.',
   },
   {
-    icon: '📶',
-    title: 'Funciona sin internet',
+    icon: '🧾',
+    title: 'Ventas en un momento',
     description:
-      'Offline-first: sigue vendiendo aunque se caiga la señal y todo se sincroniza solo cuando vuelve la conexión.',
+      'Anota varios productos en una misma venta. El total y el cambio los calcula el sistema, no tú.',
   },
   {
-    icon: '🕵️',
-    title: 'Control de quién vendió qué',
+    icon: '👥',
+    title: 'Quién vendió qué',
     description:
-      'Cada venta queda registrada con el colaborador que la hizo, con auditoría completa para evitar sorpresas.',
-  },
-  {
-    icon: '📒',
-    title: 'Fiado y apartados con seguimiento',
-    description:
-      'Lleva el control de las ventas a crédito y sus abonos, sin depender de una libreta.',
+      'Socios y colaboradores comparten la tablet, y cada venta queda a nombre de quien atendió.',
   },
   {
     icon: '🤝',
-    title: 'Comisiones automáticas',
+    title: 'Comisiones sin calculadora',
     description:
-      'Calcula automáticamente lo que le corresponde a cada socio o colaborador según lo que vendió.',
+      'Cada semana sabes cuánto le toca a cada colaborador, según lo que vendió.',
   },
   {
-    icon: '📊',
-    title: 'Reportes de ventas',
+    icon: '📒',
+    title: 'Fiado y apartados',
     description:
-      'Consulta cuánto vendiste, cuándo y quién lo vendió, sin hacer cuentas a mano al final del día.',
+      'Apunta quién debe qué y cuánto va abonando, sin depender de una libreta.',
+  },
+  {
+    icon: '🚩',
+    title: 'Sin sorpresas con el inventario',
+    description:
+      'Si dos ventas se pelean la última pieza, queda una incidencia para que un socio la revise.',
   },
 ]
 </script>

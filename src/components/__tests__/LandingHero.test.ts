@@ -15,13 +15,21 @@ import LandingHero from '@/components/ui/organisms/LandingHero.vue'
 describe('LandingHero', () => {
   it('renderiza el título con la propuesta de valor', () => {
     const wrapper = mount(LandingHero)
-    expect(wrapper.text()).toContain('bazar')
+    expect(wrapper.text()).toContain('Tú atiendes a tu clientela')
+    expect(wrapper.text()).toContain('Nosotros llevamos las cuentas')
+    expect(wrapper.text()).toContain('changarros, bazares y tianguis')
   })
 
-  it('renderiza el botón "Iniciar sesión" apuntando a la ruta Login', () => {
+  it('aclara que la solicitud se revisa a mano y las credenciales llegan por correo', () => {
+    const wrapper = mount(LandingHero)
+    expect(wrapper.text()).toContain('Revisamos cada solicitud a mano')
+    expect(wrapper.text()).toContain('por correo')
+  })
+
+  it('renderiza el botón "Ya tengo cuenta" apuntando a la ruta Login', () => {
     const wrapper = mount(LandingHero)
     const links = wrapper.findAll('a')
-    const loginLink = links.find((l) => l.text().includes('Iniciar sesión'))
+    const loginLink = links.find((l) => l.text().includes('Ya tengo cuenta'))
     expect(loginLink).toBeTruthy()
     expect(loginLink!.attributes('data-to')).toContain('Login')
   })
