@@ -77,3 +77,30 @@ describe('AppInput', () => {
     })
   })
 })
+
+describe('AppInput: error accesible', () => {
+  it('con error marca el control como inválido y lo enlaza con su mensaje', () => {
+    const wrapper = mount(AppInput, { props: { label: 'Correo', error: 'Escribe tu correo.' } })
+    const input = wrapper.get('input')
+    const message = wrapper.get('.app-input__error')
+
+    expect(input.attributes('aria-invalid')).toBe('true')
+    expect(message.attributes('id')).toBeTruthy()
+    expect(input.attributes('aria-describedby')).toBe(message.attributes('id'))
+  })
+
+  it('sin error no añade aria-invalid ni aria-describedby', () => {
+    const input = mount(AppInput, { props: { label: 'Correo' } }).get('input')
+    expect(input.attributes('aria-invalid')).toBeUndefined()
+    expect(input.attributes('aria-describedby')).toBeUndefined()
+  })
+
+  it('conserva un aria-describedby del padre (pista) y añade el del error', () => {
+    const wrapper = mount(AppInput, {
+      props: { error: 'Escribe tu correo.' },
+      attrs: { 'aria-describedby': 'pista' },
+    })
+    const message = wrapper.get('.app-input__error')
+    expect(wrapper.get('input').attributes('aria-describedby')).toBe(`pista ${message.attributes('id')}`)
+  })
+})

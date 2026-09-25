@@ -32,7 +32,7 @@
         :value="modelValue"
         :disabled="disabled"
         :placeholder="placeholder"
-        v-bind="{ ...$attrs, id: fieldId() }"
+        v-bind="{ ...$attrs, id: fieldId(), ...errorAria }"
         @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       >
 
@@ -48,6 +48,7 @@
     <!-- Mensaje de error -->
     <p
       v-if="error"
+      :id="errorId()"
       class="app-input__error"
     >
       {{ error }}
@@ -56,16 +57,18 @@
 </template>
 
 <script setup lang="ts">
-import { useAttrs } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { useFieldId } from '@/composables/useFieldId'
 
 // Desactiva herencia automática de attrs para evitar duplicar atributos en el wrapper
 defineOptions({ inheritAttrs: false })
 
 // id que enlaza <label for> con el <input> (explícito del padre o generado)
-const fieldId = useFieldId(useAttrs())
+const attrs = useAttrs()
+const fieldId = useFieldId(attrs)
+const errorId = () => `${fieldId()}-error`
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   modelValue?:  string | number
   label?:       string
   error?:       string
@@ -84,6 +87,14 @@ withDefaults(defineProps<{
 })
 
 defineEmits<{ 'update:modelValue': [v: string] }>()
+
+// Con error, el control se marca inválido y apunta a su mensaje (lectores de
+// pantalla); si el padre ya puso un aria-describedby (una pista), se conserva.
+const errorAria = computed<{ 'aria-invalid'?: 'true'; 'aria-describedby'?: string }>(() => {
+  if (!props.error) return {}
+  const described = [attrs['aria-describedby'], errorId()].filter(Boolean).join(' ')
+  return { 'aria-invalid': 'true', 'aria-describedby': described }
+})
 </script>
 
 <style scoped>
