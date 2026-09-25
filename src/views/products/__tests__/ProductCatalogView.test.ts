@@ -34,6 +34,10 @@ const product = (overrides: Partial<Product> = {}): Product => ({
   ...overrides,
 })
 
+// AppModal usa <Teleport to="body">: se stubea para que el contenido del modal
+// quede dentro del wrapper y sea consultable desde el test.
+const mountOptions = { global: { stubs: { teleport: true } } }
+
 function setMember(role: 'socio' | 'colaborador') {
   useSessionStore().setMember({ id: 'm-1', name: 'Ana', role, active: true })
 }
@@ -49,26 +53,26 @@ beforeEach(() => {
 describe('ProductCatalogView', () => {
   it('carga el catálogo al montar', async () => {
     setMember('socio')
-    mount(ProductCatalogView)
+    mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
   })
 
   it('muestra el botón "Nuevo producto" para socios', async () => {
     setMember('socio')
-    const wrapper = mount(ProductCatalogView)
+    const wrapper = mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(wrapper.text()).toContain('Nuevo producto'))
   })
 
   it('oculta el botón "Nuevo producto" para colaboradores', async () => {
     setMember('colaborador')
-    const wrapper = mount(ProductCatalogView)
+    const wrapper = mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
     expect(wrapper.text()).not.toContain('Nuevo producto')
   })
 
   it('no muestra acciones de gestión en las tarjetas para colaboradores', async () => {
     setMember('colaborador')
-    const wrapper = mount(ProductCatalogView)
+    const wrapper = mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
     expect(wrapper.find('.product-card__footer').exists()).toBe(false)
   })
@@ -78,7 +82,7 @@ describe('ProductCatalogView', () => {
     vi.mocked(ProductsService.createProduct).mockResolvedValue(product({ id: 'p-new' }))
     vi.mocked(ProductsService.uploadProductImage).mockResolvedValue(product({ id: 'p-new', image: '/uploads/x.png' }))
 
-    const wrapper = mount(ProductCatalogView)
+    const wrapper = mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
 
     const newButton = wrapper.findAll('button').find((b) => b.text().includes('Nuevo producto'))
@@ -89,7 +93,8 @@ describe('ProductCatalogView', () => {
     Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
     await wrapper.find('input[type="file"]').trigger('change')
 
-    await wrapper.findAll('input')[0].setValue('Producto nuevo')
+    // El primer <input> de la vista es el buscador del grid, no el nombre.
+    await wrapper.find('input[placeholder="Ej. Consola PS5 usada"]').setValue('Producto nuevo')
     const priceInput = wrapper.findAll('input').find((i) => i.attributes('inputmode') === 'decimal')
     await priceInput?.setValue('10.00')
 
@@ -103,7 +108,7 @@ describe('ProductCatalogView', () => {
     vi.mocked(ProductsService.createProduct).mockResolvedValue(product({ id: 'p-new' }))
     vi.mocked(ProductsService.uploadProductImage).mockRejectedValue(new Error('boom'))
 
-    const wrapper = mount(ProductCatalogView)
+    const wrapper = mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
 
     const newButton = wrapper.findAll('button').find((b) => b.text().includes('Nuevo producto'))
@@ -114,7 +119,8 @@ describe('ProductCatalogView', () => {
     Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
     await wrapper.find('input[type="file"]').trigger('change')
 
-    await wrapper.findAll('input')[0].setValue('Producto nuevo')
+    // El primer <input> de la vista es el buscador del grid, no el nombre.
+    await wrapper.find('input[placeholder="Ej. Consola PS5 usada"]').setValue('Producto nuevo')
     const priceInput = wrapper.findAll('input').find((i) => i.attributes('inputmode') === 'decimal')
     await priceInput?.setValue('10.00')
 
@@ -127,8 +133,10 @@ describe('ProductCatalogView', () => {
     setMember('socio')
     vi.mocked(ProductsService.deactivateProduct).mockResolvedValue(product({ active: false }))
 
-    const wrapper = mount(ProductCatalogView)
-    await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+    const wrapper = mount(ProductCatalogView, mountOptions)
+    // No basta con que listProducts se haya llamado: hay que esperar a que la
+    // respuesta se renderice como tarjeta (si no, el botón aún no existe).
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
 
     const deactivateButton = wrapper.findAll('button').find((b) => b.text() === 'Desactivar')
     await deactivateButton?.trigger('click')
