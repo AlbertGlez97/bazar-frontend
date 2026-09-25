@@ -47,7 +47,7 @@ api.interceptors.response.use(
     const isAuthEndpoint =
       url.includes('/auth/login') || url.includes('/auth/register')
 
-    if (status === 401 && !isAuthEndpoint) {
+    if (status === 401 && !isAuthEndpoint && !error.config?.skipAuthRedirect) {
       // Token expirado en ruta autenticada: limpiamos credenciales.
       // (Antes esto borraba una clave 'user' que ya no existe desde que se
       // adaptó el store al contrato real del backend — se corrige aquí.)

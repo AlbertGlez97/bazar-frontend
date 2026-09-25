@@ -132,6 +132,26 @@ describe('api — interceptores Axios', () => {
     expect(session.deviceId).toBe('d-1')
   })
 
+  it('en un 401 de una petición con skipAuthRedirect: NO limpia credenciales ni redirige (la venta lo maneja ella)', async () => {
+    localStorage.setItem('access_token', 'jwt-xxx')
+    const session = useSessionStore()
+    session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
+    const location = { pathname: '/app/venta', href: '/app/venta' }
+    Object.defineProperty(window, 'location', { writable: true, value: location })
+
+    const error = {
+      response: { status: 401 },
+      config:   { url: '/sales', skipAuthRedirect: true },
+    } as unknown as AxiosError
+
+    const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
+    await expect(handler.rejected(error)).rejects.toBe(error)
+
+    expect(localStorage.getItem('access_token')).toBe('jwt-xxx')
+    expect(session.memberId).toBe('m-1')
+    expect(location.href).toBe('/app/venta')
+  })
+
   it('en un 401 de /auth/login: NO limpia localStorage', async () => {
     localStorage.setItem('access_token', 'jwt-xxx')
 
