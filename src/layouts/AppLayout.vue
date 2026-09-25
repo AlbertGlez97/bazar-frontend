@@ -203,6 +203,7 @@ const routeTitles: Record<string, string> = {
   AppHome: 'Inicio',
   ProductCatalog: 'Productos',
   Sale: 'Vender',
+  Reports: 'Reportes',
 }
 const currentRouteTitle = computed(
   () => routeTitles[route.name as string] ?? APP_NAME

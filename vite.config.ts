@@ -52,6 +52,13 @@ export default defineConfig({
         // `wasm`: el lector de QR (zxing) lo necesita para leer SIN internet; se
         // empaqueta con la app (src/services/qr-scanner.ts) y debe estar precacheado.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm}'],
+        // Las librerías de los reportes (pdfmake, sus fuentes y exceljs, ~2.8 MB en
+        // total) se cargan por import() dinámico solo al descargar un archivo: solo
+        // las usan los socios en Modo Gestión y con internet, así que no se
+        // precachean (cada instalación las bajaría de balde). Se cachean en runtime
+        // al usarse (abajo). Los nombres salen del módulo importado; lo vigila
+        // src/config/__tests__/pwa-precache.test.ts.
+        globIgnores: ['**/assets/pdfmake-*.js', '**/assets/vfs_fonts-*.js', '**/assets/exceljs*.js'],
 
         // Fallback cuando el user está offline y pide una ruta SPA que no tenemos precacheada
         navigateFallback: '/index.html',
@@ -76,6 +83,18 @@ export default defineConfig({
                 maxEntries:    60,
                 maxAgeSeconds: 5 * 60,   // 5 minutos
               },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+
+          // ── Librerías de exportación (PDF / Excel): CacheFirst al primer uso ──
+          // Los archivos llevan hash en el nombre, así que un archivo cacheado nunca queda viejo.
+          {
+            urlPattern: ({ url }) => /\/assets\/(pdfmake|vfs_fonts|exceljs)[^/]*\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'export-libs',
+              expiration: { maxEntries: 6, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

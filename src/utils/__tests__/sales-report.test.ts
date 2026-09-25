@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSalesReport, rangeDescription, reportNotes, roleLabel, sharePercent, UNKNOWN_SELLER } from '../sales-report'
+import { buildSalesReport, formatDayRange, rangeDescription, reportNotes, roleLabel, sharePercent, UNKNOWN_SELLER } from '../sales-report'
 import type { SalesByMemberReport, SalesByPeriodReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
@@ -161,6 +161,11 @@ describe('rangeDescription and reportNotes (shared by PDF and Excel)', () => {
     expect(rangeDescription(build([]))).toBe('24/09/2026')
     const week = build([], { period: { from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0 } })
     expect(rangeDescription(week)).toBe('20/09/2026 al 26/09/2026')
+  })
+
+  it('formatDayRange writes one date for one day and "del … al …" for several', () => {
+    expect(formatDayRange('2026-09-24', '2026-09-24')).toBe('24/09/2026')
+    expect(formatDayRange('2026-09-01', '2026-09-24')).toBe('01/09/2026 al 24/09/2026')
   })
 
   it('has no notes for a whole, consistent report', () => {

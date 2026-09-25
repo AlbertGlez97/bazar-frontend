@@ -18,11 +18,15 @@ export const UNKNOWN_SELLER = 'Sin nombre'
 export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
 
 /** Periodo en días de negocio: `24/09/2026` o `20/09/2026 al 26/09/2026`. */
-export function rangeDescription(report: SalesReport): string {
-  const { fromDay, toDay } = report.range
+export function formatDayRange(fromDay: string, toDay: string): string {
   return fromDay === toDay
     ? formatDateKey(fromDay)
     : `${formatDateKey(fromDay)} al ${formatDateKey(toDay)}`
+}
+
+/** El periodo de un reporte armado, para títulos y encabezados de los archivos. */
+export function rangeDescription(report: SalesReport): string {
+  return formatDayRange(report.range.fromDay, report.range.toDay)
 }
 
 /**

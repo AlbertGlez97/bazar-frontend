@@ -6,6 +6,7 @@ import {
 } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
+import { useUiModeStore } from '@/stores/uiMode.store'
 
 const sessionDestination = () => ({ path: useAuthStore().isAuthenticated ? '/app' : '/login' })
 
@@ -77,6 +78,15 @@ const routes: RouteRecordRaw[] = [
         name: 'Sale',
         component: () => import('@/views/sales/SaleView.vue'),
       },
+      {
+        // Reportes de ventas con descarga en PDF y Excel. Solo socios y solo en
+        // Modo Gestión: lo hace cumplir el guard de abajo (no basta con ocultar el
+        // ítem del menú) y la vista lo vuelve a comprobar si el modo o el rol cambian.
+        path: 'reportes',
+        name: 'Reports',
+        component: () => import('@/views/reports/ReportsView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: sessionDestination },
@@ -102,6 +112,10 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
     const session = useSessionStore()
     if (to.meta.requiresContext && !session.isContextReady) return { name: 'SelectContext' }
     if (to.meta.redirectIfContextReady && session.isContextReady) return { name: 'AppHome' }
+
+    // Rutas de gestión: quien no cumple vuelve al inicio, sin callejones ni errores.
+    if (to.meta.requiresSocio && session.member?.role !== 'socio') return { name: 'AppHome' }
+    if (to.meta.requiresGestion && useUiModeStore().currentMode !== 'gestion') return { name: 'AppHome' }
   })
 
   return router

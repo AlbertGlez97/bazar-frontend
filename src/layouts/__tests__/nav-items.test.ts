@@ -53,7 +53,29 @@ describe('getNavItems — punto de extensión (un ítem nuevo es una fila más)'
     expect(tos(getNavItems('venta', { isSocio: true }, table))).toEqual(['/a', '/solo-socios'])
   })
 
-  it('no incluye por sí mismo ningún ítem de Reportes (lo agrega otro cambio)', () => {
-    expect(tos(NAV_ITEMS).some((to) => to.includes('reportes'))).toBe(false)
+})
+
+describe('getNavItems — Reportes (solo socios, solo Modo Gestión)', () => {
+  const reports = (mode: 'venta' | 'gestion', isSocio?: boolean) =>
+    getNavItems(mode, { isSocio }).find((item) => item.to === '/app/reportes')
+
+  it('un socio en Modo Gestión ve "Reportes" con su ícono, al final del menú', () => {
+    expect(reports('gestion', true)).toMatchObject({ label: 'Reportes', icon: '📊', exact: false })
+    expect(tos(getNavItems('gestion', { isSocio: true })).at(-1)).toBe('/app/reportes')
+  })
+
+  it('un socio en Modo Venta no lo ve', () => {
+    expect(reports('venta', true)).toBeUndefined()
+  })
+
+  it('un colaborador no lo ve en ningún modo', () => {
+    expect(reports('gestion', false)).toBeUndefined()
+    expect(reports('venta', false)).toBeUndefined()
+    expect(reports('gestion')).toBeUndefined()
+  })
+
+  it('no altera el orden de los demás ítems', () => {
+    expect(tos(getNavItems('gestion', { isSocio: true }))).toEqual(['/app', '/app/productos', '/app/venta', '/app/reportes'])
+    expect(tos(getNavItems('gestion', { isSocio: false }))).toEqual(['/app', '/app/productos', '/app/venta'])
   })
 })

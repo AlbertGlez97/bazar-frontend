@@ -61,6 +61,33 @@ export const VOICE = {
     retry: 'Intentar de nuevo',
     blockedTitle: 'Todavía no se puede cobrar',
   },
+  /** Reportes de ventas (solo socios, Modo Gestión) y sus descargas. */
+  reports: {
+    title: 'Reportes de ventas',
+    lead: 'Elige un periodo para ver cuánto se vendió y quién vendió. Después baja el detalle en PDF o Excel.',
+    periodLabel: 'Periodo',
+    presets: { hoy: 'Hoy', ayer: 'Ayer', semana: 'Esta semana', mes: 'Este mes' },
+    from: 'Desde',
+    to: 'Hasta',
+    apply: 'Actualizar',
+    loading: 'Cargando tu reporte…',
+    loadError: 'No pudimos cargar el reporte. Intenta de nuevo en un momento.',
+    forbidden: 'Este reporte es solo para socios.',
+    retry: 'Intentar de nuevo',
+    empty: 'Todavía no hay ventas en este periodo.',
+    totalLabel: 'Total vendido',
+    byPerson: 'Por persona',
+    columnPerson: 'Persona',
+    columnRole: 'Rol',
+    columnTotal: 'Total vendido',
+    columnShare: '% del total',
+    downloadPdf: 'Descargar PDF',
+    downloadExcel: 'Descargar Excel',
+    preparing: 'Preparando tu archivo…',
+    downloadError: 'No pudimos preparar tu archivo. Intenta de nuevo en un momento.',
+    mismatch: 'Mientras preparábamos tu archivo se registraron ventas y sus cifras ya no coinciden con las de la pantalla. Toca «Actualizar» y descárgalo otra vez.',
+    truncated: 'Este periodo tiene más ventas de las que caben en un archivo, así que el detalle puede estar incompleto. Elige un periodo más corto.',
+  },
   /** Lector de QR: textos fijos de la pantalla; las fallas de cámara salen de `cameraErrorMessage`. */
   scan: {
     title: 'Escanear producto',
@@ -231,4 +258,38 @@ export function saleCartRefusalMessage(reason: SaleCartRefusal, productName?: st
     default:
       return 'No pudimos hacer ese cambio. Intenta de nuevo.'
   }
+}
+
+/** Rango de fechas que no se puede consultar: qué pasa y qué hacer (el servidor respondería 200 con ceros a un rango invertido). */
+export function reportRangeMessage(problem: 'incomplete' | 'inverted' | 'future'): string {
+  switch (problem) {
+    case 'incomplete':
+      return 'Escribe las dos fechas para ver el reporte.'
+    case 'inverted':
+      return 'La fecha inicial es posterior a la final. Cámbialas para ver el reporte.'
+    case 'future':
+      return 'La fecha final no puede ser de mañana en adelante. Elige hasta hoy.'
+  }
+}
+
+/** Falla al cargar un reporte: red, permiso o genérica. Nunca el texto crudo del servidor (viene en inglés). */
+export function reportLoadErrorMessage(cause: unknown): string {
+  if (isNetworkError(cause)) return VOICE.networkError
+  const status = (cause as { response?: { status?: number } } | null)?.response?.status
+  return status === 403 ? VOICE.reports.forbidden : VOICE.reports.loadError
+}
+
+/**
+ * Falla al preparar un archivo. Solo es "red" si fue una petición de Axios que no
+ * obtuvo respuesta (al reunir el detalle de ventas); cualquier otra falla
+ * (generar el PDF/Excel, cargar su módulo) no es culpa del internet de nadie.
+ */
+export function reportDownloadErrorMessage(cause: unknown): string {
+  const failure = cause as { isAxiosError?: boolean; response?: unknown } | null
+  return failure?.isAxiosError && !failure.response ? VOICE.networkError : VOICE.reports.downloadError
+}
+
+/** Confirma la descarga con un hecho concreto: el nombre del archivo. */
+export function reportDownloadDoneMessage(filename: string): string {
+  return `Listo, se descargó ${filename}.`
 }

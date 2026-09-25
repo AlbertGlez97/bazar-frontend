@@ -2,11 +2,8 @@ import type { UiMode } from '@/types/ui-mode.types'
 
 /**
  * Navegación lateral de `AppLayout`, declarativa: cada ítem es una fila con su
- * orden en cada modo. Para agregar uno (por ejemplo "Reportes", solo para
- * socios y solo en Modo Gestión) basta una fila más:
- *
- *   { to: '/app/reportes', label: 'Reportes', icon: '📊', exact: false,
- *     modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 4 } }
+ * orden en cada modo. Para agregar uno basta una fila más (ver "Reportes", que
+ * solo ven los socios y solo en Modo Gestión: `modes` y `socioOnly`).
  */
 export interface NavItemDef {
   to: string
@@ -32,6 +29,8 @@ export const NAV_ITEMS: NavItemDef[] = [
   { to: '/app/venta', label: 'Vender', icon: '🛒', exact: false, order: { venta: 1, gestion: 3 } },
   { to: '/app', label: 'Inicio', icon: '🏠', exact: true, order: { venta: 2, gestion: 1 } },
   { to: '/app/productos', label: 'Productos', icon: '📦', exact: false, order: { venta: 3, gestion: 2 } },
+  // Reportes: solo socios y solo en Modo Gestión (la ruta lo exige también en el guard).
+  { to: '/app/reportes', label: 'Reportes', icon: '📊', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 4 } },
 ]
 
 /** Ítems visibles para el modo y la persona, en el orden de ese modo. */

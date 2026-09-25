@@ -129,4 +129,14 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     expectAtLeast44('SaleView.vue', '.sale-view .sale-view__bar-button', ['min-height'])
     expectAtLeast44('SaleView.vue', '.sale-view__close', ['min-height'])
   })
+
+  it('reportes: los atajos de periodo, "Actualizar" y las descargas miden 44x44', () => {
+    expectAtLeast44('ReportRangePicker.vue', '.report-range-picker__preset', ['min-width', 'min-height'])
+    expectAtLeast44('ReportRangePicker.vue', '.report-range-picker__apply', ['min-width', 'min-height'])
+    expectAtLeast44('ReportsView.vue', '.reports-view__downloads :deep(.app-btn)', ['min-width', 'min-height'])
+  })
+
+  it('reportes: los campos de fecha usan AppInput size="lg" (48 px)', () => {
+    expect(sourceOf('ReportRangePicker.vue')).toMatch(/type="date"\s+size="lg"/)
+  })
 })

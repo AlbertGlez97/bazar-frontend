@@ -27,7 +27,10 @@ vi.mock('@/components', async () => ({
   SyncStatusIndicator: (await import('@/components/ui/organisms/SyncStatusIndicator.vue')).default,
 }))
 
-beforeEach(() => localStorage.clear())
+beforeEach(() => {
+  localStorage.clear()
+  sessionStorage.clear()
+})
 
 async function mountAt(path: string) {
   const stub = { template: '<div />' }
@@ -44,6 +47,7 @@ async function mountAt(path: string) {
           { path: '', name: 'AppHome', component: stub },
           { path: 'productos', name: 'ProductCatalog', component: stub },
           { path: 'venta', name: 'Sale', component: stub },
+          { path: 'reportes', name: 'Reports', component: stub },
         ],
       },
     ],
@@ -98,12 +102,37 @@ describe('AppLayout navegación', () => {
     expect(wrapper.get('.app-header__title').text()).toBe('Vender')
   })
 
-  it('Modo Venta y Modo Gestión no ofrecen aún un ítem de Reportes (lo agrega otro cambio)', async () => {
+  it('Reportes: solo un socio en Modo Gestión lo ve, y va al final', async () => {
+    sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
+    localStorage.setItem('la-marchanta-ui-mode', 'gestion')
+    const wrapper = await mountAt('/app')
+    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '🛒 Vender', '📊 Reportes'])
+    expect(wrapper.findAll('a.sidebar__link').at(-1)?.attributes('href')).toBe('/app/reportes')
+  })
+
+  it('Reportes no aparece para un socio en Modo Venta', async () => {
+    sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
+    localStorage.setItem('la-marchanta-ui-mode', 'venta')
+    const wrapper = await mountAt('/app')
+    expect(wrapper.find('.sidebar__nav').text()).not.toMatch(/Reportes/)
+  })
+
+  it('Reportes no aparece para un colaborador, ni en Gestión ni en Venta', async () => {
+    sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-2', name: 'Carlos', role: 'colaborador', active: true }))
     for (const mode of ['venta', 'gestion']) {
       localStorage.setItem('la-marchanta-ui-mode', mode)
       const wrapper = await mountAt('/app')
       expect(wrapper.find('.sidebar__nav').text()).not.toMatch(/Reportes/)
     }
+  })
+
+  it('en /app/reportes solo "Reportes" está activo y el título de la barra es "Reportes"', async () => {
+    sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
+    localStorage.setItem('la-marchanta-ui-mode', 'gestion')
+    const wrapper = await mountAt('/app/reportes')
+    expect(activeLabels(wrapper)).toHaveLength(1)
+    expect(activeLabels(wrapper)[0]).toContain('Reportes')
+    expect(wrapper.get('.app-header__title').text()).toBe('Reportes')
   })
 
   it('muestra los enlaces a Inicio y Productos con sus rutas', async () => {

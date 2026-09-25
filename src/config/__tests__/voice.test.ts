@@ -14,7 +14,55 @@ import {
   saleSuccessMessage,
   salesNeedReviewMessage,
   salesPendingMessage,
+  reportDownloadDoneMessage,
+  reportDownloadErrorMessage,
+  reportLoadErrorMessage,
+  reportRangeMessage,
 } from '@/config/voice'
+
+describe('copy de reportes (VOICE.reports y funciones)', () => {
+  const texts: Array<[string, string]> = Object.entries(VOICE.reports).flatMap(([key, value]): Array<[string, string]> =>
+    typeof value === 'string'
+      ? [[key, value]]
+      : Object.entries(value).map(([sub, text]): [string, string] => [`${key}.${sub}`, text]),
+  )
+
+  it('todo texto está en español, sin exclamaciones ni "¡Éxito!" ni códigos HTTP', () => {
+    for (const [key, text] of texts) {
+      expect(text, key).not.toMatch(/!|éxito|exito|error \d{3}|\b[45]\d\d\b/i)
+      expect(text.trim().length, key).toBeGreaterThan(2)
+    }
+  })
+
+  it('el estado vacío y la preparación usan las frases de la guía', () => {
+    expect(VOICE.reports.empty).toBe('Todavía no hay ventas en este periodo.')
+    expect(VOICE.reports.preparing).toBe('Preparando tu archivo…')
+  })
+
+  it('reportRangeMessage explica cada problema del rango y qué hacer', () => {
+    expect(reportRangeMessage('incomplete')).toMatch(/dos fechas/)
+    expect(reportRangeMessage('inverted')).toMatch(/inicial.*final/)
+    expect(reportRangeMessage('future')).toMatch(/hoy/)
+  })
+
+  it('reportLoadErrorMessage distingue red, permiso y falla genérica sin texto crudo', () => {
+    expect(reportLoadErrorMessage({ request: {} })).toBe(VOICE.networkError)
+    expect(reportLoadErrorMessage({ response: { status: 403, data: { message: 'Only socios may access this resource' } } })).toMatch(/solo para socios/i)
+    expect(reportLoadErrorMessage({ response: { status: 500 } })).toBe(VOICE.reports.loadError)
+    expect(reportLoadErrorMessage({ response: { status: 400, data: { message: 'from must be a valid ISO 8601 date string' } } })).toBe(VOICE.reports.loadError)
+  })
+
+  it('reportDownloadErrorMessage: red solo si fue una petición sin respuesta; cualquier otra falla es "no pudimos preparar tu archivo"', () => {
+    expect(reportDownloadErrorMessage({ isAxiosError: true, request: {} })).toBe(VOICE.networkError)
+    expect(reportDownloadErrorMessage({ isAxiosError: true, response: { status: 500 } })).toBe(VOICE.reports.downloadError)
+    expect(reportDownloadErrorMessage(new Error('pdfmake exploded'))).toBe(VOICE.reports.downloadError)
+    expect(reportDownloadErrorMessage(new TypeError('Failed to fetch dynamically imported module'))).toBe(VOICE.reports.downloadError)
+  })
+
+  it('reportDownloadDoneMessage confirma con el nombre del archivo', () => {
+    expect(reportDownloadDoneMessage('ventas-la-marchanta-2026-09-24.pdf')).toBe('Listo, se descargó ventas-la-marchanta-2026-09-24.pdf.')
+  })
+})
 
 describe('saleSuccessMessage (patrón de confirmación de venta)', () => {
   it('dice el hecho concreto: qué se anotó y cuánto', () => {

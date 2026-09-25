@@ -69,6 +69,7 @@ export { default as CartLineItem        } from './ui/molecules/CartLineItem.vue'
 export { default as CartSummary         } from './ui/molecules/CartSummary.vue'
 export { default as CashInput          } from './ui/molecules/CashInput.vue'
 export { default as CategoryQuickFilter } from './ui/molecules/CategoryQuickFilter.vue'
+export { default as ReportRangePicker } from './ui/molecules/ReportRangePicker.vue'
 
 // ── ORGANISMOS — secciones complejas con lógica propia ───────────────
 export { default as AppModal        } from './ui/organisms/AppModal.vue'
@@ -88,3 +89,4 @@ export { default as SaleCart           } from './ui/organisms/SaleCart.vue'
 export { default as SaleCatalogPicker  } from './ui/organisms/SaleCatalogPicker.vue'
 export { default as SaleResult         } from './ui/organisms/SaleResult.vue'
 export { default as SyncStatusIndicator } from './ui/organisms/SyncStatusIndicator.vue'
+export { default as SalesReportSummary } from './ui/organisms/SalesReportSummary.vue'
