@@ -1,4 +1,5 @@
-import { businessDayOf } from './business-time'
+import { businessDayOf, formatDateKey } from './business-time'
+import { formatMinorMoney } from './money'
 import type {
   SalesByMemberReport,
   SalesByPeriodReport,
@@ -12,6 +13,41 @@ import type { Sale } from '@/types/sale.types'
 
 /** Nombre que se imprime cuando el vendedor no se puede resolver. */
 export const UNKNOWN_SELLER = 'Sin nombre'
+
+/** `1 venta` / `2 ventas`. */
+export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
+
+/** Periodo en días de negocio: `24/09/2026` o `20/09/2026 al 26/09/2026`. */
+export function rangeDescription(report: SalesReport): string {
+  const { fromDay, toDay } = report.range
+  return fromDay === toDay
+    ? formatDateKey(fromDay)
+    : `${formatDateKey(fromDay)} al ${formatDateKey(toDay)}`
+}
+
+/**
+ * Avisos que van impresos en los archivos (PDF y Excel): detalle cortado en el
+ * tope de páginas y detalle que no cuadra con el reporte del periodo. Vacío
+ * cuando todo cuadra: un archivo sano no lleva notas.
+ */
+export function reportNotes(report: SalesReport): string[] {
+  const notes: string[] = []
+  const { consistency } = report
+  if (report.truncated) {
+    notes.push(
+      'Este archivo llegó al límite de ventas que se pueden incluir y puede estar incompleto. '
+      + 'Descarga un periodo más corto para tener todo el detalle.',
+    )
+  }
+  if (!consistency.ok) {
+    notes.push(
+      `El detalle de este archivo (${plural(consistency.rowsCount, 'venta', 'ventas')}, ${formatMinorMoney(consistency.rowsTotalMinor)}) `
+      + `no coincide con el reporte del periodo (${plural(consistency.reportCount, 'venta', 'ventas')}, ${formatMinorMoney(consistency.reportTotalMinor)}). `
+      + 'Es normal si se registraron ventas mientras se preparaba; vuelve a descargarlo para tener las cifras al día.',
+    )
+  }
+  return notes
+}
 
 /** Rol en español para tablas y archivos. */
 export function roleLabel(role: MemberRole | null): string {

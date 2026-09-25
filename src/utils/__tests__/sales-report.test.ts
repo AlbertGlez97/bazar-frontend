@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSalesReport, roleLabel, sharePercent, UNKNOWN_SELLER } from '../sales-report'
+import { buildSalesReport, rangeDescription, reportNotes, roleLabel, sharePercent, UNKNOWN_SELLER } from '../sales-report'
 import type { SalesByMemberReport, SalesByPeriodReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
@@ -153,6 +153,32 @@ describe('buildSalesReport — per person', () => {
   it('does not list people without sales in the detail', () => {
     const report = build([sale({ memberId: 'm-ana' })])
     expect(report.people.map((p) => p.memberId)).toEqual(['m-ana'])
+  })
+})
+
+describe('rangeDescription and reportNotes (shared by PDF and Excel)', () => {
+  it('describes a single day and a multi-day range in business dates', () => {
+    expect(rangeDescription(build([]))).toBe('24/09/2026')
+    const week = build([], { period: { from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0 } })
+    expect(rangeDescription(week)).toBe('20/09/2026 al 26/09/2026')
+  })
+
+  it('has no notes for a whole, consistent report', () => {
+    expect(reportNotes(build([sale({ totalMinor: 700 })]))).toEqual([])
+  })
+
+  it('warns when the detail was cut at the page cap', () => {
+    const notes = reportNotes(build([], { truncated: true }))
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toContain('límite de ventas')
+  })
+
+  it('warns when detail and period report disagree, with both figures', () => {
+    const notes = reportNotes(build([sale({ totalMinor: 700 })], { period: period(1000, 2) }))
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toContain('no coincide con el reporte del periodo')
+    expect(notes[0]).toContain('1 venta, $7.00')
+    expect(notes[0]).toContain('2 ventas, $10.00')
   })
 })
 

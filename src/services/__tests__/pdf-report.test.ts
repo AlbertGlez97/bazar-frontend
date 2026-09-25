@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces'
-// `?raw` lee el CSS como texto: los colores del PDF se atan a los tokens tal como están escritos.
-import mainCss from '../../assets/main.css?raw'
-import { buildPdfDefinition, PDF_COLORS, PDF_COLOR_TOKENS } from '../pdf-report'
+import { buildPdfDefinition } from '../pdf-report'
+import { REPORT_COLORS } from '@/config/report-palette'
 import { buildSalesReport } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
@@ -107,8 +106,8 @@ describe('buildPdfDefinition — document', () => {
   it('uses only the documented palette', () => {
     const json = JSON.stringify(buildPdfDefinition(makeReport()))
     const used = new Set(json.match(/#[0-9a-fA-F]{6}/g)?.map((c) => c.toLowerCase()))
-    const palette = new Set(Object.values(PDF_COLORS).map((c) => c.toLowerCase()))
-    for (const color of used) expect(palette.has(color), `${color} is not in PDF_COLORS`).toBe(true)
+    const palette = new Set(Object.values(REPORT_COLORS).map((c) => c.toLowerCase()))
+    for (const color of used) expect(palette.has(color), `${color} is not in REPORT_COLORS`).toBe(true)
   })
 })
 
@@ -194,26 +193,5 @@ describe('buildPdfDefinition — notes and edge cases', () => {
   it('names without a match print "Sin nombre"', () => {
     const def = buildPdfDefinition(makeReport({ sales: [sale('s-9', 'm-ghost', '2026-09-24T18:00:00.000Z', 100, 100, [1])] }))
     expect(rowTexts(findTable(def, 'Fecha').body[1])[1]).toBe('Sin nombre')
-  })
-})
-
-describe('PDF palette', () => {
-  const tokens = new Map<string, string>()
-  const rootBlocks = [...mainCss.matchAll(/:root\s*\{([^}]*)\}/g)].map((m) => m[1]).join('\n')
-  for (const m of rootBlocks.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) tokens.set(m[1], m[2].trim())
-
-  function resolve(name: string): string {
-    const raw = tokens.get(name)
-    if (raw === undefined) throw new Error(`Token ${name} is not defined in main.css`)
-    const ref = /^var\((--[\w-]+)\)$/.exec(raw)
-    return (ref ? resolve(ref[1]) : raw).toLowerCase()
-  }
-
-  it.each(Object.entries(PDF_COLOR_TOKENS))('%s equals the value of %s in main.css', (key, token) => {
-    expect(PDF_COLORS[key as keyof typeof PDF_COLORS].toLowerCase()).toBe(resolve(token))
-  })
-
-  it('every palette color has a documented token', () => {
-    expect(Object.keys(PDF_COLORS).sort()).toEqual(Object.keys(PDF_COLOR_TOKENS).sort())
   })
 })

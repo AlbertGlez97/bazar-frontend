@@ -1,43 +1,12 @@
 import type { Content, TableCell, TDocumentDefinitions, TVirtualFileSystem } from 'pdfmake/interfaces'
-import { formatBusinessDateTime, formatDateKey } from '@/utils/business-time'
+import { REPORT_COLORS } from '@/config/report-palette'
+import { formatBusinessDateTime } from '@/utils/business-time'
+import { saveBlob } from '@/utils/report-files'
 import { formatMinorMoney } from '@/utils/money'
-import { roleLabel } from '@/utils/sales-report'
+import { plural, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 
-/**
- * Paleta del PDF. Vive en un .ts (no en un .vue ni en CSS), así que los valores
- * se copian de los tokens de `src/assets/main.css` y `PDF_COLOR_TOKENS` dice de
- * cuál: `pdf-report.test.ts` lee main.css y falla si alguno se desvía.
- */
-export const PDF_COLORS = {
-  primary: '#b8501c',
-  primarySoft: '#f9e3d2',
-  onPrimary: '#ffffff',
-  accent: '#f0b429',
-  surface: '#fffdf9',
-  surfaceAlt: '#f2e8d5',
-  border: '#e3d5bc',
-  text: '#2b1d14',
-  textMuted: '#6a5443',
-  warning: '#8a5300',
-  warningSoft: '#fbebc0',
-} as const
-
-export const PDF_COLOR_TOKENS: Record<keyof typeof PDF_COLORS, string> = {
-  primary: '--color-primary',
-  primarySoft: '--color-primary-soft',
-  onPrimary: '--color-on-primary',
-  accent: '--color-accent',
-  surface: '--color-surface',
-  surfaceAlt: '--color-surface-alt',
-  border: '--color-border',
-  text: '--color-text',
-  textMuted: '--color-text-muted',
-  warning: '--color-warning',
-  warningSoft: '--color-warning-soft',
-}
-
-const C = PDF_COLORS
+const C = REPORT_COLORS
 const PAGE_MARGINS: [number, number, number, number] = [36, 36, 36, 48]
 
 /**
@@ -52,15 +21,6 @@ const MARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
 <rect x="48" y="0" width="16" height="18" fill="${C.surface}"/><circle cx="56" cy="18" r="8" fill="${C.surface}"/>
 <path d="M16 53V38l16 10 16-10v15" fill="none" stroke="${C.surface}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>`
-
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
-
-function rangeTitle(report: SalesReport): string {
-  const { fromDay, toDay } = report.range
-  return fromDay === toDay
-    ? `Ventas del ${formatDateKey(fromDay)}`
-    : `Ventas del ${formatDateKey(fromDay)} al ${formatDateKey(toDay)}`
-}
 
 const headerCell = (text: string, alignment: 'left' | 'right' = 'left'): TableCell => ({
   text,
@@ -171,8 +131,8 @@ function peopleTable(report: SalesReport): Content {
  * imprime; la marca va en color, el isotipo y el encabezado.
  */
 export function buildPdfDefinition(report: SalesReport): TDocumentDefinitions {
-  const title = rangeTitle(report)
-  const { totals, consistency } = report
+  const title = `Ventas del ${rangeDescription(report)}`
+  const { totals } = report
   const hasSales = report.rows.length > 0
 
   const content: Content[] = [
@@ -193,19 +153,7 @@ export function buildPdfDefinition(report: SalesReport): TDocumentDefinitions {
     { canvas: [{ type: 'rect', x: 0, y: 0, w: 523, h: 2, color: C.primary }], margin: [0, 8, 0, 12] },
   ]
 
-  if (report.truncated) {
-    content.push(noteBox(
-      'Este archivo llegó al límite de ventas que se pueden incluir y puede estar incompleto. '
-      + 'Descarga un periodo más corto para tener todo el detalle.',
-    ))
-  }
-  if (!consistency.ok) {
-    content.push(noteBox(
-      `El detalle de este archivo (${plural(consistency.rowsCount, 'venta', 'ventas')}, ${formatMinorMoney(consistency.rowsTotalMinor)}) `
-      + `no coincide con el reporte del periodo (${plural(consistency.reportCount, 'venta', 'ventas')}, ${formatMinorMoney(consistency.reportTotalMinor)}). `
-      + 'Es normal si se registraron ventas mientras se preparaba; vuelve a descargarlo para tener las cifras al día.',
-    ))
-  }
+  for (const note of reportNotes(report)) content.push(noteBox(note))
 
   content.push({ text: 'Ventas', style: 'sectionTitle' })
   content.push(hasSales
@@ -280,4 +228,9 @@ function loadPdfMake(): Promise<PdfMakeApi> {
 export async function renderPdfBlob(report: SalesReport): Promise<Blob> {
   const pdfMake = await loadPdfMake()
   return pdfMake.createPdf(buildPdfDefinition(report)).getBlob()
+}
+
+/** Genera el PDF y lo descarga con ese nombre. Si falla la generación no se guarda nada y el error se propaga. */
+export async function downloadPdf(report: SalesReport, filename: string): Promise<void> {
+  saveBlob(await renderPdfBlob(report), filename)
 }

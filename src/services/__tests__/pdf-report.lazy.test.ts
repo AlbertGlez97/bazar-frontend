@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildPdfDefinition, renderPdfBlob } from '../pdf-report'
+import { buildPdfDefinition, downloadPdf, renderPdfBlob } from '../pdf-report'
+import { saveBlob } from '@/utils/report-files'
 import { buildSalesReport } from '@/utils/sales-report'
+
+vi.mock('@/utils/report-files', () => ({ saveBlob: vi.fn() }))
 
 // pdfmake pesa más de 1 MB: solo debe cargarse cuando se pide un PDF, no al
 // importar el módulo del reporte (ni, por tanto, al arrancar la app).
@@ -52,5 +55,17 @@ describe('renderPdfBlob loads pdfmake lazily', () => {
     await renderPdfBlob(report)
     expect(mocks.addVirtualFileSystem).toHaveBeenCalledTimes(1)
     expect(mocks.createPdf).toHaveBeenCalledTimes(2)
+  })
+
+  it('downloadPdf renders the PDF and saves it under the given file name', async () => {
+    await downloadPdf(report, 'ventas-la-marchanta-2026-09-24.pdf')
+    expect(saveBlob).toHaveBeenCalledWith(blob, 'ventas-la-marchanta-2026-09-24.pdf')
+  })
+
+  it('downloadPdf saves nothing when the PDF cannot be generated', async () => {
+    vi.mocked(saveBlob).mockClear()
+    mocks.createPdf.mockReturnValue({ getBlob: () => Promise.reject(new Error('boom')) })
+    await expect(downloadPdf(report, 'x.pdf')).rejects.toThrow('boom')
+    expect(saveBlob).not.toHaveBeenCalled()
   })
 })
