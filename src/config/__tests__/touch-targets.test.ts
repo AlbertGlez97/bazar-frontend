@@ -63,6 +63,14 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     )
   })
 
+  it('selector de modo: cada botón mide al menos 44x44', () => {
+    expectAtLeast44('UiModeSwitch.vue', '.ui-mode-switch__btn', ['min-height', 'min-width'])
+  })
+
+  it('selector de modo compacto (sidebar colapsado): el botón es de 44 px de ancho', () => {
+    expectAtLeast44('UiModeSwitch.vue', '.ui-mode-switch--compact .ui-mode-switch__btn', ['width'])
+  })
+
   it('AppInput size="lg" (el que usa el buscador de venta) supera los 44 px', () => {
     const body = ruleBody(sourceOf('AppInput.vue'), '.app-input--lg')
     expect(pxOf(body, 'min-height')).toBeGreaterThanOrEqual(MIN_TOUCH_PX)

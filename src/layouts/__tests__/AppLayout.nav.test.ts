@@ -9,10 +9,13 @@ import AppLayout from '@/layouts/AppLayout.vue'
 // A diferencia de AppLayout.test.ts (que mockea vue-router), aquí se usa un
 // router real: el estado activo de los enlaces depende de cómo vue-router
 // compara rutas, y un mock no puede detectar que "Inicio" siga resaltado.
-vi.mock('@/components', () => ({
+vi.mock('@/components', async () => ({
   AppButton:        { template: '<button><slot /></button>' },
   AppAvatar:        { template: '<div />' },
   InstallAppButton: { template: '<div />' },
+  // Reales: el selector de modo y su indicador no dependen de nada externo
+  AppBadge:         (await import('@/components/ui/atoms/AppBadge.vue')).default,
+  UiModeSwitch:     (await import('@/components/ui/organisms/UiModeSwitch.vue')).default,
 }))
 
 async function mountAt(path: string) {

@@ -20,10 +20,12 @@ vi.mock('@/stores/auth.store', () => ({
 }))
 
 vi.mock('@/components', () => ({
+  AppBadge:         { template: '<span><slot /></span>' },
   AppButton:        { template: '<button><slot /></button>' },
   AppAvatar:        { template: '<div />' },
   AppToast:         { template: '<div />' },
   InstallAppButton: { template: '<div />' },
+  UiModeSwitch:     { template: '<div />' },
 }))
 
 import AppLayout from '@/layouts/AppLayout.vue'

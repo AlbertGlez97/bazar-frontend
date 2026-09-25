@@ -34,6 +34,17 @@
         </AppButton>
       </div>
 
+      <!-- Selector de modo (Venta / Gestión). Colapsado pasa a íconos apilados
+           de 44x44: sigue siendo usable y conserva sus nombres accesibles. -->
+      <div class="sidebar__mode">
+        <UiModeSwitch
+          :model-value="uiMode.currentMode"
+          :compact="sidebarCollapsed"
+          tone="inverse"
+          @update:model-value="uiMode.setMode"
+        />
+      </div>
+
       <!-- Navegación -->
       <nav class="sidebar__nav">
         <RouterLink
@@ -95,9 +106,19 @@
     <main class="app-main">
       <!-- Encabezado superior -->
       <header class="app-header">
-        <h2 class="app-header__title">
-          {{ currentRouteTitle }}
-        </h2>
+        <div class="app-header__heading">
+          <h2 class="app-header__title">
+            {{ currentRouteTitle }}
+          </h2>
+          <!-- Indicador del modo activo: texto + color, nunca solo color -->
+          <AppBadge
+            :color="uiMode.isVenta ? 'amber' : 'gray'"
+            :filled="uiMode.isVenta"
+            class="app-header__mode"
+          >
+            {{ uiMode.isVenta ? 'Modo Venta' : 'Modo Gestión' }}
+          </AppBadge>
+        </div>
         <span class="app-header__date">{{ formattedDate }}</span>
       </header>
 
@@ -113,11 +134,15 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
-import { AppButton, AppAvatar, InstallAppButton } from '@/components'
+import { useUiModeStore } from '@/stores/uiMode.store'
+import { AppBadge, AppButton, AppAvatar, InstallAppButton, UiModeSwitch } from '@/components'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 import { APP_NAME } from '@/config/app'
 
 const authStore = useAuthStore()
+// El modo se inicializa al crearse el store (antes de que la vista hija
+// renderice): sugerencia del dispositivo la primera vez, preferencia guardada después.
+const uiMode    = useUiModeStore()
 const router    = useRouter()
 const route     = useRoute()
 
@@ -223,6 +248,13 @@ function handleLogout() {
 }
 .sidebar__toggle:hover { opacity: 1; }
 
+/* Selector de modo, bajo el logo */
+.sidebar__mode {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-sidebar-text) 14%, transparent);
+}
+.app-layout--collapsed .sidebar__mode { padding: var(--spacing-sm) 0; }
+
 /* Navegación */
 .sidebar__nav {
   flex: 1;
@@ -300,6 +332,16 @@ function handleLogout() {
   top:            0;
   z-index:        10;
 }
+
+.app-header__heading {
+  display:     flex;
+  align-items: center;
+  flex-wrap:   wrap;
+  gap:         var(--spacing-sm);
+}
+
+/* El indicador se lee de un vistazo: 14 px en vez de los 12 px del badge */
+.app-header .app-header__mode { font-size: var(--font-size-sm); padding: 0.25rem 0.75rem; }
 
 .app-header__title {
   font-size:   var(--font-size-lg);

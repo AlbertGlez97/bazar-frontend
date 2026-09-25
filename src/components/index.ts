@@ -77,3 +77,4 @@ export { default as HowItWorksSection } from './ui/organisms/HowItWorksSection.v
 export { default as LandingCta      } from './ui/organisms/LandingCta.vue'
 export { default as ProductCatalogGrid } from './ui/organisms/ProductCatalogGrid.vue'
 export { default as ProductFormModal   } from './ui/organisms/ProductFormModal.vue'
+export { default as UiModeSwitch       } from './ui/organisms/UiModeSwitch.vue'
