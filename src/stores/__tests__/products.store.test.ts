@@ -44,7 +44,9 @@ describe('products.store', () => {
   })
 
   it('fetchProducts guarda page/search/includeInactive como filtros activos', async () => {
-    vi.mocked(ProductsService.listProducts).mockResolvedValue(listResponse)
+    // El store adopta el `page` normalizado que devuelve el servidor, así que
+    // el mock debe ecoar la página pedida como haría la API real.
+    vi.mocked(ProductsService.listProducts).mockResolvedValue({ ...listResponse, page: 2 })
     const store = useProductsStore()
 
     await store.fetchProducts({ page: 2, search: 'ps5', includeInactive: true })
