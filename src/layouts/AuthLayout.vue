@@ -34,11 +34,6 @@
       <!-- Vista hija (Login) -->
       <RouterView />
     </main>
-
-    <!-- Footer mínimo -->
-    <footer class="auth-layout__footer">
-      Construido con NestJS · Vue 3 · PostgreSQL
-    </footer>
   </div>
 </template>
 
@@ -70,7 +65,7 @@ const appInitial = APP_NAME.charAt(0)
   justify-content: center;
   gap: 24px;
   background: var(--al-bg);
-  padding: 24px 16px 40px;
+  padding: 24px 16px;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -181,16 +176,6 @@ const appInitial = APP_NAME.charAt(0)
   --radius-md:          10px;
   --radius-lg:          16px;
   --transition:         .2s ease;
-}
-
-/* ── Footer ────────────────────────────────────────────────── */
-.auth-layout__footer {
-  position: relative;
-  z-index: 1;
-  font-size: 12px;
-  color: var(--al-muted);
-  opacity: .6;
-  letter-spacing: .3px;
 }
 
 /* ── Responsive ────────────────────────────────────────────── */

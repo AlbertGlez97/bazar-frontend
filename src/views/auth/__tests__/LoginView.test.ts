@@ -55,6 +55,14 @@ describe('login form', () => {
     wrapper.unmount()
   })
 
+  it('el aviso de seguridad no nombra JWT ni algoritmos de hash', () => {
+    const wrapper = render()
+    const notice = wrapper.get('.login__security').text()
+    expect(notice).toBe('Tus datos de acceso se almacenan de forma segura.')
+    expect(notice).not.toMatch(/JWT|BCrypt|Argon|cifrad/i)
+    wrapper.unmount()
+  })
+
   it('asocia cada label con su control (accesibilidad)', () => {
     // attachTo: el navegador resuelve label.control sobre el documento
     const wrapper = mount(LoginView, {

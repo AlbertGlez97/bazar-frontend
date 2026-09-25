@@ -170,7 +170,7 @@
           stroke-linejoin="round"
         />
       </svg>
-      Sesión protegida con JWT · Contraseña cifrada con BCrypt
+      Tus datos de acceso se almacenan de forma segura.
     </p>
   </div>
 </template>
