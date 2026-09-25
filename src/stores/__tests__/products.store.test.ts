@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useProductsStore } from '../products.store'
 import ProductsService from '@/services/products.service'
+import type { Product } from '@/types/product.types'
 
 vi.mock('@/services/products.service', () => ({
   default: {
@@ -14,7 +15,7 @@ vi.mock('@/services/products.service', () => ({
   },
 }))
 
-const product = {
+const product: Product = {
   id: 'p-1', name: 'Producto', tipo: 'cantidad', unitPriceMinor: 5000,
   initialStock: 10, stock: 10, category: null, purchaseCostMinor: null,
   supplier: null, notes: null, createdAt: '2026-01-01T00:00:00.000Z',

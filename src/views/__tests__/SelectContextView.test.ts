@@ -6,6 +6,7 @@ import DevicesService from '@/services/devices.service'
 import MembersService from '@/services/members.service'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
+import type { Member } from '@/types/member.types'
 
 vi.mock('@/services/devices.service', () => ({ default: { identify: vi.fn() } }))
 vi.mock('@/services/members.service', () => ({ default: { list: vi.fn() } }))
@@ -13,7 +14,7 @@ vi.mock('@/services/members.service', () => ({ default: { list: vi.fn() } }))
 const push = vi.fn()
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
 
-const members = [
+const members: Member[] = [
   { id: 'm-1', name: 'Alberto', role: 'socio', active: true },
   { id: 'm-2', name: 'Carlos', role: 'colaborador', active: true },
 ]
