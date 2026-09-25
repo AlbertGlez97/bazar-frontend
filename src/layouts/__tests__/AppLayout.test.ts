@@ -57,18 +57,24 @@ describe('AppLayout', () => {
     expect(vm.sidebarCollapsed).toBe(false)
   })
 
-  it('navItems contiene solo la ruta de inicio', () => {
+  it('navItems contiene inicio y el catálogo de productos', () => {
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as unknown as AppLayoutVm
-    expect(vm.navItems).toHaveLength(1)
-    const routes = vm.navItems.map((i) => i.to)
-    expect(routes).toContain('/app')
+    expect(vm.navItems.map((i) => i.to)).toEqual(['/app', '/app/productos'])
   })
 
   it('currentRouteTitle resuelve el nombre de la ruta actual', () => {
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as unknown as AppLayoutVm
     expect(vm.currentRouteTitle).toBe('Inicio')
+  })
+
+  it('currentRouteTitle muestra "Productos" en el catálogo', () => {
+    routeMock.name = 'ProductCatalog'
+    const wrapper = shallowMount(AppLayout)
+    const vm = wrapper.vm as unknown as AppLayoutVm
+    expect(vm.currentRouteTitle).toBe('Productos')
+    routeMock.name = 'AppHome'
   })
 
   it('currentRouteTitle usa FinanzasApp como fallback para rutas desconocidas', () => {

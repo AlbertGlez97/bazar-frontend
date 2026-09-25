@@ -36,7 +36,8 @@
           :key="item.to"
           :to="item.to"
           class="sidebar__link"
-          active-class="sidebar__link--active"
+          :active-class="item.exact ? undefined : 'sidebar__link--active'"
+          exact-active-class="sidebar__link--active"
         >
           <span class="sidebar__link-icon">{{ item.icon }}</span>
           <span
@@ -118,13 +119,18 @@ const sidebarCollapsed = ref(false)
 function toggleSidebar() { sidebarCollapsed.value = !sidebarCollapsed.value }
 
 // Navegación principal
+// `exact`: '/app' es prefijo de todas las rutas operativas y, por cómo
+// vue-router resuelve el hijo con path '', quedaría resaltado en cualquiera
+// de ellas; "Inicio" solo se marca activo en la ruta exacta.
 const navItems = [
-  { to: '/app', label: 'Inicio', icon: '🏠' },
+  { to: '/app', label: 'Inicio', icon: '🏠', exact: true },
+  { to: '/app/productos', label: 'Productos', icon: '📦', exact: false },
 ]
 
 // Título dinámico según la ruta actual
 const routeTitles: Record<string, string> = {
   AppHome: 'Inicio',
+  ProductCatalog: 'Productos',
 }
 const currentRouteTitle = computed(
   () => routeTitles[route.name as string] ?? 'FinanzasApp'
