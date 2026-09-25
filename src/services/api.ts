@@ -20,11 +20,14 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`
   }
 
+  // Un header ya presente en la petición manda sobre la sesión: la cola de
+  // ventas offline reenvía cada venta con SU memberId/deviceId (el contrato
+  // exige que coincidan con el cuerpo) aunque ahora atienda otra persona.
   const session = useSessionStore()
-  if (session.memberId) {
+  if (session.memberId && !config.headers['x-member-id']) {
     config.headers['x-member-id'] = session.memberId
   }
-  if (session.deviceId) {
+  if (session.deviceId && !config.headers['x-device-id']) {
     config.headers['x-device-id'] = session.deviceId
   }
 

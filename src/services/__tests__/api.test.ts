@@ -65,6 +65,21 @@ describe('api — interceptores Axios', () => {
     expect(result.headers['x-device-id']).toBe('d-1')
   })
 
+  it('respeta x-member-id/x-device-id ya presentes en la petición (la cola offline envía los de cada venta)', () => {
+    const session = useSessionStore()
+    session.setDevice({ deviceId: 'd-actual', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setMember({ id: 'm-actual', name: 'Alberto', role: 'socio', active: true })
+
+    const config = {
+      headers: { 'x-member-id': 'm-de-la-venta', 'x-device-id': 'd-de-la-venta' } as Record<string, string>,
+    } as InternalAxiosRequestConfig
+    const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
+    const result = handler.fulfilled(config)
+
+    expect(result.headers['x-member-id']).toBe('m-de-la-venta')
+    expect(result.headers['x-device-id']).toBe('d-de-la-venta')
+  })
+
   it('NO agrega x-member-id/x-device-id si el session store todavía no los tiene', () => {
     const config = { headers: {} as Record<string, string> } as InternalAxiosRequestConfig
     const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
