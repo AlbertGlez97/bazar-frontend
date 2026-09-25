@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { parseCashInput } from '@/utils/money'
+import { changeDueMinor, multiplyMinor, parseCashInput, shortfallMinor, sumMinor } from '@/utils/money'
 import type { Product, ProductType } from '@/types/product.types'
 
 /**
@@ -64,16 +64,25 @@ export const useCartStore = defineStore('cart', () => {
 
   const itemCount = computed(() => lines.value.reduce((sum, line) => sum + line.quantity, 0))
 
-  /** Total local (precio del catálogo × cantidad). El servidor recalcula el suyo. */
-  const totalMinor = computed(() =>
-    lines.value.reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0),
-  )
+  /**
+   * Total local (precio del catálogo × cantidad). El servidor recalcula el suyo.
+   * Aritmética exacta con dinero.js (`utils/money`). Un carrito absurdo que ya
+   * no cabe ni en enteros exactos no rompe la pantalla: queda en un tope
+   * enorme que nunca se puede cobrar.
+   */
+  const totalMinor = computed(() => {
+    try {
+      return sumMinor(lines.value.map((line) => multiplyMinor(line.unitPriceMinor, line.quantity)))
+    } catch {
+      return Number.MAX_SAFE_INTEGER
+    }
+  })
 
   /** Cambio a devolver; nunca negativo. */
-  const changeMinor = computed(() => Math.max(0, cashReceivedMinor.value - totalMinor.value))
+  const changeMinor = computed(() => changeDueMinor(cashReceivedMinor.value, totalMinor.value))
 
   /** Cuánto efectivo falta para cubrir el total; 0 si ya alcanza. */
-  const missingMinor = computed(() => Math.max(0, totalMinor.value - cashReceivedMinor.value))
+  const missingMinor = computed(() => shortfallMinor(cashReceivedMinor.value, totalMinor.value))
 
   /**
    * Se puede cobrar con carrito no vacío y efectivo suficiente. Un total que

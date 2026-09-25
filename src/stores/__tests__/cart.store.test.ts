@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useCartStore } from '../cart.store'
 import type { CartProductInput } from '../cart.store'
+import { minorToDisplay } from '@/utils/money'
 
 function product(overrides: Partial<CartProductInput> = {}): CartProductInput {
   return {
@@ -247,6 +248,55 @@ describe('cart.store — dinero exacto (enteros en centavos)', () => {
     cart.setQuantity('p-1', 2)
     cart.setCashMinor(2147483647)
     expect(cart.canCharge).toBe(false)
+  })
+
+  it('500 pagados por una compra de 299.50: el cambio es 200.50 exacto', () => {
+    const cart = useCartStore()
+    cart.add(product({ unitPriceMinor: 29950 }))
+    cart.setCashFromDisplay('500')
+
+    expect(cart.totalMinor).toBe(29950)
+    expect(cart.changeMinor).toBe(20050)
+    expect(minorToDisplay(cart.changeMinor)).toBe('200.50')
+    expect(cart.missingMinor).toBe(0)
+  })
+
+  it('el faltante también es exacto: 299.50 con 100 pagados faltan 199.50', () => {
+    const cart = useCartStore()
+    cart.add(product({ unitPriceMinor: 29950 }))
+    cart.setCashFromDisplay('100')
+
+    expect(cart.missingMinor).toBe(19950)
+    expect(cart.changeMinor).toBe(0)
+    expect(cart.canCharge).toBe(false)
+  })
+
+  it('0.10 + 0.20 suma 0.30 exacto (en pesos flotantes da 0.30000000000000004)', () => {
+    const cart = useCartStore()
+    cart.add(product({ id: 'a', unitPriceMinor: 10 }))
+    cart.add(product({ id: 'b', unitPriceMinor: 20 }))
+    expect(cart.totalMinor).toBe(30)
+  })
+
+  it('3 × 1.10 suma 3.30 exacto (en pesos flotantes da 3.3000000000000003)', () => {
+    const cart = useCartStore()
+    cart.add(product({ id: 'c', unitPriceMinor: 110, stock: 10 }))
+    cart.setQuantity('c', 3)
+    expect(cart.totalMinor).toBe(330)
+  })
+
+  it('un carrito imposible (más que enteros exactos) no rompe la pantalla: el total queda "demasiado grande" y no se cobra', () => {
+    const cart = useCartStore()
+    for (let i = 0; i < 500; i += 1) {
+      cart.add(product({ id: `p-${i}`, unitPriceMinor: 2147483647, stock: 100000, tipo: 'cantidad' }))
+      cart.setQuantity(`p-${i}`, 100000)
+    }
+
+    expect(() => cart.totalMinor).not.toThrow()
+    expect(cart.totalMinor).toBeGreaterThan(2147483647)
+    expect(cart.canCharge).toBe(false)
+    expect(() => cart.changeMinor).not.toThrow()
+    expect(() => cart.missingMinor).not.toThrow()
   })
 })
 

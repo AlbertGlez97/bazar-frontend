@@ -165,6 +165,19 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - Title "Venta registrada" without "¡ !" (brand rule 6). The scanner modal answers reads inside itself instead of using a toast. `SaleView` was written before its test file (RED observed by moving it away). Several shell heredocs and one `sed` slipped through against the "no cat/sed" rule before I noticed; later edits used the editor tools and `node`.
 - The `AppLayout` responsive changes and the `skipAuthRedirect` fix were not in the brief; both are documented above and covered by tests.
 
+## Money arithmetic and cash parsing (change requested after the browser pass)
+
+**Cash parsing (commit `434297d`).** The cash field treated a lone comma as the decimal separator, so "1,000" was read as 1.00. It now follows the Mexican (es-MX) convention: comma groups thousands, dot is the decimal. `parseCashInput` (in `utils/money.ts`, reusing `displayToMinor` for the exact conversion) returns `null` for anything ambiguous ("100,50", "1,5", "1.000,50", "10.005", "-20", "1e5"), and the cart then sets the cash to 0 and `cashInvalid` blocks charging until it is corrected; the field shows how to write it. `sanitizeCashText` no longer rewrites separators (what the field shows is what is read). `displayToMinor` is unchanged on purpose: `ProductForm` still uses it and still accepts a comma decimal for prices (an inconsistency left for a product decision).
+
+**dinero.js evaluation.** Findings:
+- The backend does use `dinero.js` (pinned `2.0.2`, `bazar-api/package.json`), through `toDinero`/`toMinorUnits` wrappers in `src/common/money.ts`; `halfUp` rounding is only used for commissions (basis points), which the frontend never computes.
+- The frontend did NOT use floats for money: every amount is an integer of cents, and integer `+`/`-`/`*` in JS is exact up to 2^53. `500 - 299.50` was already exactly `20050`. So there was no accuracy bug to fix.
+- But integer math was scattered as raw operators (cart total/change/missing, the line subtotal in `CartLineItem`, report sums), with no single guard. Probing `dinero.js@2.0.2`: it is exact, rejects non-integers (`1.5`, `NaN`, `'5'` throw), but does NOT protect the 2^53 boundary (500 worst-case lines silently give `1.07e17`, not a safe integer).
+- Decision: migrate, as requested, and centralize. `utils/money.ts` now exposes `addMinor`, `subtractMinor`, `multiplyMinor`, `sumMinor`, `changeDueMinor`, `shortfallMinor` on top of dinero.js (same lib and exact version as the backend), with our own guard: inputs and results must be safe integers or it throws `RangeError` (the equivalent of the backend's `toMinorUnits`). The cart store, `CartLineItem` and the report builder use them; an absurd cart (past exact integers) does not crash the screen, its total is capped at `Number.MAX_SAFE_INTEGER` and it can never be charged.
+- Left as plain numbers on purpose: percent shares (`sharePercent`, display only, integer math), `minor / 100` for Excel numeric cells and `minorToDisplay`/`formatMinorMoney` (conversions to display, not money arithmetic), and the digit-based rounding of typed text in `displayToMinor`.
+- Cost: `dinero.js` lives in the lazy chunks (main entry unchanged at 222.18 kB); precache 1617.45 -> 1622.29 KiB.
+- TDD note: the new helpers had RED (`addMinor is not a function` etc.). The cart / line-item / report cases (`500 - 299.50 = 200.50`, `0.10 + 0.20`, `3 x 1.10`) already passed with the old integer math: they are characterization tests that now pin the behavior through the central API.
+
 ## Known limits
 
 - The cart lives only in memory: reloading the page mid-sale empties it (a queued sale is not lost).

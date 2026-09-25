@@ -75,21 +75,25 @@
     </div>
 
     <p class="cart-line__subtotal">
-      ${{ minorToDisplay(line.unitPriceMinor * line.quantity) }}
+      ${{ minorToDisplay(subtotalMinor) }}
     </p>
   </li>
 </template>
 
 <script setup lang="ts">
-import { minorToDisplay } from '@/utils/money'
+import { computed } from 'vue'
+import { minorToDisplay, multiplyMinor } from '@/utils/money'
 import type { CartLineView } from '@/types/cart.types'
 import QuantityStepper from '../atoms/QuantityStepper.vue'
 
-defineProps<{
+const props = defineProps<{
   line: CartLineView
   /** Bloquea los controles (mientras se cobra) */
   disabled?: boolean
 }>()
+
+/** Subtotal exacto de la línea (precio × cantidad) con la aritmética central de dinero. */
+const subtotalMinor = computed(() => multiplyMinor(props.line.unitPriceMinor, props.line.quantity))
 
 const emit = defineEmits<{
   increment: []

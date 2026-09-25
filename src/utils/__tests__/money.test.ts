@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { minorToDisplay, displayToMinor, parseCashInput } from '../money'
+import {
+  minorToDisplay, displayToMinor, parseCashInput,
+  addMinor, subtractMinor, multiplyMinor, sumMinor, changeDueMinor, shortfallMinor,
+} from '../money'
 
 describe('minorToDisplay', () => {
   it.each([
@@ -112,5 +115,61 @@ describe('parseCashInput', () => {
     for (const minor of [0, 1, 99, 100, 12550, 100000, 100050, 123456789, 2147483647]) {
       expect(parseCashInput(fmt.format(minor / 100))).toBe(minor)
     }
+  })
+})
+
+// Aritmética de centavos centralizada sobre dinero.js (la misma librería y
+// versión que usa bazar-api). Todo entero: sin floats, sin sorpresas offline.
+describe('aritmética de centavos (dinero.js)', () => {
+  it('500 - 299.50 = 200.50 exacto', () => {
+    const change = subtractMinor(displayToMinor('500'), displayToMinor('299.50'))
+    expect(change).toBe(20050)
+    expect(minorToDisplay(change)).toBe('200.50')
+  })
+
+  it('los clásicos del punto flotante salen exactos', () => {
+    expect(addMinor(10, 20)).toBe(30) // 0.1 + 0.2 en pesos da 0.30000000000000004
+    expect(multiplyMinor(110, 3)).toBe(330) // 1.10 * 3 en pesos da 3.3000000000000003
+    expect(multiplyMinor(1999, 3)).toBe(5997)
+    expect(subtractMinor(30, 10)).toBe(20)
+    expect(minorToDisplay(subtractMinor(displayToMinor('1.10'), displayToMinor('1.00')))).toBe('0.10')
+  })
+
+  it('sumMinor suma una lista (vacía = 0) sin deriva', () => {
+    expect(sumMinor([])).toBe(0)
+    expect(sumMinor(Array.from({ length: 1000 }, () => 10))).toBe(10000)
+    expect(sumMinor([1999, 1999, 1999, 1])).toBe(5998)
+  })
+
+  it('changeDueMinor y shortfallMinor: cambio y faltante, nunca negativos', () => {
+    expect(changeDueMinor(50000, 29950)).toBe(20050)
+    expect(shortfallMinor(50000, 29950)).toBe(0)
+    expect(changeDueMinor(29950, 50000)).toBe(0)
+    expect(shortfallMinor(29950, 50000)).toBe(20050)
+    expect(changeDueMinor(1999, 1999)).toBe(0)
+    expect(shortfallMinor(1999, 1999)).toBe(0)
+  })
+
+  it('subtractMinor puede dar negativo (la diferencia es solo una resta exacta)', () => {
+    expect(subtractMinor(100, 250)).toBe(-150)
+  })
+
+  it.each([1.5, NaN, Infinity, '5' as unknown as number, null as unknown as number])(
+    'un monto que no es entero (%j) se rechaza en vez de redondearlo en silencio',
+    (bad) => {
+      expect(() => addMinor(bad, 1)).toThrow()
+      expect(() => multiplyMinor(bad, 2)).toThrow()
+      expect(() => sumMinor([1, bad])).toThrow()
+    },
+  )
+
+  it('una cantidad fraccionaria o negativa en multiplyMinor se rechaza', () => {
+    expect(() => multiplyMinor(100, 1.5)).toThrow()
+    expect(() => multiplyMinor(100, -1)).toThrow()
+  })
+
+  it('un resultado fuera del rango de enteros exactos falla fuerte (RangeError), como el backend', () => {
+    expect(multiplyMinor(2147483647, 100000)).toBe(214748364700000)
+    expect(() => sumMinor(Array.from({ length: 500 }, () => multiplyMinor(2147483647, 100000)))).toThrow(RangeError)
   })
 })

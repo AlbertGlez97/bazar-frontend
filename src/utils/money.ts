@@ -7,7 +7,68 @@
  * para que la persona capture/lea montos normales ("125.50") en vez de
  * centavos ("12550"). Un error de redondeo aquí se propaga a cada
  * formulario de dinero del proyecto, así que se maneja con cuidado.
+ *
+ * La ARITMÉTICA de centavos (sumar, restar, multiplicar por cantidad, cambio,
+ * faltante) vive aquí y usa dinero.js, la misma librería y versión que
+ * bazar-api: nadie hace `+`/`-`/`*` directo sobre centavos en el resto de la
+ * app, ni siquiera offline, donde el backend no valida en tiempo real.
  */
+import { add, dinero, multiply, subtract, toSnapshot, type Dinero } from 'dinero.js'
+import { MXN } from 'dinero.js/currencies'
+
+// ── Aritmética de centavos (dinero.js) ─────────────────────────────────────
+
+function toDinero(minor: number): Dinero<number> {
+  // dinero.js ya rechaza lo que no es entero (1.5, NaN, '5'); esto añade el
+  // tope de enteros exactos de JS.
+  if (!Number.isSafeInteger(minor)) throw new RangeError('El monto debe ser un entero exacto en centavos')
+  return dinero({ amount: minor, currency: MXN })
+}
+
+/**
+ * Devuelve los centavos de un resultado. dinero.js suma en `number`, así que
+ * un resultado fuera de los enteros exactos de JS (más de ~9e15 centavos) ya
+ * perdió precisión: falla fuerte (como `toMinorUnits` del backend) en vez de
+ * devolver un monto inexacto.
+ */
+function toMinor(value: Dinero<number>): number {
+  const { amount } = toSnapshot(value)
+  if (!Number.isSafeInteger(amount)) throw new RangeError('El resultado excede los centavos que se pueden calcular con exactitud')
+  return amount
+}
+
+/** a + b, en centavos enteros. */
+export function addMinor(a: number, b: number): number {
+  return toMinor(add(toDinero(a), toDinero(b)))
+}
+
+/** a - b, en centavos enteros. Puede ser negativo. */
+export function subtractMinor(a: number, b: number): number {
+  return toMinor(subtract(toDinero(a), toDinero(b)))
+}
+
+/** Precio unitario × cantidad entera >= 0, en centavos enteros. */
+export function multiplyMinor(unitMinor: number, quantity: number): number {
+  if (!Number.isSafeInteger(quantity) || quantity < 0) throw new RangeError('La cantidad debe ser un entero >= 0')
+  return toMinor(multiply(toDinero(unitMinor), quantity))
+}
+
+/** Suma una lista de centavos (vacía = 0). */
+export function sumMinor(values: readonly number[]): number {
+  return toMinor(values.reduce((acc, value) => add(acc, toDinero(value)), toDinero(0)))
+}
+
+/** Cambio a devolver: efectivo - total, nunca negativo. */
+export function changeDueMinor(cashMinor: number, totalMinor: number): number {
+  return Math.max(0, subtractMinor(cashMinor, totalMinor))
+}
+
+/** Efectivo que falta para cubrir el total; 0 si ya alcanza. */
+export function shortfallMinor(cashMinor: number, totalMinor: number): number {
+  return Math.max(0, subtractMinor(totalMinor, cashMinor))
+}
+
+// ── Conversión centavos <-> pesos ──────────────────────────────────────────
 
 /**
  * Centavos (entero) -> pesos con 2 decimales, ej. `12550 -> "125.50"`.

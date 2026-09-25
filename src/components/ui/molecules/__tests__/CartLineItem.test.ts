@@ -32,6 +32,9 @@ describe('CartLineItem — contenido', () => {
   it('subtotales grandes siguen exactos', () => {
     // 0.10 x 3 en flotante da 0.30000000000000004: aquí en centavos enteros
     expect(mountLine({ unitPriceMinor: 10, quantity: 3 }).get('.cart-line__subtotal').text()).toBe('$0.30')
+    // 1.10 x 3 en flotante da 3.3000000000000003
+    expect(mountLine({ unitPriceMinor: 110, quantity: 3 }).get('.cart-line__subtotal').text()).toBe('$3.30')
+    expect(mountLine({ unitPriceMinor: 29950, quantity: 2 }).get('.cart-line__subtotal').text()).toBe('$599.00')
   })
 
   it('sin imagen usa un marcador decorativo; con imagen la muestra con alt vacío (el nombre ya está en texto)', () => {

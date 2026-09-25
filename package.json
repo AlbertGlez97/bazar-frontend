@@ -16,6 +16,7 @@
     "@vee-validate/zod": "^4.15.1",
     "axios": "^1.7.9",
     "barcode-detector": "^3.2.2",
+    "dinero.js": "2.0.2",
     "exceljs": "^4.4.0",
     "idb": "^8.0.3",
     "pdfmake": "^0.3.7",
