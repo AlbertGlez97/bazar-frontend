@@ -126,8 +126,15 @@ Componente: `src/components/ui/atoms/BrandLogo.vue` (exportado desde `@/componen
 | Sin resultados | "No encontramos productos por aquí." | "No se encontraron resultados." |
 | Éxito de guardado | "Listo, ya quedó en tu catálogo." | "¡Éxito! Operación completada." |
 | **Venta cobrada (patrón)** | "Venta anotada: $250.00. Cambio: $50.00. Quedó a nombre de Carlos." | "¡Éxito! La venta se registró correctamente." |
+| Venta guardada sin internet | "Listo, ya quedó. Sin señal, pero tu venta está guardada y se manda sola cuando haya internet." | "Error de red: la venta no se envió." |
+| Venta que no se pudo cobrar (conflicto) | "Esta venta no se pudo cobrar. Otra venta se llevó la última pieza... Si ya cobraste, devuelve el dinero y no entregues el producto. Avisa a un socio." | "Error 409: conflicto de inventario." |
+| Tocar algo que no se puede | "Radio vintage es una pieza única y ya está en tu venta." / "Ya no hay más piezas de Café." | "already-in-cart" / "Stock máximo alcanzado" |
+| QR que no es de un producto | "No reconocemos ese código. Prueba con otro producto o búscalo por su nombre." | "QR inválido." |
+| Cámara sin permiso | "Necesitamos tu permiso para usar la cámara. Actívalo en los ajustes del navegador y vuelve a intentar." | "NotAllowedError" |
 
-**Patrón de venta cobrada**: hecho concreto primero (qué se anotó y cuánto), luego el dato útil (cambio, a nombre de quién). Ya existe como función: `saleSuccessMessage()` en `src/config/voice.ts`, con tests. Las vistas de venta futuras deben usarla en vez de escribir el texto a mano.
+**Patrón de venta cobrada**: hecho concreto primero (qué se anotó y cuánto), luego el dato útil (cambio, a nombre de quién). Ya existe como función: `saleSuccessMessage()` en `src/config/voice.ts`, con tests. Las vistas de venta deben usarla en vez de escribir el texto a mano. La pantalla de venta confirma con un título de hecho, **sin exclamaciones** ("Venta registrada"), y deja el resumen de `saleSuccessMessage()` como línea pequeña.
+
+**Tono calmado sin internet**: quedar sin señal no es un error de quien vende. La venta guardada en el dispositivo se comunica como un logro ("Listo, ya quedó") y explica qué pasa después ("se manda sola"). El indicador de la cola habla de "ventas pendientes de sincronizar" (única aparición permitida de "sincronizar", en una pastilla pequeña), nunca de "fallo". Lo que el servidor rechazó al enviar se separa como nota aparte ("N ventas necesitan que las revises") y jamás culpa a la persona: se explica con un motivo amable y se descarta con "Entendido" una vez leído. El texto crudo del servidor (en inglés, con ids) no se muestra nunca.
 
 **Textos compartidos**: `VOICE.genericError` (fallo desconocido), `VOICE.networkError` y `isNetworkError()` (sin respuesta del servidor) en `src/config/voice.ts`.
 
@@ -194,6 +201,29 @@ Implementación de referencia: `UiModeSwitch.vue` sobre `AppModal` con su slot `
 
 **Todo lo que se toca mide al menos 44x44 px** (`min-height` y `min-width`, en px o rem): botones del selector de modo, buscador y paginación en Venta, botones de los avisos. Los átomos ya lo hacen en móvil (`AppButton` md/lg/xl) o con su variante grande (`AppInput size="lg"`, `AppPagination size="lg"`, `AppButton size="lg"`). Un control táctil nuevo debe declararlo en su CSS y sumarse a `src/config/__tests__/touch-targets.test.ts`, que comprueba ese contrato (jsdom no calcula layout, así que la medición real es una revisión en navegador).
 
+### Pantalla de venta
+
+Pensada para alguien que no se lleva bien con las computadoras: se siente como una app de celular sencilla. Botones grandes, poquísimo texto, cero ambigüedad y casi imposible usarla mal.
+
+- **Disposición.** En pantalla ancha (desde 900 px), catálogo y carrito lado a lado, siempre a la vez. En celular, el catálogo ocupa la pantalla y una **barra fija abajo** muestra piezas y total con un botón grande "Ver venta y cobrar"; el carrito completo se abre como una hoja sobre el contenido ("Seguir agregando" la cierra). Nunca es otra ruta ni un modal, y **cobrar solo ocurre dentro del carrito completo**, donde se ven el efectivo y el cambio.
+- **Patrón de cifra grande.** El dinero que importa (total, cambio a entregar, "Faltan $X") es lo más grande de su bloque, en `--font-display`, sobre un fondo suave del color de su estado, siempre con palabras además del color ("Faltan", "Cambio", "Justo, sin cambio"). Los importes se calculan en centavos enteros y se formatean con `minorToDisplay`; en la pantalla de éxito se muestran los del **servidor**.
+- **Nada imposible de intentar.** "Cobrar" (56 px, la única acción principal) está apagado hasta que hay productos y el efectivo alcanza, y una línea de texto dice por qué. Un producto agotado se ve apagado con "Agotado" y no se elige; en el tope de existencia el "+" se ve apagado pero se puede tocar para saber por qué ("Ya no hay más piezas de Café."). "Vaciar" nunca vacía de un toque: usa el aviso no bloqueante (dos salidas del mismo tamaño, "Mejor no" es la principal).
+- **Efectivo.** Campo de 56 px con teclado numérico, prefijo `$`, que acepta "100", "100.5" y "100,50" y limpia lo demás; atajos "Justo" y billetes de 20, 50, 100, 200 y 500.
+- **Pantallas de resultado.** Cada resultado ocupa la pantalla, con su propio ícono, título y color, y **un solo botón principal** de 56 px. Nunca se confunden entre sí:
+
+| Resultado | Título | Color e ícono | Botón principal |
+|---|---|---|---|
+| Cobrada | Venta registrada | nopal, ✓ | Nueva venta |
+| Guardada sin internet | Listo, ya quedó | nopal, ✓ ☁ (se siente como éxito) | Nueva venta |
+| Conflicto (no se cobró) | Esta venta no se pudo cobrar | maíz, "!" ; nunca nopal ni cifras de cobro | Entendido, nueva venta |
+| Rechazada en línea | No pudimos registrar la venta | chile, ✕ | Regresar a la venta (el carrito sigue) |
+| Sesión vencida | Tu venta está guardada | talavera, 🔒 | Iniciar sesión (y "Nueva venta" para seguir vendiendo) |
+| No se pudo guardar | No se guardó la venta | chile, 💾 | Intentar de nuevo (y "Regresar a la venta") |
+
+  El motivo técnico del servidor en un conflicto solo aparece plegado en "Detalle para el socio". Al aparecer una pantalla de resultado, el foco va al título.
+- **Modales propios.** El lector de QR, la lista de ventas por revisar y la confirmación de "Vaciar" ocultan la X de `AppModal` (28 px, por debajo del mínimo) y ofrecen botones de tamaño completo.
+- **Lector de QR.** Cámara trasera; el contenido del QR es el id del producto. Una lectura repetida dentro de 1.5 s cuenta una sola vez; el modal sigue abierto para escanear varios productos y responde a cada lectura en una región viva. Al cerrar se apagan todas las pistas de la cámara.
+
 ## 8. Dónde vive cada cosa
 
 | Qué | Dónde |
@@ -209,4 +239,9 @@ Implementación de referencia: `UiModeSwitch.vue` sobre `AppModal` con su slot `
 | Modo de interfaz (Venta / Gestión) | `src/stores/uiMode.store.ts` (preferencia en `la-marchanta-ui-mode`, sugerencia inicial), `src/composables/useDeviceCapabilities.ts` (táctil y pantalla pequeña, breakpoint `SMALL_SCREEN_MAX_WIDTH`), `src/types/ui-mode.types.ts` |
 | Selector de modo y aviso no bloqueante | `src/components/ui/organisms/UiModeSwitch.vue` (en `AppLayout`, barra lateral) e indicador `AppBadge` en la cabecera |
 | Catálogo según el modo | `ProductCatalogView.vue` (lee el store), `ProductCatalogGrid.vue` (`mode`), `ProductCard.vue` (`size`), `AppPagination.vue` (`size`) |
-| Guardas automáticas | `src/config/__tests__/brand-tokens.test.ts` (contraste, tipografía, color de manifest), `no-hardcoded-colors.test.ts`, `touch-targets.test.ts` (objetivos de 44 px), `app.test.ts` |
+| Pantalla de venta | `src/views/sales/SaleView.vue` (contenedor: conecta `cart`, `sale-catalog`, `checkout` y `toast`), `sale-result.ts` (resultado del cobro -> pantalla), ruta `Sale` en `/app/venta` |
+| Componentes de la venta | Átomo `QuantityStepper`; moléculas `CartLineItem`, `CartSummary`, `CashInput`, `CategoryQuickFilter`; organismos `SaleCart`, `SaleCatalogPicker`, `SaleResult`, `QrScannerModal`, `SyncStatusIndicator` (todos presentacionales, en `src/components/ui/`) |
+| Lógica de la venta | `src/stores/cart.store.ts`, `sale-catalog.store.ts`, `checkout.store.ts`, `sales-queue.store.ts`; cola en IndexedDB (`services/local-db.ts`, `sales-queue.ts`, `sales-sync.ts`); lector de QR en `services/qr-scanner.ts` (`barcode-detector`, WASM empaquetado y precacheado) |
+| Voz de la venta | `src/config/voice.ts`: `saleSuccessMessage`, `saleSavedOfflineMessage`, `saleConflictMessage`, `saleChargeHint`, `saleCartRefusalMessage`, `salesPendingMessage`, `salesNeedReviewMessage`, `cameraErrorMessage`, `VOICE.saleResult`, `VOICE.scan` |
+| Menú lateral | `src/layouts/nav-items.ts` (tabla declarativa por modo; un ítem nuevo es una fila) |
+| Guardas automáticas | `src/config/__tests__/brand-tokens.test.ts` (contraste, tipografía, color de manifest), `no-hardcoded-colors.test.ts`, `touch-targets.test.ts` (objetivos de 44 px, incluye los componentes de la venta), `pwa-precache.test.ts` (el `.wasm` del lector de QR está precacheado), `app.test.ts` |

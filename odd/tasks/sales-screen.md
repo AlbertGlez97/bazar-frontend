@@ -46,7 +46,7 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - [x] **A2.2 — Atoms/molecules: QuantityStepper, CartLineItem, CartSummary, CashInput, CategoryQuickFilter.**
 - [x] **A2.3 — Organisms: SaleCart, SaleCatalogPicker; sync indicator.**
 - [x] **A2.4 — SaleView (states: selling / success / conflict / saved offline / error), route, sidebar nav by mode, sync bootstrap.**
-- [ ] **A2.5 — Brand guidelines + this record; checks; browser pass (incl. offline/online).**
+- [x] **A2.5 — Brand guidelines + this record; checks; browser pass (incl. offline/online).**
 
 ## Evidence
 
@@ -81,7 +81,7 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - Final verification (all run after A1.5): `npm run build` exit 0 (vue-tsc + vite build, PWA precache 39 entries), `npm run lint` exit 0, `npm run test:run` exit 0 with 65 files / 844 tests (baseline was 54 files / 589 tests; +11 files, +255 tests).
 - Decisions: store (`useCheckoutStore`), not a composable, because the view reads `loading`/`lastResult` and the frozen attempt must survive component remounts. Added result kind `blocked` (`empty-cart | cash-insufficient | missing-context`) for the refusal case the brief did not give a kind for; `auth-needed` also carries `pendingId`, totals and `message`; `failed-to-save` carries `message`. `auth-needed` also decrements local stock (the sale is safe in the queue and will happen). Stock is decremented at most once per attempt. After a definitive server answer for an id that was enqueued earlier in the same attempt, the queued copy is removed. Known limit: if an attempt was enqueued (stock decremented locally) and the retry then comes back `conflict`, local stock stays low until the next catalog load.
 
-### A2.1 (commit A2_1_HASH)
+### A2.1 (commit 5197add)
 
 - RED: `qr-scanner.test.ts` and `QrScannerModal.test.ts` failed to load (`Failed to resolve import "../qr-scanner"` / missing component; 0 tests ran); `voice.test.ts` 7 failed (missing exports `cameraErrorMessage`, `saleScanUnknownMessage`, `saleScanAddedMessage`, `VOICE.scan`); `pwa-precache.test.ts > el patrón de precaché incluye los .wasm` failed (`globPatterns` had no `wasm`). One failure after implementing was a test artifact, not code: the live-region test held a stale wrapper because VTU's `teleport` stub re-creates nodes; with a real Teleport the node is stable, and a test now proves it.
 - GREEN: 37 (adapter) + 25 (modal) + 21 (voice, 7 new) + 2 (precache) + 1 (touch target); full suite 68 files / 917 tests; `vue-tsc -b` + `vite build` and `eslint src vite.config.ts` clean.
@@ -100,7 +100,7 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - Camera failure copy lives in `voice.ts` (`cameraErrorMessage`, `VOICE.scan`, `saleScanUnknownMessage`, `saleScanAddedMessage`).
 
 
-### A2.2 (commit A2_2_HASH)
+### A2.2 (commit 5de1108)
 
 - RED: the five new suites (`QuantityStepper`, `CartLineItem`, `CartSummary`, `CashInput`, `CategoryQuickFilter`) failed to load (`Failed to resolve import "../QuantityStepper.vue"` etc.; 0 tests ran). After implementing, 7 tests failed because of the tests, not the components: with a leading HTML comment in `<template>` the component root is a dev-mode fragment, so `wrapper.attributes()` / `wrapper.classes()` read the comment node; the tests now query the real root element (`.cart-summary`, `.quantity-stepper`).
 - GREEN: 13 (stepper) + 10 (line) + 10 (summary) + 32 (cash input, incl. 19 sanitizer cases) + 8 (category filter) + 4 new touch-target contract tests (12 total in the file); full suite 73 files / 999 tests; `vue-tsc -b` and `eslint src` clean.
@@ -108,7 +108,7 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - Decisions: (1) `QuantityStepper` uses `aria-disabled` (not `disabled`) at the limits and emits `limit('min' | 'max')` on tap, so the caller can say why nothing happened instead of leaving a mute dead button; only the `disabled` prop (while charging) blocks for real. (2) A `unica` line shows "Pieza única" instead of a stepper (a stepper that can never move is noise). (3) The remove button has visible text "Quitar" + an icon, and the accessible name "Quitar <name>" (contains the visible text). (4) `CartSummary` states: `empty`, `no-cash` ("Escribe cuánto te dan."), `missing` ("Faltan $X."), `ok` ("Cambio: $X" big, or "Justo, sin cambio."); a $0 total with no cash counts as `ok` (mirrors `cart.canCharge`). It is a `role="status"` live region. (5) `CashInput` is a native `<input>` (not `AppInput`) because it must correct the DOM value when junk is stripped; the sanitizer lives in `utils/money.ts` (`sanitizeCashText`): keeps digits and one decimal separator, at most 2 decimals, at most 8 integer digits, both separators present -> the last one is the decimal, repeated same separator -> thousands, `.5` -> `0.5`. Known ambiguity: a typed single "1,000" is read as 1.00 (decimal comma, what a Spanish phone keypad offers), not one thousand. Shortcuts: "Justo" (exact total, only when the total is > 0) and 20/50/100/200/500, all through the same `update:modelValue` path. (6) `CategoryQuickFilter` renders nothing without categories and re-emits the already active category on tap (there is no "nothing selected" state).
 - Touch targets: stepper buttons 44 px (56 px with `size="lg"`, used in the cart), remove 44 px, cash field 56 px, chips 44 px, category buttons 44 px; all covered in `touch-targets.test.ts`.
 
-### A2.3 (commit A2_3_HASH)
+### A2.3 (commit 09ded5a)
 
 - RED: `SaleCart.test.ts`, `SaleCatalogPicker.test.ts` and `SyncStatusIndicator.test.ts` failed to load (`Failed to resolve import "../SaleCart.vue"` etc.; 0 tests ran); `voice.test.ts` 10 failed (missing `saleChargeHint`, `catalogSnapshotMessage`, `salesSyncingMessage`). After implementing, all of them passed on the first run.
 - GREEN: 20 (cart) + 23 (picker) + 15 (sync indicator) + 10 new voice tests (31 in the file) + 3 new touch-target contract tests; full suite 76 files / 1073 tests; `vue-tsc -b` and `eslint src` clean.
@@ -123,7 +123,7 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - `d8e1d44` `feat(checkout): add dismissResult`: the "rejected / failed-to-save / blocked" screens need "Regresar a la venta", which must keep cart, cash and the frozen attempt. RED: 2 new tests failed (`checkout.dismissResult is not a function`); GREEN: 34 tests in the file. A retry after `dismissResult` resends the SAME sale id (test).
 - `956032e` `fix(sales): keep a 401 on the interactive charge from redirecting to login`: real bug. The response interceptor cleared the session and set `window.location.href = '/login'` on ANY 401, so (1) a 401 during "Cobrar" navigated away while the offline save (IndexedDB write) was still in flight, and (2) the `auth-needed` result could never be shown. Added `skipAuthRedirect` (axios request config, typed via module augmentation); `SalesService.createSale(payload, { handleAuthLocally: true })` sets it and only `checkout.store` passes it; the background sync keeps the redirect. RED: 3 failing tests (interceptor keeps token and does not redirect with the flag; service passes the flag; checkout passes it); GREEN: 351 tests in `src/services` + `src/stores`.
 
-### A2.4 (commit A2_4_HASH)
+### A2.4 (commit 581334c)
 
 - RED: `SaleResult.test.ts` failed to load (missing component); `sale-result.test.ts` and `nav-items.test.ts` failed to load; `voice.test.ts` 9 failed (`saleCartRefusalMessage`, `VOICE.saleResult`); `AppLayout.test.ts` 5, `AppLayout.nav.test.ts` 7 failed (nav order, "Vender", title, sync start/stop, indicator); the phone-collapse tests were checked by mutation (forcing the initial state to `false` made 2 fail); `router.test.ts` 2 failed. `SaleView.vue` was drafted before its test file (a process slip); RED was observed retroactively by moving the component away (`Failed to resolve import "../SaleView.vue"`, 0 tests in that file ran), then restored. After restoring, 15 of 55 tests failed because of the test harness, not the view: IndexedDB (fake) does not settle in microtasks, so the tests now `waitFor` the catalog load and the result screen.
 - GREEN: `SaleView.test.ts` 55 tests; `SaleResult` 25; `sale-result` 6; `nav-items` 9; router +4; AppLayout files 54 -> +; touch targets 17. Full suite 80 files / 1204 tests, `vue-tsc -b` and `eslint src` clean.
@@ -135,6 +135,46 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - Deviations from the brief: (1) title "Venta registrada" has no exclamation marks: `doc/brand-guidelines.md` §5 rule 6 forbids filler exclamations and asks for a concrete fact. (2) Copy for `cart.add` refusals lives in `voice.ts` (`saleCartRefusalMessage`) instead of the view. (3) Once the scanner adds a product the modal stays open (several products in a row) and answers each read in its own live region, instead of a toast.
 - Design tweak after looking at the screen in Edge: the sticky payment block of the cart only applies on screens at least 900 px high (at 800 px it left the product list with ~90 px); the bar total is 24 px so it no longer overlaps the button.
 
+### A2.5 (commit A2_5_HASH)
+
+- Docs: `doc/brand-guidelines.md` gained the sale-screen patterns (copy examples for offline / conflict / refusals / QR / camera, the calm offline tone, a "Pantalla de venta" section in §7 with layout, big-number pattern, "nothing impossible to attempt", cash input, the result-screens table and the QR behavior) and four new rows in the code map (screen, components, logic, voice, nav table) plus the two guards.
+- Final checks (run after the last code change): `npm run build` exit 0 (vue-tsc + vite build, PWA precache 50 entries / 1,587.93 KiB including the 1,093 kB `zxing_reader-*.wasm`), `npm run lint` exit 0, `npm run test:run` exit 0 with 80 files / 1204 tests (baseline before A2 was 65 files / 844 tests: +15 files, +360 tests).
+- **Browser pass** (Edge 154 via `playwright-core`, headless), **against the REAL API**: a throwaway PostgreSQL 16 container (`a2-pg`, own random passwords, port 55432, no compose volume) migrated with `prisma migrate deploy`, runtime role provisioned, seeded, and the real `bazar-api` (`dist/main`) on :3000; the frontend was the PRODUCTION build served by `vite preview` on :4173 (service worker active, `/api` proxied to the real API). Fixtures: 6 products (2 `cantidad`, 3 `unica`, 1 sold out) created through the API. 88 of 89 checks passed; the one "failure" (E7) is the browser's own console line `Failed to load resource: ... 400` for the sync request that the server correctly rejected in scenario E, so it is expected, not a defect. Verified:
+  - (a) 390x844 touch + 1280x800: catalog loads from the real API; tap adds (`unica` and `cantidad`), repeat tap increments, `unica` repeat shows the friendly notice, +/− and Quitar work, exact subtotals, instant search, category filter ("Textil" 2, "Todo" 6), sold out is `aria-disabled`, "Vaciar" asks first ("Mejor no" keeps the cart), no horizontal overflow at 390 px, the bottom bar is pinned to the bottom edge with pieces and total, both columns are visible together at 1280 px and the phone bar is hidden there.
+  - (c) cash: "Faltan $X" exact, comma decimal "100,50", junk stripped ("$1a0b0" -> 100), "Justo" and bill chips, "Cobrar" disabled until cash >= total with the reason line.
+  - (d) real sale: 201 `completada`, screen shows the SERVER total and change, `GET /sales/:id` confirms total 39998 / change 10002 (phone) and total 8500 (desktop); it appears exactly once in `GET /sales`; the product stock on the server went 12 -> 11; double tap (`dblclick`) on "Cobrar" produced exactly ONE `POST /sales`.
+  - (b) QR with Chromium's fake camera fed by a generated y4m video of a QR containing a real product id (generated outside the repo): the app really decoded it with the zxing WASM path (desktop Edge has no native `BarcodeDetector`) and added "Café de olla" once (camera held ~3 s on the same code: quantity stayed 1), with the confirmation "Café de olla: agregado a tu venta."; a QR of a foreign URL gave "No reconocemos ese código. Prueba con otro producto o búscalo por su nombre." and added nothing; a rejected `getUserMedia` (NotAllowedError) gave the permission message with "Intentar de nuevo"; on "Listo" every `MediaStreamTrack` was `ended`; the only WASM request was `http://localhost:4173/assets/zxing_reader-<hash>.wasm` and no request went to jsdelivr or any CDN (only Google Fonts, pre-existing).
+  - (e) offline (browser context set offline, service worker controlling the page): the sale shows "Listo, ya quedó" with the local total and change, the header indicator says "1 venta pendiente de sincronizar", IndexedDB holds 1 `pending` record, the server returned 404 for that id; a page reload while offline kept the pending sale and loaded the catalog (the service worker served the last API response; the "catálogo guardado" notice therefore did not appear in this run, the IndexedDB snapshot path is covered by the SaleView unit tests instead); on going back online the queue drained by itself, the indicator disappeared, the sale exists on the server as `completada` (total 8500) exactly once. Also with the real API: a `unica` queued offline while another device sold it online -> on reconnect the server refused it (400) and the record became `needs_review`: the indicator showed "1 venta necesita que la revises", "Ver" listed amount, time, seller and the friendly reason (no raw server text), "Entendido" removed it.
+  - (f) conflict: a real simultaneous sale of the last `unica` from two contexts produced one "Venta registrada" and one "No pudimos registrar la venta" (the real server answered 400 "insufficient stock", not a 201 conflict), the server stock ended at 0 and nothing was sold twice. The distinct CONFLICT screen was verified with a **simulated** `201 rechazada_por_conflicto` response (Playwright route mock), because the real backend does not produce that state deterministically: different title, warning color and "!" icon, no totals, the instruction about product and money, the technical reason only inside a collapsed detail, "Entendido, nueva venta" clears the sale. A simulated 401 showed "Tu venta está guardada" without any redirect, kept the token and the queued sale, and "Iniciar sesión" went to `/login`.
+  - (g) touch targets measured with `getBoundingClientRect` on every visible button, input, summary and link inside the content area, modals and the header indicator, at every state listed: phone catalog (13 controls), phone cart sheet (27), cash and charge (26), confirm-clear modal (28), success (1), desktop in-progress (24), success, QR modal (25), offline-saved, needs-review list (4), conflict (2), session-expired (2): 0 controls under 44x44 in all of them.
+  - (h) console/page errors: none in any online scenario; the only console errors were the browser's network-failure lines while the context was deliberately offline and the 400 line above.
+- Torn down: the dev and preview servers and the API process were stopped, the `a2-pg` container was removed with its volume, and the temporary credentials, fixtures token, fake-camera videos and uploads directory were deleted. The two pre-existing `bazar-api` containers and volumes were not touched. `bazar-api/dist` was rebuilt (git-ignored); `git status` is clean in both repositories.
+- NOT verified: a real physical camera (only Chromium's fake video device) and the native `BarcodeDetector` path of Chrome on Android (unit-tested with a fake); iOS Safari; a real 201 `rechazada_por_conflicto` from the server; the sidebar and header controls that pre-date this work (the 36 px sidebar collapse/logout buttons were outside the measured scope and are not sale-screen controls); screen readers (only ARIA attributes and live regions were tested).
+
+## Decisions taken in A2 (summary)
+
+- QR library `barcode-detector` (+ exact `zxing-wasm`), evidence in A2.1; WASM bundled locally and precached.
+- The stepper uses `aria-disabled` and emits `limit` so a tap at a limit explains itself.
+- Result screens are full-screen, one primary button each; conflict is visually and textually unrelated to success.
+- The sale layout depends on CSS breakpoints (900 px for two columns, 768 px for the sidebar), not on the UI mode: the mode only changes card size and nav order.
+- Fixed a real bug in A1 code (401 redirect racing the offline save) and added the missing `dismissResult`.
+- `AppLayout` now handles phones (collapsed sidebar, overlay, wrapping header).
+
+## Deviations from the brief
+
+- Title "Venta registrada" without "¡ !" (brand rule 6). The scanner modal answers reads inside itself instead of using a toast. `SaleView` was written before its test file (RED observed by moving it away). Several shell heredocs and one `sed` slipped through against the "no cat/sed" rule before I noticed; later edits used the editor tools and `node`.
+- The `AppLayout` responsive changes and the `skipAuthRedirect` fix were not in the brief; both are documented above and covered by tests.
+
+## Known limits
+
+- The cart lives only in memory: reloading the page mid-sale empties it (a queued sale is not lost).
+- `unica` and stock use the LOCAL catalog: a product sold on another device stays available here until the next load, and the server decides (400 or conflict) at charge or sync time.
+- A single typed "1,000" is read as 1.00 (decimal comma), not one thousand.
+- After a queued attempt (local stock already decremented) that then returns `conflict`, the local stock stays low until the next catalog load (A1 known limit).
+- The sticky payment block of the cart only applies on screens at least 900 px tall; on a 1280x800 tablet the "Cobrar" button can require scrolling inside the cart panel when the cart has many lines.
+- The `.wasm` adds 1.09 MB (461 kB gzip) to the precache; it downloads once with the service worker and is only executed when the camera is opened.
+- Modal focus trapping is the pre-existing `AppModal` behavior (Escape and backdrop close; no trap).
+
 ## Next step
 
-A1 done (commits above). Writer A2 (UI) next, using cart / checkout / sale-catalog / sales-queue stores; then Part B (`odd/tasks/reports-export.md`).
+A2 done (commits above). Next: Part B (`odd/tasks/reports-export.md`): the "Reportes" nav item is one row in `src/layouts/nav-items.ts` (see the example in its header comment).
