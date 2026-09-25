@@ -243,5 +243,14 @@ export const useCheckoutStore = defineStore('checkout', () => {
     lastResult.value = null
   }
 
-  return { loading, lastResult, charge, startNewSale }
+  /**
+   * Quita el resultado de la pantalla ("Regresar a la venta") SIN tocar el
+   * carrito, el efectivo ni el intento congelado: un reintento sin cambios
+   * sigue mandando el mismo id.
+   */
+  function dismissResult(): void {
+    lastResult.value = null
+  }
+
+  return { loading, lastResult, charge, startNewSale, dismissResult }
 })

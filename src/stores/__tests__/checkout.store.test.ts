@@ -431,6 +431,29 @@ describe('checkout.store — id y occurredAt congelados', () => {
     await checkout.charge()
     expect(createSale.mock.calls[1][0].id).not.toBe(firstId)
   })
+
+  it('dismissResult quita el resultado pero conserva el carrito, el efectivo y el intento (regresar a la venta)', async () => {
+    const { cart, checkout } = await readySale()
+    createSale.mockRejectedValueOnce(httpError(400, 'Insufficient stock for product x'))
+    await checkout.charge()
+    expect(checkout.lastResult?.kind).toBe('rejected')
+    const firstId = createSale.mock.calls[0][0].id
+
+    checkout.dismissResult()
+
+    expect(checkout.lastResult).toBeNull()
+    expect(cart.lines).toHaveLength(1)
+    expect(cart.cashReceivedMinor).toBe(10000)
+    // El intento sigue congelado: reintentar sin cambios manda el MISMO id (idempotencia).
+    await checkout.charge()
+    expect(createSale.mock.calls[1][0].id).toBe(firstId)
+  })
+
+  it('dismissResult sin resultado no hace nada', () => {
+    const checkout = useCheckoutStore()
+    expect(() => checkout.dismissResult()).not.toThrow()
+    expect(checkout.lastResult).toBeNull()
+  })
 })
 
 describe('checkout.store — doble toque', () => {
