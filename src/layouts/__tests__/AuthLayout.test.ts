@@ -40,12 +40,20 @@ describe('AuthLayout', () => {
     expect(wrapper.get('.auth-logo').text()).toContain(APP_NAME)
   })
 
-  it('el logo es un enlace a la landing "/"', async () => {
+  it('el logo es un enlace a la landing "/" con el nombre accesible de la app', async () => {
     const { wrapper } = await mountAtLogin()
     const logo = wrapper.get('a.auth-logo')
     expect(logo.attributes('href')).toBe('/')
-    // El badge es decorativo: el nombre accesible del enlace es solo APP_NAME
-    expect(logo.get('.auth-logo__badge').attributes('aria-hidden')).toBe('true')
+    expect(logo.attributes('aria-label')).toBe(APP_NAME)
+    // El isotipo es decorativo: el nombre accesible lo da el aria-label del enlace
+    expect(logo.get('svg').attributes('aria-hidden')).toBe('true')
+  })
+
+  it('usa el logotipo de marca y el toldo decorativo, sin el fondo oscuro anterior', async () => {
+    const { wrapper } = await mountAtLogin()
+    expect(wrapper.find('.brand-logo').exists()).toBe(true)
+    expect(wrapper.get('.brand-awning').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.find('.auth-layout__blob').exists()).toBe(false)
   })
 
   it('al hacer clic en el logo navega a "/"', async () => {

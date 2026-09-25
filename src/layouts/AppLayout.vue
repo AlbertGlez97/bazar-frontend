@@ -8,21 +8,18 @@
     <aside class="sidebar">
       <!-- Cabecera del sidebar -->
       <div class="sidebar__header">
-        <!-- Logo: vuelve al inicio de la app. Colapsado solo muestra la inicial,
+        <!-- Logo: vuelve al inicio de la app. Colapsado solo muestra el isotipo,
              por eso el nombre accesible es siempre APP_NAME -->
         <RouterLink
           to="/app"
           class="sidebar__brand"
           :aria-label="APP_NAME"
         >
-          <span
-            v-if="!sidebarCollapsed"
-            class="sidebar__logo"
-          >{{ APP_NAME }}</span>
-          <span
-            v-else
-            class="sidebar__logo-icon"
-          >{{ appInitial }}</span>
+          <BrandLogo
+            :variant="sidebarCollapsed ? 'mark' : 'full'"
+            tone="inverse"
+            :size="32"
+          />
         </RouterLink>
         <!-- Botón colapsar/expandir (AppButton ghost) -->
         <AppButton
@@ -117,14 +114,12 @@ import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { AppButton, AppAvatar, InstallAppButton } from '@/components'
+import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 import { APP_NAME } from '@/config/app'
 
 const authStore = useAuthStore()
 const router    = useRouter()
 const route     = useRoute()
-
-// Con el sidebar colapsado el logo se reduce a la inicial del nombre
-const appInitial = APP_NAME.charAt(0)
 
 // Colapso del sidebar
 const sidebarCollapsed = ref(false)
@@ -149,11 +144,14 @@ const currentRouteTitle = computed(
 )
 
 // Fecha actual formateada
-const formattedDate = computed(() =>
-  new Date().toLocaleDateString('es-MX', {
+// Primera letra en mayúscula ("jueves" -> "Jueves"); el resto queda como lo
+// escribe es-MX ("24 de septiembre de 2026"), sin capitalizar el "de".
+const formattedDate = computed(() => {
+  const text = new Date().toLocaleDateString('es-MX', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
-)
+  return text.charAt(0).toUpperCase() + text.slice(1)
+})
 
 // Cierra sesión y redirige al login
 function handleLogout() {
@@ -175,6 +173,16 @@ function handleLogout() {
   grid-template-columns: var(--sidebar-width-collapsed) 1fr;
 }
 
+/* Colapsado no cabe el isotipo y el botón en una fila: se apilan */
+.app-layout--collapsed .sidebar__header {
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  height: auto;
+  min-height: var(--header-height);
+  padding: var(--spacing-sm);
+}
+
 /* ── Sidebar ─────────────────────────────────────────────────── */
 .sidebar {
   background:  var(--color-sidebar-bg);
@@ -192,7 +200,7 @@ function handleLogout() {
   align-items:    center;
   justify-content: space-between;
   padding:        var(--spacing-md);
-  border-bottom:  1px solid rgba(255,255,255,.08);
+  border-bottom:  1px solid color-mix(in srgb, var(--color-sidebar-text) 14%, transparent);
   height:         var(--header-height);
 }
 
@@ -205,8 +213,6 @@ function handleLogout() {
   outline:        2px solid var(--color-sidebar-active);
   outline-offset: 2px;
 }
-.sidebar__logo      { font-weight: 700; font-size: var(--font-size-sm); white-space: nowrap; }
-.sidebar__logo-icon { font-size: 20px; font-weight: 700; }
 
 /* AppButton hereda las clases del sidebar para colores del sidebar */
 .sidebar__toggle {
@@ -234,8 +240,8 @@ function handleLogout() {
   transition:     background var(--transition), opacity var(--transition);
   white-space:    nowrap;
 }
-.sidebar__link:hover       { background: rgba(255,255,255,.06); opacity: 1; }
-.sidebar__link--active     { background: rgba(37,99,235,.25); color: #fff; opacity: 1; border-right: 3px solid var(--color-sidebar-active); }
+.sidebar__link:hover       { background: color-mix(in srgb, var(--color-sidebar-text) 10%, transparent); opacity: 1; }
+.sidebar__link--active     { background: color-mix(in srgb, var(--color-sidebar-active) 18%, transparent); color: var(--color-surface); opacity: 1; border-right: 3px solid var(--color-sidebar-active); }
 
 .sidebar__link-icon  { font-size: 18px; flex-shrink: 0; }
 .sidebar__link-label { font-size: var(--font-size-sm); font-weight: 500; }
@@ -243,7 +249,7 @@ function handleLogout() {
 /* Botón de instalar PWA — solo si el browser lo soporta */
 .sidebar__install {
   padding: var(--spacing-sm) var(--spacing-md);
-  border-top: 1px solid rgba(255,255,255,.06);
+  border-top: 1px solid color-mix(in srgb, var(--color-sidebar-text) 10%, transparent);
 }
 .sidebar__install :deep(.install-btn) { width: 100%; justify-content: center; font-size: 0.85rem; padding: 10px 12px; }
 
@@ -253,14 +259,14 @@ function handleLogout() {
   align-items: center;
   gap:         var(--spacing-sm);
   padding:     var(--spacing-md);
-  border-top:  1px solid rgba(255,255,255,.08);
+  border-top:  1px solid color-mix(in srgb, var(--color-sidebar-text) 14%, transparent);
 }
 
 .sidebar__user {
   flex: 1;
   overflow: hidden;
 }
-.sidebar__user-name  { display: block; font-size: var(--font-size-sm); font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar__user-name  { display: block; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .sidebar__logout {
   color:   var(--color-sidebar-text) !important;
@@ -297,14 +303,13 @@ function handleLogout() {
 
 .app-header__title {
   font-size:   var(--font-size-lg);
-  font-weight: 700;
+  font-weight: 800;
   color:       var(--color-text);
 }
 
 .app-header__date {
   font-size: var(--font-size-sm);
   color:     var(--color-text-muted);
-  text-transform: capitalize;
 }
 
 .app-content {

@@ -13,34 +13,43 @@ const routes: RouteRecordRaw[] = [
   // Landing pública: cualquier visitante puede verla. Si ya hay sesión activa,
   // `redirectIfAuth` lo manda directo al panel (ver guard más abajo) en vez de
   // mostrarle la página de marketing.
+  // Layout público (toldo, logo y pie de marca) compartido por la landing, el
+  // registro de negocio y la selección de contexto. Los paths absolutos de los
+  // hijos conservan las URLs de siempre.
   {
     path: '/',
-    name: 'Landing',
-    component: () => import('@/views/LandingView.vue'),
-    meta: { redirectIfAuth: true },
-  },
-  {
-    // Formulario real de registro de negocio: crea una solicitud pendiente
-    // de aprobación manual, sin autenticar ni abrir sesión.
-    path: '/registro-negocio',
-    name: 'BusinessRegistration',
-    component: () => import('@/views/business/RegisterBusinessView.vue'),
+    component: () => import('@/layouts/PublicLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'Landing',
+        component: () => import('@/views/LandingView.vue'),
+        meta: { redirectIfAuth: true },
+      },
+      {
+        // Formulario real de registro de negocio: crea una solicitud pendiente
+        // de aprobación manual, sin autenticar ni abrir sesión.
+        path: '/registro-negocio',
+        name: 'BusinessRegistration',
+        component: () => import('@/views/business/RegisterBusinessView.vue'),
+      },
+      {
+        // Pantalla intermedia obligatoria tras el login: identificar el
+        // dispositivo (una sola vez por tablet) y elegir quién atiende (en cada
+        // sesión). Requiere sesión válida, pero NO deviceId/memberId todavía —
+        // si ya los tiene, `redirectIfContextReady` la salta directo a /app.
+        path: '/seleccionar-contexto',
+        name: 'SelectContext',
+        component: () => import('@/views/SelectContextView.vue'),
+        meta: { requiresAuth: true, redirectIfContextReady: true },
+      },
+    ],
   },
   {
     path: '/login',
     component: () => import('@/layouts/AuthLayout.vue'),
     meta: { redirectIfAuth: true },
     children: [{ path: '', name: 'Login', component: () => import('@/views/auth/LoginView.vue') }],
-  },
-  {
-    // Pantalla intermedia obligatoria tras el login: identificar el
-    // dispositivo (una sola vez por tablet) y elegir quién atiende (en cada
-    // sesión). Requiere sesión válida, pero NO deviceId/memberId todavía —
-    // si ya los tiene, `redirectIfContextReady` la salta directo a /app.
-    path: '/seleccionar-contexto',
-    name: 'SelectContext',
-    component: () => import('@/views/SelectContextView.vue'),
-    meta: { requiresAuth: true, redirectIfContextReady: true },
   },
   {
     path: '/app',

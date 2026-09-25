@@ -81,7 +81,25 @@ describe('AppLayout navegación', () => {
     const brand = wrapper.get('a.sidebar__brand')
     expect(brand.attributes('href')).toBe('/app')
     expect(brand.attributes('aria-label')).toBe(APP_NAME)
-    expect(brand.text()).toBe(APP_NAME.charAt(0))
+    // Colapsado solo queda el isotipo (sin texto): el nombre lo da el aria-label
+    expect(brand.text()).toBe('')
+    expect(brand.find('svg').exists()).toBe(true)
+    expect(brand.find('.brand-logo__name').exists()).toBe(false)
+  })
+
+  it('expandido el logo muestra isotipo y nombre en la tipografía de marca', async () => {
+    const wrapper = await mountAt('/app')
+    const brand = wrapper.get('a.sidebar__brand')
+    expect(brand.find('svg').exists()).toBe(true)
+    expect(brand.get('.brand-logo__name').text()).toBe(APP_NAME)
+    expect(brand.attributes('aria-label')).toBe(APP_NAME)
+  })
+
+  it('la fecha lleva mayúscula solo al inicio (no "De" en medio)', async () => {
+    const wrapper = await mountAt('/app')
+    const date = wrapper.get('.app-header__date').text()
+    expect(date).toMatch(/^[A-ZÁÉÍÓÚ]/)
+    expect(date).not.toMatch(/ De /)
   })
 
   it('al hacer clic en el logo desde otra vista vuelve a /app', async () => {
