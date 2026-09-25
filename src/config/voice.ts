@@ -139,3 +139,41 @@ export function salesNeedReviewMessage(count: number): string {
     ? '1 venta necesita que la revises'
     : `${count} ventas necesitan que las revises`
 }
+
+/** Cuenta lo que falta para poder cobrar; vacío si ya se puede. Es la razón que se muestra junto al botón "Cobrar" deshabilitado. */
+export function saleChargeHint(state: {
+  itemCount: number
+  totalMinor: number
+  cashMinor: number
+  missingMinor: number
+}): string {
+  if (state.itemCount === 0) return 'Agrega un producto para poder cobrar.'
+  // Un total de $0 (producto regalado) se cobra sin efectivo.
+  if (state.cashMinor === 0 && state.totalMinor > 0) return 'Escribe el efectivo recibido para poder cobrar.'
+  if (state.missingMinor > 0) return `Faltan $${minorToDisplay(state.missingMinor)} para poder cobrar.`
+  return ''
+}
+
+/**
+ * Aviso suave de que el catálogo que se ve es la copia guardada en el
+ * dispositivo (sin internet o sin poder actualizar). No alarma: la venta sigue.
+ */
+export function catalogSnapshotMessage(savedAtIso: string, now: Date = new Date()): string {
+  const saved = new Date(savedAtIso)
+  if (Number.isNaN(saved.getTime())) return 'Estás viendo el catálogo guardado en este dispositivo.'
+
+  const time = saved.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' })
+  // "de la 1:05" pero "de las 10:05"
+  const article = saved.getHours() % 12 === 1 ? 'la' : 'las'
+  const sameDay = saved.toDateString() === now.toDateString()
+  if (sameDay) return `Estás viendo el catálogo guardado de ${article} ${time}.`
+
+  const day = saved.toLocaleDateString('es-MX', { day: 'numeric', month: 'long' })
+  return `Estás viendo el catálogo guardado del ${day}, a ${article} ${time}.`
+}
+
+/** Mientras la cola se está enviando; cadena vacía si no hay nada que enviar. */
+export function salesSyncingMessage(count: number): string {
+  if (count <= 0) return ''
+  return count === 1 ? 'Enviando 1 venta…' : `Enviando ${count} ventas…`
+}

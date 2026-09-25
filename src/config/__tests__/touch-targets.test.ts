@@ -102,4 +102,20 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
   it('filtro de categorías: cada botón mide 44x44', () => {
     expectAtLeast44('CategoryQuickFilter.vue', '.category-filter__btn', ['min-width', 'min-height'])
   })
+
+  it('carrito: "Cobrar" mide 56 px y "Vaciar" 44x44', () => {
+    expectAtLeast44('SaleCart.vue', '.sale-cart .sale-cart__charge', ['min-height'])
+    expectAtLeast44('SaleCart.vue', '.sale-cart__clear', ['min-width', 'min-height'])
+  })
+
+  it('catálogo de venta: buscador de 56 px y botón "Escanear" de 56 px', () => {
+    expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__search :deep(.app-input)', ['min-height'])
+    expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker .sale-picker__scan', ['min-height'])
+  })
+
+  it('indicador de sincronización: "Ver", "Entendido" y "Cerrar" miden al menos 44 px', () => {
+    expectAtLeast44('SyncStatusIndicator.vue', '.sync-status__see', ['min-width', 'min-height'])
+    expectAtLeast44('SyncStatusIndicator.vue', '.sync-status__dismiss', ['min-width', 'min-height'])
+    expectAtLeast44('SyncStatusIndicator.vue', '.sync-status .sync-status__close', ['min-height'])
+  })
 })

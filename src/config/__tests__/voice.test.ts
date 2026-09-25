@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   VOICE,
   cameraErrorMessage,
+  catalogSnapshotMessage,
+  saleChargeHint,
+  salesSyncingMessage,
   isNetworkError,
   saleScanAddedMessage,
   saleScanUnknownMessage,
@@ -148,5 +151,64 @@ describe('copy del lector de QR (VOICE.scan)', () => {
       expect(text, key).not.toMatch(/éxito|!/i)
       expect(text.trim().length, key).toBeGreaterThan(4)
     }
+  })
+})
+
+describe('saleChargeHint (por qué "Cobrar" no está disponible)', () => {
+  it('carrito vacío: pide agregar un producto', () => {
+    expect(saleChargeHint({ itemCount: 0, totalMinor: 0, cashMinor: 0, missingMinor: 0 }))
+      .toBe('Agrega un producto para poder cobrar.')
+  })
+
+  it('sin efectivo: pide escribir cuánto recibió', () => {
+    expect(saleChargeHint({ itemCount: 2, totalMinor: 5000, cashMinor: 0, missingMinor: 5000 }))
+      .toBe('Escribe el efectivo recibido para poder cobrar.')
+  })
+
+  it('efectivo insuficiente: dice cuánto falta, exacto', () => {
+    expect(saleChargeHint({ itemCount: 1, totalMinor: 15050, cashMinor: 10000, missingMinor: 5050 }))
+      .toBe('Faltan $50.50 para poder cobrar.')
+  })
+
+  it('cuando se puede cobrar no hay nada que explicar', () => {
+    expect(saleChargeHint({ itemCount: 1, totalMinor: 5000, cashMinor: 5000, missingMinor: 0 })).toBe('')
+    // Precio 0 sin efectivo también se puede cobrar
+    expect(saleChargeHint({ itemCount: 1, totalMinor: 0, cashMinor: 0, missingMinor: 0 })).toBe('')
+  })
+})
+
+describe('catalogSnapshotMessage (catálogo guardado, sin alarmar)', () => {
+  const now = new Date(2026, 8, 25, 18, 0)
+
+  it('el mismo día dice solo la hora', () => {
+    const msg = catalogSnapshotMessage(new Date(2026, 8, 25, 10, 5).toISOString(), now)
+    expect(msg).toMatch(/^Estás viendo el catálogo guardado de las 10:05/)
+    expect(msg).not.toMatch(/septiembre/)
+  })
+
+  it('otro día agrega la fecha', () => {
+    const msg = catalogSnapshotMessage(new Date(2026, 8, 23, 9, 30).toISOString(), now)
+    expect(msg).toMatch(/23 de septiembre/)
+    expect(msg).toMatch(/9:30/)
+  })
+
+  it('suena tranquilo: sin "error", "falló" ni exclamaciones', () => {
+    const msg = catalogSnapshotMessage(new Date(2026, 8, 25, 10, 5).toISOString(), now)
+    expect(msg).not.toMatch(/error|falló|falla|!/i)
+  })
+
+  it('una fecha inválida no rompe: mensaje sin hora', () => {
+    expect(catalogSnapshotMessage('no-es-fecha', now)).toBe('Estás viendo el catálogo guardado en este dispositivo.')
+  })
+})
+
+describe('salesSyncingMessage', () => {
+  it('singular y plural, con puntos suspensivos', () => {
+    expect(salesSyncingMessage(1)).toBe('Enviando 1 venta…')
+    expect(salesSyncingMessage(4)).toBe('Enviando 4 ventas…')
+  })
+
+  it('con cero no hay mensaje', () => {
+    expect(salesSyncingMessage(0)).toBe('')
   })
 })

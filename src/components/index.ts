@@ -84,3 +84,6 @@ export { default as ProductCatalogGrid } from './ui/organisms/ProductCatalogGrid
 export { default as ProductFormModal   } from './ui/organisms/ProductFormModal.vue'
 export { default as UiModeSwitch       } from './ui/organisms/UiModeSwitch.vue'
 export { default as QrScannerModal     } from './ui/organisms/QrScannerModal.vue'
+export { default as SaleCart           } from './ui/organisms/SaleCart.vue'
+export { default as SaleCatalogPicker  } from './ui/organisms/SaleCatalogPicker.vue'
+export { default as SyncStatusIndicator } from './ui/organisms/SyncStatusIndicator.vue'

@@ -82,20 +82,11 @@
 
 <script setup lang="ts">
 import { minorToDisplay } from '@/utils/money'
+import type { CartLineView } from '@/types/cart.types'
 import QuantityStepper from '../atoms/QuantityStepper.vue'
 
 defineProps<{
-  /** Forma de `CartLine` del store (los componentes de ui/ no importan stores) */
-  line: {
-    productId: string
-    name: string
-    unitPriceMinor: number
-    quantity: number
-    tipo: 'unica' | 'cantidad'
-    /** Existencia local: tope de la cantidad */
-    stockAvailable: number
-    image: string | null
-  }
+  line: CartLineView
   /** Bloquea los controles (mientras se cobra) */
   disabled?: boolean
 }>()
