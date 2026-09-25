@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
 import { APP_NAME } from '@/config/app'
 
@@ -48,6 +48,40 @@ describe('AppLayout', () => {
   it('se monta sin errores', () => {
     const wrapper = shallowMount(AppLayout)
     expect(wrapper.exists()).toBe(true)
+  })
+
+  describe('menú lateral según el ancho', () => {
+    const original = Object.getOwnPropertyDescriptor(window, 'matchMedia')
+    const stubMatchMedia = (phone: boolean) => {
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        writable: true,
+        value: vi.fn((query: string) => ({ matches: phone && query === '(max-width: 767px)', media: query })),
+      })
+    }
+    afterEach(() => {
+      if (original) Object.defineProperty(window, 'matchMedia', original)
+      else Reflect.deleteProperty(window, 'matchMedia')
+    })
+
+    it('en un celular (< 768 px) arranca colapsado para no comerse el contenido', () => {
+      stubMatchMedia(true)
+      const vm = shallowMount(AppLayout).vm as unknown as AppLayoutVm
+      expect(vm.sidebarCollapsed).toBe(true)
+    })
+
+    it('en una pantalla ancha arranca expandido', () => {
+      stubMatchMedia(false)
+      const vm = shallowMount(AppLayout).vm as unknown as AppLayoutVm
+      expect(vm.sidebarCollapsed).toBe(false)
+    })
+
+    it('en un celular se puede volver a expandir', () => {
+      stubMatchMedia(true)
+      const vm = shallowMount(AppLayout).vm as unknown as AppLayoutVm
+      vm.toggleSidebar()
+      expect(vm.sidebarCollapsed).toBe(false)
+    })
   })
 
   it('toggleSidebar cambia sidebarCollapsed', async () => {

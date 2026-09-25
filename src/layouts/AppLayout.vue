@@ -146,8 +146,14 @@ const uiMode    = useUiModeStore()
 const router    = useRouter()
 const route     = useRoute()
 
-// Colapso del sidebar
-const sidebarCollapsed = ref(false)
+// Colapso del sidebar. En un celular (menos de 768 px) arranca colapsado: la
+// barra de 240 px se comería el contenido; se puede expandir cuando se necesite
+// (y ahí se superpone en vez de empujar la pantalla, ver el CSS).
+const PHONE_QUERY = '(max-width: 767px)'
+const startsOnPhone = typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia(PHONE_QUERY).matches
+const sidebarCollapsed = ref(startsOnPhone)
 function toggleSidebar() { sidebarCollapsed.value = !sidebarCollapsed.value }
 
 // Navegación principal
@@ -357,5 +363,34 @@ function handleLogout() {
 .app-content {
   flex:    1;
   padding: var(--spacing-xl);
+}
+
+/* ── Celular (< 768 px) ──────────────────────────────────────────
+   La barra lateral nunca empuja el contenido: en reposo es la tira de 64 px y,
+   si se expande, se superpone. La cabecera puede crecer y la fecha se omite. */
+@media (max-width: 767px) {
+  .app-layout,
+  .app-layout--collapsed {
+    grid-template-columns: var(--sidebar-width-collapsed) minmax(0, 1fr);
+    --app-sidebar-offset: var(--sidebar-width-collapsed);
+  }
+  .app-layout:not(.app-layout--collapsed) .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: var(--sidebar-width);
+    z-index: 60;
+    box-shadow: var(--shadow-lg);
+  }
+  .app-main { grid-column: 2; min-width: 0; }
+  .app-header {
+    height: auto;
+    min-height: var(--header-height);
+    padding: var(--spacing-sm) var(--spacing-md);
+    flex-wrap: wrap;
+    gap: var(--spacing-sm);
+  }
+  .app-header__date { display: none; }
+  .app-content { padding: var(--spacing-md) var(--spacing-sm); }
 }
 </style>
