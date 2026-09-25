@@ -115,6 +115,20 @@ describe('buildSalesReport — totals in minor units', () => {
     expect(Number.isInteger(report.totals.totalMinor)).toBe(true)
   })
 
+  it('adds up amounts that drift in floating-point pesos: ten sales of $0.10 are exactly $1.00 (500 - 299.50 = 200.50 per change)', () => {
+    const tenCents = Array.from({ length: 10 }, () => sale({ totalMinor: 10, cashReceivedMinor: 10 }))
+    const report = build([
+      ...tenCents,
+      sale({ memberId: 'm-ana', totalMinor: 29950, cashReceivedMinor: 50000, changeMinor: 20050 }),
+    ])
+
+    expect(report.totals.totalMinor).toBe(100 + 29950)
+    expect(report.totals.changeMinor).toBe(20050)
+    const carlos = report.people.find((p) => p.memberId === 'm-carlos')
+    expect(carlos?.totalMinor).toBe(100)
+    expect(carlos?.saleCount).toBe(10)
+  })
+
   it('counts the articles of every sale', () => {
     const report = build([sale({ quantities: [2, 2] }), sale({ quantities: [5] })])
     expect(report.totals.articleCount).toBe(9)

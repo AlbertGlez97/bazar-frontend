@@ -1,5 +1,5 @@
 import { businessDayOf, formatDateKey } from './business-time'
-import { formatMinorMoney } from './money'
+import { addMinor, formatMinorMoney } from './money'
 import type {
   SalesByMemberReport,
   SalesByPeriodReport,
@@ -115,9 +115,9 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
     (acc, row) => ({
       saleCount: acc.saleCount + 1,
       articleCount: acc.articleCount + row.articleCount,
-      totalMinor: acc.totalMinor + row.totalMinor,
-      cashReceivedMinor: acc.cashReceivedMinor + row.cashReceivedMinor,
-      changeMinor: acc.changeMinor + row.changeMinor,
+      totalMinor: addMinor(acc.totalMinor, row.totalMinor),
+      cashReceivedMinor: addMinor(acc.cashReceivedMinor, row.cashReceivedMinor),
+      changeMinor: addMinor(acc.changeMinor, row.changeMinor),
     }),
     { saleCount: 0, articleCount: 0, totalMinor: 0, cashReceivedMinor: 0, changeMinor: 0 },
   )
@@ -126,7 +126,7 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
   for (const row of rows) {
     const acc = perMember.get(row.memberId) ?? { saleCount: 0, totalMinor: 0 }
     acc.saleCount += 1
-    acc.totalMinor += row.totalMinor
+    acc.totalMinor = addMinor(acc.totalMinor, row.totalMinor)
     perMember.set(row.memberId, acc)
   }
   const people: SalesReportPerson[] = [...perMember.entries()]

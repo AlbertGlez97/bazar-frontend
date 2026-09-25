@@ -94,6 +94,10 @@ Baseline before this work: 80 files / 1204 tests, all green. Precache baseline: 
 - The workbook has three sheets in this order: Ventas, Por persona, Resumen (the brief allowed a "small block or sheet").
 - "Por persona" also carries the sale count and the share of the total.
 
+## Money arithmetic in the report builder (change requested after the browser pass)
+
+`buildSalesReport` summed cents with raw `+`. Totals and per-person subtotals now go through `addMinor` (dinero.js, `utils/money.ts`); see the evaluation in `odd/tasks/sales-screen.md`. Integer sums were already exact; the change centralizes them and makes an out-of-range sum fail loudly. Percent shares and the Excel `minor / 100` cell values are display conversions and stay as they were.
+
 ## Known limits
 
 - No payment-method column (the backend only supports cash). Business name is `APP_NAME`, not per business (the API and session do not expose it).
