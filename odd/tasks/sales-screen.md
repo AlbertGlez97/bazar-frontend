@@ -42,7 +42,7 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - [x] **A1.3 — IndexedDB layer + offline queue + sync engine (states, headers per record, idempotent replay, mutex, triggers).**
 - [x] **A1.4 — Sale catalog loader/store (all pages, client search + category, IDB snapshot, local stock decrement).**
 - [x] **A1.5 — Submit orchestration (`useSaleCheckout` or store action): online/offline/network-error/conflict/400 outcomes.**
-- [ ] **A2.1 — QR scanner (library choice recorded) + scan component.**
+- [x] **A2.1 — QR scanner (library choice recorded) + scan component.**
 - [ ] **A2.2 — Atoms/molecules: QuantityStepper, CartLineItem, CartSummary, CashInput, CategoryQuickFilter.**
 - [ ] **A2.3 — Organisms: SaleCart, SaleCatalogPicker; sync indicator.**
 - [ ] **A2.4 — SaleView (states: selling / success / conflict / saved offline / error), route, sidebar nav by mode, sync bootstrap.**
@@ -80,6 +80,25 @@ Real sale screen for "Modo Venta": catalog + cart side by side, QR scan, cash an
 - GREEN: 32 tests pass (blocked reasons, 201 success with SERVER totals, exact contract body, 200 replay, conflict never success and no stock decrement, 400/409 rejected with nothing queued, 401/403 auth-needed with the sale kept in the queue, offline straight to queue without calling the service, network / timeout / 500 / 503 saved-offline, retry with the same id producing the identical body and a single stock decrement, queued copy dropped after a definitive answer, IndexedDB unavailable failed-to-save, frozen id/occurredAt, new id when cart / cash / seller changes, `startNewSale`, double tap sends once, `loading` reset).
 - Final verification (all run after A1.5): `npm run build` exit 0 (vue-tsc + vite build, PWA precache 39 entries), `npm run lint` exit 0, `npm run test:run` exit 0 with 65 files / 844 tests (baseline was 54 files / 589 tests; +11 files, +255 tests).
 - Decisions: store (`useCheckoutStore`), not a composable, because the view reads `loading`/`lastResult` and the frozen attempt must survive component remounts. Added result kind `blocked` (`empty-cart | cash-insufficient | missing-context`) for the refusal case the brief did not give a kind for; `auth-needed` also carries `pendingId`, totals and `message`; `failed-to-save` carries `message`. `auth-needed` also decrements local stock (the sale is safe in the queue and will happen). Stock is decremented at most once per attempt. After a definitive server answer for an id that was enqueued earlier in the same attempt, the queued copy is removed. Known limit: if an attempt was enqueued (stock decremented locally) and the retry then comes back `conflict`, local stock stays low until the next catalog load.
+
+### A2.1 (commit A2_1_HASH)
+
+- RED: `qr-scanner.test.ts` and `QrScannerModal.test.ts` failed to load (`Failed to resolve import "../qr-scanner"` / missing component; 0 tests ran); `voice.test.ts` 7 failed (missing exports `cameraErrorMessage`, `saleScanUnknownMessage`, `saleScanAddedMessage`, `VOICE.scan`); `pwa-precache.test.ts > el patrón de precaché incluye los .wasm` failed (`globPatterns` had no `wasm`). One failure after implementing was a test artifact, not code: the live-region test held a stale wrapper because VTU's `teleport` stub re-creates nodes; with a real Teleport the node is stable, and a test now proves it.
+- GREEN: 37 (adapter) + 25 (modal) + 21 (voice, 7 new) + 2 (precache) + 1 (touch target); full suite 68 files / 917 tests; `vue-tsc -b` + `vite build` and `eslint src vite.config.ts` clean.
+- **Library decision: `barcode-detector@^3.2.2` (+ `zxing-wasm@3.1.3` pinned, the exact version it depends on, because the app imports its `.wasm` directly).** Evidence (npm registry, 2026-09-25):
+
+| Package | Last publish | Weekly downloads (15-21 Sep) | License | Unpacked | Verdict |
+|---|---|---|---|---|---|
+| `barcode-detector` 3.2.2 | 2026-08-16 (3.2.1 on 2026-07-12, 3.2.0 on 2026-06-01) | 1,377,965 | MIT | 261 kB (+ zxing-wasm reader `.wasm` 1.09 MB, 461 kB gzip) | **chosen**: actively released; one dependency (`zxing-wasm`); implements the standard `BarcodeDetector` API, so the native implementation is used when the browser has it |
+| `qr-scanner` 1.4.2 (nimiq) | 2022-11-23 | 258,991 | MIT | 524 kB | discarded: no release in almost four years |
+| `html5-qrcode` 2.3.8 | 2023-04-15 | 1,049,901 | Apache-2.0 | 2.6 MB | discarded: no release since April 2023 |
+| `vue-qrcode-reader` 5.7.3 | 2025-07-16 | 43,952 | MIT | 202 kB | discarded: a wrapper over `barcode-detector` (pinned to the old 2.2.2) that would still need the same WASM override plus an adapter to mock |
+| `@zxing/browser` 0.2.1 | 2026-07-06 (registry "modified") | 792,879 | MIT | 5.8 MB | discarded: pure-JS decoder and the largest package; no reason to prefer it over the WASM one (not benchmarked here) |
+
+- **Offline behavior** (verified in code and in the build; browser check is in A2.5): the default `locateFile` of both `barcode-detector` and `zxing-wasm` 3.1.3 loads the `.wasm` from `https://fastly.jsdelivr.net/npm/zxing-wasm@3.1.3/dist/reader/zxing_reader.wasm` (read in `node_modules/barcode-detector/dist/es/zxing-exported.js` and `zxing-wasm/dist/es/share.js`). `services/qr-scanner.ts` overrides it with `setZXingModuleOverrides({ locateFile })` pointing at `zxing-wasm/reader/zxing_reader.wasm?url`, so Vite emits `dist/assets/zxing_reader-<hash>.wasm` (1,093 kB). zxing runs on the main thread (no Worker file to bundle). `vite.config.ts` `globPatterns` now includes `wasm`: the built `dist/sw.js` lists the wasm and the precache went from 39 to 40 entries (1,462 KiB). The reader is imported lazily (`import()`), so it costs nothing until the camera opens. With a native `BarcodeDetector` that supports `qr_code` (Chrome on Android) the WASM is not used at all.
+- Design: `services/qr-scanner.ts` is the adapter (`startQrScanner(video, onDecode, deps)`, `getScanSupport`, `classifyCameraError`, `createScanDeduper`, `createDefaultDetector`); its dependencies are injected so every path is unit-tested without a camera. `QrScannerModal` is an organism (it wraps `AppModal`) and is presentational: props `modelValue` + `feedback`, emits `scan(text)` once per distinct read (1.5 s window, renewed while the code stays in view), and stops every track on close, unmount, reopen, and when the camera was still starting at close time. States: loading, scanning, permission denied, no camera, camera busy, insecure context (no attempt is made), unsupported browser (no retry offered), unknown. The modal stays open after a read so several products can be scanned in a row; the container answers each read through `feedback`. The modal hides AppModal's small close X (28 px) and offers one 56 px "Listo" button instead.
+- Camera failure copy lives in `voice.ts` (`cameraErrorMessage`, `VOICE.scan`, `saleScanUnknownMessage`, `saleScanAddedMessage`).
+
 
 ## Next step
 

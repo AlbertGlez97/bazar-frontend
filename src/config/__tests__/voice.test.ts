@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import {
   VOICE,
+  cameraErrorMessage,
   isNetworkError,
+  saleScanAddedMessage,
+  saleScanUnknownMessage,
   saleConflictMessage,
   saleSavedOfflineMessage,
   saleSuccessMessage,
@@ -98,5 +101,52 @@ describe('salesPendingMessage / salesNeedReviewMessage', () => {
   it('con cero devuelven cadena vacía (no hay nada que avisar)', () => {
     expect(salesPendingMessage(0)).toBe('')
     expect(salesNeedReviewMessage(0)).toBe('')
+  })
+})
+
+describe('copy del lector de QR (VOICE.scan)', () => {
+  const codes = ['permission-denied', 'no-camera', 'camera-busy', 'insecure-context', 'unsupported', 'unknown'] as const
+
+  it('cada falla de cámara tiene su mensaje: dice qué pasó y qué hacer, sin jerga', () => {
+    const seen = new Set<string>()
+    for (const code of codes) {
+      const text = cameraErrorMessage(code)
+      expect(text, code).toMatch(/[.]$/)
+      expect(text, code).toMatch(/Actívalo|Ciérrala|Intenta|Abre|Busca|Prueba|Usa/)
+      expect(text, code).not.toMatch(/getUserMedia|wasm|https|NotAllowed|exception|error \d/i)
+      seen.add(text)
+    }
+    expect(seen.size).toBe(codes.length)
+  })
+
+  it('el permiso denegado no culpa a la persona y explica dónde activarlo', () => {
+    expect(cameraErrorMessage('permission-denied')).toMatch(/permiso/)
+    expect(cameraErrorMessage('permission-denied')).toMatch(/ajustes/i)
+  })
+
+  it('sin conexión segura habla de "conexión segura", no de protocolos', () => {
+    expect(cameraErrorMessage('insecure-context')).toMatch(/segur/)
+  })
+
+  it('un código desconocido cae en el mensaje genérico de cámara', () => {
+    expect(cameraErrorMessage('lo-que-sea' as never)).toBe(cameraErrorMessage('unknown'))
+  })
+
+  it('un QR que no es de un producto se explica sin culpar y ofrece salida', () => {
+    const text = saleScanUnknownMessage()
+    expect(text).toMatch(/No reconocemos ese código/)
+    expect(text).toMatch(/nombre/)
+    expect(text).not.toMatch(/error|inválido|invalido/i)
+  })
+
+  it('confirma con el nombre del producto', () => {
+    expect(saleScanAddedMessage('Café de olla')).toBe('Café de olla: agregado a tu venta.')
+  })
+
+  it('los textos fijos de la pantalla de escaneo están en español y sin exclamaciones de relleno', () => {
+    for (const [key, text] of Object.entries(VOICE.scan)) {
+      expect(text, key).not.toMatch(/éxito|!/i)
+      expect(text.trim().length, key).toBeGreaterThan(4)
+    }
   })
 })

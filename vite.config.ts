@@ -48,8 +48,10 @@ export default defineConfig({
       },
 
       workbox: {
-        // Precache automático de todo lo que Vite genera (JS/CSS/HTML/fonts/svg)
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Precache automático de todo lo que Vite genera (JS/CSS/HTML/fonts/svg).
+        // `wasm`: el lector de QR (zxing) lo necesita para leer SIN internet; se
+        // empaqueta con la app (src/services/qr-scanner.ts) y debe estar precacheado.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm}'],
 
         // Fallback cuando el user está offline y pide una ruta SPA que no tenemos precacheada
         navigateFallback: '/index.html',

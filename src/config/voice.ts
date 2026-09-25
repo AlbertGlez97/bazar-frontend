@@ -36,7 +36,48 @@ export const VOICE = {
     /** 201/200 `rechazada_por_conflicto`: perdió la carrera por la última pieza. */
     conflict: 'Otra venta se llevó la última pieza de un producto justo antes que esta, así que no se cobró. Un socio la revisará en incidencias.',
   },
+  /** Lector de QR: textos fijos de la pantalla; las fallas de cámara salen de `cameraErrorMessage`. */
+  scan: {
+    title: 'Escanear producto',
+    hint: 'Apunta la cámara al código QR del producto.',
+    loading: 'Abriendo la cámara…',
+    done: 'Listo',
+    retry: 'Intentar de nuevo',
+  },
 } as const
+
+/** Códigos de falla del lector (los de `QrScannerError` más el contexto inseguro). */
+export type CameraFailure =
+  | 'permission-denied'
+  | 'no-camera'
+  | 'camera-busy'
+  | 'insecure-context'
+  | 'unsupported'
+  | 'unknown'
+
+const CAMERA_MESSAGES: Record<CameraFailure, string> = {
+  'permission-denied': 'Necesitamos tu permiso para usar la cámara. Actívalo en los ajustes del navegador y vuelve a intentar.',
+  'no-camera': 'No encontramos una cámara en este dispositivo. Busca el producto por su nombre.',
+  'camera-busy': 'Otra aplicación está usando la cámara. Ciérrala e intenta de nuevo.',
+  'insecure-context': 'La cámara solo funciona en una conexión segura. Abre la app desde su dirección oficial.',
+  unsupported: 'Este navegador no puede leer códigos QR. Usa otro navegador o busca el producto por su nombre.',
+  unknown: 'No pudimos abrir la cámara. Intenta de nuevo en un momento.',
+}
+
+/** Mensaje amable para cada falla de la cámara; cualquier valor desconocido cae en el genérico. */
+export function cameraErrorMessage(failure: CameraFailure): string {
+  return CAMERA_MESSAGES[failure] ?? CAMERA_MESSAGES.unknown
+}
+
+/** QR leído que no corresponde a ningún producto del catálogo: sin culpar y con salida. */
+export function saleScanUnknownMessage(): string {
+  return 'No reconocemos ese código. Prueba con otro producto o búscalo por su nombre.'
+}
+
+/** Confirmación al agregar un producto leído con la cámara. */
+export function saleScanAddedMessage(productName: string): string {
+  return `${productName.trim()}: agregado a tu venta.`
+}
 
 /** Sin `response` de Axios la petición nunca obtuvo respuesta: es un problema de red. */
 export function isNetworkError(cause: unknown): boolean {

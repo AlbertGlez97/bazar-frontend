@@ -80,4 +80,8 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     const body = ruleBody(sourceOf('AppButton.vue'), '.app-btn--lg')
     expect(pxOf(body, 'min-height')).toBeGreaterThanOrEqual(MIN_TOUCH_PX)
   })
+
+  it('lector de QR: "Listo" e "Intentar de nuevo" miden 56 px de alto', () => {
+    expectAtLeast44('QrScannerModal.vue', '.qr-scanner__action', ['min-height'])
+  })
 })
