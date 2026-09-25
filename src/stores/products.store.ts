@@ -33,12 +33,23 @@ export const useProductsStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      const response = await ProductsService.listProducts({
-        page: page.value,
+      const query = (pageNumber: number) => ProductsService.listProducts({
+        page: pageNumber,
         limit: limit.value,
         search: search.value || undefined,
         includeInactive: includeInactive.value || undefined,
       })
+      let response = await query(page.value)
+
+      // Si la página pedida quedó fuera de rango (p. ej. se desactivó el único
+      // producto de la última página), la API responde una página vacía aunque
+      // aún haya productos y la paginación se ocultaría, dejando al usuario
+      // atascado: se reposiciona en la última página que sí existe.
+      const lastPage = Math.max(1, Math.ceil(response.total / response.limit))
+      if (response.items.length === 0 && response.total > 0 && response.page > lastPage) {
+        response = await query(lastPage)
+      }
+
       items.value = response.items
       total.value = response.total
       page.value = response.page

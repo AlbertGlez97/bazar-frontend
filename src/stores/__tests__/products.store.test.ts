@@ -76,6 +76,33 @@ describe('products.store', () => {
     expect(store.totalPages).toBe(3)
   })
 
+  it('si la página pedida quedó fuera de rango (se vació la última), reposiciona en la última existente', async () => {
+    // Página 2 de 21 productos activos; se desactiva el único de la página 2:
+    // la API responde página 2 vacía con total 20 (=1 sola página).
+    vi.mocked(ProductsService.listProducts)
+      .mockResolvedValueOnce({ items: [], total: 20, page: 2, limit: 20 })
+      .mockResolvedValueOnce({ items: [product], total: 20, page: 1, limit: 20 })
+    const store = useProductsStore()
+
+    await store.fetchProducts({ page: 2 })
+
+    expect(ProductsService.listProducts).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(ProductsService.listProducts).mock.calls[1][0]).toMatchObject({ page: 1 })
+    expect(store.page).toBe(1)
+    expect(store.items).toEqual([product])
+    expect(store.totalPages).toBe(1)
+  })
+
+  it('una búsqueda sin resultados (total 0) no dispara un segundo request', async () => {
+    vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 })
+    const store = useProductsStore()
+
+    await store.fetchProducts({ search: 'nada' })
+
+    expect(ProductsService.listProducts).toHaveBeenCalledTimes(1)
+    expect(store.items).toEqual([])
+  })
+
   it('createProduct crea el producto y refresca el listado', async () => {
     vi.mocked(ProductsService.createProduct).mockResolvedValue(product)
     vi.mocked(ProductsService.listProducts).mockResolvedValue(listResponse)
