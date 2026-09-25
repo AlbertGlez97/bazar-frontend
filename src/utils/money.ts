@@ -97,37 +97,6 @@ export function formatMinorMoney(minor: number): string {
   return `${negative ? '-' : ''}$${pesos}.${cents}`
 }
 
-// Regex de un número decimal simple: signo opcional, parte entera obligatoria,
-// hasta un separador decimal (punto o coma) con cualquier cantidad de dígitos.
-const NUMERIC_RE = /^(-?)(\d+)(?:[.,](\d*))?$/
-
-/**
- * Pesos capturados (string o number) -> centavos (entero), redondeando
- * correctamente al segundo decimal en vez de truncar (ej. `"10.005"` debe
- * dar `1001`, no `1000`).
- *
- * OJO: multiplicar directo por 100 (`Number(display) * 100`) es la trampa
- * clásica de punto flotante — `10.005 * 100` da `1000.4999999999999` en JS,
- * y `Math.round(...)` de ese valor trunca a `1000` en vez de redondear a
- * `1001`. Para evitarlo, esta función trabaja sobre los DÍGITOS del string
- * (parte entera + hasta 3 decimales) en vez de hacer aritmética de floats.
- * Devuelve `0` si el valor no tiene forma de número.
- */
-export function displayToMinor(display: string | number): number {
-  if (display === null || display === undefined) return 0
-  const raw = (typeof display === 'number' ? display.toString() : display).trim()
-  const match = NUMERIC_RE.exec(raw)
-  if (!match) return 0
-
-  const [, sign, intPart, decPart = ''] = match
-  // Tomamos 3 decimales (rellenando con ceros) para poder redondear el
-  // tercero hacia el segundo sin arrastrar imprecisión de floats.
-  const threeDecimals = (decPart + '000').slice(0, 3)
-  const cents = Number(intPart) * 100 + Math.round(Number(threeDecimals) / 10)
-
-  return sign === '-' ? -cents : cents
-}
-
 /** Dígitos enteros máximos del efectivo: el contrato tope en 21,474,836.47 (2147483647 centavos). */
 const MAX_CASH_INT_DIGITS = 8
 
@@ -166,12 +135,15 @@ export function sanitizeCashText(input: string): string {
 
 // Entero (con miles bien agrupados o sin agrupar) y hasta 2 decimales tras el
 // punto; o solo decimales (".5"). Un punto final ("1000.") es texto a medias.
-const CASH_TEXT_RE = /^(?:(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{0,2}))?|\.(\d{1,2}))$/
+const MONEY_TEXT_RE = /^(?:(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{0,2}))?|\.(\d{1,2}))$/
 
 /**
- * Efectivo que la persona escribió -> centavos, con la convención de México
+ * Monto que la persona escribió -> centavos, con la convención de México
  * (es-MX): la COMA agrupa miles y el PUNTO es el decimal. "1,000" -> 100000,
  * "1,000.50" -> 100050, "1000.5" -> 100050.
+ *
+ * Es la ÚNICA regla de lectura de montos escritos: la comparten el campo de
+ * efectivo (`parseCashInput`), el formulario de producto y `displayToMinor`.
  *
  * Falla hacia el lado seguro: si el texto es ambiguo o no tiene forma de
  * monto devuelve `null` en vez de adivinar. Ejemplos que rechaza: "100,50"
@@ -181,18 +153,36 @@ const CASH_TEXT_RE = /^(?:(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{0,2}))?|\.(\d{1,2}))$
  * - Un "$" al inicio se tolera.
  * - La coma solo vale como separador de miles bien puesto (grupos de 3).
  *
- * Reutiliza `displayToMinor` para pasar a centavos con dinero exacto (sin
- * aritmética de floats).
+ * Trabaja sobre los DÍGITOS del texto (parte entera x 100 + centavos), sin
+ * aritmética de floats: `10.005 * 100` da `1000.4999999999999` en JS.
  */
-export function parseCashInput(text: string): number | null {
+export function parseMoneyText(text: string): number | null {
   if (typeof text !== 'string') return null
   const raw = text.trim().replace(/^\$\s*/, '')
   if (raw === '') return 0
 
-  const match = CASH_TEXT_RE.exec(raw)
+  const match = MONEY_TEXT_RE.exec(raw)
   if (!match) return null
 
   const integer = (match[1] ?? '0').replace(/,/g, '')
-  const decimals = match[2] ?? match[3] ?? ''
-  return displayToMinor(decimals ? `${integer}.${decimals}` : integer)
+  const decimals = (match[2] ?? match[3] ?? '').padEnd(2, '0')
+  const minor = Number(integer) * 100 + Number(decimals)
+  return Number.isSafeInteger(minor) ? minor : null
+}
+
+/** Efectivo que la persona escribió -> centavos: el nombre de `parseMoneyText` en el campo de efectivo. */
+export const parseCashInput = parseMoneyText
+
+/**
+ * Pesos capturados (string o number) -> centavos (entero), con la misma
+ * convención es-MX que el campo de efectivo (coma = miles, punto = decimal).
+ *
+ * Devuelve `0` si el valor no tiene forma de monto o es ambiguo ("100,50",
+ * "10.005", "-20"): no adivina. Quien necesite distinguir un 0 real de un
+ * texto inválido (un formulario que debe avisar) usa `parseMoneyText`, que
+ * devuelve `null` en ese caso.
+ */
+export function displayToMinor(display: string | number): number {
+  if (display === null || display === undefined) return 0
+  return parseMoneyText(String(display)) ?? 0
 }

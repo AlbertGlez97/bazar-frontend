@@ -84,6 +84,7 @@
       type="text"
       inputmode="decimal"
       placeholder="0.00"
+      :error="errors.purchaseCostMinor"
     />
 
     <AppInput
@@ -125,7 +126,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { displayToMinor, minorToDisplay } from '@/utils/money'
+import { minorToDisplay, parseMoneyText } from '@/utils/money'
 import type {
   Product,
   ProductFormSubmitPayload,
@@ -163,8 +164,16 @@ const supplier = ref(props.product?.supplier ?? '')
 const notes = ref(props.product?.notes ?? '')
 const imageFile = ref<File | null>(null)
 
-const errors = ref<{ name?: string; unitPriceMinor?: string; initialStock?: string }>({})
+const errors = ref<{
+  name?: string
+  unitPriceMinor?: string
+  purchaseCostMinor?: string
+  initialStock?: string
+}>({})
 const formError = ref('')
+
+const AMBIGUOUS_AMOUNT_MESSAGE =
+  'No entiendo ese monto. Usa coma para miles y punto para centavos, ej. 1,000.50.'
 
 // Si tipo cambia a "unica" en modo creación, la existencia se fija a 1
 // (el backend la fuerza igual, pero reflejarlo en el form evita confusión).
@@ -172,33 +181,46 @@ watch(tipo, (value) => {
   if (value === 'unica') initialStock.value = 1
 })
 
-function validate(): boolean {
+/**
+ * Valida el formulario y devuelve los montos ya leídos en centavos (una sola
+ * lectura, con la misma regla es-MX que el campo de efectivo), o `null` si hay
+ * errores. Un monto ambiguo ("100,50") se avisa en vez de guardarse como 0.
+ */
+function validate(): { unitPriceMinor: number; purchaseCostMinor: number | null } | null {
   errors.value = {}
   formError.value = ''
 
   if (!name.value.trim()) errors.value.name = 'Ponle un nombre al producto.'
 
-  const unitPriceMinor = displayToMinor(unitPriceDisplay.value)
-  if (!unitPriceDisplay.value.trim() || unitPriceMinor <= 0) {
+  const unitPriceMinor = parseMoneyText(unitPriceDisplay.value)
+  if (unitPriceMinor === null) {
+    errors.value.unitPriceMinor = AMBIGUOUS_AMOUNT_MESSAGE
+  } else if (!unitPriceDisplay.value.trim() || unitPriceMinor <= 0) {
     errors.value.unitPriceMinor = 'Escribe un precio mayor a 0.'
+  }
+
+  // El costo es opcional: vacío = sin costo; con texto debe leerse sin ambigüedad.
+  let purchaseCostMinor: number | null = null
+  if (purchaseCostDisplay.value.trim()) {
+    purchaseCostMinor = parseMoneyText(purchaseCostDisplay.value)
+    if (purchaseCostMinor === null) errors.value.purchaseCostMinor = AMBIGUOUS_AMOUNT_MESSAGE
   }
 
   if (!isEditMode.value && tipo.value === 'cantidad' && (!initialStock.value || initialStock.value < 0)) {
     errors.value.initialStock = 'Escribe cuántas piezas tienes.'
   }
 
-  const hasErrors = Object.keys(errors.value).length > 0
-  if (hasErrors) formError.value = 'Revisa los campos marcados para continuar.'
-  return !hasErrors
+  if (unitPriceMinor === null || Object.keys(errors.value).length > 0) {
+    formError.value = 'Revisa los campos marcados para continuar.'
+    return null
+  }
+  return { unitPriceMinor, purchaseCostMinor }
 }
 
 function handleSubmit() {
-  if (!validate()) return
-
-  const unitPriceMinor = displayToMinor(unitPriceDisplay.value)
-  const purchaseCostMinor = purchaseCostDisplay.value.trim()
-    ? displayToMinor(purchaseCostDisplay.value)
-    : null
+  const amounts = validate()
+  if (!amounts) return
+  const { unitPriceMinor, purchaseCostMinor } = amounts
 
   if (isEditMode.value && props.product) {
     // Modo edición: solo se envían los campos que realmente cambiaron, para

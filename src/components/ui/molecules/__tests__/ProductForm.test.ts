@@ -59,6 +59,93 @@ describe('ProductForm', () => {
     expect(payload.imageFile).toBeNull()
   })
 
+  describe('montos con la convención es-MX (coma = miles, punto = decimal)', () => {
+    const AMBIGUOUS_MESSAGE = 'No entiendo ese monto'
+
+    async function fill(price: string, cost?: string) {
+      const wrapper = mount(ProductForm)
+      await wrapper.findAll('input')[0].setValue('Producto nuevo')
+      const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+      await decimals[0].setValue(price)
+      if (cost !== undefined) await decimals[1].setValue(cost)
+      await wrapper.find('form').trigger('submit')
+      return wrapper
+    }
+
+    it.each([
+      ['1,000', 100000],
+      ['1,000.50', 100050],
+      ['$1,000.50', 100050],
+      ['19.99', 1999],
+    ])('precio %j se envía como %i centavos', async (price, expected) => {
+      const wrapper = await fill(price)
+      const payload = wrapper.emitted('submit')![0][0] as Record<string, unknown>
+      expect(payload.unitPriceMinor).toBe(expected)
+    })
+
+    it.each(['100,50', '1.000,50', '10.005', 'abc'])(
+      'precio ambiguo %j no se envía y muestra el error',
+      async (price) => {
+        const wrapper = await fill(price)
+        expect(wrapper.emitted('submit')).toBeUndefined()
+        expect(wrapper.text()).toContain(AMBIGUOUS_MESSAGE)
+      },
+    )
+
+    it('precio "0" sigue pidiendo un precio mayor a 0', async () => {
+      const wrapper = await fill('0')
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect(wrapper.text()).toContain('Escribe un precio mayor a 0.')
+    })
+
+    it('costo de compra "1,000" se envía como 100000 centavos', async () => {
+      const wrapper = await fill('2,000', '1,000')
+      const payload = wrapper.emitted('submit')![0][0] as Record<string, unknown>
+      expect(payload.unitPriceMinor).toBe(200000)
+      expect(payload.purchaseCostMinor).toBe(100000)
+    })
+
+    it.each(['1,5', 'abc'])(
+      'costo de compra ambiguo %j no se envía (antes un texto sin forma de monto se guardaba como 0)',
+      async (cost) => {
+        const wrapper = await fill('20', cost)
+        expect(wrapper.emitted('submit')).toBeUndefined()
+        expect(wrapper.text()).toContain(AMBIGUOUS_MESSAGE)
+      },
+    )
+
+    it('costo de compra vacío sigue siendo válido y no se envía', async () => {
+      const wrapper = await fill('20', '')
+      const payload = wrapper.emitted('submit')![0][0] as Record<string, unknown>
+      expect(payload.purchaseCostMinor).toBeUndefined()
+    })
+
+    it('modo edición: el precio precargado ("1000.00") se lee de vuelta sin cambios', async () => {
+      const wrapper = mount(ProductForm, {
+        props: { product: { ...product, unitPriceMinor: 100000, purchaseCostMinor: 50000 } },
+      })
+      const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+      expect(decimals[0].element.value).toBe('1000.00')
+      expect(decimals[1].element.value).toBe('500.00')
+
+      await wrapper.find('form').trigger('submit')
+
+      const payload = wrapper.emitted('submit')![0][0] as Record<string, unknown>
+      expect(payload).toEqual({ imageFile: null })
+    })
+
+    it('modo edición: costo de compra ambiguo no se envía', async () => {
+      const wrapper = mount(ProductForm, { props: { product } })
+      const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+      await decimals[1].setValue('100,50')
+
+      await wrapper.find('form').trigger('submit')
+
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect(wrapper.text()).toContain(AMBIGUOUS_MESSAGE)
+    })
+  })
+
   it('modo creación: tipo "cantidad" incluye la existencia inicial capturada', async () => {
     const wrapper = mount(ProductForm)
     await wrapper.findAll('input')[0].setValue('Producto nuevo')
