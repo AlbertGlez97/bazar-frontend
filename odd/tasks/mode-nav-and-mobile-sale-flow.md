@@ -35,6 +35,14 @@ Branch: `feat/mode-nav-and-mobile-sale-flow` (stacked on `fix/bound-account-skip
 - **Result flow**: unchanged. The result screen takes the whole screen; "Volver" (error results) returns to the same Step 2 with the cart intact; "Nueva venta" empties the cart and returns to Step 1.
 - **Rotation / resize**: portrait → landscape while in Step 2 shows the side-by-side layout with everything intact; back to portrait returns to Step 2 if there is still a sale (the query is still in the URL), otherwise to Step 1.
 
+### Part 3b — grid / list toggle for the sale catalog
+
+- **Where**: inside `SaleCatalogPicker`, so it is in the Step-1 catalog area on phones AND in the catalog column of the wide layout (same component, same toggle). It sits in its own row under the category filter, aligned right, so it never squeezes the search + "Escanear" row on a 360 px phone.
+- **Control**: a two-button group (`role="group"`, `aria-label="Vista del catálogo"`), each with an icon (decorative) and visible text — "Cuadrícula" / "Lista" — `aria-pressed` true/false, 44 px minimum targets. The active one is distinguished by fill, border and font weight, never by colour alone. Pressing the active view emits nothing.
+- **Persistence**: `useSaleCatalogViewStore` (`stores/saleCatalogView.store.ts`), key **`la-marchanta-sale-catalog-view`** in `localStorage`, values `grid` | `list`. Device-level, like the UI mode. Default `grid` (the view that already existed); nothing is written until the person chooses. An invalid stored value is "no preference"; a throwing `localStorage` (private mode, quota) is swallowed: the view still changes, only persistence is lost.
+- **List view**: compact 64 px rows (about eight visible on a phone) — thumbnail (3 rem, decorative image or 📦), name (ellipsis), availability badge, "En tu venta" mark with text, and the exact price (`$` + `minorToDisplay`) on the right. Each row is the SAME button as the card (same base class, accessible name, `aria-disabled` for sold out, click → `select`), so add-to-cart, sold-out and single-piece behaviour are identical. Availability is the simplified "Disponible / Agotado" of the large card (no stock counts).
+- The presentational picker only receives `view` and emits `update:view`; the container owns the store.
+
 ### Existing tests changed (forced by the new rules)
 
 - `SaleView.test.ts`: the block "barra del carrito en celular" tested the old bottom **sheet** (`sale-view__cart--open`, `open-cart`/`close-cart`, a bar that was always in the DOM and disabled when empty). That design is replaced by the two steps, so the block was replaced by "flujo de dos pasos en pantalla angosta" (wide unchanged, Step 1, Step 2, charging from Step 2, rotation, a11y). `mountSale` gained an optional path so a test can open `?paso=cobro`. Every other SaleView test is untouched and passes.
@@ -47,11 +55,12 @@ Branch: `feat/mode-nav-and-mobile-sale-flow` (stacked on `fix/bound-account-skip
 
 - [x] **P2** Navigation by mode, Inicio only in Gestión, landing per mode.
 - [x] **P3a** Two full-screen steps on narrow screens.
-- [ ] **P3b** Grid/list toggle for the catalog.
+- [x] **P3b** Grid/list toggle for the catalog.
 - [ ] **P4** "Cambiar precio" in the cart summary.
 
 ## Evidence
 
 - **P2:** RED first (`router.mode-landing.test.ts` failed on the missing `landing` module; 3 nav cases failed; 3 layout mode-switch cases failed). Then GREEN: full suite 117 files / 2167 tests, `npm run lint` clean, `npm run build` ok.
 - **P3a:** RED first (22 of the new SaleView cases failed). Then GREEN: full suite 117 files / 2197 tests, lint clean, build ok (vue-tsc caught one typing slip in a test, fixed). Added: 26 SaleView cases for the two steps, 6 `SaleCart` cases for `prominent`, 2 contract tests for the Step 2 sizes in `touch-targets.test.ts`.
+- **P3b:** RED first (the store file could not load; 18 new cases failed across SaleView, the picker and the touch-target contract). Then GREEN: full suite 119 files / 2242 tests, lint clean, build ok. Added: 11 store cases, 19 picker cases (`SaleCatalogPicker.view.test.ts`), 12 SaleView cases, 1 touch-target contract test. No existing test needed changes for this part.
 - **Manual phone check still needed (jsdom does not lay out):** the bar never covers the last catalog row; the fixed overlay respects the 64 px sidebar strip and the safe area; the Step 2 total/cash/Cobrar sizes look right on a real phone; hardware Back returns to Step 1; rotating keeps the sale.

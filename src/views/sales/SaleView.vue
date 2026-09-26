@@ -50,6 +50,8 @@
           :from-snapshot="catalog.isFromSnapshot"
           :snapshot-saved-at="catalog.lastLoadedAt"
           :in-cart-ids="inCartIds"
+          :view="catalogView.view"
+          @update:view="catalogView.setView"
           @update:search="catalog.setSearch"
           @update:category="catalog.setCategory"
           @select="onSelect"
@@ -135,6 +137,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import { useCheckoutStore } from '@/stores/checkout.store'
 import { useSaleCatalogStore } from '@/stores/sale-catalog.store'
+import { useSaleCatalogViewStore } from '@/stores/saleCatalogView.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { saleCartRefusalMessage, saleScanAddedMessage, saleScanUnknownMessage } from '@/config/voice'
@@ -143,6 +146,8 @@ import type { Product } from '@/types/product.types'
 import { describeCheckoutResult } from './sale-result'
 
 const catalog = useSaleCatalogStore()
+// Cuadrícula o lista: preferencia del dispositivo, guardada en localStorage.
+const catalogView = useSaleCatalogViewStore()
 const cart = useCartStore()
 const checkout = useCheckoutStore()
 const session = useSessionStore()

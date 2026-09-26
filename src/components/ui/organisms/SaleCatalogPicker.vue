@@ -47,6 +47,43 @@
       @update:model-value="emit('update:category', $event)"
     />
 
+    <!-- Vista: cuadrícula o lista. Dos botones de alternancia (aria-pressed), con
+         texto visible y no solo ícono; el activo se distingue por relleno y borde. -->
+    <div class="sale-picker__options">
+      <div
+        class="sale-picker__view"
+        role="group"
+        aria-label="Vista del catálogo"
+      >
+        <button
+          type="button"
+          class="sale-picker__view-btn"
+          data-view="grid"
+          :aria-pressed="view === 'grid'"
+          @click="setView('grid')"
+        >
+          <span
+            class="sale-picker__view-icon"
+            aria-hidden="true"
+          >▦</span>
+          Cuadrícula
+        </button>
+        <button
+          type="button"
+          class="sale-picker__view-btn"
+          data-view="list"
+          :aria-pressed="view === 'list'"
+          @click="setView('list')"
+        >
+          <span
+            class="sale-picker__view-icon"
+            aria-hidden="true"
+          >☰</span>
+          Lista
+        </button>
+      </div>
+    </div>
+
     <!-- Aviso suave (no alerta): el catálogo viene de la copia guardada -->
     <p
       v-if="fromSnapshot"
@@ -87,9 +124,11 @@
       {{ hasFilter ? 'No encontramos ese producto.' : 'Todavía no hay productos para vender.' }}
     </p>
 
+    <!-- Un solo botón por producto en las dos vistas: mismo nombre accesible, mismo
+         "agotado no se elige", mismo evento. Cambia solo cómo se ve por dentro. -->
     <ul
       v-else
-      class="sale-picker__grid"
+      :class="view === 'list' ? 'sale-picker__list' : 'sale-picker__grid'"
     >
       <li
         v-for="product in products"
@@ -99,17 +138,49 @@
         <button
           type="button"
           class="sale-picker__item"
-          :class="{ 'sale-picker__item--sold-out': isSoldOut(product) }"
+          :class="{
+            'sale-picker__item--row': view === 'list',
+            'sale-picker__item--sold-out': isSoldOut(product),
+          }"
           :aria-disabled="isSoldOut(product) ? 'true' : undefined"
           :aria-label="itemLabel(product)"
           @click="onSelect(product)"
         >
           <ProductCard
+            v-if="view !== 'list'"
             :product="product"
             size="large"
           />
+          <template v-else>
+            <span class="sale-picker__thumb">
+              <img
+                v-if="product.image"
+                :src="product.image"
+                alt=""
+                class="sale-picker__thumb-img"
+              >
+              <span
+                v-else
+                class="sale-picker__thumb-placeholder"
+                aria-hidden="true"
+              >📦</span>
+            </span>
+            <span class="sale-picker__row-body">
+              <span class="sale-picker__row-name">{{ product.name }}</span>
+              <span class="sale-picker__row-meta">
+                <AppBadge :color="isSoldOut(product) ? 'red' : 'green'">
+                  {{ isSoldOut(product) ? 'Agotado' : 'Disponible' }}
+                </AppBadge>
+                <span
+                  v-if="inCart.has(product.id)"
+                  class="sale-picker__mark"
+                >En tu venta</span>
+              </span>
+            </span>
+            <span class="sale-picker__row-price">${{ minorToDisplay(product.unitPriceMinor) }}</span>
+          </template>
           <span
-            v-if="inCart.has(product.id)"
+            v-if="view !== 'list' && inCart.has(product.id)"
             class="sale-picker__mark"
           >En tu venta</span>
         </button>
@@ -123,12 +194,14 @@ import { computed } from 'vue'
 import { minorToDisplay } from '@/utils/money'
 import { catalogSnapshotMessage } from '@/config/voice'
 import type { Product } from '@/types/product.types'
+import type { SaleCatalogView } from '@/types/sale-catalog-view.types'
+import AppBadge from '../atoms/AppBadge.vue'
 import AppButton from '../atoms/AppButton.vue'
 import AppInput from '../atoms/AppInput.vue'
 import CategoryQuickFilter from '../molecules/CategoryQuickFilter.vue'
 import ProductCard from '../molecules/ProductCard.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   /** Productos ya filtrados por búsqueda y categoría */
   products: Product[]
   search: string
@@ -144,15 +217,25 @@ const props = defineProps<{
   snapshotSavedAt: string | null
   /** Ids de productos que ya están en la venta ("En tu venta") */
   inCartIds: string[]
-}>()
+  /** Cómo se ve el catálogo: tarjetas (por defecto) o filas compactas. Lo guarda quien lo usa. */
+  view?: SaleCatalogView
+}>(), {
+  view: 'grid',
+})
 
 const emit = defineEmits<{
   'update:search': [text: string]
   'update:category': [category: string]
+  'update:view': [view: SaleCatalogView]
   select: [product: Product]
   scan: []
   retry: []
 }>()
+
+/** Tocar la vista que ya está activa no cambia nada: no hay evento que guardar. */
+function setView(next: SaleCatalogView) {
+  if (next !== props.view) emit('update:view', next)
+}
 
 const inCart = computed(() => new Set(props.inCartIds))
 const hasFilter = computed(() => props.search.trim() !== '' || props.category !== '')
@@ -223,6 +306,60 @@ function onSelect(product: Product) {
   list-style: none;
 }
 .sale-picker__cell { min-width: 0; }
+
+/* ── Selector de vista (cuadrícula / lista) ───────────────────────────── */
+.sale-picker__options { display: flex; justify-content: flex-end; }
+.sale-picker__view { display: inline-flex; gap: var(--spacing-xs); padding: var(--spacing-xs); background: var(--color-surface-alt); border-radius: var(--radius-lg); }
+/* Botones de 44 px como mínimo al tacto (guía de marca). El activo se ve por
+   relleno, borde y peso de letra: nunca solo por color. */
+.sale-picker__view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--spacing-md);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text);
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.sale-picker__view-btn:hover { background: var(--color-surface); }
+.sale-picker__view-btn[aria-pressed='true'] { font-weight: 800; background: var(--color-surface); border-color: var(--color-border-strong); box-shadow: var(--shadow-sm); }
+.sale-picker__view-btn:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.sale-picker__view-icon { font-size: 1.1rem; line-height: 1; }
+
+/* ── Vista de lista: filas compactas, varios productos sin tanto desplazamiento ── */
+.sale-picker__list { display: flex; flex-direction: column; gap: var(--spacing-xs); margin: 0; padding: 0; list-style: none; }
+/* La fila es el mismo botón que la tarjeta: se le cambia la forma, no el comportamiento.
+   64 px de alto: cómodo para el dedo y caben unas ocho a la vista en un celular. */
+.sale-picker__item--row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 4rem;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.sale-picker__item--row:hover:not(.sale-picker__item--sold-out) { border-color: var(--color-border-strong); }
+.sale-picker__thumb { display: flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; overflow: hidden; background: var(--color-bg); border-radius: var(--radius-md); }
+.sale-picker__thumb-img { width: 100%; height: 100%; object-fit: cover; }
+.sale-picker__thumb-placeholder { font-size: 1.5rem; opacity: 0.4; }
+.sale-picker__row-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.sale-picker__row-name { font-size: var(--font-size-md); font-weight: 700; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sale-picker__row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs); }
+.sale-picker__row-price { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 800; white-space: nowrap; color: var(--color-text); }
+/* En la fila la marca "En tu venta" va en la línea de estado, no flotando sobre una foto */
+.sale-picker__item--row .sale-picker__mark { position: static; padding: 0.1rem 0.5rem; box-shadow: none; }
 
 /* Toda la tarjeta es el botón: tocar en cualquier parte agrega */
 .sale-picker__item {

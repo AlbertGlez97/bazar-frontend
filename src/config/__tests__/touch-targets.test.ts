@@ -113,6 +113,11 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker .sale-picker__scan', ['min-height'])
   })
 
+  it('catálogo de venta: los botones de vista (cuadrícula/lista) y cada fila de la lista miden al menos 44 px', () => {
+    expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__view-btn', ['min-width', 'min-height'])
+    expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__item--row', ['min-height'])
+  })
+
   it('indicador de sincronización: "Ver", "Entendido" y "Cerrar" miden al menos 44 px', () => {
     expectAtLeast44('SyncStatusIndicator.vue', '.sync-status__see', ['min-width', 'min-height'])
     expectAtLeast44('SyncStatusIndicator.vue', '.sync-status__dismiss', ['min-width', 'min-height'])

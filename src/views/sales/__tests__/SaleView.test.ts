@@ -1174,3 +1174,127 @@ describe('SaleView — flujo de dos pasos en pantalla angosta', () => {
     })
   })
 })
+
+// ─────────────────────────────────────────────────────────────────────────
+// Vista del catálogo: cuadrícula (la de siempre) o lista compacta. La
+// preferencia es del dispositivo y vive en localStorage (store `saleCatalogView`).
+// ─────────────────────────────────────────────────────────────────────────
+describe('SaleView — cuadrícula o lista', () => {
+  let device: MockDevice | null = null
+  afterEach(() => {
+    device?.restore()
+    device = null
+  })
+
+  const viewBtn = (w: Wrapper, view: 'grid' | 'list') => w.get(`button[data-view="${view}"]`)
+  const rows = (w: Wrapper) => w.findAll('button.sale-picker__item--row')
+
+  it('por defecto es la cuadrícula de tarjetas, con el selector a la vista', async () => {
+    const { wrapper } = await mountSale()
+    expect(wrapper.find('ul.sale-picker__grid').exists()).toBe(true)
+    expect(rows(wrapper)).toHaveLength(0)
+    expect(viewBtn(wrapper, 'grid').attributes('aria-pressed')).toBe('true')
+    expect(viewBtn(wrapper, 'list').attributes('aria-pressed')).toBe('false')
+  })
+
+  it('"Lista" cambia a filas compactas con los mismos productos y lo guarda en localStorage', async () => {
+    const { wrapper } = await mountSale()
+    await viewBtn(wrapper, 'list').trigger('click')
+    expect(wrapper.find('ul.sale-picker__list').exists()).toBe(true)
+    expect(rows(wrapper)).toHaveLength(4)
+    expect(viewBtn(wrapper, 'list').attributes('aria-pressed')).toBe('true')
+    expect(localStorage.getItem('la-marchanta-sale-catalog-view')).toBe('list')
+  })
+
+  it('volver a "Cuadrícula" restablece las tarjetas y lo guarda', async () => {
+    const { wrapper } = await mountSale()
+    await viewBtn(wrapper, 'list').trigger('click')
+    await viewBtn(wrapper, 'grid').trigger('click')
+    expect(wrapper.find('ul.sale-picker__grid').exists()).toBe(true)
+    expect(localStorage.getItem('la-marchanta-sale-catalog-view')).toBe('grid')
+  })
+
+  it('la preferencia guardada se aplica al abrir la pantalla otra vez', async () => {
+    localStorage.setItem('la-marchanta-sale-catalog-view', 'list')
+    const { wrapper } = await mountSale()
+    expect(wrapper.find('ul.sale-picker__list').exists()).toBe(true)
+    expect(viewBtn(wrapper, 'list').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('una preferencia guardada inválida cae en la cuadrícula', async () => {
+    localStorage.setItem('la-marchanta-sale-catalog-view', 'tabla')
+    const { wrapper } = await mountSale()
+    expect(wrapper.find('ul.sale-picker__grid').exists()).toBe(true)
+  })
+
+  it('tocar una fila de la lista agrega al carrito exactamente como la tarjeta', async () => {
+    localStorage.setItem('la-marchanta-sale-catalog-view', 'list')
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    expect(lines(wrapper)).toHaveLength(1)
+    expect(wrapper.get('.cart-line__subtotal').text()).toBe('$19.99')
+    expect(card(wrapper, 'Café de olla').text()).toContain('En tu venta')
+    await tap(wrapper, 'Café de olla')
+    expect(wrapper.get('.quantity-stepper__value').text()).toBe('2')
+    expect(wrapper.get('.cart-summary__total').text()).toBe('$39.98')
+  })
+
+  it('en la lista un agotado tampoco se agrega y la pieza única avisa igual', async () => {
+    localStorage.setItem('la-marchanta-sale-catalog-view', 'list')
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Jarrito')
+    expect(lines(wrapper)).toHaveLength(0)
+    await tap(wrapper, 'Radio vintage')
+    await tap(wrapper, 'Radio vintage')
+    expect(lines(wrapper)).toHaveLength(1)
+    expect(toasts().length).toBeGreaterThan(0)
+  })
+
+  it('la búsqueda y la categoría filtran igual en la lista', async () => {
+    localStorage.setItem('la-marchanta-sale-catalog-view', 'list')
+    const { wrapper } = await mountSale()
+    await wrapper.get('input[type="search"]').setValue('pan')
+    expect(rows(wrapper)).toHaveLength(1)
+    expect(rows(wrapper)[0].text()).toContain('Pan dulce')
+  })
+
+  it('cambiar de vista no toca el carrito ni el efectivo escrito', async () => {
+    const { wrapper } = await mountSale()
+    await sellCafe(wrapper, '50')
+    await viewBtn(wrapper, 'list').trigger('click')
+    expect(lines(wrapper)).toHaveLength(1)
+    expect(useCartStore().cashReceivedMinor).toBe(5000)
+    expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('50')
+  })
+
+  it('si localStorage no está disponible la vista cambia igual (solo se pierde la preferencia)', async () => {
+    const { wrapper } = await mountSale()
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota') })
+    await viewBtn(wrapper, 'list').trigger('click')
+    expect(wrapper.find('ul.sale-picker__list').exists()).toBe(true)
+  })
+
+  it('el selector está en pantalla ancha y también en el Paso 1 del celular', async () => {
+    const wide = await mountSale()
+    expect(wide.wrapper.find('button[data-view="list"]').exists()).toBe(true)
+    wide.wrapper.unmount()
+
+    device = mockDevice({ touch: true, small: true })
+    const narrow = await mountSale()
+    expect(narrow.wrapper.find('button[data-view="list"]').exists()).toBe(true)
+    expect(narrow.wrapper.find('button[data-view="grid"]').exists()).toBe(true)
+  })
+
+  it('en el celular la lista se mantiene al ir al Paso 2 y volver', async () => {
+    device = mockDevice({ touch: true, small: true })
+    localStorage.setItem('la-marchanta-sale-catalog-view', 'list')
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Pan dulce')
+    await wrapper.get('button[data-action="open-checkout"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('button[data-action="close-checkout"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('ul.sale-picker__list').exists()).toBe(true)
+    expect(lines(wrapper)).toHaveLength(1)
+  })
+})
