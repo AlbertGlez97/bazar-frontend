@@ -7,6 +7,15 @@ export interface LoginPayload {
   password: string
 }
 
+// Contrato real de POST /auth/change-password (cualquier persona autenticada):
+// 204 sin cuerpo. Contraseña actual incorrecta = 403 (a propósito NO 401, para
+// que el interceptor no lo confunda con un token vencido y cierre la sesión).
+export interface ChangePasswordPayload {
+  currentPassword: string
+  /** 10 a 128 caracteres y distinta de la actual */
+  newPassword: string
+}
+
 export interface AuthResponse {
   accessToken: string
   tokenType:   string

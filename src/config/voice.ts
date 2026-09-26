@@ -22,6 +22,26 @@ export const VOICE = {
     /** Cualquier otra falla al verificar (red, servidor). */
     verifyFailed: 'No pudimos verificar el dispositivo. Intenta de nuevo en un momento.',
   },
+  /** Pantalla de ajustes (engrane de la barra lateral). */
+  settings: {
+    title: 'Ajustes',
+    lead: 'Tu cuenta y, si eres socio, tu equipo y los dispositivos del negocio.',
+  },
+  /**
+   * Cambiar mi contraseña (POST /auth/change-password). Las tres respuestas del
+   * servidor se explican con texto propio y nunca con el crudo (viene en inglés).
+   */
+  changePassword: {
+    /** 403: la contraseña actual no coincide (a propósito no es un 401). */
+    wrongCurrent: 'La contraseña actual no es correcta.',
+    /** 400: la nueva es igual a la actual. */
+    sameAsCurrent: 'La contraseña nueva debe ser distinta a la actual.',
+    /** 400: largo fuera de 10-128 caracteres. */
+    badLength: 'Usa entre 10 y 128 caracteres.',
+    /** 400 que no supimos clasificar. */
+    invalidNew: 'No pudimos aceptar esa contraseña nueva. Usa entre 10 y 128 caracteres y que sea distinta a la actual.',
+    success: 'Listo, tu contraseña cambió. Úsala la próxima vez que inicies sesión.',
+  },
   /**
    * Ventas. Las claves sin prefijo hablan a quien está cobrando ahora (el
    * carrito sigue ahí y se puede corregir); las `sync*` describen una venta
@@ -168,6 +188,27 @@ export function deviceIdentifyError(cause: unknown): { message: string; type: 'w
     message: response?.status === 403 ? VOICE.device.notRegistered : VOICE.device.verifyFailed,
     type: 'error',
   }
+}
+
+/**
+ * Qué salió mal al cambiar la contraseña y en qué campo mostrarlo. El 403 va en
+ * la contraseña actual (y no cierra la sesión); el 400 en la nueva, con el motivo
+ * cuando el servidor lo deja adivinar; lo demás es red o falla genérica.
+ */
+export function changePasswordError(
+  cause: unknown,
+): { field: 'currentPassword' | 'newPassword' | null; message: string } {
+  if (isNetworkError(cause)) return { field: null, message: VOICE.networkError }
+  const response = (cause as { response?: { status?: number; data?: { message?: unknown } } }).response
+  if (response?.status === 403) return { field: 'currentPassword', message: VOICE.changePassword.wrongCurrent }
+  if (response?.status === 400) {
+    const raw = response.data?.message
+    const text = (Array.isArray(raw) ? raw.join(' ') : typeof raw === 'string' ? raw : '').toLowerCase()
+    if (/different|same|distinct/.test(text)) return { field: 'newPassword', message: VOICE.changePassword.sameAsCurrent }
+    if (/characters|length|longer|shorter/.test(text)) return { field: 'newPassword', message: VOICE.changePassword.badLength }
+    return { field: 'newPassword', message: VOICE.changePassword.invalidNew }
+  }
+  return { field: null, message: VOICE.genericError }
 }
 
 /**

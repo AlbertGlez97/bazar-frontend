@@ -151,3 +151,50 @@ describe('reports route /app/reportes', () => {
     await router.push('/app/productos'); expect(router.currentRoute.value.name).toBe('ProductCatalog')
   })
 })
+
+// Ajustes: el menú y "Cambiar mi contraseña" son de cualquier persona con contexto
+// listo (en cualquier modo); las pantallas de socios declaran `requiresSocio`.
+describe('settings routes /app/ajustes', () => {
+  function fullSession(role: 'socio' | 'colaborador', mode: 'gestion' | 'venta' = 'venta') {
+    restoreAuthSession()
+    const session = useSessionStore()
+    session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    useUiModeStore().setMode(mode)
+  }
+
+  it.each(['socio', 'colaborador'] as const)('lets a %s reach the settings menu and the password view, in any mode', async (role) => {
+    for (const mode of ['venta', 'gestion'] as const) {
+      fullSession(role, mode)
+      await router.push('/app/ajustes'); expect(router.currentRoute.value.name).toBe('Settings')
+      await router.push('/app/ajustes/contrasena'); expect(router.currentRoute.value.name).toBe('ChangePassword')
+    }
+  })
+
+  it('sends a logged-out visitor to login', async () => {
+    await router.push('/app/ajustes'); expect(router.currentRoute.value.name).toBe('Login')
+    await router.push('/app/ajustes/contrasena'); expect(router.currentRoute.value.name).toBe('Login')
+  })
+
+  it('sends an authenticated visitor without device/member to /seleccionar-contexto', async () => {
+    restoreAuthSession()
+    await router.push('/app/ajustes/contrasena'); expect(router.currentRoute.value.name).toBe('SelectContext')
+  })
+
+  it('does not require a socio, nor Modo Gestión, for the menu and the password view', () => {
+    for (const path of ['/app/ajustes', '/app/ajustes/contrasena']) {
+      const meta = router.resolve(path).meta
+      expect(meta).toMatchObject({ requiresAuth: true, requiresContext: true })
+      expect(meta.requiresSocio).toBeUndefined()
+      expect(meta.requiresGestion).toBeUndefined()
+    }
+  })
+
+  it('are lazy children of the /app layout', () => {
+    expect(router.resolve('/app/ajustes').matched.map((r) => r.path)).toEqual(['/app', '/app/ajustes'])
+    expect(router.resolve('/app/ajustes/contrasena').matched.map((r) => r.path)).toEqual(['/app', '/app/ajustes/contrasena'])
+    for (const name of ['Settings', 'ChangePassword']) {
+      expect(router.getRoutes().find((r) => r.name === name)!.components?.default).toBeTypeOf('function')
+    }
+  })
+})

@@ -19,7 +19,58 @@ import {
   reportLoadErrorMessage,
   reportRangeMessage,
   deviceIdentifyError,
+  changePasswordError,
 } from '@/config/voice'
+
+describe('changePasswordError (POST /auth/change-password)', () => {
+  const failure = (status: number, message?: unknown) => ({ response: { status, data: { message } } })
+
+  it('403: la contraseña actual no es correcta, en el campo de la contraseña actual', () => {
+    expect(changePasswordError(failure(403, 'Current password is incorrect')))
+      .toEqual({ field: 'currentPassword', message: 'La contraseña actual no es correcta.' })
+  })
+
+  it('403 nunca se muestra con el texto crudo del servidor (viene en inglés)', () => {
+    expect(changePasswordError(failure(403, 'Current password is incorrect')).message)
+      .not.toMatch(/incorrect/i)
+  })
+
+  it('400 "igual a la actual": lo explica en el campo de la contraseña nueva', () => {
+    expect(changePasswordError(failure(400, 'newPassword must be different from the current password')))
+      .toEqual({ field: 'newPassword', message: VOICE.changePassword.sameAsCurrent })
+  })
+
+  it('400 de largo (mensaje del servidor como lista): explica el largo permitido', () => {
+    expect(changePasswordError(failure(400, ['newPassword must be longer than or equal to 10 characters'])))
+      .toEqual({ field: 'newPassword', message: VOICE.changePassword.badLength })
+    expect(changePasswordError(failure(400, ['newPassword must be shorter than or equal to 128 characters'])))
+      .toEqual({ field: 'newPassword', message: VOICE.changePassword.badLength })
+  })
+
+  it('400 desconocido: mensaje amable sobre la contraseña nueva, nunca el texto crudo', () => {
+    const result = changePasswordError(failure(400, 'algo raro'))
+    expect(result.field).toBe('newPassword')
+    expect(result.message).toBe(VOICE.changePassword.invalidNew)
+    expect(result.message).not.toContain('algo raro')
+  })
+
+  it('400 sin cuerpo utilizable: también el mensaje amable', () => {
+    expect(changePasswordError({ response: { status: 400 } }).field).toBe('newPassword')
+  })
+
+  it('sin respuesta (red): mensaje de red, sin campo', () => {
+    expect(changePasswordError(new Error('Network Error'))).toEqual({ field: null, message: VOICE.networkError })
+  })
+
+  it.each([500, 502, 401, 404])('%i: mensaje genérico, sin campo', (status) => {
+    expect(changePasswordError(failure(status))).toEqual({ field: null, message: VOICE.genericError })
+  })
+
+  it('null o undefined no revientan: cuentan como falla de red', () => {
+    expect(changePasswordError(null).field).toBeNull()
+    expect(changePasswordError(undefined).message).toBe(VOICE.networkError)
+  })
+})
 
 describe('deviceIdentifyError (POST /devices/identify)', () => {
   it('409 con mensaje del servidor: usa ese mensaje, como aviso', () => {

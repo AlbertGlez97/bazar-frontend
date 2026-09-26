@@ -32,3 +32,31 @@ describe('AuthService.login', () => {
       .rejects.toThrow('401')
   })
 })
+
+describe('AuthService.changePassword', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('posts { currentPassword, newPassword } to /auth/change-password (204, sin cuerpo)', async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: '', status: 204 })
+
+    const payload = { currentPassword: 'la-de-hoy-123', newPassword: 'la-de-manana-456' }
+    await expect(AuthService.changePassword(payload)).resolves.toBeUndefined()
+    expect(api.post).toHaveBeenCalledExactlyOnceWith('/auth/change-password', payload)
+  })
+
+  it('propaga el 403 de contraseña actual incorrecta (no es un 401)', async () => {
+    vi.mocked(api.post).mockRejectedValue({
+      response: { status: 403, data: { message: 'Current password is incorrect' } },
+    })
+    await expect(
+      AuthService.changePassword({ currentPassword: 'mala', newPassword: 'la-de-manana-456' }),
+    ).rejects.toMatchObject({ response: { status: 403 } })
+  })
+
+  it('propaga el 400 de validación', async () => {
+    vi.mocked(api.post).mockRejectedValue({ response: { status: 400, data: { message: ['newPassword is too short'] } } })
+    await expect(
+      AuthService.changePassword({ currentPassword: 'la-de-hoy-123', newPassword: 'corta' }),
+    ).rejects.toMatchObject({ response: { status: 400 } })
+  })
+})

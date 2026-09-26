@@ -139,4 +139,18 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
   it('reportes: los campos de fecha usan AppInput size="lg" (48 px)', () => {
     expect(sourceOf('ReportRangePicker.vue')).toMatch(/type="date"\s+size="lg"/)
   })
+
+  it('ajustes: el engrane del pie y cada entrada del menú miden 44x44', () => {
+    expectAtLeast44('AppLayout.vue', '.sidebar__settings', ['min-width', 'min-height'])
+    expectAtLeast44('SettingsView.vue', '.settings-view__link', ['min-height'])
+  })
+
+  it('cambiar contraseña: el interruptor de mostrar/ocultar mide 44 px y los campos son size="lg" (48 px)', () => {
+    expectAtLeast44('ChangePasswordForm.vue', '.change-password-form__toggle', ['min-width', 'min-height'])
+    expect(sourceOf('ChangePasswordForm.vue').match(/size="lg"/g)?.length ?? 0).toBeGreaterThanOrEqual(4)
+  })
+
+  it('cambiar contraseña: "Volver a ajustes" mide 44 px', () => {
+    expectAtLeast44('ChangePasswordView.vue', '.change-password-view__back', ['min-height'])
+  })
 })

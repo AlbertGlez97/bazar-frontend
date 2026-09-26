@@ -88,6 +88,19 @@
         >
           <span class="sidebar__user-name">{{ authStore.username ?? 'Usuario' }}</span>
         </div>
+        <!-- Engrane: abre la pantalla de ajustes (cambiar contraseña y, para
+             socios, equipo y dispositivos). Es un enlace real con nombre
+             accesible; el ícono es decorativo. Colapsado (el estado normal en un
+             celular) el pie se apila y el engrane sigue a la mano. -->
+        <RouterLink
+          to="/app/ajustes"
+          class="sidebar__settings"
+          :class="{ 'sidebar__settings--active': isSettingsRoute }"
+          aria-label="Ajustes"
+          title="Ajustes"
+        >
+          <span aria-hidden="true">⚙️</span>
+        </RouterLink>
         <!-- Botón logout (AppButton ghost) -->
         <AppButton
           variant="ghost"
@@ -204,9 +217,18 @@ const routeTitles: Record<string, string> = {
   ProductCatalog: 'Productos',
   Sale: 'Vender',
   Reports: 'Reportes',
+  Settings: 'Ajustes',
+  ChangePassword: 'Cambiar mi contraseña',
 }
 const currentRouteTitle = computed(
   () => routeTitles[route.name as string] ?? APP_NAME
+)
+
+// El engrane queda marcado en la pantalla de ajustes y en cada una de sus
+// subpantallas. Se decide por la ruta y no por el estado activo del enlace:
+// `/app/ajustes/contrasena` es hermana de `/app/ajustes` en el router, no hija.
+const isSettingsRoute = computed(
+  () => typeof route.path === 'string' && route.path.startsWith('/app/ajustes'),
 )
 
 // Fecha actual formateada
@@ -354,6 +376,35 @@ function handleLogout() {
   background: transparent !important;
 }
 .sidebar__logout:hover { opacity: 1; }
+
+/* Engrane de ajustes: objetivo táctil de 44x44 (guía de marca) */
+.sidebar__settings {
+  display:         flex;
+  align-items:     center;
+  justify-content: center;
+  min-width:       44px;
+  min-height:      44px;
+  flex-shrink:     0;
+  font-size:       18px;
+  color:           var(--color-sidebar-text);
+  text-decoration: none;
+  opacity:         .7;
+  border-radius:   var(--radius-sm);
+  transition:      background var(--transition), opacity var(--transition);
+}
+.sidebar__settings:hover,
+.sidebar__settings--active { opacity: 1; }
+.sidebar__settings--active { background: color-mix(in srgb, var(--color-sidebar-active) 18%, transparent); }
+.sidebar__settings:focus-visible {
+  outline:        2px solid var(--color-sidebar-active);
+  outline-offset: 2px;
+}
+
+/* Colapsado no caben avatar, engrane y salida en una fila de 64 px: se apilan */
+.app-layout--collapsed .sidebar__footer {
+  flex-direction: column;
+  padding: var(--spacing-sm) 0;
+}
 
 /* Avatar en sidebar footer */
 .sidebar__avatar { flex-shrink: 0; }

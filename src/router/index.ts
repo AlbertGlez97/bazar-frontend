@@ -87,6 +87,20 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/reports/ReportsView.vue'),
         meta: { requiresSocio: true, requiresGestion: true },
       },
+      {
+        // Ajustes (engrane del pie de la barra lateral). Para cualquier persona
+        // con el contexto listo, en cualquier modo; las entradas de socios
+        // (equipo, dispositivos) declaran `requiresSocio` en su propia ruta.
+        path: 'ajustes',
+        name: 'Settings',
+        component: () => import('@/views/settings/SettingsView.vue'),
+      },
+      {
+        // Cambiar mi contraseña: cualquier persona autenticada (socio o colaborador).
+        path: 'ajustes/contrasena',
+        name: 'ChangePassword',
+        component: () => import('@/views/settings/ChangePasswordView.vue'),
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: sessionDestination },

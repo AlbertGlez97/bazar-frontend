@@ -48,6 +48,8 @@ async function mountAt(path: string) {
           { path: 'productos', name: 'ProductCatalog', component: stub },
           { path: 'venta', name: 'Sale', component: stub },
           { path: 'reportes', name: 'Reports', component: stub },
+          { path: 'ajustes', name: 'Settings', component: stub },
+          { path: 'ajustes/contrasena', name: 'ChangePassword', component: stub },
         ],
       },
     ],
@@ -201,5 +203,72 @@ describe('AppLayout navegación', () => {
     await wrapper.get('a.sidebar__brand').trigger('click')
     await flushPromises()
     expect(wrapper.find('.app-header__title').text()).toBe('Inicio')
+  })
+})
+
+describe('AppLayout engrane de ajustes (junto al nombre)', () => {
+  const socio = { id: 'm-1', name: 'Ana', role: 'socio', active: true }
+  const colaborador = { id: 'm-2', name: 'Carlos', role: 'colaborador', active: true }
+
+  it.each([['socio', socio], ['colaborador', colaborador]])('lo ve %s, en el pie junto al nombre y antes de cerrar sesión', async (_role, member) => {
+    sessionStorage.setItem('member_context', JSON.stringify(member))
+    const wrapper = await mountAt('/app')
+    const footer = wrapper.get('.sidebar__footer')
+    const gear = footer.get('a.sidebar__settings')
+    expect(gear.attributes('href')).toBe('/app/ajustes')
+    // orden en el pie: avatar, nombre, engrane, cerrar sesión
+    const known = ['sidebar__user', 'sidebar__settings', 'sidebar__logout']
+    const order = footer.findAll('.sidebar__user, .sidebar__settings, .sidebar__logout').map((n) => n.classes().find((c) => known.includes(c)))
+    expect(order).toEqual(['sidebar__user', 'sidebar__settings', 'sidebar__logout'])
+  })
+
+  it('tiene nombre accesible ("Ajustes") y el ícono es decorativo', async () => {
+    const wrapper = await mountAt('/app')
+    const gear = wrapper.get('a.sidebar__settings')
+    expect(gear.attributes('aria-label')).toBe('Ajustes')
+    expect(gear.attributes('title')).toBe('Ajustes')
+    expect(gear.get('[aria-hidden="true"]').text()).toBe('⚙️')
+  })
+
+  it('con el sidebar colapsado (el estado normal en un celular) sigue estando a la mano', async () => {
+    const wrapper = await mountAt('/app')
+    await wrapper.get('.sidebar__toggle').trigger('click')
+    const gear = wrapper.get('a.sidebar__settings')
+    expect(gear.attributes('aria-label')).toBe('Ajustes')
+    expect(gear.attributes('href')).toBe('/app/ajustes')
+  })
+
+  it('no es parte de la navegación principal (no cambia los enlaces de arriba)', async () => {
+    const wrapper = await mountAt('/app')
+    expect(wrapper.findAll('a.sidebar__link')).toHaveLength(3)
+    expect(wrapper.find('.sidebar__nav a.sidebar__settings').exists()).toBe(false)
+  })
+
+  it('en /app/ajustes queda marcado como activo, y solo él', async () => {
+    const wrapper = await mountAt('/app/ajustes')
+    expect(wrapper.get('a.sidebar__settings').classes()).toContain('sidebar__settings--active')
+    expect(activeLabels(wrapper)).toEqual([])
+  })
+
+  it('en una subpantalla de ajustes sigue activo', async () => {
+    const wrapper = await mountAt('/app/ajustes/contrasena')
+    expect(wrapper.get('a.sidebar__settings').classes()).toContain('sidebar__settings--active')
+  })
+
+  it('fuera de ajustes no está activo', async () => {
+    const wrapper = await mountAt('/app/productos')
+    expect(wrapper.get('a.sidebar__settings').classes()).not.toContain('sidebar__settings--active')
+  })
+
+  it('se puede llegar con el teclado: es un enlace real', async () => {
+    const wrapper = await mountAt('/app')
+    expect(wrapper.get('a.sidebar__settings').element.tagName).toBe('A')
+  })
+
+  it('títulos de la barra superior: "Ajustes" y "Cambiar mi contraseña"', async () => {
+    const settings = await mountAt('/app/ajustes')
+    expect(settings.get('.app-header__title').text()).toBe('Ajustes')
+    const password = await mountAt('/app/ajustes/contrasena')
+    expect(password.get('.app-header__title').text()).toBe('Cambiar mi contraseña')
   })
 })
