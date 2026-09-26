@@ -30,6 +30,18 @@ describe('SETTINGS_ITEMS', () => {
     expect(password?.socioOnly).toBeFalsy()
   })
 
+  it('"Mi equipo" es solo para socios', () => {
+    const team = SETTINGS_ITEMS.find((i) => i.to === '/app/ajustes/equipo')
+    expect(team).toBeDefined()
+    expect(team?.label).toBe('Mi equipo')
+    expect(team?.socioOnly).toBe(true)
+  })
+
+  it('un colaborador ve solo lo suyo y un socio ve también el equipo', () => {
+    expect(getSettingsItems({ isSocio: false }).map((i) => i.label)).toEqual(['Cambiar mi contraseña'])
+    expect(getSettingsItems({ isSocio: true }).map((i) => i.label)).toContain('Mi equipo')
+  })
+
   it('todas viven bajo /app/ajustes, con texto de ayuda e ícono', () => {
     for (const item of SETTINGS_ITEMS) {
       expect(item.to.startsWith('/app/ajustes/')).toBe(true)

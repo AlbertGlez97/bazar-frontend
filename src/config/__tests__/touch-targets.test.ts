@@ -153,4 +153,11 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
   it('cambiar contraseña: "Volver a ajustes" mide 44 px', () => {
     expectAtLeast44('ChangePasswordView.vue', '.change-password-view__back', ['min-height'])
   })
+
+  it('mi equipo: "Volver", los botones y los campos del alta miden al menos 44 px (size="lg")', () => {
+    expectAtLeast44('TeamView.vue', '.team-view__back', ['min-height'])
+    const form = sourceOf('MemberCreateForm.vue')
+    // 3 campos de texto + rol + comisión (AppInput/AppSelect lg) y 2 botones lg
+    expect(form.match(/size="lg"/g)?.length ?? 0).toBeGreaterThanOrEqual(7)
+  })
 })

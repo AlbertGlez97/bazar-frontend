@@ -198,3 +198,41 @@ describe('settings routes /app/ajustes', () => {
     }
   })
 })
+
+// Mi equipo: solo socios (guard por meta, en cualquier modo; no basta con ocultar la entrada).
+describe('team route /app/ajustes/equipo', () => {
+  function fullSession(role: 'socio' | 'colaborador', mode: 'gestion' | 'venta') {
+    restoreAuthSession()
+    const session = useSessionStore()
+    session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    useUiModeStore().setMode(mode)
+  }
+
+  it.each(['venta', 'gestion'] as const)('lets a socio reach it in Modo %s', async (mode) => {
+    fullSession('socio', mode)
+    await router.push('/app/ajustes/equipo'); expect(router.currentRoute.value.name).toBe('Team')
+  })
+  it.each(['venta', 'gestion'] as const)('sends a colaborador (Modo %s) typing the URL to the app home', async (mode) => {
+    fullSession('colaborador', mode)
+    await router.push('/app/ajustes/equipo'); expect(router.currentRoute.value.name).toBe('AppHome')
+  })
+  it('sends a logged-out visitor to login', async () => {
+    await router.push('/app/ajustes/equipo'); expect(router.currentRoute.value.name).toBe('Login')
+  })
+  it('sends an authenticated visitor without device/member to /seleccionar-contexto', async () => {
+    restoreAuthSession()
+    await router.push('/app/ajustes/equipo'); expect(router.currentRoute.value.name).toBe('SelectContext')
+  })
+  it('declares requiresSocio (and not requiresGestion) in meta, as a lazy child of /app', () => {
+    const resolved = router.resolve('/app/ajustes/equipo')
+    expect(resolved.meta).toMatchObject({ requiresAuth: true, requiresContext: true, requiresSocio: true })
+    expect(resolved.meta.requiresGestion).toBeUndefined()
+    expect(resolved.matched.map((r) => r.path)).toEqual(['/app', '/app/ajustes/equipo'])
+    expect(router.getRoutes().find((r) => r.name === 'Team')!.components?.default).toBeTypeOf('function')
+  })
+  it('the password view stays open to a colaborador', async () => {
+    fullSession('colaborador', 'venta')
+    await router.push('/app/ajustes/contrasena'); expect(router.currentRoute.value.name).toBe('ChangePassword')
+  })
+})

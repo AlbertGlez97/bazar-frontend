@@ -101,6 +101,15 @@ const routes: RouteRecordRaw[] = [
         name: 'ChangePassword',
         component: () => import('@/views/settings/ChangePasswordView.vue'),
       },
+      {
+        // Mi equipo: solo socios, en cualquier modo. Lo hace cumplir el guard de
+        // abajo (no basta con ocultar la entrada) y la vista lo vuelve a comprobar
+        // si el rol cambia con ella abierta; el backend igual responde 403.
+        path: 'ajustes/equipo',
+        name: 'Team',
+        component: () => import('@/views/settings/TeamView.vue'),
+        meta: { requiresSocio: true },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: sessionDestination },

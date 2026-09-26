@@ -50,7 +50,17 @@ and lets anyone change their own password (`POST /auth/change-password`). The fr
 
 - [x] **T1 Gear menu + change password.** Gear in `AppLayout`, `/app/ajustes`, `/app/ajustes/contrasena`,
   `SettingsView`, `ChangePasswordView`, `ChangePasswordForm`, `AuthService.changePassword`, `changePasswordError`.
-- [ ] **T2 Mi equipo.** List members, "Agregar persona", credentials-email confirmation.
+- [x] **T2 Mi equipo.** List members, "Agregar persona", credentials-email confirmation.
+  * `GET /members?includeInactive=true` (socios only see the inactive ones; the server ignores it otherwise).
+  * Add form in a modal (real Teleport in tests: VTU's stub remounts the form on every re-render). Percent text is
+    converted to integer basis points with digit math (`src/utils/commission.ts`); a socio never sends
+    `commissionRateBps` (the server rejects it even as null) and a colaborador without a chosen rate omits it too
+    (general rate).
+  * The confirmation names WHERE the credentials went: `credentialsEmail: 'approver-fallback'` (email provider in
+    test mode) is shown as a warning, honestly, instead of "we emailed them". Never a password.
+  * 400 is mapped to fields by the START of each server message (`nombre must…`), not by substring: the correo
+    message contains "nombre@dominio.com".
+  * 502 says nothing was created and the list is not reloaded; 409/403/network have their own messages.
 - [ ] **T3 Dispositivos.** List with status, register, identifier shown once with copy, revoke and reissue with confirmation.
 
 ## Out of scope (known follow-ups)
@@ -64,3 +74,5 @@ and lets anyone change their own password (`POST /auth/change-password`). The fr
   files that could not load (their modules did not exist). GREEN: full suite 100 files / 1737 tests, lint clean,
   build OK. One `router.test.ts` test (landing, ~1.9 s of lazy import) timed out once while 10 files ran in
   parallel; it passes alone and in the full run (a load flake, not related to this change).
+- T2: `feat(team): let socios see the team and add people`. RED: 26 failing tests and 6 test files that could not
+  load. GREEN: see the commit checks below.

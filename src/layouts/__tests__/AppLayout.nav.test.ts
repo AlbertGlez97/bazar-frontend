@@ -50,6 +50,7 @@ async function mountAt(path: string) {
           { path: 'reportes', name: 'Reports', component: stub },
           { path: 'ajustes', name: 'Settings', component: stub },
           { path: 'ajustes/contrasena', name: 'ChangePassword', component: stub },
+          { path: 'ajustes/equipo', name: 'Team', component: stub },
         ],
       },
     ],
@@ -270,5 +271,8 @@ describe('AppLayout engrane de ajustes (junto al nombre)', () => {
     expect(settings.get('.app-header__title').text()).toBe('Ajustes')
     const password = await mountAt('/app/ajustes/contrasena')
     expect(password.get('.app-header__title').text()).toBe('Cambiar mi contraseña')
+    const team = await mountAt('/app/ajustes/equipo')
+    expect(team.get('.app-header__title').text()).toBe('Mi equipo')
+    expect(team.get('a.sidebar__settings').classes()).toContain('sidebar__settings--active')
   })
 })

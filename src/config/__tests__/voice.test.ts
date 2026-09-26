@@ -20,7 +20,67 @@ import {
   reportRangeMessage,
   deviceIdentifyError,
   changePasswordError,
+  createMemberError,
 } from '@/config/voice'
+
+describe('createMemberError (POST /members)', () => {
+  const failure = (status: number, message?: unknown) => ({ response: { status, data: { message } } })
+
+  it('403: solo un socio puede agregar personas', () => {
+    expect(createMemberError(failure(403))).toEqual({ fields: {}, message: VOICE.team.createForbidden })
+  })
+
+  it('409: no se pudo asignar un usuario, con salida (reintentar)', () => {
+    expect(createMemberError(failure(409))).toEqual({ fields: {}, message: VOICE.team.createUsername })
+  })
+
+  it('502: no se creó a la persona porque el correo no salió, y se puede reintentar', () => {
+    const result = createMemberError(failure(502, 'No se pudo enviar el correo con las credenciales. No se creó a la persona: inténtalo de nuevo.'))
+    expect(result).toEqual({ fields: {}, message: VOICE.team.createEmailFailed })
+    expect(result.message).toMatch(/no se creó/i)
+  })
+
+  it('400 con el mensaje del servidor sobre el correo: lo marca en el campo correo', () => {
+    expect(createMemberError(failure(400, 'Escribe un correo válido, por ejemplo nombre@dominio.com')))
+      .toEqual({ fields: { correo: VOICE.team.badEmail }, message: null })
+    expect(createMemberError(failure(400, ['correo must be an email'])))
+      .toEqual({ fields: { correo: VOICE.team.badEmail }, message: null })
+  })
+
+  it('400 con varios problemas: marca cada campo que reconoce', () => {
+    const result = createMemberError(failure(400, [
+      'nombre must be longer than or equal to 1 characters',
+      'apellidos should not be empty',
+      'commissionRateBps must not be greater than 10000',
+    ]))
+    expect(result.fields).toEqual({
+      nombre: VOICE.team.badName,
+      apellidos: VOICE.team.badLastName,
+      commission: VOICE.team.badCommission,
+    })
+    expect(result.message).toBeNull()
+  })
+
+  it('400 de comisión para un socio: se explica en el campo de comisión', () => {
+    expect(createMemberError(failure(400, 'commissionRateBps does not apply to a socio')).fields.commission)
+      .toBe(VOICE.team.badCommission)
+  })
+
+  it('400 sin un campo reconocible: mensaje general amable, nunca el texto crudo', () => {
+    const result = createMemberError(failure(400, 'role must be one of the following values'))
+    expect(result).toEqual({ fields: {}, message: VOICE.team.createInvalid })
+    expect(createMemberError({ response: { status: 400 } })).toEqual({ fields: {}, message: VOICE.team.createInvalid })
+  })
+
+  it('sin respuesta (red): mensaje de red', () => {
+    expect(createMemberError(new Error('Network Error'))).toEqual({ fields: {}, message: VOICE.networkError })
+    expect(createMemberError(null)).toEqual({ fields: {}, message: VOICE.networkError })
+  })
+
+  it.each([401, 404, 500])('%i: mensaje genérico', (status) => {
+    expect(createMemberError(failure(status))).toEqual({ fields: {}, message: VOICE.genericError })
+  })
+})
 
 describe('changePasswordError (POST /auth/change-password)', () => {
   const failure = (status: number, message?: unknown) => ({ response: { status, data: { message } } })

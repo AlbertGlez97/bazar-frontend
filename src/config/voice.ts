@@ -27,6 +27,25 @@ export const VOICE = {
     title: 'Ajustes',
     lead: 'Tu cuenta y, si eres socio, tu equipo y los dispositivos del negocio.',
   },
+  /** Mi equipo (solo socios): lista de personas y alta (POST /members). */
+  team: {
+    title: 'Mi equipo',
+    lead: 'Las personas que trabajan contigo. Agrega a un socio o a un colaborador y recibirá su acceso por correo.',
+    add: 'Agregar persona',
+    empty: 'Todavía no hay personas en tu equipo.',
+    loading: 'Cargando tu equipo…',
+    loadError: 'No pudimos cargar tu equipo. Intenta de nuevo en un momento.',
+    forbidden: 'Esta pantalla es solo para socios.',
+    retry: 'Intentar de nuevo',
+    badName: 'Escribe el nombre.',
+    badLastName: 'Escribe los apellidos.',
+    badEmail: 'Escribe un correo válido, por ejemplo nombre@dominio.com',
+    badCommission: 'Escribe un porcentaje entre 0 y 100, con hasta 2 decimales. Ejemplo: 10 o 12.5.',
+    createInvalid: 'Revisa los datos e intenta de nuevo.',
+    createForbidden: 'Solo un socio puede agregar personas.',
+    createUsername: 'No pudimos asignarle un usuario a esa persona. Intenta de nuevo en un momento.',
+    createEmailFailed: 'No pudimos enviar el correo con las credenciales, así que no se creó a la persona. Intenta de nuevo.',
+  },
   /**
    * Cambiar mi contraseña (POST /auth/change-password). Las tres respuestas del
    * servidor se explican con texto propio y nunca con el crudo (viene en inglés).
@@ -209,6 +228,48 @@ export function changePasswordError(
     return { field: 'newPassword', message: VOICE.changePassword.invalidNew }
   }
   return { field: null, message: VOICE.genericError }
+}
+
+/** Campos del alta de una persona que el servidor puede señalar. */
+export type CreateMemberField = 'nombre' | 'apellidos' | 'correo' | 'commission'
+
+/**
+ * Qué salió mal al agregar a una persona: los campos que el servidor señala (un
+ * 400 trae una lista de mensajes en inglés con el nombre de cada propiedad) y, si
+ * no hay ninguno reconocible, un mensaje general. Nunca el texto crudo. El 502
+ * dice "no se creó" porque el servidor revierte todo cuando el correo no sale.
+ */
+export function createMemberError(
+  cause: unknown,
+): { fields: Partial<Record<CreateMemberField, string>>; message: string | null } {
+  if (isNetworkError(cause)) return { fields: {}, message: VOICE.networkError }
+  const response = (cause as { response?: { status?: number; data?: { message?: unknown } } }).response
+  switch (response?.status) {
+    case 403: return { fields: {}, message: VOICE.team.createForbidden }
+    case 409: return { fields: {}, message: VOICE.team.createUsername }
+    case 502: return { fields: {}, message: VOICE.team.createEmailFailed }
+    case 400: {
+      // Cada mensaje de validación empieza con el nombre de su propiedad
+      // ("nombre must be…"); el del correo es un texto en español propio. Se mira
+      // el inicio de cada mensaje, no cualquier parte: "nombre@dominio.com" dentro
+      // del mensaje del correo no significa que el nombre esté mal.
+      const raw = response.data?.message
+      const messages = (Array.isArray(raw) ? raw : [raw])
+        .filter((m): m is string => typeof m === 'string')
+        .map((m) => m.trim().toLowerCase())
+      const fields: Partial<Record<CreateMemberField, string>> = {}
+      for (const message of messages) {
+        if (/^correo\b|^escribe un correo|\bemail\b/.test(message)) fields.correo = VOICE.team.badEmail
+        else if (/^nombre\b/.test(message)) fields.nombre = VOICE.team.badName
+        else if (/^apellidos\b/.test(message)) fields.apellidos = VOICE.team.badLastName
+        else if (/^commissionratebps\b/.test(message)) fields.commission = VOICE.team.badCommission
+      }
+      return Object.keys(fields).length
+        ? { fields, message: null }
+        : { fields: {}, message: VOICE.team.createInvalid }
+    }
+    default: return { fields: {}, message: VOICE.genericError }
+  }
 }
 
 /**

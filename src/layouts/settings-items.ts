@@ -26,6 +26,13 @@ export const SETTINGS_ITEMS: SettingsItemDef[] = [
     hint: 'Elige una contraseña nueva para tu inicio de sesión.',
     icon: '🔑',
   },
+  {
+    to: '/app/ajustes/equipo',
+    label: 'Mi equipo',
+    hint: 'Mira quién trabaja contigo y agrega a una persona nueva.',
+    icon: '👥',
+    socioOnly: true,
+  },
 ]
 
 /** Entradas visibles para la persona, en el orden declarado. */
