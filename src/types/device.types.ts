@@ -11,6 +11,49 @@ export interface DeviceIdentifyPayload {
   name: string
 }
 
+// ── Gestión de dispositivos (solo socios): GET/POST /devices, revoke, reissue ──
+
+export type DeviceStatus = 'pendiente_activacion' | 'activo' | 'revocado'
+
+/** Un dispositivo del negocio, tal como lo lista GET /devices. Nunca trae token ni su hash. */
+export interface ManagedDevice {
+  id: string
+  name: string
+  status: DeviceStatus
+  /**
+   * `true` = activo pero SIN token: se identifica solo con `x-device-id` (todo
+   * dispositivo anterior al flujo de un solo uso). Se pasa al acceso nuevo
+   * reemitiéndolo.
+   */
+  legacy: boolean
+  createdAt: string
+  activatedAt: string | null
+  revokedAt: string | null
+  /** Código de activación de un solo uso: SOLO mientras el dispositivo está pendiente. */
+  identifier?: string
+}
+
+export interface CreateDevicePayload {
+  name: string
+  /** Si se manda, el código llega por correo y NO se devuelve en la respuesta. */
+  correoEnvio?: string
+}
+
+export interface ReissueDevicePayload {
+  correoEnvio?: string
+}
+
+/** Adónde fue el correo con el código: `approver-fallback` = modo de prueba, NO a la persona. */
+export type DeviceEmailDelivery = 'recipient' | 'approver-fallback'
+
+/**
+ * Respuesta de POST /devices y de reissue: el dispositivo con su código (sin
+ * `correoEnvio`) o, con `correoEnvio`, sin código y con `deliveredTo`.
+ */
+export interface DeviceWithCode extends ManagedDevice {
+  deliveredTo?: DeviceEmailDelivery
+}
+
 export interface DeviceIdentifyResponse {
   deviceId: string
   /**

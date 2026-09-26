@@ -110,6 +110,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/settings/TeamView.vue'),
         meta: { requiresSocio: true },
       },
+      {
+        // Dispositivos: solo socios, igual que "Mi equipo" (guard + vista + backend).
+        path: 'ajustes/dispositivos',
+        name: 'DevicesAdmin',
+        component: () => import('@/views/settings/DevicesView.vue'),
+        meta: { requiresSocio: true },
+      },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: sessionDestination },

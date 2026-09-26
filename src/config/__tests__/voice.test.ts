@@ -21,7 +21,55 @@ import {
   deviceIdentifyError,
   changePasswordError,
   createMemberError,
+  deviceAdminError,
 } from '@/config/voice'
+
+describe('deviceAdminError (GET/POST /devices, revoke, reissue)', () => {
+  const failure = (status: number, message?: unknown) => ({ response: { status, data: { message } } })
+
+  it('sin respuesta (red): mensaje de red', () => {
+    expect(deviceAdminError(new Error('Network Error'))).toEqual({ fields: {}, message: VOICE.networkError })
+    expect(deviceAdminError(null)).toEqual({ fields: {}, message: VOICE.networkError })
+  })
+
+  it('403: solo un socio puede administrar los dispositivos', () => {
+    expect(deviceAdminError(failure(403))).toEqual({ fields: {}, message: VOICE.devices.forbidden })
+  })
+
+  it('404: el dispositivo ya no existe', () => {
+    expect(deviceAdminError(failure(404))).toEqual({ fields: {}, message: VOICE.devices.notFound })
+  })
+
+  it('502: no se hizo ningún cambio y hay una salida (reintentar o hacerlo sin correo)', () => {
+    const result = deviceAdminError(failure(502, 'No se pudo enviar el correo con el código de activación…'))
+    expect(result).toEqual({ fields: {}, message: VOICE.devices.emailFailed })
+    expect(result.message).toMatch(/ningún cambio/i)
+    expect(result.message).toMatch(/sin correo/i)
+  })
+
+  it('400 con el mensaje del correo (en español): lo marca en el campo del correo', () => {
+    expect(deviceAdminError(failure(400, 'Escribe un correo válido, por ejemplo nombre@dominio.com')))
+      .toEqual({ fields: { correoEnvio: VOICE.devices.badEmail }, message: null })
+  })
+
+  it('400 con la lista de validación del nombre (en inglés): lo marca en el campo del nombre', () => {
+    expect(deviceAdminError(failure(400, ['name must be longer than or equal to 1 characters'])))
+      .toEqual({ fields: { name: VOICE.devices.badName }, message: null })
+  })
+
+  it('el "nombre@dominio" del mensaje del correo no marca el nombre', () => {
+    expect(deviceAdminError(failure(400, 'Escribe un correo válido, por ejemplo nombre@dominio.com')).fields.name).toBeUndefined()
+  })
+
+  it('400 sin campo reconocible: mensaje general amable, nunca el texto crudo', () => {
+    expect(deviceAdminError(failure(400, 'algo raro'))).toEqual({ fields: {}, message: VOICE.devices.invalid })
+    expect(deviceAdminError({ response: { status: 400 } })).toEqual({ fields: {}, message: VOICE.devices.invalid })
+  })
+
+  it.each([401, 409, 500])('%i: mensaje genérico', (status) => {
+    expect(deviceAdminError(failure(status))).toEqual({ fields: {}, message: VOICE.genericError })
+  })
+})
 
 describe('createMemberError (POST /members)', () => {
   const failure = (status: number, message?: unknown) => ({ response: { status, data: { message } } })

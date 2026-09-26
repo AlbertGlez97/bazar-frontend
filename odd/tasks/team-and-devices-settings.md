@@ -61,7 +61,19 @@ and lets anyone change their own password (`POST /auth/change-password`). The fr
   * 400 is mapped to fields by the START of each server message (`nombre must…`), not by substring: the correo
     message contains "nombre@dominio.com".
   * 502 says nothing was created and the list is not reloaded; 409/403/network have their own messages.
-- [ ] **T3 Dispositivos.** List with status, register, identifier shown once with copy, revoke and reissue with confirmation.
+- [x] **T3 Dispositivos.** List with status, register, identifier shown once with copy, revoke and reissue with confirmation.
+  * `DevicesAdminService` (list, create, revoke, reissue; the reissue body is always an object, the server expects one).
+  * The identifier is shown ONCE in a notice (selectable `<code>` + "Copiar código", with a manual fallback when the
+    clipboard is refused) and, while the device is still pending, each row offers "Copiar código" without ever painting
+    the code. It is never written to localStorage/sessionStorage.
+  * With `correoEnvio` the server does not return the code; the notice says where the email went and `approver-fallback`
+    (email provider in test mode) is a warning saying it did NOT reach the person.
+  * Revoke and reissue ask for confirmation and say the effect in plain words; when the target is `session.deviceId`
+    they warn it will disconnect (revoke/reissue of the device in use). A 404 closes the dialog and refreshes the list;
+    a 502 says nothing changed (on reissue the current access keeps working).
+  * A `legacy` device (active, no token) says so and points to "Reemitir": that is how it moves to the token model.
+  * Dates (`createdAt`, `activatedAt`, `revokedAt`) are not shown: names and states are what a socio needs to act.
+  * The dialogs use the REAL Teleport in tests, as in `TeamView`.
 
 ## Out of scope (known follow-ups)
 
@@ -75,4 +87,6 @@ and lets anyone change their own password (`POST /auth/change-password`). The fr
   build OK. One `router.test.ts` test (landing, ~1.9 s of lazy import) timed out once while 10 files ran in
   parallel; it passes alone and in the full run (a load flake, not related to this change).
 - T2: `feat(team): let socios see the team and add people`. RED: 26 failing tests and 6 test files that could not
-  load. GREEN: see the commit checks below.
+  load. GREEN: full suite 105 files / 1908 tests, lint clean, build OK.
+- T3: `feat(devices): let socios register, revoke and reissue devices`. RED: 19 failing tests and 7 test files that
+  could not load. GREEN: full suite 112 files / 2070 tests, lint clean, build OK (`vue-tsc -b && vite build`).

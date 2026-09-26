@@ -33,6 +33,13 @@ export const SETTINGS_ITEMS: SettingsItemDef[] = [
     icon: '👥',
     socioOnly: true,
   },
+  {
+    to: '/app/ajustes/dispositivos',
+    label: 'Dispositivos',
+    hint: 'Registra tablets y teléfonos, y revoca o reemite su acceso.',
+    icon: '📱',
+    socioOnly: true,
+  },
 ]
 
 /** Entradas visibles para la persona, en el orden declarado. */

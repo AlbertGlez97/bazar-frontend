@@ -51,6 +51,7 @@ async function mountAt(path: string) {
           { path: 'ajustes', name: 'Settings', component: stub },
           { path: 'ajustes/contrasena', name: 'ChangePassword', component: stub },
           { path: 'ajustes/equipo', name: 'Team', component: stub },
+          { path: 'ajustes/dispositivos', name: 'DevicesAdmin', component: stub },
         ],
       },
     ],
@@ -274,5 +275,8 @@ describe('AppLayout engrane de ajustes (junto al nombre)', () => {
     const team = await mountAt('/app/ajustes/equipo')
     expect(team.get('.app-header__title').text()).toBe('Mi equipo')
     expect(team.get('a.sidebar__settings').classes()).toContain('sidebar__settings--active')
+    const devices = await mountAt('/app/ajustes/dispositivos')
+    expect(devices.get('.app-header__title').text()).toBe('Dispositivos')
+    expect(devices.get('a.sidebar__settings').classes()).toContain('sidebar__settings--active')
   })
 })

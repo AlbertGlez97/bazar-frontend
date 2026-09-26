@@ -154,6 +154,17 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     expectAtLeast44('ChangePasswordView.vue', '.change-password-view__back', ['min-height'])
   })
 
+  it('dispositivos: "Volver", las acciones de cada fila y el botón de copiar el código miden 44 px', () => {
+    expectAtLeast44('DevicesView.vue', '.devices-view__back', ['min-height'])
+    expectAtLeast44('DeviceList.vue', '.device-list__action', ['min-width', 'min-height'])
+    expectAtLeast44('DeviceCodeNotice.vue', '.device-code-notice__copy', ['min-width', 'min-height'])
+  })
+
+  it('dispositivos: los campos y botones de los formularios usan size="lg" (48 px)', () => {
+    expect(sourceOf('DeviceCreateForm.vue').match(/size="lg"/g)?.length ?? 0).toBeGreaterThanOrEqual(4)
+    expect(sourceOf('DeviceActionConfirm.vue').match(/size="lg"/g)?.length ?? 0).toBeGreaterThanOrEqual(3)
+  })
+
   it('mi equipo: "Volver", los botones y los campos del alta miden al menos 44 px (size="lg")', () => {
     expectAtLeast44('TeamView.vue', '.team-view__back', ['min-height'])
     const form = sourceOf('MemberCreateForm.vue')

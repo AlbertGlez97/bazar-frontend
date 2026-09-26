@@ -27,6 +27,22 @@ export const VOICE = {
     title: 'Ajustes',
     lead: 'Tu cuenta y, si eres socio, tu equipo y los dispositivos del negocio.',
   },
+  /** Dispositivos (solo socios): lista, registrar, revocar y reemitir. */
+  devices: {
+    title: 'Dispositivos',
+    lead: 'Las tablets y teléfonos que usan tu negocio. Registra uno nuevo, o revoca o reemite el acceso de uno que ya existe.',
+    register: 'Registrar dispositivo',
+    loading: 'Cargando tus dispositivos…',
+    loadError: 'No pudimos cargar tus dispositivos. Intenta de nuevo en un momento.',
+    retry: 'Intentar de nuevo',
+    forbidden: 'Solo un socio puede administrar los dispositivos.',
+    notFound: 'Ese dispositivo ya no existe. Actualizamos la lista.',
+    badName: 'Escribe el nombre del dispositivo.',
+    badEmail: 'Escribe un correo válido, por ejemplo nombre@dominio.com',
+    invalid: 'Revisa los datos e intenta de nuevo.',
+    /** 502: el correo no salió, así que el servidor no cambió nada (con o sin acceso anterior). */
+    emailFailed: 'No pudimos enviar el correo con el código, así que no se hizo ningún cambio. Intenta de nuevo, o hazlo sin correo y comparte el código tú mismo.',
+  },
   /** Mi equipo (solo socios): lista de personas y alta (POST /members). */
   team: {
     title: 'Mi equipo',
@@ -267,6 +283,42 @@ export function createMemberError(
       return Object.keys(fields).length
         ? { fields, message: null }
         : { fields: {}, message: VOICE.team.createInvalid }
+    }
+    default: return { fields: {}, message: VOICE.genericError }
+  }
+}
+
+/** Campos del formulario de dispositivo que el servidor puede señalar. */
+export type DeviceAdminField = 'name' | 'correoEnvio'
+
+/**
+ * Qué salió mal al administrar un dispositivo (listar, registrar, revocar,
+ * reemitir): los campos que el servidor señala en un 400 (por el inicio de cada
+ * mensaje: el del correo es un texto en español propio, el del nombre empieza por
+ * "name") o un mensaje general. Nunca el texto crudo.
+ */
+export function deviceAdminError(
+  cause: unknown,
+): { fields: Partial<Record<DeviceAdminField, string>>; message: string | null } {
+  if (isNetworkError(cause)) return { fields: {}, message: VOICE.networkError }
+  const response = (cause as { response?: { status?: number; data?: { message?: unknown } } }).response
+  switch (response?.status) {
+    case 403: return { fields: {}, message: VOICE.devices.forbidden }
+    case 404: return { fields: {}, message: VOICE.devices.notFound }
+    case 502: return { fields: {}, message: VOICE.devices.emailFailed }
+    case 400: {
+      const raw = response.data?.message
+      const messages = (Array.isArray(raw) ? raw : [raw])
+        .filter((m): m is string => typeof m === 'string')
+        .map((m) => m.trim().toLowerCase())
+      const fields: Partial<Record<DeviceAdminField, string>> = {}
+      for (const message of messages) {
+        if (/^escribe un correo|^correoenvio\b|\bemail\b/.test(message)) fields.correoEnvio = VOICE.devices.badEmail
+        else if (/^name\b/.test(message)) fields.name = VOICE.devices.badName
+      }
+      return Object.keys(fields).length
+        ? { fields, message: null }
+        : { fields: {}, message: VOICE.devices.invalid }
     }
     default: return { fields: {}, message: VOICE.genericError }
   }
