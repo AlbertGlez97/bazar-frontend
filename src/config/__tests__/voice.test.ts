@@ -18,7 +18,43 @@ import {
   reportDownloadErrorMessage,
   reportLoadErrorMessage,
   reportRangeMessage,
+  deviceIdentifyError,
 } from '@/config/voice'
+
+describe('deviceIdentifyError (POST /devices/identify)', () => {
+  it('409 con mensaje del servidor: usa ese mensaje, como aviso', () => {
+    const message = 'Este dispositivo fue revocado. Pide a un socio que te genere un identificador nuevo.'
+    expect(deviceIdentifyError({ response: { status: 409, data: { message } } }))
+      .toEqual({ message, type: 'warning' })
+  })
+
+  it('409 sin mensaje utilizable: usa el mensaje de respaldo, como aviso', () => {
+    for (const data of [undefined, null, {}, { message: '' }, { message: '  ' }, { message: 42 }, { message: ['x'] }]) {
+      expect(deviceIdentifyError({ response: { status: 409, data } }))
+        .toEqual({ message: VOICE.device.alreadyUsed, type: 'warning' })
+    }
+  })
+
+  it('el mensaje de respaldo dice qué pasó y qué hacer', () => {
+    expect(VOICE.device.alreadyUsed).toBe('Este identificador ya fue usado. Pide a un socio que te genere uno nuevo.')
+  })
+
+  it('403: dispositivo no registrado, como error', () => {
+    expect(deviceIdentifyError({ response: { status: 403 } }))
+      .toEqual({ message: VOICE.device.notRegistered, type: 'error' })
+  })
+
+  it('cualquier otra falla: mensaje genérico de verificación, como error', () => {
+    for (const cause of [{ response: { status: 500 } }, { response: { status: 400 } }, { request: {} }, null, undefined, new Error('x')]) {
+      expect(deviceIdentifyError(cause)).toEqual({ message: VOICE.device.verifyFailed, type: 'error' })
+    }
+  })
+
+  it('los tres textos son distintos entre sí', () => {
+    const texts = new Set([VOICE.device.alreadyUsed, VOICE.device.notRegistered, VOICE.device.verifyFailed])
+    expect(texts.size).toBe(3)
+  })
+})
 
 describe('copy de reportes (VOICE.reports y funciones)', () => {
   const texts: Array<[string, string]> = Object.entries(VOICE.reports).flatMap(([key, value]): Array<[string, string]> =>

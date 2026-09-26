@@ -37,7 +37,14 @@ send it, never keep the burned identifier, and explain a used identifier apart f
 ## Tasks
 
 - [x] **T1 Token kept and sent.** Types, session store with legacy migration, interceptor, tests.
-- [ ] **T2 Used identifier explained.** `SelectContextView` / `DeviceIdentifyForm`: 409 message distinct from 403.
+- [x] **T2 Used identifier explained.** `SelectContextView` / `DeviceIdentifyForm`: 409 message distinct from 403.
+  * Copy lives in `VOICE.device` and `deviceIdentifyError(cause)` (`src/config/voice.ts`), the project's copy module.
+  * 409 -> the server `message` when it is a non-empty string (it already comes in Spanish and tells "already
+    used" from "revoked"), else the fallback "Este identificador ya fue usado. Pide a un socio que te genere
+    uno nuevo."; shown as a WARNING alert. 403 keeps its old text as an ERROR alert. Anything else keeps the
+    generic "No pudimos verificar el dispositivo...". The message never includes what was typed.
+  * `DeviceIdentifyForm` got an `errorType` prop (`'error'` default, `'warning'`); it stays editable so the
+    person can retry, and a successful retry clears the alert.
 
 ## Known follow-up (out of scope)
 
@@ -47,8 +54,12 @@ device with `clearDevice()` and return to `SelectContext`). There is deliberatel
 
 ## Progress and evidence
 
-- T1: see the commit `feat(devices): keep the activation token and send it as x-device-token`.
+- T1: commit `feat(devices): keep the activation token and send it as x-device-token` (RED: 24 failing tests
+  before the store/interceptor changes; GREEN: full suite, lint and build).
+- T2: commit `feat(devices): explain an already used identifier apart from wrong credentials` (RED: 15 failing
+  tests before the change; GREEN: full suite, lint and build).
 
 ## Next step
 
-T2.
+Settings, team and devices screens, once the backend `POST /members` and `POST /auth/change-password`
+endpoints and the updated api contract exist.

@@ -41,6 +41,35 @@ describe('DeviceIdentifyForm', () => {
     expect(wrapper.text()).toContain('Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.')
   })
 
+  it('la alerta es de tipo "error" por defecto (credenciales que no coinciden)', () => {
+    const wrapper = mount(DeviceIdentifyForm, { props: { error: 'No coincide.' } })
+
+    expect(wrapper.find('[role="alert"]').classes()).toContain('app-alert--error')
+  })
+
+  it('con errorType "warning" la alerta se ve distinta (identificador ya usado)', () => {
+    const wrapper = mount(DeviceIdentifyForm, {
+      props: { error: 'Este identificador ya fue usado.', errorType: 'warning' },
+    })
+
+    const alert = wrapper.find('[role="alert"]')
+    expect(alert.classes()).toContain('app-alert--warning')
+    expect(alert.classes()).not.toContain('app-alert--error')
+    expect(wrapper.text()).toContain('Este identificador ya fue usado.')
+  })
+
+  it('con un error visible el formulario sigue editable y se puede reenviar', async () => {
+    const wrapper = mount(DeviceIdentifyForm, {
+      props: { error: 'Este identificador ya fue usado.', errorType: 'warning' },
+    })
+    await fillValidForm(wrapper)
+    await wrapper.find('form').trigger('submit')
+
+    expect(wrapper.findAll('input').every((i) => i.attributes('disabled') === undefined)).toBe(true)
+    expect(wrapper.find('button').attributes('disabled')).toBeUndefined()
+    expect(wrapper.emitted('submit')).toHaveLength(1)
+  })
+
   it('no muestra ninguna alerta cuando no hay error', () => {
     const wrapper = mount(DeviceIdentifyForm)
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)

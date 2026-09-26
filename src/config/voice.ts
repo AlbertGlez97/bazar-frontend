@@ -10,6 +10,19 @@ export const VOICE = {
   /** La petición no llegó al servidor (sin internet, servidor caído) */
   networkError: 'No pudimos conectarnos. Revisa tu internet e intenta de nuevo.',
   /**
+   * Identificar el dispositivo (POST /devices/identify). Tres situaciones
+   * distintas, con textos distintos: el identificador ya se usó (409), los datos
+   * no coinciden con ningún dispositivo (403) o no se pudo verificar.
+   */
+  device: {
+    /** 409: el identificador es de un solo uso y ya se gastó (o el equipo se revocó). */
+    alreadyUsed: 'Este identificador ya fue usado. Pide a un socio que te genere uno nuevo.',
+    /** 403: identificador o nombre que no coinciden con ningún dispositivo del negocio. */
+    notRegistered: 'Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.',
+    /** Cualquier otra falla al verificar (red, servidor). */
+    verifyFailed: 'No pudimos verificar el dispositivo. Intenta de nuevo en un momento.',
+  },
+  /**
    * Ventas. Las claves sin prefijo hablan a quien está cobrando ahora (el
    * carrito sigue ahí y se puede corregir); las `sync*` describen una venta
    * que ya se había hecho y se rechazó al sincronizar: no invitan a editar un
@@ -134,6 +147,27 @@ export function saleScanAddedMessage(productName: string): string {
 /** Sin `response` de Axios la petición nunca obtuvo respuesta: es un problema de red. */
 export function isNetworkError(cause: unknown): boolean {
   return !(cause as { response?: unknown } | null)?.response
+}
+
+/**
+ * Mensaje (y gravedad) de una falla al identificar el dispositivo. El 409 usa el
+ * mensaje que manda el servidor cuando es un texto no vacío (ya viene en español
+ * y distingue "ya usado" de "revocado"); si no, el de respaldo. Se muestra como
+ * aviso, no como error, y nunca incluye el identificador que se escribió.
+ */
+export function deviceIdentifyError(cause: unknown): { message: string; type: 'warning' | 'error' } {
+  const response = (cause as { response?: { status?: number; data?: { message?: unknown } } } | null)?.response
+  if (response?.status === 409) {
+    const message = response.data?.message
+    return {
+      message: typeof message === 'string' && message.trim() ? message : VOICE.device.alreadyUsed,
+      type: 'warning',
+    }
+  }
+  return {
+    message: response?.status === 403 ? VOICE.device.notRegistered : VOICE.device.verifyFailed,
+    type: 'error',
+  }
 }
 
 /**

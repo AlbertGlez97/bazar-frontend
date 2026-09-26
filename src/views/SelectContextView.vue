@@ -20,6 +20,7 @@
         v-if="!sessionStore.isDeviceIdentified"
         :loading="deviceLoading"
         :error="deviceError"
+        :error-type="deviceErrorType"
         @submit="handleDeviceSubmit"
       />
 
@@ -50,6 +51,7 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { DeviceIdentifyForm, MemberSelector } from '@/components'
+import { deviceIdentifyError } from '@/config/voice'
 import DevicesService from '@/services/devices.service'
 import MembersService from '@/services/members.service'
 import { useSessionStore } from '@/stores/session.store'
@@ -63,6 +65,7 @@ const sessionStore = useSessionStore()
 
 const deviceLoading = ref(false)
 const deviceError = ref<string | null>(null)
+const deviceErrorType = ref<'error' | 'warning'>('error')
 
 const members = ref<Member[]>([])
 const membersLoading = ref(false)
@@ -86,10 +89,12 @@ async function handleDeviceSubmit(payload: DeviceIdentifyPayload) {
     sessionStore.setDevice({ deviceId, name: payload.name, deviceToken })
     await loadMembers()
   } catch (cause) {
-    const status = (cause as { response?: { status?: number } } | null)?.response?.status
-    deviceError.value = status === 403
-      ? 'Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.'
-      : 'No pudimos verificar el dispositivo. Intenta de nuevo en un momento.'
+    // 409 (identificador ya usado / dispositivo revocado) se explica aparte de
+    // 403 (datos que no coinciden): son problemas distintos con salidas
+    // distintas. El formulario queda editable para reintentar.
+    const { message, type } = deviceIdentifyError(cause)
+    deviceError.value = message
+    deviceErrorType.value = type
   } finally {
     deviceLoading.value = false
   }

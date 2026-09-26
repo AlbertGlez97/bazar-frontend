@@ -32,11 +32,12 @@
       @blur="validateName"
     />
 
-    <!-- El padre pasa aquí el mensaje de 403 ("Device is unknown or
-         unauthorized") u otro error de red — la molécula solo lo muestra. -->
+    <!-- El padre pasa aquí el mensaje (403 "no registrado", 409 "identificador
+         ya usado" u otro error de red) y su gravedad: la molécula solo lo
+         muestra, y el formulario sigue editable para reintentar. -->
     <AppAlert
       v-if="error"
-      type="error"
+      :type="errorType"
       :dismissible="false"
     >
       {{ error }}
@@ -65,11 +66,14 @@ import type { DeviceIdentifyPayload } from '@/types/device.types'
 withDefaults(defineProps<{
   /** Controlado por el padre mientras espera la respuesta de POST /devices/identify */
   loading?: boolean
-  /** Mensaje de error a mostrar (ej. 403 "dispositivo no autorizado") */
+  /** Mensaje a mostrar (ej. 403 "dispositivo no registrado", 409 "identificador ya usado") */
   error?: string | null
+  /** Gravedad de la alerta: "error" por defecto; "warning" para un identificador ya usado */
+  errorType?: 'error' | 'warning'
 }>(), {
   loading: false,
   error: null,
+  errorType: 'error',
 })
 
 const emit = defineEmits<{
