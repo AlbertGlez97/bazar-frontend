@@ -43,6 +43,12 @@ Branch: `feat/mode-nav-and-mobile-sale-flow` (stacked on `fix/bound-account-skip
 - **List view**: compact 64 px rows (about eight visible on a phone) — thumbnail (3 rem, decorative image or 📦), name (ellipsis), availability badge, "En tu venta" mark with text, and the exact price (`$` + `minorToDisplay`) on the right. Each row is the SAME button as the card (same base class, accessible name, `aria-disabled` for sold out, click → `select`), so add-to-cart, sold-out and single-piece behaviour are identical. Availability is the simplified "Disponible / Agotado" of the large card (no stock counts).
 - The presentational picker only receives `view` and emits `update:view`; the container owns the store.
 
+### Part 4 — "cambiar precio" in the "Tu venta" summary
+
+- **Finding: there is nothing to remove.** No "cambiar precio" (or any price-change / discount control) exists in the cart summary, in the cart lines or anywhere else in `src`: searched by text and by intent (`precio`, `descuento`, `cambiar`, `editar`, `modificar`, `override`) over `CartSummary`, `CartLineItem`, `SaleCart`, `SaleView` and `voice.ts`, and over the git history (`git log -S` finds no commit that ever added or removed it). The line only shows the unit price as plain text (`$X c/u` in a `<p>`) and the total as a plain `<span>`. The API contract says the same thing: "No hay descuentos ni cancelaciones (no implementados)". If the option the user saw is somewhere else (an older deployed build, another screen), it is not in this codebase.
+- **What was done instead of a fake removal**: a regression test (`SaleCart.no-price-change.test.ts`, 13 cases, normal and Step-2 variants) that pins the business rule: no button/aria-label/title mentions price, discount, change, edit or modify; the only input is the cash field; the unit price is non-interactive text; the total cannot be touched; and `SaleCart`, `CartLineItem` and `CartSummary` declare exactly the events they have today (no price or discount event). Mutation-checked: adding a "Cambiar precio" button to `CartLineItem` fails 4 of the 13 cases (reverted).
+- **Future work**: a price change or a discount is NOT to be added on this screen by accident. If the business ever wants it, it must be defined as its own task (business rule, who may do it, API contract and an audit trail) and these tests updated on purpose, not deleted.
+
 ### Existing tests changed (forced by the new rules)
 
 - `SaleView.test.ts`: the block "barra del carrito en celular" tested the old bottom **sheet** (`sale-view__cart--open`, `open-cart`/`close-cart`, a bar that was always in the DOM and disabled when empty). That design is replaced by the two steps, so the block was replaced by "flujo de dos pasos en pantalla angosta" (wide unchanged, Step 1, Step 2, charging from Step 2, rotation, a11y). `mountSale` gained an optional path so a test can open `?paso=cobro`. Every other SaleView test is untouched and passes.
@@ -56,7 +62,7 @@ Branch: `feat/mode-nav-and-mobile-sale-flow` (stacked on `fix/bound-account-skip
 - [x] **P2** Navigation by mode, Inicio only in Gestión, landing per mode.
 - [x] **P3a** Two full-screen steps on narrow screens.
 - [x] **P3b** Grid/list toggle for the catalog.
-- [ ] **P4** "Cambiar precio" in the cart summary.
+- [x] **P4** "Cambiar precio" in the cart summary: nothing to remove (it does not exist); the rule is pinned by a regression test.
 
 ## Evidence
 
