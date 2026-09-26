@@ -23,6 +23,56 @@ export const VOICE = {
     verifyFailed: 'No pudimos verificar el dispositivo. Intenta de nuevo en un momento.',
   },
   /**
+   * Qué le pasó a una petición, dicho según lo que respondió el servidor
+   * (`describeApiError`, `src/utils/api-error.ts`). Un mensaje dice qué pasó y
+   * qué hacer; el código HTTP se agrega aparte, para soporte.
+   */
+  apiErrors: {
+    /** 401: el token venció; el interceptor ya cierra la sesión. */
+    session: 'Tu sesión venció. Inicia sesión de nuevo para continuar.',
+    /** 403 "Only socios…": la persona elegida no es socio. */
+    notSocio: 'Solo los socios pueden crear o cambiar productos. Cambia de persona o pide a un socio que lo haga.',
+    /**
+     * 403 "Selection is not authorized…": el dispositivo o la persona guardados
+     * ya no existen o ya no valen (se reinició la base, se revocó el acceso, el
+     * token no coincide). Se arregla identificando el dispositivo otra vez.
+     */
+    contextLost: 'Este dispositivo o esta persona ya no está reconocida por el sistema (pasa si se reinició la base de datos o si alguien revocó el acceso). Vuelve a identificar el dispositivo para seguir.',
+    /** Cualquier otro 403. */
+    forbidden: 'No tienes permiso para hacer esto.',
+    /** 400 sin un mensaje que se pueda mostrar. */
+    invalid: 'Revisa los datos e intenta de nuevo.',
+    /** 404 */
+    notFound: 'Eso ya no existe. Actualiza la lista e intenta de nuevo.',
+    /** 409 sin mensaje del servidor. */
+    conflict: 'Los datos cambiaron mientras tanto. Actualiza e intenta de nuevo.',
+    /** 5xx */
+    server: 'El servidor tuvo un problema. Intenta de nuevo en un momento.',
+    /** Validaciones conocidas del alta/edición de producto (400). */
+    product: {
+      name: 'Escribe el nombre del producto (hasta 200 caracteres).',
+      price: 'El precio no es válido. Escribe un monto como 1,500.00 (máximo 21,474,836.47).',
+      category: 'La categoría debe tener entre 1 y 100 caracteres, o déjala vacía.',
+      purchaseCost: 'El costo de compra no es válido. Escribe un monto como 800.00, o déjalo vacío.',
+      stock: 'La existencia inicial debe ser un número entero, de 0 en adelante.',
+      tipo: 'Elige si es pieza única o por cantidad.',
+      supplier: 'El proveedor debe tener entre 1 y 200 caracteres, o déjalo vacío.',
+      notes: 'Las notas son demasiado largas (máximo 2000 caracteres).',
+    },
+    /** Acciones del catálogo: qué no se pudo hacer, para el mensaje de cada acción. */
+    catalog: {
+      save: 'No pudimos guardar el producto.',
+      deactivate: 'No pudimos desactivar el producto.',
+      reactivate: 'No pudimos reactivar el producto.',
+      load: 'No pudimos cargar tu catálogo.',
+      search: 'No pudimos buscar.',
+      page: 'No pudimos cambiar de página.',
+      image: 'El producto quedó guardado, pero la foto no se pudo subir. Edítalo y vuelve a intentarlo.',
+      readOnly: 'Solo los socios pueden cambiar el catálogo.',
+      reidentify: 'Volver a identificar este dispositivo',
+    },
+  },
+  /**
    * Cuenta ligada a una persona que ya no puede entrar (miembro desactivado): se
    * dice qué pasó y a quién acudir; no hay nada que elegir ni reintentar.
    */

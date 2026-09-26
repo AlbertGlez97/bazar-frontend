@@ -17,6 +17,32 @@
       </AppButton>
     </div>
 
+    <!-- Quien no es socio ve el catálogo, pero no lo cambia (el servidor igual
+         respondería 403): se le dice en vez de dejarle botones que fallan. -->
+    <p
+      v-if="!isSocio && !isVenta"
+      class="product-catalog-view__note"
+    >
+      {{ VOICE.apiErrors.catalog.readOnly }}
+    </p>
+
+    <!-- El dispositivo o la persona guardados ya no valen (403 "Selection is not
+         authorized…", p. ej. tras reiniciar la base): el aviso se queda hasta que
+         se identifique el dispositivo otra vez o una acción salga bien. -->
+    <AppAlert
+      v-if="contextLost"
+      type="warning"
+      :show="true"
+    >
+      {{ VOICE.apiErrors.contextLost }}
+      <AppButton
+        variant="secondary"
+        @click="reidentifyDevice"
+      >
+        {{ VOICE.apiErrors.catalog.reidentify }}
+      </AppButton>
+    </AppAlert>
+
     <ProductCatalogGrid
       :products="store.items"
       :page="store.page"
@@ -56,17 +82,40 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { AppButton, AppModal, ProductCatalogGrid, ProductFormModal } from '@/components'
+import { useRouter } from 'vue-router'
+import { AppAlert, AppButton, AppModal, ProductCatalogGrid, ProductFormModal } from '@/components'
+import { VOICE } from '@/config/voice'
 import { useProductsStore } from '@/stores/products.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import type { Product, ProductFormSubmitPayload } from '@/types/product.types'
+import { describeFailure } from '@/utils/api-error'
 
 const store = useProductsStore()
 const session = useSessionStore()
 const toast = useToastStore()
 const uiMode = useUiModeStore()
+const router = useRouter()
+
+// `true` cuando el servidor dice que el dispositivo/persona guardados ya no
+// valen: se ofrece identificar el dispositivo otra vez. Nada se borra solo.
+const contextLost = ref(false)
+
+/** Avisa por qué falló una acción, con el motivo real y el código HTTP. */
+function reportFailure(action: string, error: unknown) {
+  const { described, message } = describeFailure(action, error)
+  if (described.kind === 'context-lost') contextLost.value = true
+  toast.error(message)
+}
+
+/** El dispositivo o la persona guardados ya no valen: se borran y se vuelve a identificar. */
+function reidentifyDevice() {
+  session.clearDevice()
+  session.clearMember()
+  contextLost.value = false
+  router.push({ name: 'SelectContext' })
+}
 
 // El modo lo decide el store (y la persona); el grid solo lo presenta.
 const isVenta = computed(() => uiMode.currentMode === 'venta')
@@ -89,7 +138,7 @@ onMounted(() => {
   // En Modo Venta tampoco: lo inactivo es cosa de gestión y nunca se ofrece
   // para vender, así que se pide el catálogo solo con productos activos.
   const includeInactive = isSocio.value && !isVenta.value && store.includeInactive
-  store.fetchProducts({ includeInactive }).catch(() => toast.error('No pudimos cargar tu catálogo. Intenta de nuevo.'))
+  store.fetchProducts({ includeInactive }).catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
 })
 
 // Cambiar a Modo Venta con "Mostrar inactivos" encendido: se apaga el filtro y
@@ -101,15 +150,15 @@ watch(isVenta, (venta) => {
 
 // Cambiar el filtro invalida la paginación actual: se vuelve a la página 1.
 function handleIncludeInactive(value: boolean) {
-  store.fetchProducts({ page: 1, includeInactive: value }).catch(() => toast.error('No pudimos cargar tu catálogo. Intenta de nuevo.'))
+  store.fetchProducts({ page: 1, includeInactive: value }).catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
 }
 
 function handleSearch(term: string) {
-  store.fetchProducts({ page: 1, search: term }).catch(() => toast.error('No pudimos buscar. Intenta de nuevo.'))
+  store.fetchProducts({ page: 1, search: term }).catch((error) => reportFailure(VOICE.apiErrors.catalog.search, error))
 }
 
 function handlePageChange(page: number) {
-  store.fetchProducts({ page }).catch(() => toast.error('No pudimos cambiar de página. Intenta de nuevo.'))
+  store.fetchProducts({ page }).catch((error) => reportFailure(VOICE.apiErrors.catalog.page, error))
 }
 
 function openCreateModal() {
@@ -154,15 +203,20 @@ async function handleFormSubmit(payload: ProductFormSubmitPayload) {
     if (imageFile) {
       try {
         await store.uploadProductImage(product.id, imageFile)
-      } catch {
-        toast.error('El producto quedó guardado, pero la foto no se pudo subir. Edítalo y vuelve a intentarlo.')
+      } catch (error) {
+        // El producto ya existe: solo se avisa de la foto. Un error que no se
+        // sabe leer conserva el texto de siempre; uno conocido agrega el motivo.
+        const { described, message } = describeFailure(VOICE.apiErrors.catalog.image, error)
+        if (described.kind === 'context-lost') contextLost.value = true
+        toast.error(described.kind === 'unknown' && described.status === null ? VOICE.apiErrors.catalog.image : message)
       }
     }
 
+    contextLost.value = false
     toast.success(editingProduct.value ? 'Listo, producto actualizado.' : 'Listo, ya quedó en tu catálogo.')
     isFormModalOpen.value = false
-  } catch {
-    toast.error('No pudimos guardar el producto. Intenta de nuevo.')
+  } catch (error) {
+    reportFailure(VOICE.apiErrors.catalog.save, error)
   } finally {
     isSubmitting.value = false
   }
@@ -177,9 +231,10 @@ async function handleConfirmDeactivate() {
   if (!productPendingDeactivation.value) return
   try {
     await store.deactivateProduct(productPendingDeactivation.value.id)
+    contextLost.value = false
     toast.success('Producto desactivado. Lo encuentras en «Mostrar inactivos».')
-  } catch {
-    toast.error('No pudimos desactivar el producto. Intenta de nuevo.')
+  } catch (error) {
+    reportFailure(VOICE.apiErrors.catalog.deactivate, error)
   } finally {
     isConfirmModalOpen.value = false
     productPendingDeactivation.value = null
@@ -189,9 +244,10 @@ async function handleConfirmDeactivate() {
 async function handleReactivate(product: Product) {
   try {
     await store.reactivateProduct(product.id)
+    contextLost.value = false
     toast.success('Listo, producto reactivado.')
-  } catch {
-    toast.error('No pudimos reactivar el producto. Intenta de nuevo.')
+  } catch (error) {
+    reportFailure(VOICE.apiErrors.catalog.reactivate, error)
   }
 }
 </script>
@@ -201,6 +257,11 @@ async function handleReactivate(product: Product) {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-lg);
+}
+.product-catalog-view__note {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
 }
 .product-catalog-view__header {
   display: flex;
