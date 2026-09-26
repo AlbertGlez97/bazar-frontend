@@ -129,13 +129,15 @@ describe('reports route /app/reportes', () => {
     fullSession('colaborador', 'gestion')
     await router.push('/app/reportes'); expect(router.currentRoute.value.name).toBe('AppHome')
   })
-  it('sends a socio in Modo Venta to the app home', async () => {
+  // Regla nueva (Parte 2): "Inicio" no existe en Modo Venta, así que la casa de la
+  // app en ese modo es Vender (antes era Inicio). Ver router.mode-landing.test.ts.
+  it('sends a socio in Modo Venta to the sale screen (the home of that mode)', async () => {
     fullSession('socio', 'venta')
-    await router.push('/app/reportes'); expect(router.currentRoute.value.name).toBe('AppHome')
+    await router.push('/app/reportes'); expect(router.currentRoute.value.name).toBe('Sale')
   })
-  it('sends a colaborador in Modo Venta to the app home', async () => {
+  it('sends a colaborador in Modo Venta to the sale screen (the home of that mode)', async () => {
     fullSession('colaborador', 'venta')
-    await router.push('/app/reportes'); expect(router.currentRoute.value.name).toBe('AppHome')
+    await router.push('/app/reportes'); expect(router.currentRoute.value.name).toBe('Sale')
   })
   it('sends a logged-out visitor to login', async () => {
     await router.push('/app/reportes'); expect(router.currentRoute.value.name).toBe('Login')
@@ -218,9 +220,10 @@ describe('team route /app/ajustes/equipo', () => {
     fullSession('socio', mode)
     await router.push('/app/ajustes/equipo'); expect(router.currentRoute.value.name).toBe('Team')
   })
-  it.each(['venta', 'gestion'] as const)('sends a colaborador (Modo %s) typing the URL to the app home', async (mode) => {
+  // El destino es la casa del modo: Vender en Modo Venta, Inicio en Modo Gestión.
+  it.each([['venta', 'Sale'], ['gestion', 'AppHome']] as const)('sends a colaborador (Modo %s) typing the URL to the home of that mode (%s)', async (mode, home) => {
     fullSession('colaborador', mode)
-    await router.push('/app/ajustes/equipo'); expect(router.currentRoute.value.name).toBe('AppHome')
+    await router.push('/app/ajustes/equipo'); expect(router.currentRoute.value.name).toBe(home)
   })
   it('sends a logged-out visitor to login', async () => {
     await router.push('/app/ajustes/equipo'); expect(router.currentRoute.value.name).toBe('Login')
@@ -256,9 +259,9 @@ describe('devices admin route /app/ajustes/dispositivos', () => {
     fullSession('socio', mode)
     await router.push('/app/ajustes/dispositivos'); expect(router.currentRoute.value.name).toBe('DevicesAdmin')
   })
-  it.each(['venta', 'gestion'] as const)('sends a colaborador (Modo %s) typing the URL to the app home', async (mode) => {
+  it.each([['venta', 'Sale'], ['gestion', 'AppHome']] as const)('sends a colaborador (Modo %s) typing the URL to the home of that mode (%s)', async (mode, home) => {
     fullSession('colaborador', mode)
-    await router.push('/app/ajustes/dispositivos'); expect(router.currentRoute.value.name).toBe('AppHome')
+    await router.push('/app/ajustes/dispositivos'); expect(router.currentRoute.value.name).toBe(home)
   })
   it('sends a logged-out visitor to login', async () => {
     await router.push('/app/ajustes/dispositivos'); expect(router.currentRoute.value.name).toBe('Login')

@@ -7,6 +7,10 @@ import {
 import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
+import { landingFor } from './landing'
+
+/** Página de inicio del modo activo: Vender en Modo Venta, Inicio en Modo Gestión. */
+const landing = () => landingFor(useUiModeStore().currentMode)
 
 const sessionDestination = () => ({ path: useAuthStore().isAuthenticated ? '/app' : '/login' })
 
@@ -60,7 +64,15 @@ const routes: RouteRecordRaw[] = [
     // agregar esta misma meta.
     meta: { requiresAuth: true, requiresContext: true },
     children: [
-      { path: '', name: 'AppHome', component: () => import('@/views/AppHomeView.vue') },
+      {
+        // Inicio: solo Modo Gestión. En Modo Venta la casa de la app es Vender: el
+        // guard (`requiresGestion`) manda ahí a quien llegue por la URL o por un
+        // enlace viejo, y el menú ni lo ofrece (ver layouts/nav-items.ts).
+        path: '',
+        name: 'AppHome',
+        component: () => import('@/views/AppHomeView.vue'),
+        meta: { requiresGestion: true },
+      },
       {
         // Catálogo de productos: lectura para cualquier Member; acciones de
         // gestión (crear/editar/(des)activar) se ocultan en la vista misma
@@ -137,7 +149,7 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
   router.beforeEach(async (to) => {
     const auth = useAuthStore()
     if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: 'Login' }
-    if (to.meta.redirectIfAuth && auth.isAuthenticated) return { name: 'AppHome' }
+    if (to.meta.redirectIfAuth && auth.isAuthenticated) return landing()
 
     // Seguridad: el rol que leen los guards y los menús es el de la persona de
     // la sesión, y para una cuenta ligada a un miembro esa persona la dicta el
@@ -154,11 +166,13 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
     // le explica por qué; ninguna ruta operativa se le abre.
     if (to.meta.requiresContext && auth.bindingStatus === 'inactive') return { name: 'SelectContext' }
     if (to.meta.requiresContext && !session.isContextReady) return { name: 'SelectContext' }
-    if (to.meta.redirectIfContextReady && session.isContextReady) return { name: 'AppHome' }
+    if (to.meta.redirectIfContextReady && session.isContextReady) return landing()
 
-    // Rutas de gestión: quien no cumple vuelve al inicio, sin callejones ni errores.
-    if (to.meta.requiresSocio && session.member?.role !== 'socio') return { name: 'AppHome' }
-    if (to.meta.requiresGestion && useUiModeStore().currentMode !== 'gestion') return { name: 'AppHome' }
+    // Rutas de gestión: quien no cumple vuelve a la página de inicio de SU modo
+    // (Vender en Modo Venta, Inicio en Modo Gestión), sin callejones ni bucles:
+    // Vender no exige nada de esto, así que el destino siempre es alcanzable.
+    if (to.meta.requiresSocio && session.member?.role !== 'socio') return landing()
+    if (to.meta.requiresGestion && useUiModeStore().currentMode !== 'gestion') return landing()
   })
 
   return router

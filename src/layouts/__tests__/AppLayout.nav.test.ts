@@ -74,10 +74,12 @@ describe('AppLayout navegación', () => {
     expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '🛒 Vender'])
   })
 
-  it('Modo Venta: Vender va primero', async () => {
+  // Regla nueva (Parte 2): en Modo Venta el menú es solo "Vender" (antes también
+  // mostraba Inicio y Productos).
+  it('Modo Venta: el menú es solo Vender', async () => {
     localStorage.setItem('la-marchanta-ui-mode', 'venta')
     const wrapper = await mountAt('/app')
-    expect(linkLabels(wrapper)).toEqual(['🛒 Vender', '🏠 Inicio', '📦 Productos'])
+    expect(linkLabels(wrapper)).toEqual(['🛒 Vender'])
   })
 
   it('Vender siempre está a la vista, en cualquier modo', async () => {

@@ -152,7 +152,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
@@ -161,6 +161,7 @@ import { useSalesQueueStore } from '@/stores/sales-queue.store'
 import { AppBadge, AppButton, AppAvatar, InstallAppButton, UiModeSwitch, SyncStatusIndicator } from '@/components'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 import { APP_NAME } from '@/config/app'
+import { landingFor } from '@/router/landing'
 import { getNavItems } from './nav-items'
 
 const authStore = useAuthStore()
@@ -190,6 +191,21 @@ function toggleSidebar() { sidebarCollapsed.value = !sidebarCollapsed.value }
 const navItems = computed(() =>
   getNavItems(uiMode.currentMode, { isSocio: session.member?.role === 'socio' }),
 )
+
+// Cambiar de modo desde el selector lleva a la página de inicio del modo nuevo:
+// - a Modo Venta, si la pantalla actual solo existe en Gestión (Inicio, Reportes),
+//   se pasa a Vender;
+// - a Modo Gestión, quien estaba en Vender aterriza en Inicio.
+// Cualquier otra pantalla (Productos, Ajustes...) no se mueve: no hay motivo.
+// Se usa `replace`: no deja una entrada de historial hacia una pantalla que ya no
+// se ofrece en el modo. Solo reacciona al CAMBIO de modo, no al arranque.
+watch(() => uiMode.currentMode, (mode) => {
+  const leavesManagementOnlyScreen = mode === 'venta' && route.meta.requiresGestion === true
+  const leavesSaleForManagement = mode === 'gestion' && route.name === 'Sale'
+  if (leavesManagementOnlyScreen || leavesSaleForManagement) {
+    void router.replace(landingFor(mode))
+  }
+})
 
 // La cola de ventas offline se sincroniza mientras el shell autenticado está
 // montado: al abrir la app, al volver la conexión y cada tanto mientras haya

@@ -4,8 +4,22 @@ import { NAV_ITEMS, getNavItems, type NavItemDef } from '../nav-items'
 const tos = (items: { to: string }[]) => items.map((item) => item.to)
 
 describe('getNavItems', () => {
-  it('Modo Venta: "Vender" va primero', () => {
-    expect(tos(getNavItems('venta'))).toEqual(['/app/venta', '/app', '/app/productos'])
+  it('Modo Venta: solo "Vender"', () => {
+    expect(tos(getNavItems('venta'))).toEqual(['/app/venta'])
+  })
+
+  it('Modo Venta: ni "Inicio" ni "Productos", para socios y colaboradores', () => {
+    for (const isSocio of [true, false, undefined]) {
+      const shown = tos(getNavItems('venta', { isSocio }))
+      expect(shown).not.toContain('/app')
+      expect(shown).not.toContain('/app/productos')
+      expect(shown).toEqual(['/app/venta'])
+    }
+  })
+
+  it('"Inicio" solo existe en Modo Gestión', () => {
+    const home = NAV_ITEMS.find((item) => item.to === '/app')
+    expect(home?.modes).toEqual(['gestion'])
   })
 
   it('Modo Gestión: "Vender" va después de "Productos"', () => {
