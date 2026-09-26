@@ -130,6 +130,27 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     expectAtLeast44('SaleView.vue', '.sale-view__close', ['min-height'])
   })
 
+  // Paso 2 del cobro (celular): total y efectivo son lo más grande y "Cobrar" el botón mayor.
+  it('Paso 2 del cobro: "Cobrar" mide 72 px, el campo de efectivo 80 px y sus billetes 56 px', () => {
+    const MIN_PROMINENT_PX = 72
+    const charge = ruleBody(sourceOf('SaleCart.vue'), '.sale-cart--checkout .sale-cart__charge')
+    expect(pxOf(charge, 'min-height')).toBeGreaterThanOrEqual(MIN_PROMINENT_PX)
+    expectAtLeast44('SaleCart.vue', '.sale-cart--checkout :deep(.cash-input__control)', ['min-height'])
+    expectAtLeast44('SaleCart.vue', '.sale-cart--checkout :deep(.cash-input__chip)', ['min-height'])
+    expect(pxOf(ruleBody(sourceOf('SaleCart.vue'), '.sale-cart--checkout :deep(.cash-input__control)'), 'min-height')).toBeGreaterThanOrEqual(80)
+  })
+
+  it('Paso 2 del cobro: el total y el cambio son más grandes que en el carrito normal', () => {
+    const source = sourceOf('SaleCart.vue')
+    const total = pxOf(ruleBody(source, '.sale-cart--checkout :deep(.cart-summary__total)'), 'font-size')!
+    const change = pxOf(ruleBody(source, '.sale-cart--checkout :deep(.cart-summary__change)'), 'font-size')!
+    // El total normal del resumen es de 2.5rem (40 px) y el cambio de 2rem (32 px).
+    const normalTotal = pxOf(ruleBody(sourceOf('CartSummary.vue'), '.cart-summary__total'), 'font-size')!
+    const normalChange = pxOf(ruleBody(sourceOf('CartSummary.vue'), '.cart-summary__change'), 'font-size')!
+    expect(total).toBeGreaterThan(normalTotal)
+    expect(change).toBeGreaterThan(normalChange)
+  })
+
   it('reportes: los atajos de periodo, "Actualizar" y las descargas miden 44x44', () => {
     expectAtLeast44('ReportRangePicker.vue', '.report-range-picker__preset', ['min-width', 'min-height'])
     expectAtLeast44('ReportRangePicker.vue', '.report-range-picker__apply', ['min-width', 'min-height'])

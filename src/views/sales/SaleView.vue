@@ -1,13 +1,29 @@
 <template>
   <!-- Vista (contenedor): pantalla de venta de Modo Venta. Conecta los stores
        (catálogo, carrito, cobro) con los componentes de presentación.
-       - Pantalla ancha: catálogo y carrito lado a lado, siempre a la vista.
-       - Celular: el catálogo ocupa la pantalla y el carrito es una barra fija
-         abajo (total + "Ver venta y cobrar") que se abre como una hoja con el
-         carrito completo. Nunca es otra ruta ni un modal.
+       - Pantalla ANCHA (tablet horizontal, escritorio): catálogo y carrito lado a
+         lado, siempre a la vista.
+       - Pantalla ANGOSTA (celular): dos pasos.
+           Paso 1: el catálogo ocupa la pantalla (búsqueda + escanear) y el carrito
+                   es una barra fija abajo con piezas + total y "Cobrar →". Sin
+                   nada en la venta, la barra no se muestra.
+           Paso 2: la venta entera a pantalla completa (total y efectivo en grande)
+                   con "Seguir agregando" para volver sin perder nada. Se abre con
+                   `?paso=cobro` en la URL: así el botón Atrás del celular regresa
+                   al Paso 1 en vez de salir de la venta.
+         Quién decide "angosta" es `useDeviceCapabilities().isSmallScreen`
+         (mismo umbral de 900 px que el resto de la app), no una media query suelta:
+         el layout, la barra y los pasos comparten una sola fuente de verdad.
        - Al cobrar, el resultado (éxito, guardada sin señal, conflicto, ...) toma
          la pantalla entera con UN botón principal. -->
-  <div class="sale-view">
+  <div
+    class="sale-view"
+    :class="{
+      'sale-view--narrow': isSmallScreen,
+      'sale-view--checkout': isCheckoutStep,
+      'sale-view--has-bar': showBar,
+    }"
+  >
     <SaleResult
       v-if="resultView"
       :result="resultView"
@@ -19,8 +35,12 @@
 
     <template v-else>
       <div class="sale-view__layout">
+        <!-- En el Paso 2 el catálogo sigue montado debajo (conserva búsqueda,
+             categoría y posición) pero inaccesible: ni foco ni lector de pantalla. -->
         <SaleCatalogPicker
           class="sale-view__catalog"
+          :inert="isCheckoutStep || undefined"
+          :aria-hidden="isCheckoutStep ? 'true' : undefined"
           :products="catalog.filtered"
           :search="catalog.search"
           :categories="catalog.categories"
@@ -39,19 +59,21 @@
 
         <div
           class="sale-view__cart"
-          :class="{ 'sale-view__cart--open': sheetOpen }"
+          :class="{ 'sale-view__cart--checkout': isCheckoutStep }"
         >
-          <!-- Solo en celular: salir de la hoja sin perder nada -->
+          <!-- Solo en el Paso 2: salir sin perder nada -->
           <button
+            v-if="isCheckoutStep"
             type="button"
             class="sale-view__close"
-            data-action="close-cart"
-            @click="sheetOpen = false"
+            data-action="close-checkout"
+            @click="closeCheckout"
           >
             <span aria-hidden="true">←</span> Seguir agregando
           </button>
 
           <SaleCart
+            :prominent="isCheckoutStep"
             :lines="cart.lines"
             :item-count="cart.itemCount"
             :total-minor="cart.totalMinor"
@@ -72,8 +94,9 @@
         </div>
       </div>
 
-      <!-- Solo en celular: la venta siempre a la vista, aunque la hoja esté cerrada -->
+      <!-- Paso 1 en celular: la venta siempre a la vista, en una barra fija -->
       <div
+        v-if="showBar"
         class="sale-view__bar"
         role="region"
         aria-label="Resumen de tu venta"
@@ -86,11 +109,11 @@
           variant="primary"
           size="xl"
           class="sale-view__bar-button"
-          data-action="open-cart"
-          :disabled="cart.isEmpty || checkout.loading"
-          @click="sheetOpen = true"
+          data-action="open-checkout"
+          :disabled="checkout.loading"
+          @click="openCheckout"
         >
-          Ver venta y cobrar
+          Cobrar →
         </AppButton>
       </div>
     </template>
@@ -105,8 +128,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { AppButton, QrScannerModal, SaleCart, SaleCatalogPicker, SaleResult } from '@/components'
+import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import { useCheckoutStore } from '@/stores/checkout.store'
@@ -125,6 +149,7 @@ const session = useSessionStore()
 const auth = useAuthStore()
 const toast = useToastStore()
 const router = useRouter()
+const route = useRoute()
 
 // ── Catálogo ─────────────────────────────────────────────────────────────
 // La sincronización de la cola arranca en el shell (AppLayout), no aquí.
@@ -132,12 +157,65 @@ onMounted(() => { void catalog.load() })
 
 const inCartIds = computed(() => cart.lines.map((line) => line.productId))
 
-// ── Hoja del carrito (celular) ───────────────────────────────────────────
-const sheetOpen = ref(false)
-const barCount = computed(() => {
-  if (cart.itemCount === 0) return 'Toca un producto'
-  return cart.itemCount === 1 ? '1 pieza' : `${cart.itemCount} piezas`
-})
+// ── Dos pasos en pantalla angosta ────────────────────────────────────────
+// Umbral: el de "pantalla pequeña" de `useDeviceCapabilities` (menos de 900 px:
+// celulares y tabletas verticales angostas, donde catálogo y carrito lado a lado
+// se aprietan). No se define otro valor: una sola definición de "angosta".
+const { isSmallScreen } = useDeviceCapabilities()
+
+/** Valor de `?paso=` que abre el Paso 2. Vive en la URL para que "Atrás" funcione. */
+const CHECKOUT_STEP = 'cobro'
+const checkoutRequested = computed(() => route.query.paso === CHECKOUT_STEP)
+
+/** Paso 2 visible: pantalla angosta, pedido en la URL y algo que cobrar (nunca un cobro vacío). */
+const isCheckoutStep = computed(() => isSmallScreen.value && checkoutRequested.value && !cart.isEmpty)
+/** Barra del Paso 1: angosta, en el catálogo y con algo en la venta (vacía = sin barra, más catálogo). */
+const showBar = computed(() => isSmallScreen.value && !isCheckoutStep.value && !cart.isEmpty)
+
+const barCount = computed(() => (cart.itemCount === 1 ? '1 pieza' : `${cart.itemCount} piezas`))
+
+/** ¿Este Paso 2 se abrió con un push nuestro? Si sí, cerrarlo es volver en el historial. */
+let openedByPush = false
+
+function queryWithoutStep() {
+  return Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'paso'))
+}
+
+async function openCheckout() {
+  if (cart.isEmpty || checkout.loading) return
+  openedByPush = true
+  await router.push({ query: { ...route.query, paso: CHECKOUT_STEP } })
+}
+
+/** Quita el paso de la URL sin dejar otra entrada de historial. */
+async function dropStepFromUrl() {
+  if (!checkoutRequested.value) return
+  await router.replace({ query: queryWithoutStep() })
+}
+
+/**
+ * "Seguir agregando": si el Paso 2 se abrió desde el Paso 1 se regresa en el
+ * historial (la misma acción que el botón Atrás); si la persona llegó con
+ * `?paso=cobro` ya puesto (recarga, enlace) no hay entrada previa a la que volver
+ * y se reemplaza la URL, sin salir de la venta.
+ */
+function closeCheckout() {
+  if (!checkoutRequested.value) return
+  if (openedByPush) {
+    openedByPush = false
+    void router.back()
+    return
+  }
+  void dropStepFromUrl()
+}
+
+// Sin nada que cobrar (se quitó la última línea, "Vaciar", venta nueva, recarga en
+// `?paso=cobro` con el carrito vacío) el paso sobra en la URL.
+watch(
+  [checkoutRequested, () => cart.isEmpty],
+  ([requested, empty]) => { if (requested && empty) void dropStepFromUrl() },
+  { immediate: true },
+)
 
 // ── Carrito ──────────────────────────────────────────────────────────────
 /** Un rechazo del carrito es un aviso corto y amable, nunca un texto técnico. */
@@ -228,9 +306,9 @@ async function charge() {
   await checkout.charge()
 }
 
+/** La venta nueva vacía el carrito: el watcher de arriba saca el Paso 2 de la URL. */
 function startNewSale() {
   checkout.startNewSale()
-  sheetOpen.value = false
   cashText.value = ''
 }
 
@@ -262,72 +340,77 @@ async function goToLogin() {
   border: 2px solid var(--color-border);
   border-radius: var(--radius-xl);
 }
-.sale-view__close,
-.sale-view__bar { display: none; }
 
-/* ── Celular: catálogo a pantalla completa + barra fija + hoja del carrito ─ */
-@media (max-width: 899px) {
-  .sale-view { padding-bottom: 6.5rem; }
-  .sale-view__layout { grid-template-columns: minmax(0, 1fr); }
-
-  /* La hoja cubre el área de contenido (respeta la barra lateral) y se abre desde la barra */
-  .sale-view__cart {
-    display: none;
-    position: fixed;
-    inset: 0 0 0 var(--app-sidebar-offset, 0px);
-    z-index: 40;
-    max-height: none;
-    padding: var(--spacing-md);
-    border: 0;
-    border-radius: 0;
-    overscroll-behavior: contain;
-  }
-  .sale-view__cart--open { display: block; }
-
-  .sale-view__close {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    min-height: 44px;
-    margin-bottom: var(--spacing-md);
-    padding: 0 var(--spacing-md);
-    font-family: inherit;
-    font-size: var(--font-size-md);
-    font-weight: 700;
-    color: var(--color-text);
-    background: var(--color-surface);
-    border: 2px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    touch-action: manipulation;
-  }
-  .sale-view__close:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
-
-  .sale-view__bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-md);
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: var(--app-sidebar-offset, 0px);
-    z-index: 30;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--color-surface);
-    border-top: 2px solid var(--color-border-strong);
-    box-shadow: var(--shadow-lg);
-  }
-  .sale-view__bar-info { display: flex; flex-direction: column; flex: 0 0 auto; margin: 0; }
-  .sale-view__bar-count { font-size: var(--font-size-sm); color: var(--color-text-muted); }
-  .sale-view__bar-total {
-    font-family: var(--font-display);
-    font-size: var(--font-size-xl);
-    line-height: 1.1;
-    white-space: nowrap;
-    color: var(--color-text);
-  }
-  /* El botón de la barra: 56 px, el más grande a mano */
-  .sale-view .sale-view__bar-button { min-height: 3.5rem; font-size: var(--font-size-md); font-weight: 800; flex: 1 1 auto; min-width: 0; padding-inline: var(--spacing-sm); }
+/* "Seguir agregando" del Paso 2: 44 px al tacto como mínimo, aquí 48 */
+.sale-view__close {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 48px;
+  margin-bottom: var(--spacing-md);
+  padding: 0 var(--spacing-md);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  touch-action: manipulation;
 }
+.sale-view__close:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+
+/* ── Pantalla angosta (celular): dos pasos ─────────────────────────────── */
+.sale-view--narrow .sale-view__layout { grid-template-columns: minmax(0, 1fr); }
+
+/* Paso 1: el carrito completo no está; solo la barra fija. Con barra se deja
+   espacio abajo para que nunca tape la última fila del catálogo (ni la zona
+   segura de los teléfonos con barra de gestos). */
+.sale-view--narrow .sale-view__cart { display: none; }
+.sale-view--narrow.sale-view--has-bar { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px)); }
+
+/* Paso 2: la venta entera cubre el área de contenido (respeta la barra lateral) */
+.sale-view--narrow .sale-view__cart--checkout {
+  display: block;
+  position: fixed;
+  inset: 0 0 0 var(--app-sidebar-offset, 0px);
+  z-index: 40;
+  max-height: none;
+  padding: var(--spacing-md);
+  padding-bottom: calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-bg);
+  border: 0;
+  border-radius: 0;
+}
+
+.sale-view__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: var(--app-sidebar-offset, 0px);
+  z-index: 30;
+  padding: var(--spacing-sm) var(--spacing-md);
+  padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
+  background: var(--color-surface);
+  border-top: 2px solid var(--color-border-strong);
+  box-shadow: var(--shadow-lg);
+}
+.sale-view__bar-info { display: flex; flex-direction: column; flex: 0 0 auto; margin: 0; }
+.sale-view__bar-count { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.sale-view__bar-total {
+  font-family: var(--font-display);
+  font-size: var(--font-size-xl);
+  line-height: 1.1;
+  white-space: nowrap;
+  color: var(--color-text);
+}
+/* El botón de la barra: 56 px, el más grande a mano */
+.sale-view .sale-view__bar-button { min-height: 3.5rem; font-size: var(--font-size-md); font-weight: 800; flex: 1 1 auto; min-width: 0; padding-inline: var(--spacing-sm); }
 </style>

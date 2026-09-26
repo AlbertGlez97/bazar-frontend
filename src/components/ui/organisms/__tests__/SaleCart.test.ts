@@ -194,3 +194,46 @@ describe('SaleCart — Vaciar (confirmación segura)', () => {
     expect(modalButton(wrapper, 'Sí, vaciar').classes()).toContain('app-btn--lg')
   })
 })
+
+// `prominent` = Paso 2 del cobro en celular: solo cambia la presentación (CSS);
+// el contenido, los eventos y la accesibilidad son exactamente los mismos.
+describe('SaleCart — modo prominente (Paso 2 del cobro)', () => {
+  it('sin la prop no lleva la clase de pantalla de cobro', () => {
+    expect(mountCart().get('.sale-cart').classes()).not.toContain('sale-cart--checkout')
+    expect(mountCart({ prominent: false }).get('.sale-cart').classes()).not.toContain('sale-cart--checkout')
+  })
+
+  it('con la prop lleva la clase que agranda el total y el efectivo', () => {
+    expect(mountCart({ prominent: true }).get('.sale-cart').classes()).toContain('sale-cart--checkout')
+  })
+
+  it('muestra lo mismo: líneas, total, efectivo y Cobrar', () => {
+    const wrapper = mountCart({ prominent: true })
+    expect(wrapper.findAll('.cart-line')).toHaveLength(2)
+    expect(wrapper.get('.cart-summary__total').text()).toBe('$150.00')
+    expect(wrapper.find('.cash-input input').exists()).toBe(true)
+    expect(chargeBtn(wrapper).text()).toBe('Cobrar')
+  })
+
+  it('conserva el nombre accesible y el aviso de por qué no se puede cobrar', () => {
+    const wrapper = mountCart({ prominent: true })
+    expect(wrapper.get('.sale-cart').attributes('aria-label')).toBe('Tu venta')
+    expect(hint(wrapper).exists()).toBe(true)
+  })
+
+  it('Cobrar sigue sin emitir si no se puede cobrar, y emite una vez si se puede', async () => {
+    const blocked = mountCart({ prominent: true, canCharge: false })
+    await chargeBtn(blocked).trigger('click')
+    expect(blocked.emitted('charge')).toBeUndefined()
+
+    const ready = mountCart({ prominent: true, canCharge: true })
+    await chargeBtn(ready).trigger('click')
+    expect(ready.emitted('charge')).toHaveLength(1)
+  })
+
+  it('el efectivo sigue emitiendo el texto tal cual, sin adivinar', async () => {
+    const wrapper = mountCart({ prominent: true })
+    await wrapper.get('.cash-input input').setValue('100.5')
+    expect(wrapper.emitted('update:cashText')?.at(-1)).toEqual(['100.5'])
+  })
+})

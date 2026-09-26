@@ -23,7 +23,21 @@ Branch: `feat/mode-nav-and-mobile-sale-flow` (stacked on `fix/bound-account-skip
 - **Productos** is hidden from the Venta menu but its route is unchanged (it does not require Gestión): the catalog view already has a Venta rendering and nobody asked to block the URL. Only Inicio was asked to be Gestión-only.
 - The role rules and the security fix (the member's role comes from the server binding) are untouched.
 
+### Part 3a — the sale screen in two full-screen steps (narrow screens)
+
+- **Breakpoint: the existing "small screen" one, unchanged.** `SMALL_SCREEN_QUERY` = `(max-width: 899.98px)` (`SMALL_SCREEN_MAX_WIDTH = 900`) from `useDeviceCapabilities`. It makes sense here: phones in portrait (≤ 430 px) and narrow tablets in portrait (~768 px, minus the 64 px collapsed sidebar) do not fit a catalog and a 21-26 rem cart side by side; from 900 px they do, which is what the wide layout already assumed. No second value was introduced: one definition of "narrow" for the whole app. The old layout used a raw CSS media query at 899 px; that is gone. The layout, the bar and the steps are now driven by one JS signal (`isSmallScreen`) and expressed as classes on the root (`sale-view--narrow`, `--checkout`, `--has-bar`).
+- **Wide screens are untouched**: catalog + sticky cart side by side, no bar, no back control, no step. A stray `?paso=cobro` does nothing there.
+- **Step 1**: catalog + search + scan (unchanged component). The cart collapses into a fixed bottom bar with the piece count and the exact total (`minorToDisplay`) and a **"Cobrar →"** button. **Empty cart → the bar is hidden** (rather than an "Agrega productos para vender" strip): a disabled button is a dead end and the space goes to the catalog. When the bar is shown the page reserves `6.5rem + safe-area-inset-bottom` at the bottom so it never covers the last catalog row.
+- **Step 2**: the whole "Tu venta" (lines, total, cash, change, the real Cobrar) fills the content area (fixed overlay that respects the sidebar strip), with **"← Seguir agregando"** on top. `SaleCart` gets a `prominent` prop (presentation only): total 3.75 rem, change 3 rem, cash field 80 px tall with 40 px text, cash chips 56 px, Cobrar 72 px and sticky at the bottom; the lines go below. Total and cash come first.
+- **State**: nothing is copied. The cart, the cash text and the catalog filters stay in their stores; going back never resets anything. The catalog stays mounted under Step 2 (so search, category and scroll survive) but is `inert` + `aria-hidden` while the overlay is open.
+- **Back button (hardware/browser) → Step 1**: Step 2 lives in the URL as `?paso=cobro`. "Cobrar →" does `router.push({ query })`, so the phone's Back pops it and the screen returns to Step 1 instead of leaving the sale. "Seguir agregando" calls `router.back()` when this Step 2 was opened by our own push, and `router.replace` (drops the query) when the person arrived with `?paso=cobro` already in the URL (reload, link): there is no earlier entry to go back to.
+- **Never an empty checkout**: Step 2 is shown only when the cart is not empty. If the last line is removed, "Vaciar" is used, or a new sale starts, a watcher drops `paso` from the URL (`replace`). A reload on `?paso=cobro` with an empty cart lands on Step 1 and cleans the URL.
+- **Result flow**: unchanged. The result screen takes the whole screen; "Volver" (error results) returns to the same Step 2 with the cart intact; "Nueva venta" empties the cart and returns to Step 1.
+- **Rotation / resize**: portrait → landscape while in Step 2 shows the side-by-side layout with everything intact; back to portrait returns to Step 2 if there is still a sale (the query is still in the URL), otherwise to Step 1.
+
 ### Existing tests changed (forced by the new rules)
+
+- `SaleView.test.ts`: the block "barra del carrito en celular" tested the old bottom **sheet** (`sale-view__cart--open`, `open-cart`/`close-cart`, a bar that was always in the DOM and disabled when empty). That design is replaced by the two steps, so the block was replaced by "flujo de dos pasos en pantalla angosta" (wide unchanged, Step 1, Step 2, charging from Step 2, rotation, a11y). `mountSale` gained an optional path so a test can open `?paso=cobro`. Every other SaleView test is untouched and passes.
 
 - `AppLayout.nav.test.ts`: "Modo Venta: Vender va primero" listed Vender, Inicio, Productos; now the Venta menu is only Vender.
 - `router.test.ts` (4 cases): a redirect "to the app home" from `/app/reportes`, `/app/ajustes/equipo` and `/app/ajustes/dispositivos` in Modo Venta now lands on Vender (the home of that mode). In Modo Gestión it is still Inicio.
@@ -32,10 +46,12 @@ Branch: `feat/mode-nav-and-mobile-sale-flow` (stacked on `fix/bound-account-skip
 ## Tasks
 
 - [x] **P2** Navigation by mode, Inicio only in Gestión, landing per mode.
-- [ ] **P3a** Two full-screen steps on narrow screens.
+- [x] **P3a** Two full-screen steps on narrow screens.
 - [ ] **P3b** Grid/list toggle for the catalog.
 - [ ] **P4** "Cambiar precio" in the cart summary.
 
 ## Evidence
 
 - **P2:** RED first (`router.mode-landing.test.ts` failed on the missing `landing` module; 3 nav cases failed; 3 layout mode-switch cases failed). Then GREEN: full suite 117 files / 2167 tests, `npm run lint` clean, `npm run build` ok.
+- **P3a:** RED first (22 of the new SaleView cases failed). Then GREEN: full suite 117 files / 2197 tests, lint clean, build ok (vue-tsc caught one typing slip in a test, fixed). Added: 26 SaleView cases for the two steps, 6 `SaleCart` cases for `prominent`, 2 contract tests for the Step 2 sizes in `touch-targets.test.ts`.
+- **Manual phone check still needed (jsdom does not lay out):** the bar never covers the last catalog row; the fixed overlay respects the 64 px sidebar strip and the safe area; the Step 2 total/cash/Cobrar sizes look right on a real phone; hardware Back returns to Step 1; rotating keeps the sale.

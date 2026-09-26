@@ -19,6 +19,7 @@ import * as salesQueue from '@/services/sales-queue'
 import SalesService from '@/services/sales.service'
 import ProductsService from '@/services/products.service'
 import { makeProduct } from '@/test/factories'
+import { mockDevice, type MockDevice } from '@/test/mockDevice'
 import type { CreateSalePayload, CreateSaleResult, Sale } from '@/types/sale.types'
 
 vi.mock('@/services/sales.service', () => ({ default: { createSale: vi.fn() } }))
@@ -70,7 +71,7 @@ function setOnline(online: boolean) {
   vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(online)
 }
 
-async function mountSale() {
+async function mountSale(path = '/app/venta') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -78,7 +79,7 @@ async function mountSale() {
       { path: '/login', name: 'Login', component: { template: '<div />' } },
     ],
   })
-  router.push('/app/venta')
+  router.push(path)
   await router.isReady()
   const wrapper = mount(SaleView, { global: { plugins: [router], stubs: { teleport: true } } })
   await flushPromises()
@@ -802,56 +803,374 @@ describe('SaleView — catálogo guardado y errores de carga', () => {
   })
 })
 
-describe('SaleView — barra del carrito en celular', () => {
-  it('la barra muestra piezas y total en vivo y abre la hoja del carrito', async () => {
-    const { wrapper } = await mountSale()
-    const bar = wrapper.get('.sale-view__bar')
-    expect(bar.text()).toContain('Toca un producto')
-    expect(bar.get('button').attributes('disabled')).toBeDefined()
-
-    await tap(wrapper, 'Pan dulce')
-    await tap(wrapper, 'Pan dulce')
-    expect(bar.text()).toContain('2 piezas')
-    expect(bar.text()).toContain('$17.00')
-    expect(bar.get('button').attributes('disabled')).toBeUndefined()
-    expect(wrapper.get('.sale-view__cart').classes()).not.toContain('sale-view__cart--open')
-
-    await bar.get('button').trigger('click')
-    expect(wrapper.get('.sale-view__cart').classes()).toContain('sale-view__cart--open')
+// ─────────────────────────────────────────────────────────────────────────
+// Flujo de DOS PASOS en pantalla angosta (celular). El layout lo decide JS
+// (`useDeviceCapabilities().isSmallScreen`), no una media query suelta, así que
+// aquí se simula el dispositivo con `mockDevice`. Sin ese mock (jsdom no trae
+// `matchMedia`) la pantalla es ANCHA: catálogo y carrito lado a lado.
+// Paso 1: catálogo + búsqueda + escanear, con el carrito como barra fija abajo.
+// Paso 2: pantalla completa con la venta entera; se abre con `?paso=cobro` para
+// que el botón Atrás del navegador/celular regrese al Paso 1.
+// ─────────────────────────────────────────────────────────────────────────
+describe('SaleView — flujo de dos pasos en pantalla angosta', () => {
+  let device: MockDevice | null = null
+  afterEach(() => {
+    device?.restore()
+    device = null
   })
 
-  it('"Seguir agregando" cierra la hoja sin perder nada', async () => {
-    const { wrapper } = await mountSale()
-    await tap(wrapper, 'Pan dulce')
-    await wrapper.get('button[data-action="open-cart"]').trigger('click')
+  async function mountNarrow(path = '/app/venta') {
+    device = mockDevice({ touch: true, small: true })
+    return mountSale(path)
+  }
+  const root = (w: Wrapper) => w.get('.sale-view')
+  const bar = (w: Wrapper) => w.find('.sale-view__bar')
+  const openCheckout = (w: Wrapper) => w.get('button[data-action="open-checkout"]')
+  const closeCheckout = (w: Wrapper) => w.get('button[data-action="close-checkout"]')
+  const isCheckout = (w: Wrapper) => root(w).classes().includes('sale-view--checkout')
 
-    await wrapper.get('button[data-action="close-cart"]').trigger('click')
+  describe('pantalla ancha (sin cambios)', () => {
+    it('catálogo y carrito lado a lado: sin barra fija, sin botón de volver, sin marca de celular', async () => {
+      const { wrapper } = await mountSale()
+      expect(root(wrapper).classes()).not.toContain('sale-view--narrow')
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(bar(wrapper).exists()).toBe(false)
+      expect(wrapper.find('button[data-action="close-checkout"]').exists()).toBe(false)
+      expect(wrapper.find('.sale-picker').exists()).toBe(true)
+      expect(wrapper.find('.sale-cart').exists()).toBe(true)
+      expect(wrapper.get('.sale-view__cart').classes()).not.toContain('sale-view__cart--checkout')
+    })
 
-    expect(wrapper.get('.sale-view__cart').classes()).not.toContain('sale-view__cart--open')
-    expect(lines(wrapper)).toHaveLength(1)
+    it('con productos en el carrito sigue sin barra ni Paso 2, y el carrito no es "prominente"', async () => {
+      const { wrapper } = await mountSale()
+      await tap(wrapper, 'Pan dulce')
+      expect(bar(wrapper).exists()).toBe(false)
+      expect(wrapper.get('.sale-cart').classes()).not.toContain('sale-cart--checkout')
+    })
+
+    it('un ?paso=cobro en la URL no cambia nada en pantalla ancha', async () => {
+      const { wrapper } = await mountSale('/app/venta?paso=cobro')
+      await tap(wrapper, 'Pan dulce')
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(wrapper.find('.sale-picker').exists()).toBe(true)
+      expect(wrapper.get('.sale-cart').classes()).not.toContain('sale-cart--checkout')
+    })
   })
 
-  it('un producto agregado se cuenta como "1 pieza" en singular', async () => {
-    const { wrapper } = await mountSale()
-    await tap(wrapper, 'Pan dulce')
-    expect(wrapper.get('.sale-view__bar').text()).toContain('1 pieza')
+  describe('Paso 1 (catálogo + barra)', () => {
+    it('con el carrito vacío no hay barra: el catálogo ocupa toda la pantalla', async () => {
+      const { wrapper } = await mountNarrow()
+      expect(root(wrapper).classes()).toContain('sale-view--narrow')
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(bar(wrapper).exists()).toBe(false)
+      expect(wrapper.find('.sale-picker').exists()).toBe(true)
+      expect(wrapper.find('button[data-action="scan"]').exists()).toBe(true)
+      expect(wrapper.find('input[type="search"]').exists()).toBe(true)
+    })
+
+    it('al agregar un producto aparece la barra con piezas y total en vivo (dinero exacto)', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      expect(bar(wrapper).exists()).toBe(true)
+      expect(bar(wrapper).attributes('role')).toBe('region')
+      expect(bar(wrapper).attributes('aria-label')).toBe('Resumen de tu venta')
+      expect(bar(wrapper).text()).toContain('1 pieza')
+      expect(bar(wrapper).text()).toContain('$8.50')
+
+      await tap(wrapper, 'Pan dulce')
+      await tap(wrapper, 'Café de olla')
+      expect(bar(wrapper).text()).toContain('3 piezas')
+      expect(bar(wrapper).text()).toContain('$36.99') // 850 × 2 + 1999 = 3699 centavos
+    })
+
+    it('el botón de la barra dice "Cobrar →" y está habilitado', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      expect(openCheckout(wrapper).text()).toBe('Cobrar →')
+      expect(openCheckout(wrapper).attributes('disabled')).toBeUndefined()
+    })
+
+    it('la barra desaparece si se vacía el carrito', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      useCartStore().clear()
+      await flushPromises()
+      expect(bar(wrapper).exists()).toBe(false)
+    })
+
+    it('el carrito completo NO se ofrece en el Paso 1: el contenedor no está en modo pantalla completa', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      expect(wrapper.get('.sale-view__cart').classes()).not.toContain('sale-view__cart--checkout')
+      expect(wrapper.find('button[data-action="close-checkout"]').exists()).toBe(false)
+    })
   })
 
-  it('la barra del carrito deja de estar disponible mientras se cobra', async () => {
-    const { wrapper } = await mountSale()
-    createSale.mockImplementation(() => new Promise(() => undefined))
-    await sellCafe(wrapper)
-    await wrapper.get('button[data-action="open-cart"]').trigger('click')
-    await chargeBtn(wrapper).trigger('click')
-    expect(wrapper.get('button[data-action="open-cart"]').attributes('disabled')).toBeDefined()
+  describe('Paso 2 (cobrar en pantalla completa)', () => {
+    it('"Cobrar →" abre el Paso 2: pantalla completa, sin barra, con volver y el carrito prominente', async () => {
+      const { wrapper, router } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(router.currentRoute.value.query.paso).toBe('cobro')
+      expect(isCheckout(wrapper)).toBe(true)
+      expect(bar(wrapper).exists()).toBe(false)
+      expect(wrapper.get('.sale-view__cart').classes()).toContain('sale-view__cart--checkout')
+      expect(wrapper.get('.sale-cart').classes()).toContain('sale-cart--checkout')
+      expect(closeCheckout(wrapper).text()).toContain('Seguir agregando')
+    })
+
+    it('muestra la venta completa: líneas, total, campo de efectivo y el Cobrar real', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(lines(wrapper)).toHaveLength(1)
+      expect(wrapper.get('.cart-summary__total').text()).toBe('$17.00')
+      expect(wrapper.find('.cash-input input').exists()).toBe(true)
+      expect(chargeBtn(wrapper).text()).toBe('Cobrar')
+    })
+
+    it('el catálogo queda montado pero inaccesible debajo (inert + aria-hidden), sin perder su estado', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      // `inert` va en el catálogo, NO en el contenedor: el carrito (Paso 2) tiene que seguir activo.
+      const picker = wrapper.get('.sale-picker')
+      expect(picker.attributes('inert')).toBeDefined()
+      expect(picker.attributes('aria-hidden')).toBe('true')
+      expect(wrapper.get('.sale-view__cart').attributes('inert')).toBeUndefined()
+      expect(wrapper.get('.sale-view__layout').attributes('inert')).toBeUndefined()
+    })
+
+    it('en el Paso 1 y en pantalla ancha el catálogo NO está inerte', async () => {
+      const narrow = await mountNarrow()
+      await tap(narrow.wrapper, 'Pan dulce')
+      expect(narrow.wrapper.get('.sale-picker').attributes('inert')).toBeUndefined()
+      expect(narrow.wrapper.get('.sale-picker').attributes('aria-hidden')).toBeUndefined()
+      narrow.wrapper.unmount()
+      device?.restore(); device = null
+
+      const wide = await mountSale()
+      await tap(wide.wrapper, 'Pan dulce')
+      expect(wide.wrapper.get('.sale-picker').attributes('inert')).toBeUndefined()
+    })
+
+    it('"Seguir agregando" vuelve al Paso 1 SIN perder lo agregado ni el efectivo escrito', async () => {
+      const { wrapper, router } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await tap(wrapper, 'Café de olla')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      await payWith(wrapper, '50')
+
+      await closeCheckout(wrapper).trigger('click')
+      await flushPromises()
+
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(router.currentRoute.value.query.paso).toBeUndefined()
+      expect(lines(wrapper)).toHaveLength(2)
+      expect(bar(wrapper).text()).toContain('2 piezas')
+      expect(bar(wrapper).text()).toContain('$28.49')
+      expect(useCartStore().cashReceivedMinor).toBe(5000)
+    })
+
+    it('el botón Atrás del navegador/celular regresa del Paso 2 al Paso 1 (no sale de la venta)', async () => {
+      const { wrapper, router } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      expect(isCheckout(wrapper)).toBe(true)
+
+      router.back()
+      await flushPromises()
+
+      expect(router.currentRoute.value.path).toBe('/app/venta')
+      expect(router.currentRoute.value.query.paso).toBeUndefined()
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(lines(wrapper)).toHaveLength(1)
+      expect(bar(wrapper).exists()).toBe(true)
+    })
+
+    it('"Seguir agregando" usa el historial (una sola entrada extra): abrir, cerrar y abrir otra vez no acumula pantallas', async () => {
+      const { wrapper, router } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click'); await flushPromises()
+      await closeCheckout(wrapper).trigger('click'); await flushPromises()
+      await openCheckout(wrapper).trigger('click'); await flushPromises()
+      expect(isCheckout(wrapper)).toBe(true)
+
+      router.back(); await flushPromises()
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(router.currentRoute.value.path).toBe('/app/venta')
+    })
+
+    it('quitar la última línea en el Paso 2 regresa al Paso 1 (no se queda en un cobro vacío)', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+
+      await wrapper.get('button[data-action="remove"]').trigger('click')
+      await flushPromises()
+
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(bar(wrapper).exists()).toBe(false)
+    })
+
+    it('recargar la página en ?paso=cobro con el carrito vacío cae en el Paso 1 y limpia la URL', async () => {
+      const { wrapper, router } = await mountNarrow('/app/venta?paso=cobro')
+      await flushPromises()
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(router.currentRoute.value.query.paso).toBeUndefined()
+    })
+
+    it('"Seguir agregando" tras una recarga (sin entrada previa) reemplaza la URL en vez de salir de la venta', async () => {
+      const { wrapper, router } = await mountNarrow('/app/venta?paso=cobro')
+      await flushPromises()
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      await closeCheckout(wrapper).trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.path).toBe('/app/venta')
+      expect(isCheckout(wrapper)).toBe(false)
+    })
   })
 
-  it('"Nueva venta" cierra la hoja del carrito', async () => {
-    const { wrapper } = await mountSale()
-    await sellCafe(wrapper)
-    await wrapper.get('button[data-action="open-cart"]').trigger('click')
-    await submit(wrapper)
-    await wrapper.get('button.sale-result__primary').trigger('click')
-    expect(wrapper.get('.sale-view__cart').classes()).not.toContain('sale-view__cart--open')
+  describe('cobrar desde el Paso 2', () => {
+    it('Cobrar manda la venta con dinero exacto y la pantalla de resultado toma toda la pantalla', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      await payWith(wrapper, '20')
+      expect(wrapper.get('.cart-summary__change').text()).toBe('$3.00')
+
+      await submit(wrapper)
+
+      expect(createSale).toHaveBeenCalledTimes(1)
+      const payload = createSale.mock.calls[0][0]
+      expect(payload.cashReceivedMinor).toBe(2000)
+      expect(payload.items).toHaveLength(1)
+      expect(wrapper.find('.sale-cart').exists()).toBe(false)
+    })
+
+    it('"Nueva venta" regresa al Paso 1 con el carrito vacío, sin barra y con la URL limpia', async () => {
+      const { wrapper, router } = await mountNarrow()
+      await tap(wrapper, 'Café de olla')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      await payWith(wrapper, '100')
+      await submit(wrapper)
+
+      await wrapper.get('button.sale-result__primary').trigger('click')
+      await flushPromises()
+
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(router.currentRoute.value.query.paso).toBeUndefined()
+      expect(bar(wrapper).exists()).toBe(false)
+      expect(useCartStore().isEmpty).toBe(true)
+      expect(wrapper.find('.sale-picker').exists()).toBe(true)
+    })
+
+    it('mientras se cobra, el botón muestra "Cobrando…" y no se puede volver a tocar', async () => {
+      const { wrapper } = await mountNarrow()
+      createSale.mockImplementation(() => new Promise(() => undefined))
+      await tap(wrapper, 'Café de olla')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      await payWith(wrapper, '100')
+      await chargeBtn(wrapper).trigger('click')
+      expect(chargeBtn(wrapper).text()).toContain('Cobrando')
+      expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
+    })
+
+    it('una venta guardada sin señal también deja al Paso 1 listo para la siguiente', async () => {
+      const { wrapper } = await mountNarrow()
+      createSale.mockRejectedValue({ isAxiosError: true, code: 'ERR_NETWORK', message: 'Network Error' })
+      setOnline(false)
+      await tap(wrapper, 'Café de olla')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      await payWith(wrapper, '100')
+      await submit(wrapper)
+      await wrapper.get('button.sale-result__primary').trigger('click')
+      await flushPromises()
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(useCartStore().isEmpty).toBe(true)
+    })
+  })
+
+  describe('girar o cambiar el tamaño de la pantalla', () => {
+    it('del Paso 2 en vertical a horizontal ancho: se ve todo lado a lado y no se pierde nada', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      expect(isCheckout(wrapper)).toBe(true)
+
+      device!.set({ small: false })
+      await flushPromises()
+
+      expect(root(wrapper).classes()).not.toContain('sale-view--narrow')
+      expect(isCheckout(wrapper)).toBe(false)
+      expect(wrapper.find('button[data-action="close-checkout"]').exists()).toBe(false)
+      expect(wrapper.find('.sale-picker').exists()).toBe(true)
+      expect(lines(wrapper)).toHaveLength(1)
+      expect(wrapper.get('.sale-cart').classes()).not.toContain('sale-cart--checkout')
+    })
+
+    it('al volver a vertical regresa a un paso sensato: el Paso 2 si hay venta, con todo intacto', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+
+      device!.set({ small: false }); await flushPromises()
+      device!.set({ small: true }); await flushPromises()
+
+      expect(isCheckout(wrapper)).toBe(true)
+      expect(lines(wrapper)).toHaveLength(1)
+      expect(wrapper.get('.cart-summary__total').text()).toBe('$8.50')
+    })
+
+    it('en el Paso 1: al pasar a ancho desaparece la barra y al volver a angosto reaparece', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      expect(bar(wrapper).exists()).toBe(true)
+
+      device!.set({ small: false }); await flushPromises()
+      expect(bar(wrapper).exists()).toBe(false)
+
+      device!.set({ small: true }); await flushPromises()
+      expect(bar(wrapper).exists()).toBe(true)
+      expect(bar(wrapper).text()).toContain('$8.50')
+    })
+
+    it('girar con el carrito vacío nunca deja en el Paso 2', async () => {
+      const { wrapper } = await mountNarrow('/app/venta?paso=cobro')
+      device!.set({ small: false }); await flushPromises()
+      device!.set({ small: true }); await flushPromises()
+      expect(isCheckout(wrapper)).toBe(false)
+    })
+  })
+
+  describe('accesibilidad', () => {
+    it('la barra es una región con nombre y los dos botones de paso tienen texto visible', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      expect(bar(wrapper).attributes('aria-label')).toBeTruthy()
+      expect(openCheckout(wrapper).text().length).toBeGreaterThan(0)
+      await openCheckout(wrapper).trigger('click')
+      await flushPromises()
+      expect(closeCheckout(wrapper).text().length).toBeGreaterThan(0)
+      expect(wrapper.get('section.sale-cart').attributes('aria-label')).toBe('Tu venta')
+    })
   })
 })

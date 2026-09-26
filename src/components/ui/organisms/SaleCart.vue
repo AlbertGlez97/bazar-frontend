@@ -7,6 +7,7 @@
        una línea de texto dice qué falta. -->
   <section
     class="sale-cart"
+    :class="{ 'sale-cart--checkout': prominent }"
     aria-label="Tu venta"
   >
     <header class="sale-cart__header">
@@ -155,6 +156,12 @@ const props = defineProps<{
   cashText: string
   /** Cobro en curso: todo se bloquea y el botón dice "Cobrando…" */
   loading: boolean
+  /**
+   * Paso 2 del cobro en celular: el total y el campo de efectivo pasan a ser lo
+   * más grande y prominente de la pantalla, arriba; la lista de productos baja y
+   * "Cobrar" queda pegado abajo. Solo cambia la presentación (CSS), no el contenido.
+   */
+  prominent?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -260,6 +267,37 @@ function confirmClear() {
 @keyframes sale-cart-spin { to { transform: rotate(360deg); } }
 
 .sale-cart__hint { margin: 0; text-align: center; font-size: var(--font-size-md); font-weight: 600; color: var(--color-text-muted); }
+
+/* ── Paso 2 del cobro en celular (`prominent`) ───────────────────────────
+   Lo importante va arriba y en grande: total, efectivo y cambio. La lista de
+   productos baja y "Cobrar" se queda pegado al borde inferior. Solo se reordena
+   y se agranda; el contenido y los eventos son los mismos.
+   `display: contents` en el bloque de pago hace que resumen, efectivo y botón
+   participen del mismo flex que el encabezado y la lista, y así `order` los ordena. */
+.sale-cart--checkout { min-height: 100%; gap: var(--spacing-lg); }
+.sale-cart--checkout .sale-cart__payment { display: contents; }
+.sale-cart--checkout .sale-cart__header { order: 0; }
+.sale-cart--checkout :deep(.cart-summary) { order: 1; padding: var(--spacing-lg); }
+.sale-cart--checkout :deep(.cart-summary__total) { font-size: 3.75rem; }
+.sale-cart--checkout :deep(.cart-summary__status) { font-size: var(--font-size-xl); }
+.sale-cart--checkout :deep(.cart-summary__change) { font-size: 3rem; }
+.sale-cart--checkout :deep(.cash-input) { order: 2; }
+.sale-cart--checkout :deep(.cash-input__control) { min-height: 5rem; font-size: 2.5rem; }
+.sale-cart--checkout :deep(.cash-input__prefix) { font-size: 2rem; }
+.sale-cart--checkout :deep(.cash-input__chip) { min-height: 3.5rem; font-size: var(--font-size-lg); }
+.sale-cart--checkout .sale-cart__lines,
+.sale-cart--checkout .sale-cart__empty { order: 3; }
+.sale-cart--checkout .sale-cart__hint { order: 5; }
+/* "Cobrar": el botón más grande de la pantalla, pegado abajo aunque la lista sea larga */
+.sale-cart--checkout .sale-cart__charge {
+  order: 4;
+  position: sticky;
+  bottom: var(--spacing-sm);
+  z-index: 1;
+  min-height: 4.5rem;
+  font-size: 1.5rem;
+  box-shadow: var(--shadow-lg);
+}
 
 .sale-cart__confirm-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); width: 100%; }
 .sale-cart__confirm-actions > * { flex: 1 1 9rem; }
