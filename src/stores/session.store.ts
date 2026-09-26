@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { Member } from '@/types/member.types'
+import { isMember } from '@/utils/member'
 
 // El dispositivo es físico y fijo: una vez identificado en este navegador/
 // tablet no cambia, así que persiste en localStorage (sobrevive recargas y
@@ -37,12 +38,6 @@ function normalizeStoredDevice(value: unknown): StoredDevice | null {
   if (v.deviceToken === undefined) return { deviceId: v.deviceId, name: v.name }
   if (typeof v.deviceToken !== 'string' || v.deviceToken === '') return null
   return { deviceId: v.deviceId, name: v.name, deviceToken: v.deviceToken }
-}
-
-function isMember(value: unknown): value is Member {
-  const v = value as Partial<Member> | null
-  return !!v && typeof v.id === 'string' && typeof v.name === 'string'
-    && (v.role === 'socio' || v.role === 'colaborador')
 }
 
 function readDevice(): StoredDevice | null {

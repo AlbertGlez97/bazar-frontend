@@ -134,12 +134,25 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
     scrollBehavior: () => ({ top: 0 }),
   })
 
-  router.beforeEach((to) => {
+  router.beforeEach(async (to) => {
     const auth = useAuthStore()
     if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: 'Login' }
     if (to.meta.redirectIfAuth && auth.isAuthenticated) return { name: 'AppHome' }
 
+    // Seguridad: el rol que leen los guards y los menús es el de la persona de
+    // la sesión, y para una cuenta ligada a un miembro esa persona la dicta el
+    // servidor (GET /auth/me), no lo que haya en sessionStorage. Se resuelve
+    // ANTES de cualquier decisión por contexto o rol; una sola vez por carga.
+    if (to.meta.requiresAuth) {
+      await auth.ensureBinding()
+      // Un 401 al consultar cierra la sesión: se vuelve a comprobar.
+      if (!auth.isAuthenticated) return { name: 'Login' }
+    }
+
     const session = useSessionStore()
+    // Cuenta ligada a un miembro que no puede entrar: la pantalla de selección
+    // le explica por qué; ninguna ruta operativa se le abre.
+    if (to.meta.requiresContext && auth.bindingStatus === 'inactive') return { name: 'SelectContext' }
     if (to.meta.requiresContext && !session.isContextReady) return { name: 'SelectContext' }
     if (to.meta.redirectIfContextReady && session.isContextReady) return { name: 'AppHome' }
 

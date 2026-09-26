@@ -5,12 +5,17 @@ import { createAppRouter } from '../index'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
+import AuthService from '@/services/auth.service'
+// GET /auth/me: el guard lo consulta al entrar a una ruta protegida. Por defecto el
+// login compartido (sin miembro propio), que deja el comportamiento de estos tests intacto.
+vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn(), me: vi.fn() } }))
 vi.stubGlobal('scrollTo', vi.fn())
 // A new router (with its own in-memory history) per test: the app router is a
 // module singleton whose current route would leak from one test to the next.
 let router: ReturnType<typeof createAppRouter>
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear(); setActivePinia(createPinia())
+  vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
   router = createAppRouter(createMemoryHistory())
 })
 // Helper: deja la sesión de auth "lista" (token válido) sin tocar el contexto

@@ -8,14 +8,14 @@
     role="list"
   >
     <p
-      v-if="!members.length && !loading"
+      v-if="!visibleMembers.length && !loading"
       class="member-selector__empty"
     >
       No hay personas activas para elegir. Habla con un socio.
     </p>
 
     <button
-      v-for="m in members"
+      v-for="m in visibleMembers"
       :key="m.id"
       type="button"
       class="member-selector__card"
@@ -36,17 +36,30 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import AppAvatar from '@/components/ui/atoms/AppAvatar.vue'
 import AppBadge from '@/components/ui/atoms/AppBadge.vue'
 import type { Member } from '@/types/member.types'
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   members: Member[]
   /** Controlado por el padre mientras se confirma la selección */
   loading?: boolean
+  /**
+   * Defensa en profundidad: una cuenta ligada a un miembro NUNCA debería ver
+   * este selector (la vista lo salta), pero si algún día se renderizara, solo
+   * puede ofrecer a esa persona. Si el id no está en la lista no ofrece a nadie.
+   * `null`/ausente = login compartido: se ofrece a todo el equipo.
+   */
+  lockedMemberId?: string | null
 }>(), {
   loading: false,
+  lockedMemberId: null,
 })
+
+const visibleMembers = computed(() =>
+  props.lockedMemberId ? props.members.filter((m) => m.id === props.lockedMemberId) : props.members,
+)
 
 const emit = defineEmits<{
   select: [member: Member]

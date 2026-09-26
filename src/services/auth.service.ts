@@ -1,7 +1,18 @@
 import api from './api'
-import type { AuthResponse, ChangePasswordPayload, LoginPayload } from '@/types/auth.types'
+import type { AccountBinding, AuthResponse, ChangePasswordPayload, LoginPayload } from '@/types/auth.types'
 
 const AuthService = {
+  /**
+   * Quién es la cuenta de la sesión y a qué miembro está ligada (solo JWT, sin
+   * x-member-id ni x-device-id). Los errores se propagan tal cual para que quien
+   * llama distinga 401 (sesión vencida), sin respuesta / 5xx (sin conexión) y
+   * los demás.
+   */
+  async me(): Promise<AccountBinding> {
+    const { data } = await api.get<AccountBinding>('/auth/me')
+    return data
+  },
+
   async login(payload: LoginPayload): Promise<AuthResponse> {
     const { data } = await api.post<AuthResponse>('/auth/login', payload)
     return data

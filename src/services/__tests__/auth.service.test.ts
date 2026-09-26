@@ -60,3 +60,31 @@ describe('AuthService.changePassword', () => {
     ).rejects.toMatchObject({ response: { status: 400 } })
   })
 })
+
+describe('AuthService.me', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('GETs /auth/me and returns who the account is and the member it is bound to', async () => {
+    const binding = {
+      username: 'carla@correo.com',
+      memberId: 'm-col',
+      member: { id: 'm-col', name: 'Carla', role: 'colaborador', active: true },
+    }
+    vi.mocked(api.get).mockResolvedValue({ data: binding })
+
+    expect(await AuthService.me()).toEqual(binding)
+    expect(api.get).toHaveBeenCalledExactlyOnceWith('/auth/me')
+  })
+
+  it('the shared business login comes back without a member', async () => {
+    const binding = { username: 'alberto', memberId: null, member: null }
+    vi.mocked(api.get).mockResolvedValue({ data: binding })
+
+    expect(await AuthService.me()).toEqual(binding)
+  })
+
+  it('propagates server errors (401, 5xx, network) so the caller can tell them apart', async () => {
+    vi.mocked(api.get).mockRejectedValue({ response: { status: 401 } })
+    await expect(AuthService.me()).rejects.toMatchObject({ response: { status: 401 } })
+  })
+})

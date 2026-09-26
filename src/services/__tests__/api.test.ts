@@ -174,6 +174,8 @@ describe('api — interceptores Axios', () => {
     localStorage.setItem('access_token', 'jwt-xxx')
     localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
     localStorage.setItem('auth_username', 'ana')
+    // La caché del vínculo cuenta-persona pertenece a la sesión que acaba de morir.
+    localStorage.setItem('account_binding', JSON.stringify({ username: 'ana', member: null }))
 
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
@@ -197,6 +199,7 @@ describe('api — interceptores Axios', () => {
     expect(localStorage.getItem('access_token')).toBeNull()
     expect(localStorage.getItem('token_expires_at')).toBeNull()
     expect(localStorage.getItem('auth_username')).toBeNull()
+    expect(localStorage.getItem('account_binding')).toBeNull()
     // La persona debe reconfirmarse al volver a entrar, pero el dispositivo
     // (físico, fijo) sobrevive a un token expirado.
     expect(session.memberId).toBeNull()

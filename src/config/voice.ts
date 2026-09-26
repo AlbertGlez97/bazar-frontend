@@ -22,6 +22,15 @@ export const VOICE = {
     /** Cualquier otra falla al verificar (red, servidor). */
     verifyFailed: 'No pudimos verificar el dispositivo. Intenta de nuevo en un momento.',
   },
+  /**
+   * Cuenta ligada a una persona que ya no puede entrar (miembro desactivado): se
+   * dice qué pasó y a quién acudir; no hay nada que elegir ni reintentar.
+   */
+  accountInactive: {
+    title: 'Tu acceso está desactivado',
+    body: 'Tu usuario existe, pero tu acceso al negocio fue desactivado. Habla con un socio para que lo reactive.',
+    signOut: 'Cerrar sesión',
+  },
   /** Pantalla de ajustes (engrane de la barra lateral). */
   settings: {
     title: 'Ajustes',

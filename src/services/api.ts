@@ -65,6 +65,8 @@ api.interceptors.response.use(
       localStorage.removeItem('access_token')
       localStorage.removeItem('token_expires_at')
       localStorage.removeItem('auth_username')
+      // La caché del vínculo cuenta-persona pertenece a la sesión que murió.
+      localStorage.removeItem('account_binding')
       // La persona seleccionada debe reconfirmarse al volver a iniciar
       // sesión; el dispositivo (físico, fijo) NO se limpia aquí.
       useSessionStore().clearMember()
