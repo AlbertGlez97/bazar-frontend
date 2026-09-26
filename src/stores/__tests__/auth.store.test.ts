@@ -137,7 +137,7 @@ describe('auth session (contrato real bazar-api)', () => {
 
   it('logout limpia la persona seleccionada pero conserva el dispositivo identificado', async () => {
     const session = useSessionStore()
-    session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
     session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
 
     vi.mocked(AuthService.login).mockResolvedValue(validResponse)

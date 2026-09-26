@@ -3,10 +3,11 @@ import type { DeviceIdentifyPayload, DeviceIdentifyResponse } from '@/types/devi
 
 const DevicesService = {
   /**
-   * Traduce identifier+name (asignados fuera de banda a un dispositivo ya
-   * autorizado) al deviceId interno. Responde 403 si no coinciden con
-   * ningún dispositivo del negocio — no hay forma de registrar uno nuevo
-   * desde el frontend ni desde la API (no existe POST /devices).
+   * Activa el dispositivo con su identificador de un solo uso + nombre exacto.
+   * Éxito: `{ deviceId, deviceToken }` (el token se ve solo aquí) o, para un
+   * dispositivo heredado, `{ deviceId }`. Errores que la vista distingue por
+   * estado HTTP: 403 = no coincide con ningún dispositivo del negocio;
+   * 409 = el identificador ya fue usado (o el dispositivo fue revocado).
    */
   async identify(payload: DeviceIdentifyPayload): Promise<DeviceIdentifyResponse> {
     const { data } = await api.post<DeviceIdentifyResponse>('/devices/identify', payload)

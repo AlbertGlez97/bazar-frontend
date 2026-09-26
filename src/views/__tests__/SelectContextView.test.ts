@@ -33,7 +33,7 @@ describe('SelectContextView', () => {
     expect(MembersService.list).not.toHaveBeenCalled()
   })
 
-  it('identifica el dispositivo, lo persiste y continúa automáticamente al selector', async () => {
+  it('dispositivo heredado: identifica, lo persiste SIN token ni identifier y continúa al selector', async () => {
     vi.mocked(DevicesService.identify).mockResolvedValue({ deviceId: 'd-1' })
     vi.mocked(MembersService.list).mockResolvedValue(members)
 
@@ -50,13 +50,56 @@ describe('SelectContextView', () => {
 
     const session = useSessionStore()
     expect(session.deviceId).toBe('d-1')
+    expect(session.deviceToken).toBeNull()
     expect(JSON.parse(localStorage.getItem('device_context') ?? 'null')).toEqual({
-      deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet',
+      deviceId: 'd-1', name: 'Shared tablet',
     })
 
     // Ya identificado el dispositivo, debe mostrar el selector de persona
     expect(wrapper.find('form').exists()).toBe(false)
     expect(wrapper.text()).toContain('Alberto')
+  })
+
+  it('activación nueva: guarda deviceId + deviceToken + nombre y NO el identificador de un solo uso', async () => {
+    vi.mocked(DevicesService.identify).mockResolvedValue({ deviceId: 'd-9', deviceToken: 'tok-secreto' })
+    vi.mocked(MembersService.list).mockResolvedValue(members)
+
+    const wrapper = mount(SelectContextView)
+    const inputs = wrapper.findAll('input')
+    await inputs[0].setValue('0190a5f0-codigo-unico')
+    await inputs[1].setValue('Tablet del mostrador')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    const session = useSessionStore()
+    expect(session.deviceId).toBe('d-9')
+    expect(session.deviceToken).toBe('tok-secreto')
+    expect(session.deviceName).toBe('Tablet del mostrador')
+    expect(JSON.parse(localStorage.getItem('device_context') ?? 'null')).toEqual({
+      deviceId: 'd-9', name: 'Tablet del mostrador', deviceToken: 'tok-secreto',
+    })
+    expect(localStorage.getItem('device_context')).not.toContain('0190a5f0-codigo-unico')
+
+    // El token nunca se pinta en pantalla.
+    expect(wrapper.text()).not.toContain('tok-secreto')
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Alberto')
+  })
+
+  it('un dispositivo heredado ya guardado con identifier se migra al abrir la vista (sin volver a identificarlo)', async () => {
+    localStorage.setItem('device_context', JSON.stringify({
+      deviceId: 'd-legacy', identifier: 'shared-tablet', name: 'Shared tablet',
+    }))
+    vi.mocked(MembersService.list).mockResolvedValue(members)
+
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(MembersService.list).toHaveBeenCalledOnce()
+    expect(JSON.parse(localStorage.getItem('device_context') ?? 'null')).toEqual({
+      deviceId: 'd-legacy', name: 'Shared tablet',
+    })
   })
 
   it('si el dispositivo no está autorizado (403), muestra un mensaje claro y no continúa', async () => {

@@ -24,7 +24,7 @@ function restoreAuthSession() {
 function restoreFullSession() {
   restoreAuthSession()
   const session = useSessionStore()
-  session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+  session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
   session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
 }
 describe('session routing', () => {
@@ -98,7 +98,7 @@ describe('session routing', () => {
   it('logout returns to login and prevents shell reentry', async () => {
     const auth = useAuthStore(); auth.token = 't'; auth.expiresAt = Date.now() + 60_000
     const session = useSessionStore()
-    session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
     session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
     await router.push('/app'); auth.logout(); await router.push('/login'); await router.push('/app')
     expect(router.currentRoute.value.name).toBe('Login')
@@ -110,7 +110,7 @@ describe('reports route /app/reportes', () => {
   function fullSession(role: 'socio' | 'colaborador', mode: 'gestion' | 'venta') {
     restoreAuthSession()
     const session = useSessionStore()
-    session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
     session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
     useUiModeStore().setMode(mode)
   }

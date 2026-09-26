@@ -54,7 +54,7 @@ describe('api — interceptores Axios', () => {
 
   it('agrega x-member-id y x-device-id si el session store ya los tiene', () => {
     const session = useSessionStore()
-    session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
     session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
 
     const config = { headers: {} as Record<string, string> } as InternalAxiosRequestConfig
@@ -67,7 +67,7 @@ describe('api — interceptores Axios', () => {
 
   it('respeta x-member-id/x-device-id ya presentes en la petición (la cola offline envía los de cada venta)', () => {
     const session = useSessionStore()
-    session.setDevice({ deviceId: 'd-actual', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setDevice({ deviceId: 'd-actual', name: 'Shared tablet' })
     session.setMember({ id: 'm-actual', name: 'Alberto', role: 'socio', active: true })
 
     const config = {
@@ -89,6 +89,77 @@ describe('api — interceptores Axios', () => {
     expect(result.headers['x-device-id']).toBeUndefined()
   })
 
+  // ── x-device-token (dispositivos activados con el flujo de un solo uso) ────
+
+  describe('x-device-token', () => {
+    const run = (headers: Record<string, string> = {}) => {
+      const config = { headers } as InternalAxiosRequestConfig
+      const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
+      return handler.fulfilled(config)
+    }
+
+    it('lo agrega junto a x-device-id cuando el dispositivo de la sesión tiene token', () => {
+      const session = useSessionStore()
+      session.setDevice({ deviceId: 'd-1', name: 'Tablet', deviceToken: 'tok-1' })
+
+      const result = run()
+
+      expect(result.headers['x-device-id']).toBe('d-1')
+      expect(result.headers['x-device-token']).toBe('tok-1')
+    })
+
+    it('NO lo agrega si el dispositivo es heredado (sin token)', () => {
+      useSessionStore().setDevice({ deviceId: 'd-1', name: 'Tablet' })
+
+      const result = run()
+
+      expect(result.headers['x-device-id']).toBe('d-1')
+      expect(result.headers['x-device-token']).toBeUndefined()
+    })
+
+    it('NO lo agrega si no hay dispositivo en la sesión', () => {
+      expect(run().headers['x-device-token']).toBeUndefined()
+    })
+
+    it('respeta un x-device-token ya presente en la petición', () => {
+      useSessionStore().setDevice({ deviceId: 'd-1', name: 'Tablet', deviceToken: 'tok-1' })
+
+      const result = run({ 'x-device-token': 'tok-explicito' })
+
+      expect(result.headers['x-device-token']).toBe('tok-explicito')
+    })
+
+    it('si la petición trae el x-device-id de la propia sesión, sí le añade el token (cola offline del mismo equipo)', () => {
+      useSessionStore().setDevice({ deviceId: 'd-1', name: 'Tablet', deviceToken: 'tok-1' })
+
+      const result = run({ 'x-device-id': 'd-1' })
+
+      expect(result.headers['x-device-id']).toBe('d-1')
+      expect(result.headers['x-device-token']).toBe('tok-1')
+    })
+
+    it('si la petición trae el x-device-id de OTRO dispositivo, NO le manda el token de la sesión', () => {
+      useSessionStore().setDevice({ deviceId: 'd-actual', name: 'Tablet', deviceToken: 'tok-actual' })
+
+      const result = run({ 'x-device-id': 'd-de-otra-venta' })
+
+      expect(result.headers['x-device-id']).toBe('d-de-otra-venta')
+      expect(result.headers['x-device-token']).toBeUndefined()
+    })
+
+    it('el token no se escribe en la consola al armar la petición', () => {
+      const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => vi.spyOn(console, m).mockImplementation(() => {}))
+      useSessionStore().setDevice({ deviceId: 'd-1', name: 'Tablet', deviceToken: 'tok-secreto' })
+
+      run()
+
+      for (const spy of spies) {
+        expect(JSON.stringify(spy.mock.calls)).not.toContain('tok-secreto')
+        spy.mockRestore()
+      }
+    })
+  })
+
   // ── Interceptor de respuesta ──────────────────────────────────────────────
 
   it('pasa la respuesta sin modificaciones en el interceptor fulfilled', () => {
@@ -105,7 +176,7 @@ describe('api — interceptores Axios', () => {
     localStorage.setItem('auth_username', 'ana')
 
     const session = useSessionStore()
-    session.setDevice({ deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet' })
+    session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
     session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
 
     // Mock para evitar redirección real

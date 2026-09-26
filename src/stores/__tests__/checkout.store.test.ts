@@ -23,7 +23,7 @@ vi.mock('@/services/products.service', () => ({ default: { listProducts: vi.fn()
 const realIndexedDb = globalThis.indexedDB
 
 const MEMBER = { id: '10000000-0000-4000-8000-000000000003', name: 'Carlos', role: 'socio' as const, active: true }
-const DEVICE = { deviceId: '20000000-0000-4000-8000-000000000001', identifier: 'tablet', name: 'Tablet' }
+const DEVICE = { deviceId: '20000000-0000-4000-8000-000000000001', name: 'Tablet' }
 
 function product(overrides: Partial<Product> = {}): Product {
   return {

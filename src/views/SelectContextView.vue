@@ -78,10 +78,12 @@ async function handleDeviceSubmit(payload: DeviceIdentifyPayload) {
   deviceLoading.value = true
   deviceError.value = null
   try {
-    const { deviceId } = await DevicesService.identify(payload)
+    const { deviceId, deviceToken } = await DevicesService.identify(payload)
     // Éxito: se guarda en localStorage (session.store) y ya no se vuelve a
     // pedir en este dispositivo — continúa automáticamente al selector.
-    sessionStore.setDevice({ deviceId, identifier: payload.identifier, name: payload.name })
+    // Se guarda el token (si el servidor lo entregó), NO el identificador: era
+    // un código de un solo uso y ya quedó quemado.
+    sessionStore.setDevice({ deviceId, name: payload.name, deviceToken })
     await loadMembers()
   } catch (cause) {
     const status = (cause as { response?: { status?: number } } | null)?.response?.status

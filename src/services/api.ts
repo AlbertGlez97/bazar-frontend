@@ -31,6 +31,17 @@ api.interceptors.request.use((config) => {
     config.headers['x-device-id'] = session.deviceId
   }
 
+  // Un dispositivo activado con el flujo de un solo uso debe mandar además su
+  // token (x-device-token); uno heredado no tiene token y solo manda su id.
+  // El token es de ESTE equipo: si la petición trae el x-device-id de otra
+  // venta (cola offline), no se le pega el token de la sesión, que no le
+  // corresponde y solo provocaría un 403. Se lee aquí, al enviar, así que una
+  // venta encolada antes usa el token vigente cuando por fin se sincroniza.
+  if (session.deviceToken && !config.headers['x-device-token']
+      && config.headers['x-device-id'] === session.deviceId) {
+    config.headers['x-device-token'] = session.deviceToken
+  }
+
   return config
 })
 

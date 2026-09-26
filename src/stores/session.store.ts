@@ -14,16 +14,29 @@ const DEVICE_KEY = 'device_context'
 // dentro de la misma sesión de uso.
 const MEMBER_KEY = 'member_context'
 
+// `deviceToken` solo existe en dispositivos activados con el flujo de un solo
+// uso; los dispositivos heredados (anteriores a BE-12) se identifican solo con
+// `deviceId`. El identificador original NO se guarda: era el código de
+// activación y deja de servir una vez usado.
 interface StoredDevice {
-  deviceId:   string
-  identifier: string
-  name:       string
+  deviceId:     string
+  name:         string
+  deviceToken?: string
 }
 
-function isStoredDevice(value: unknown): value is StoredDevice {
-  const v = value as Partial<StoredDevice> | null
-  return !!v && typeof v.deviceId === 'string' && typeof v.identifier === 'string'
-    && typeof v.name === 'string'
+/**
+ * Devuelve la forma actual del dispositivo guardado, o `null` si el valor está
+ * corrupto. Acepta el valor heredado `{ deviceId, identifier, name }` (guardado
+ * antes de que existiera el token): lo migra soltando el `identifier` en vez
+ * de descartarlo, así nadie tiene que volver a identificar su tablet.
+ */
+function normalizeStoredDevice(value: unknown): StoredDevice | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const v = value as Record<string, unknown>
+  if (typeof v.deviceId !== 'string' || typeof v.name !== 'string') return null
+  if (v.deviceToken === undefined) return { deviceId: v.deviceId, name: v.name }
+  if (typeof v.deviceToken !== 'string' || v.deviceToken === '') return null
+  return { deviceId: v.deviceId, name: v.name, deviceToken: v.deviceToken }
 }
 
 function isMember(value: unknown): value is Member {
@@ -36,7 +49,15 @@ function readDevice(): StoredDevice | null {
   try {
     const raw = localStorage.getItem(DEVICE_KEY)
     const parsed: unknown = raw ? JSON.parse(raw) : null
-    if (isStoredDevice(parsed)) return parsed
+    const device = normalizeStoredDevice(parsed)
+    if (device) {
+      // Valor heredado (con `identifier`) o con claves de más: se reescribe ya
+      // normalizado para que el identificador no siga guardado en el equipo.
+      if (Object.keys(parsed as object).length !== Object.keys(device).length) {
+        localStorage.setItem(DEVICE_KEY, JSON.stringify(device))
+      }
+      return device
+    }
   } catch {
     // Storage corrupto ⇒ se trata como "dispositivo aún no identificado".
   }
@@ -60,9 +81,11 @@ export const useSessionStore = defineStore('session', () => {
   const storedDevice = readDevice()
   const storedMember = readMember()
 
-  const deviceId         = ref<string | null>(storedDevice?.deviceId ?? null)
-  const deviceIdentifier = ref<string | null>(storedDevice?.identifier ?? null)
-  const deviceName       = ref<string | null>(storedDevice?.name ?? null)
+  const deviceId    = ref<string | null>(storedDevice?.deviceId ?? null)
+  const deviceName  = ref<string | null>(storedDevice?.name ?? null)
+  // Secreto: solo lo lee el interceptor de Axios para la cabecera
+  // x-device-token; no se muestra en la UI ni se escribe en logs.
+  const deviceToken = ref<string | null>(storedDevice?.deviceToken ?? null)
 
   const member   = ref<Member | null>(storedMember)
   const memberId = ref<string | null>(storedMember?.id ?? null)
@@ -74,10 +97,15 @@ export const useSessionStore = defineStore('session', () => {
   const isContextReady = computed(() => isDeviceIdentified.value && isMemberSelected.value)
 
   function setDevice(payload: StoredDevice) {
-    deviceId.value         = payload.deviceId
-    deviceIdentifier.value = payload.identifier
-    deviceName.value       = payload.name
-    localStorage.setItem(DEVICE_KEY, JSON.stringify(payload))
+    // Se guarda siempre la forma normalizada (sin claves de más): sin token
+    // para los dispositivos heredados, y nunca el identificador original.
+    const device: StoredDevice = payload.deviceToken
+      ? { deviceId: payload.deviceId, name: payload.name, deviceToken: payload.deviceToken }
+      : { deviceId: payload.deviceId, name: payload.name }
+    deviceId.value    = device.deviceId
+    deviceName.value  = device.name
+    deviceToken.value = device.deviceToken ?? null
+    localStorage.setItem(DEVICE_KEY, JSON.stringify(device))
   }
 
   function setMember(payload: Member) {
@@ -93,9 +121,9 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   function clearDevice() {
-    deviceId.value         = null
-    deviceIdentifier.value = null
-    deviceName.value       = null
+    deviceId.value    = null
+    deviceName.value  = null
+    deviceToken.value = null
     localStorage.removeItem(DEVICE_KEY)
   }
 
@@ -111,7 +139,7 @@ export const useSessionStore = defineStore('session', () => {
   }
 
   return {
-    deviceId, deviceIdentifier, deviceName,
+    deviceId, deviceName, deviceToken,
     member, memberId,
     isDeviceIdentified, isMemberSelected, isContextReady,
     setDevice, setMember, clearMember, clearDevice, clearOnLogout,
