@@ -42,12 +42,26 @@ The colaborador hypothesis is weak: the catalog already hides "Nuevo producto" a
 `nav-items.test.ts`, `AppLayout.nav.test.ts` (Gestión menu, "Vender siempre a la vista", link count x2, active link in /app/venta now under Modo Venta), `AppLayout.mode-landing.test.ts` (Gestión menus), `AppLayout.test.ts` (`navItems`). New: `nav-mode-exclusivity.test.ts` (registry contract, both modes, socio/colaborador, mode switch, sidebar collapsed/expanded).
 
 ## Bug 3 — sidebar footer disappears when expanded
-(filled in by the third commit)
+
+### Root cause (from code and history; the final confirmation needs a phone)
+`src/layouts/AppLayout.vue` `.sidebar { height: 100vh; overflow: hidden }` (line ~305, from the baseline `739731a`) plus the phone overlay `@media (max-width: 767px) .app-layout:not(.app-layout--collapsed) .sidebar { position: fixed; top: 0 }` introduced by **`42cceab`** ("start the sidebar collapsed on phones and overlay it when expanded"). On a mobile browser `100vh` is the height with the address bar HIDDEN, taller than what is visible. A `position: fixed` sidebar of that height has its bottom edge below the visible screen, and because the sidebar is `overflow: hidden` and fixed there is no way to scroll to it. The footer (profile, gear, sign out) is the last item of the column, so it is what disappears. Expanded is the only state that is `fixed`; the collapsed strip is `sticky` in the grid and the page scroll hides the address bar, which is why collapsed looked fine.
+Ruled out with evidence: the DOM is already right (footer is a sibling AFTER `.sidebar__nav`, nav is the scroll owner), `--app-sidebar-offset` only feeds the sale bars (`SaleView.vue:382,402`), and their z-index (30/40) is below the overlay (60), so stacking is not the cause. The recent sale-screen and nav commits did not change `.sidebar` height/overflow.
+
+### Fix
+- `.sidebar`: `height: 100vh` kept only as a fallback, then `height: 100dvh` (visible viewport).
+- Phone overlay: `top: 0; bottom: 0; height: auto` (anchored to the visible viewport, no fixed height).
+- `.sidebar__nav`: `min-height: 0` (only the nav shrinks/scrolls); header, mode switch, install and footer are `flex-shrink: 0`.
+- Footer (expanded and collapsed/stacked) adds `env(safe-area-inset-bottom)` padding.
+- `@media (max-height: 480px)` (phone in landscape): the "Instalar app" block is hidden so mode switch, nav and footer fit.
+- Sale bars and `--app-sidebar-offset` untouched.
+
+### Tests
+`AppLayout.sidebar-footer.test.ts`: DOM structure (footer sibling after the nav, present expanded and collapsed, both modes, accessible names) and a CSS contract read from the SFC source (`?raw`), because jsdom does no layout: dvh with vh fallback, overlay anchored top+bottom, nav owns the scroll with `min-height: 0`, non-shrinking siblings, safe-area padding, the landscape rule, only `.sidebar` clips, sale bars stay under z-index 60, offset unchanged. RED first: 11 contract tests failed, the 5 structure tests already passed (the structure was right; the sizing was the bug). No headless browser is available in the repo tooling, so no real layout run.
 
 ## Checklist
-- [x] Bug 1 util + view + tests
-- [ ] Bug 2
-- [ ] Bug 3
+- [x] Bug 1 util + view + tests (`881d194`)
+- [x] Bug 2 (`d6b6322`)
+- [x] Bug 3
 
 ## Evidence
 - Bug 1: `api-error.test.ts` (38 cases) and `ProductCatalogView.errors.test.ts` (22 cases) RED first (module missing / 18 failing), then GREEN.

@@ -302,9 +302,21 @@ function handleLogout() {
   flex-direction: column;
   position:    sticky;
   top:         0;
+  /* Mide lo VISIBLE. `100vh` en un navegador móvil es la altura con la barra de
+     direcciones escondida (más que la pantalla real) y dejaba el borde inferior,
+     donde vive el pie, fuera de la vista: `100dvh` sigue a la barra. `100vh` queda
+     antes solo como respaldo de navegadores que no conocen `dvh`. */
   height:      100vh;
+  height:      100dvh;
   overflow:    hidden;
 }
+
+/* Solo el menú cede espacio cuando la pantalla es baja: el resto de la columna
+   (cabecera, selector de modo, instalar y pie) conserva su tamaño. */
+.sidebar__header,
+.sidebar__mode,
+.sidebar__install,
+.sidebar__footer { flex-shrink: 0; }
 
 .sidebar__header {
   display:        flex;
@@ -344,6 +356,8 @@ function handleLogout() {
 /* Navegación */
 .sidebar__nav {
   flex: 1;
+  /* Único dueño del scroll: puede encogerse por debajo de su contenido. */
+  min-height: 0;
   padding: var(--spacing-sm) 0;
   overflow-y: auto;
 }
@@ -376,7 +390,8 @@ function handleLogout() {
   display:     flex;
   align-items: center;
   gap:         var(--spacing-sm);
-  padding:     var(--spacing-md);
+  /* El área segura de abajo (barra de gestos de iPhone) no debe tapar el pie. */
+  padding:     var(--spacing-md) var(--spacing-md) calc(var(--spacing-md) + env(safe-area-inset-bottom, 0px));
   border-top:  1px solid color-mix(in srgb, var(--color-sidebar-text) 14%, transparent);
 }
 
@@ -421,7 +436,13 @@ function handleLogout() {
 /* Colapsado no caben avatar, engrane y salida en una fila de 64 px: se apilan */
 .app-layout--collapsed .sidebar__footer {
   flex-direction: column;
-  padding: var(--spacing-sm) 0;
+  padding: var(--spacing-sm) 0 calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Teléfono en horizontal (pantalla baja): "Instalar app" cede su lugar para que
+   quepan el selector de modo, el menú y el pie. */
+@media (max-height: 480px) {
+  .sidebar__install { display: none; }
 }
 
 /* Avatar en sidebar footer */
@@ -485,7 +506,11 @@ function handleLogout() {
   }
   .app-layout:not(.app-layout--collapsed) .sidebar {
     position: fixed;
+    /* Anclada arriba Y abajo del viewport visible: no depende de una altura fija
+       (con `100vh` el pie quedaba bajo la barra de direcciones del navegador). */
     top: 0;
+    bottom: 0;
+    height: auto;
     left: 0;
     width: var(--sidebar-width);
     z-index: 60;
