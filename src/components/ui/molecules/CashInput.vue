@@ -1,8 +1,8 @@
 <template>
-  <!-- Molécula: efectivo recibido. Campo grande con teclado numérico y atajos
-       ("Justo" y billetes comunes). Emite el TEXTO ya limpio por
-       `update:modelValue`; el store lo convierte a centavos
-       (`setCashFromDisplay`). Los atajos emiten por ese mismo camino. -->
+  <!-- Molécula: efectivo recibido. Campo grande con teclado numérico, atajo
+       "Justo" y un selector de billetes combinable (pad). Emite el TEXTO ya
+       limpio por `update:modelValue`; el store lo convierte a centavos
+       (`setCashFromDisplay`). "Justo" y el pad emiten por ese mismo camino. -->
   <div class="cash-input">
     <label
       class="cash-input__label"
@@ -39,7 +39,10 @@
       {{ VOICE.sale.cashUnclear }}
     </p>
 
-    <div class="cash-input__chips">
+    <div
+      v-if="totalMinor > 0 || hasSelection"
+      class="cash-input__chips"
+    >
       <button
         v-if="totalMinor > 0"
         type="button"
@@ -51,24 +54,35 @@
         Justo
       </button>
       <button
-        v-for="bill in BILLS"
-        :key="bill"
+        v-if="hasSelection"
         type="button"
-        class="cash-input__chip"
-        :aria-label="`Recibí $${bill}`"
+        class="cash-input__clear"
+        aria-label="Limpiar selección de billetes"
         :disabled="disabled"
-        @click="emit('update:modelValue', String(bill))"
+        @click="onClearSelection"
       >
-        ${{ bill }}
+        <RotateCcw
+          :size="18"
+          aria-hidden="true"
+        />
+        Limpiar selección
       </button>
     </div>
+
+    <CashDenominationPad
+      :counts="denominationCounts"
+      :disabled="disabled"
+      @tap="onPadTap"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, useId } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
+import { RotateCcw } from '@lucide/vue'
 import { VOICE } from '@/config/voice'
-import { minorToDisplay, parseCashInput, sanitizeCashText } from '@/utils/money'
+import { minorToDisplay, multiplyMinor, parseCashInput, sanitizeCashText, sumMinor } from '@/utils/money'
+import CashDenominationPad from './CashDenominationPad.vue'
 
 const props = withDefaults(defineProps<{
   /** Texto del campo (lo que la persona escribió) */
@@ -84,9 +98,6 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   'update:modelValue': [text: string]
 }>()
-
-/** Billetes de uso diario en México; pocos a propósito. */
-const BILLS = [20, 50, 100, 200, 500] as const
 
 const inputId = useId()
 const errorId = `${inputId}-error`
@@ -106,6 +117,42 @@ function onInput(event: Event) {
   // Si se quitó basura, el campo debe mostrarlo aunque el valor del padre no cambie.
   if (input.value !== clean) input.value = clean
   emit('update:modelValue', clean)
+}
+
+// ── Selector de billetes combinable (pad) ──────────────────────────────────
+// Regla única de sincronización: `lastEmittedByPad` guarda el texto que EL
+// PAD emitió como resultado directo de un toque. Un solo `watch` sobre
+// `modelValue` limpia las cuentas cuando lo que llega no coincide con eso —
+// cubre escribir, "Justo" y cualquier resincronización externa sin código
+// especial para cada caso, porque solo el propio toque del pad actualiza la
+// referencia justo antes de emitir.
+const denominationCounts = ref<Partial<Record<number, number>>>({})
+const lastEmittedByPad = ref('')
+
+const hasSelection = computed(() => Object.values(denominationCounts.value).some((count) => (count ?? 0) > 0))
+
+watch(() => props.modelValue, (value) => {
+  if (value !== lastEmittedByPad.value) denominationCounts.value = {}
+})
+
+function totalFromCounts(counts: Partial<Record<number, number>>): number {
+  return sumMinor(
+    Object.entries(counts).map(([bill, count]) => multiplyMinor(Number(bill) * 100, count ?? 0)),
+  )
+}
+
+function onPadTap(denomination: number) {
+  const nextCounts = { ...denominationCounts.value, [denomination]: (denominationCounts.value[denomination] ?? 0) + 1 }
+  denominationCounts.value = nextCounts
+  const text = minorToDisplay(totalFromCounts(nextCounts))
+  lastEmittedByPad.value = text
+  emit('update:modelValue', text)
+}
+
+function onClearSelection() {
+  denominationCounts.value = {}
+  lastEmittedByPad.value = ''
+  emit('update:modelValue', '')
 }
 </script>
 
@@ -147,7 +194,7 @@ function onInput(event: Event) {
 .cash-input__control[aria-invalid='true'] { border-color: var(--color-danger); }
 .cash-input__error { margin: 0; font-size: var(--font-size-sm); font-weight: 600; color: var(--color-danger); }
 
-/* Atajos: fila que envuelve, cada uno de al menos 44 px */
+/* Atajos ("Justo", "Limpiar selección"): fila que envuelve, cada uno de al menos 44 px */
 .cash-input__chips { display: flex; flex-wrap: wrap; gap: var(--spacing-xs) var(--spacing-sm); }
 .cash-input__chip {
   min-width: 2.75rem;
@@ -172,4 +219,26 @@ function onInput(event: Event) {
   background: var(--color-primary-soft);
   border-color: var(--color-primary);
 }
+
+.cash-input__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 var(--spacing-sm);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background var(--transition);
+}
+.cash-input__clear:hover:not(:disabled) { background: var(--color-surface-alt); }
+.cash-input__clear:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.cash-input__clear:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>

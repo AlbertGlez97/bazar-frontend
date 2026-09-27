@@ -453,7 +453,7 @@ describe('SaleView — efectivo y cambio', () => {
     expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
   })
 
-  it('el atajo "Justo" y los billetes llenan el campo y el cambio', async () => {
+  it('el atajo "Justo" y el pad de billetes llenan el campo y el cambio', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
 
@@ -461,7 +461,8 @@ describe('SaleView — efectivo y cambio', () => {
     expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('19.99')
     expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
 
-    await wrapper.findAll('.cash-input__chip').find((c) => c.text() === '$50')!.trigger('click')
+    await wrapper.findAll('.cash-denomination-pad__btn').find((b) => b.text().startsWith('$50'))!.trigger('click')
+    expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('50.00')
     expect(wrapper.get('.cart-summary__change').text()).toBe('$30.01')
   })
 

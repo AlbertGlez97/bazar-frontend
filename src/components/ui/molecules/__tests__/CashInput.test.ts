@@ -18,6 +18,14 @@ const lastEmitted = (w: ReturnType<typeof mountCash>) => {
   return all[all.length - 1]?.[0]
 }
 
+/** Simula el round-trip real de v-model: el padre reasigna `modelValue` con lo último emitido. */
+async function roundTrip(w: ReturnType<typeof mountCash>) {
+  await w.setProps({ modelValue: lastEmitted(w) as string })
+}
+
+const padButtons = (w: ReturnType<typeof mountCash>) => w.findAll('.cash-denomination-pad__btn')
+const padBadges = (w: ReturnType<typeof mountCash>) => w.findAll('.cash-denomination-pad__badge')
+
 // El limpiador solo quita lo que no puede ser parte de un monto (letras, símbolos)
 // y topa dígitos; NO reinterpreta comas ni puntos: lo que se ve en el campo es lo
 // que se lee, y si es ambiguo lo rechaza `parseCashInput`.
@@ -118,22 +126,16 @@ describe('CashInput — campo', () => {
     const wrapper = mountCash({ disabled: true, totalMinor: 5000 })
     expect(wrapper.get('input').attributes('disabled')).toBeDefined()
     for (const chip of wrapper.findAll('.cash-input__chip')) expect(chip.attributes('disabled')).toBeDefined()
+    for (const btn of padButtons(wrapper)) expect(btn.attributes('disabled')).toBeDefined()
   })
 })
 
-describe('CashInput — atajos', () => {
+describe('CashInput — "Justo"', () => {
   const chips = (w: ReturnType<typeof mountCash>) => w.findAll('.cash-input__chip')
 
-  it('ofrece "Justo" y cinco billetes: 20, 50, 100, 200 y 500', () => {
-    const wrapper = mountCash({ totalMinor: 12550 })
-    expect(chips(wrapper).map((c) => c.text())).toEqual(['Justo', '$20', '$50', '$100', '$200', '$500'])
-  })
-
-  it('un billete emite ese monto por el mismo camino que escribir', async () => {
-    const wrapper = mountCash({ totalMinor: 12550 })
-    await chips(wrapper)[3].trigger('click')
-    expect(lastEmitted(wrapper)).toBe('100')
-    expect(parseCashInput(lastEmitted(wrapper) as string)).toBe(10000)
+  it('sin total (carrito vacío) no ofrece "Justo"', () => {
+    const wrapper = mountCash({ totalMinor: 0 })
+    expect(chips(wrapper)).toHaveLength(0)
   })
 
   it('"Justo" emite el total exacto (entero sin decimales, o con dos)', async () => {
@@ -151,18 +153,116 @@ describe('CashInput — atajos', () => {
     expect(lastEmitted(odd)).toBe('19.99')
   })
 
-  it('sin total (carrito vacío) no ofrece "Justo" pero sí los billetes', () => {
-    const wrapper = mountCash({ totalMinor: 0 })
-    expect(chips(wrapper).map((c) => c.text())).not.toContain('Justo')
-    expect(chips(wrapper)).toHaveLength(5)
-  })
-
-  it('cada atajo tiene nombre accesible que contiene su texto visible', () => {
+  it('tiene nombre accesible que contiene su texto visible y el monto', () => {
     const wrapper = mountCash({ totalMinor: 12550 })
     const justo = chips(wrapper)[0]
     expect(justo.attributes('aria-label')).toContain('Justo')
     expect(justo.attributes('aria-label')).toContain('125.50')
-    expect(chips(wrapper)[2].attributes('aria-label')).toContain('$50')
-    for (const chip of chips(wrapper)) expect(chip.attributes('type')).toBe('button')
+    expect(justo.attributes('type')).toBe('button')
+  })
+})
+
+describe('CashInput — selector de billetes combinable', () => {
+  it('siempre muestra los 6 billetes del pad, sin importar el total', () => {
+    expect(padButtons(mountCash({ totalMinor: 0 }))).toHaveLength(6)
+    expect(padButtons(mountCash({ totalMinor: 12550 }))).toHaveLength(6)
+  })
+
+  it('tocar el mismo billete varias veces acumula su valor (p. ej. $200 x2 = $400)', async () => {
+    const wrapper = mountCash()
+    const bill200 = padButtons(wrapper).find((b) => b.text().startsWith('$200'))!
+
+    await bill200.trigger('click')
+    expect(lastEmitted(wrapper)).toBe('200.00')
+    await roundTrip(wrapper)
+
+    await bill200.trigger('click')
+    expect(lastEmitted(wrapper)).toBe('400.00')
+  })
+
+  it('combinar billetes distintos suma correctamente', async () => {
+    const wrapper = mountCash()
+    const bill200 = padButtons(wrapper).find((b) => b.text().startsWith('$200'))!
+    const bill50 = padButtons(wrapper).find((b) => b.text().startsWith('$50'))!
+
+    await bill200.trigger('click')
+    await roundTrip(wrapper)
+    await bill50.trigger('click')
+
+    expect(lastEmitted(wrapper)).toBe('250.00')
+  })
+
+  it('escribir directamente en el campo limpia la selección visual del pad', async () => {
+    const wrapper = mountCash()
+    const bill200 = padButtons(wrapper).find((b) => b.text().startsWith('$200'))!
+
+    await bill200.trigger('click')
+    await roundTrip(wrapper)
+    expect(padBadges(wrapper)).toHaveLength(1)
+
+    await type(wrapper, '999')
+    await roundTrip(wrapper)
+    expect(padBadges(wrapper)).toHaveLength(0)
+  })
+
+  it('tocar "Justo" también limpia la selección del pad (su texto no coincide con lo emitido por el pad)', async () => {
+    const wrapper = mountCash({ totalMinor: 99999 })
+    const bill200 = padButtons(wrapper).find((b) => b.text().startsWith('$200'))!
+    const justo = wrapper.get('.cash-input__chip--exact')
+
+    await bill200.trigger('click')
+    await roundTrip(wrapper)
+    expect(padBadges(wrapper)).toHaveLength(1)
+
+    await justo.trigger('click')
+    // El total ($999.99) no coincide con lo que el pad emitió ("200.00"), así que
+    // este caso no cae en el borde raro de coincidencia exacta documentado.
+    expect(lastEmitted(wrapper)).not.toBe('200.00')
+    await roundTrip(wrapper)
+    expect(padBadges(wrapper)).toHaveLength(0)
+  })
+
+  it('"Limpiar selección" limpia las cuentas Y el texto, y solo aparece con selección activa', async () => {
+    const wrapper = mountCash()
+    expect(wrapper.find('.cash-input__clear').exists()).toBe(false)
+
+    const bill200 = padButtons(wrapper).find((b) => b.text().startsWith('$200'))!
+    await bill200.trigger('click')
+    await roundTrip(wrapper)
+
+    const clearBtn = wrapper.get('.cash-input__clear')
+    expect(clearBtn.attributes('type')).toBe('button')
+    await clearBtn.trigger('click')
+
+    expect(lastEmitted(wrapper)).toBe('')
+    expect(padBadges(wrapper)).toHaveLength(0)
+    await roundTrip(wrapper)
+    expect(wrapper.find('.cash-input__clear').exists()).toBe(false)
+  })
+
+  it('"Limpiar selección" se deshabilita cuando el campo está bloqueado', async () => {
+    const wrapper = mountCash()
+    const bill200 = padButtons(wrapper).find((b) => b.text().startsWith('$200'))!
+    await bill200.trigger('click')
+    await roundTrip(wrapper)
+    await wrapper.setProps({ disabled: true })
+    expect(wrapper.get('.cash-input__clear').attributes('disabled')).toBeDefined()
+  })
+
+  it('el monto emitido se recalcula en cada interacción', async () => {
+    const wrapper = mountCash()
+    const bill100 = padButtons(wrapper).find((b) => b.text().startsWith('$100'))!
+    const bill500 = padButtons(wrapper).find((b) => b.text().startsWith('$500'))!
+
+    await bill100.trigger('click')
+    expect(lastEmitted(wrapper)).toBe('100.00')
+    await roundTrip(wrapper)
+
+    await bill100.trigger('click')
+    expect(lastEmitted(wrapper)).toBe('200.00')
+    await roundTrip(wrapper)
+
+    await bill500.trigger('click')
+    expect(lastEmitted(wrapper)).toBe('700.00')
   })
 })

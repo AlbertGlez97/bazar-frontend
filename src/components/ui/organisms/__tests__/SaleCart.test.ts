@@ -137,11 +137,11 @@ describe('SaleCart — eventos de las líneas y el efectivo', () => {
     expect(wrapper.emitted('update:cashText')).toEqual([['200']])
   })
 
-  it('un atajo de billete emite por el mismo camino', async () => {
+  it('un billete del pad combinable emite por el mismo camino', async () => {
     const wrapper = mountCart()
-    const chip = wrapper.findAll('.cash-input__chip').find((c) => c.text() === '$200')!
-    await chip.trigger('click')
-    expect(wrapper.emitted('update:cashText')).toEqual([['200']])
+    const bill = wrapper.findAll('.cash-denomination-pad__btn').find((b) => b.text().startsWith('$200'))!
+    await bill.trigger('click')
+    expect(wrapper.emitted('update:cashText')).toEqual([['200.00']])
   })
 
   it('el efectivo que llega por props se ve en el campo', () => {

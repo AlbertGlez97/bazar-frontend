@@ -99,6 +99,10 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     expectAtLeast44('CashInput.vue', '.cash-input__chip', ['min-width', 'min-height'])
   })
 
+  it('efectivo: cada billete del selector combinable mide al menos 44x44', () => {
+    expectAtLeast44('CashDenominationPad.vue', '.cash-denomination-pad__btn', ['min-width', 'min-height'])
+  })
+
   it('filtro de categorías: cada botón mide 44x44', () => {
     expectAtLeast44('CategoryQuickFilter.vue', '.category-filter__btn', ['min-width', 'min-height'])
   })
