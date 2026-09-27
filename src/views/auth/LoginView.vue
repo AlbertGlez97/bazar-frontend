@@ -242,13 +242,13 @@ async function handleSubmit() {
 /* ── Header ────────────────────────────────────────────────── */
 .login__header { text-align: center; }
 .login__title {
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 800;
   color: var(--color-text);
   margin-bottom: 6px;
 }
 .login__subtitle {
-  font-size: 14px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
 
@@ -275,7 +275,7 @@ async function handleSubmit() {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-subtle);
   text-align: center;
 }

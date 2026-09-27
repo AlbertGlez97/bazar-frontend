@@ -100,7 +100,7 @@ const items = computed(() => getSettingsItems({ isSocio: session.member?.role ==
   outline-offset: 2px;
 }
 
-.settings-view__icon { font-size: 24px; flex-shrink: 0; }
+.settings-view__icon { font-size: var(--font-size-xl); flex-shrink: 0; }
 .settings-view__text { display: flex; flex-direction: column; gap: 2px; }
 .settings-view__label { font-weight: 700; }
 .settings-view__hint { color: var(--color-text-muted); font-size: var(--font-size-sm); }

@@ -272,6 +272,7 @@ function handleLogout() {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
   min-height: 100vh;
+  min-height: 100dvh;
   transition: grid-template-columns var(--transition);
 }
 
@@ -375,7 +376,7 @@ function handleLogout() {
 .sidebar__link:hover       { background: color-mix(in srgb, var(--color-sidebar-text) 10%, transparent); opacity: 1; }
 .sidebar__link--active     { background: color-mix(in srgb, var(--color-sidebar-active) 18%, transparent); color: var(--color-surface); opacity: 1; border-right: 3px solid var(--color-sidebar-active); }
 
-.sidebar__link-icon  { font-size: 18px; flex-shrink: 0; }
+.sidebar__link-icon  { font-size: 1.125rem; flex-shrink: 0; }
 .sidebar__link-label { font-size: var(--font-size-sm); font-weight: 500; }
 
 /* Botón de instalar PWA — solo si el browser lo soporta */
@@ -404,7 +405,7 @@ function handleLogout() {
 .sidebar__logout {
   color:   var(--color-sidebar-text) !important;
   opacity: .7;
-  font-size: 18px;
+  font-size: 1.125rem;
   flex-shrink: 0;
   background: transparent !important;
 }
@@ -418,7 +419,7 @@ function handleLogout() {
   min-width:       2.75rem;
   min-height:      2.75rem;
   flex-shrink:     0;
-  font-size:       18px;
+  font-size:       1.125rem;
   color:           var(--color-sidebar-text);
   text-decoration: none;
   opacity:         .7;
@@ -453,6 +454,7 @@ function handleLogout() {
   display:        flex;
   flex-direction: column;
   min-height:     100vh;
+  min-height:     100dvh;
   overflow:       auto;
 }
 

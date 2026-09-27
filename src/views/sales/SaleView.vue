@@ -339,6 +339,7 @@ async function goToLogin() {
   position: sticky;
   top: calc(var(--header-height) + var(--spacing-md));
   max-height: calc(100vh - var(--header-height) - var(--spacing-lg) * 2);
+  max-height: calc(100dvh - var(--header-height) - var(--spacing-lg) * 2);
   overflow-y: auto;
   padding: var(--spacing-md);
   background: var(--color-bg);

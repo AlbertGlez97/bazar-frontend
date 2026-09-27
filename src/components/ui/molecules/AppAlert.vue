@@ -153,8 +153,8 @@ defineEmits<{ dismiss: [] }>()
 .app-alert {
   display:       flex;
   align-items:   flex-start;
-  gap:           10px;
-  padding:       10px 14px;
+  gap:           0.625rem;
+  padding:       0.625rem 0.875rem;
   border-radius: var(--radius-sm);
   border:        1px solid transparent;
   font-size:     0.85rem;
@@ -188,7 +188,7 @@ defineEmits<{ dismiss: [] }>()
 .app-alert__content { flex: 1; }
 .app-alert__title {
   font-weight: 600;
-  margin:      0 0 2px;
+  margin:      0 0 0.125rem;
   font-size:   0.88rem;
 }
 .app-alert__body { margin: 0; }
@@ -199,7 +199,7 @@ defineEmits<{ dismiss: [] }>()
   cursor:        pointer;
   color:         inherit;
   opacity:       .7;
-  padding:       2px;
+  padding:       0.125rem;
   display:       flex;
   flex-shrink:   0;
   border-radius: 4px;

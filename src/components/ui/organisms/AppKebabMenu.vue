@@ -251,9 +251,9 @@ onBeforeUnmount(_unbindGlobalClosers)
 .kebab__menu {
   position: absolute;
   z-index: 200;
-  min-width: 160px;
+  min-width: 10rem;
   margin: 0;
-  padding: 4px;
+  padding: var(--spacing-xs);
   list-style: none;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -263,8 +263,8 @@ onBeforeUnmount(_unbindGlobalClosers)
 }
 
 /* Placement vertical (auto-flip) */
-.kebab__menu--down { top:    calc(100% + 6px); }
-.kebab__menu--up   { bottom: calc(100% + 6px); }
+.kebab__menu--down { top:    calc(100% + 0.375rem); }
+.kebab__menu--up   { bottom: calc(100% + 0.375rem); }
 
 /* Alineamiento horizontal (auto-flip) */
 .kebab__menu--align-end   { right: 0; left: auto; }
@@ -274,8 +274,8 @@ onBeforeUnmount(_unbindGlobalClosers)
 .kebab__item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 0.625rem;
+  padding: var(--spacing-sm) 0.75rem;
   border-radius: var(--radius-sm, 6px);
   color: var(--color-text);
   cursor: pointer;

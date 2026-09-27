@@ -156,9 +156,9 @@ onUnmounted(() => { document.removeEventListener('keydown', onKeydown); unlockSc
   display: flex;
   flex-direction: column;
 }
-.app-modal--sm { max-width: 380px; }
-.app-modal--md { max-width: 480px; }
-.app-modal--lg { max-width: 620px; }
+.app-modal--sm { max-width: 23.75rem; }
+.app-modal--md { max-width: 30rem; }
+.app-modal--lg { max-width: 38.75rem; }
 
 .app-modal__header {
   display: flex;
@@ -168,8 +168,8 @@ onUnmounted(() => { document.removeEventListener('keydown', onKeydown); unlockSc
   border-bottom: 1px solid var(--color-border);
   gap: var(--spacing-sm);
 }
-.app-modal__title    { font-size: 15px; font-weight: 600; color: var(--color-text); margin: 0; }
-.app-modal__subtitle { font-size: 12px; color: var(--color-text-muted); margin: 3px 0 0; }
+.app-modal__title    { font-size: 0.9375rem; font-weight: 600; color: var(--color-text); margin: 0; }
+.app-modal__subtitle { font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 3px 0 0; }
 .app-modal__close {
   width: 28px; height: 28px;
   border: none; background: none;
@@ -186,7 +186,7 @@ onUnmounted(() => { document.removeEventListener('keydown', onKeydown); unlockSc
   padding: var(--spacing-lg);
   overflow-y: auto;
   flex: 1;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--color-text-muted);
   line-height: 1.6;
 }

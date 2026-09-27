@@ -91,8 +91,8 @@ withDefaults(defineProps<{
   border-bottom: 1px solid var(--color-border);
   gap: var(--spacing-sm);
 }
-.app-card__title    { font-size: 14px; font-weight: 600; color: var(--color-text); margin: 0; }
-.app-card__subtitle { font-size: 12px; color: var(--color-text-muted); margin: 3px 0 0; }
+.app-card__title    { font-size: var(--font-size-sm); font-weight: 600; color: var(--color-text); margin: 0; }
+.app-card__subtitle { font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 3px 0 0; }
 .app-card__header-left  { flex: 1; }
 .app-card__header-right { display: flex; align-items: center; gap: var(--spacing-sm); }
 

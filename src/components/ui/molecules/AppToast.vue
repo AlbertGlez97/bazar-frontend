@@ -145,17 +145,17 @@ const toastStore = useToastStore()
   pointer-events: none;
 }
 
-.app-toast-list { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.app-toast-list { display: flex; flex-direction: column; gap: var(--spacing-sm); align-items: flex-end; }
 
 .app-toast {
   display:        flex;
   align-items:    center;
-  gap:            10px;
-  padding:        10px 14px;
+  gap:            0.625rem;
+  padding:        0.625rem 0.875rem;
   border-radius:  var(--radius-sm);
   font-size:      0.85rem;
   font-weight:    500;
-  max-width:      340px;
+  max-width:      21.25rem;
   pointer-events: auto;
   box-shadow:     var(--shadow-md);
   border:         1px solid transparent;
@@ -176,7 +176,7 @@ const toastStore = useToastStore()
   cursor:        pointer;
   color:         inherit;
   opacity:       .6;
-  padding:       2px;
+  padding:       0.125rem;
   flex-shrink:   0;
   display:       flex;
   border-radius: 3px;

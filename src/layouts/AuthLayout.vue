@@ -35,13 +35,14 @@ import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 .auth-layout {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-lg);
   background: var(--color-bg);
-  padding: 72px 16px 24px;
+  padding: 4.5rem var(--spacing-md) var(--spacing-lg);
   overflow: hidden;
 }
 
@@ -59,7 +60,7 @@ import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 440px;
+  max-width: 27.5rem;
 }
 
 .auth-logo {
@@ -78,19 +79,19 @@ import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 440px;
+  max-width: 27.5rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  padding: 36px 32px;
+  padding: 2.25rem var(--spacing-xl);
   box-shadow: var(--shadow-lg);
 }
 
 /* ── Responsive ────────────────────────────────────────────── */
 @media (max-width: 480px) {
-  .auth-layout { padding-top: 64px; }
+  .auth-layout { padding-top: 4rem; }
   .auth-layout__card {
-    padding: 28px 20px;
+    padding: 1.75rem 1.25rem;
     border-radius: var(--radius-lg);
   }
 }

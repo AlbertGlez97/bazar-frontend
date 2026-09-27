@@ -100,8 +100,8 @@ async function handleClick() {
 .install-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
+  gap: var(--spacing-sm);
+  padding: 0.75rem 1.25rem;
   border: none;
   background: var(--color-primary);
   color: var(--color-on-primary);
@@ -139,15 +139,15 @@ async function handleClick() {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 1.25rem;
 }
 .install-modal__content {
   position: relative;
   background: var(--color-surface);
   color: var(--color-text);
   border-radius: 16px;
-  padding: 28px;
-  max-width: 440px;
+  padding: 1.75rem;
+  max-width: 27.5rem; /* 440px */
   width: 100%;
   box-shadow: var(--shadow-pop);
 }
@@ -159,7 +159,7 @@ async function handleClick() {
   font-size: 1.2rem;
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 0.375rem 0.625rem;
   border-radius: 6px;
 }
 .install-modal__close:hover { background: var(--color-surface-alt); }
@@ -167,25 +167,25 @@ async function handleClick() {
 .install-modal__title {
   font-size: 1.2rem;
   font-weight: 700;
-  margin: 0 0 8px;
+  margin: 0 0 var(--spacing-sm);
 }
 .install-modal__sub {
   font-size: 0.9rem;
   color: var(--color-text-muted);
-  margin: 0 0 18px;
+  margin: 0 0 1.125rem;
   line-height: 1.45;
 }
 
 .install-modal__steps {
   list-style: none;
   padding: 0;
-  margin: 0 0 18px;
+  margin: 0 0 1.125rem;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 0.75rem;
 }
 .install-modal__steps li {
-  padding: 12px 14px;
+  padding: 0.75rem 0.875rem;
   background: var(--color-primary-soft);
   border-left: 3px solid var(--color-primary);
   border-radius: 6px;
@@ -194,11 +194,11 @@ async function handleClick() {
 }
 .install-modal__icon {
   display: inline-block;
-  padding: 2px 8px;
+  padding: 0.125rem 0.5rem;
   background: var(--color-surface);
   border-radius: 4px;
   font-weight: 700;
-  margin: 0 4px;
+  margin: 0 var(--spacing-xs);
 }
 
 .install-modal__note {
@@ -207,7 +207,7 @@ async function handleClick() {
   background: var(--color-accent-soft);
   border: 1px solid color-mix(in srgb, var(--color-accent) 60%, transparent);
   border-radius: 6px;
-  padding: 10px 12px;
+  padding: 0.625rem 0.75rem;
   line-height: 1.45;
 }
 </style>

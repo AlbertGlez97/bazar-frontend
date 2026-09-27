@@ -156,7 +156,7 @@ function confirmGestion() {
   color: var(--color-on-primary);
   cursor: default;
 }
-.ui-mode-switch__icon { font-size: 18px; line-height: 1; }
+.ui-mode-switch__icon { font-size: 1.125rem; line-height: 1; }
 
 /* Compacto: columna de íconos de 44x44 (barra lateral colapsada) */
 .ui-mode-switch--compact .ui-mode-switch__group { flex-direction: column; align-items: center; }

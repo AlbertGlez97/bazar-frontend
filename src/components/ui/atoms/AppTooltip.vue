@@ -221,7 +221,7 @@ void props
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: 6px;
+  margin-left: 0.375rem;
   vertical-align: middle;
   line-height: 1;
 }
@@ -268,8 +268,8 @@ void props
 .tooltip-bubble {
   position: absolute;
   width: max-content;
-  max-width: 280px;
-  padding: 8px 12px;
+  max-width: 17.5rem;
+  padding: var(--spacing-sm) 0.75rem;
   background: var(--color-surface);
   color: var(--color-text);
   border: 1px solid var(--color-border);
@@ -306,8 +306,8 @@ void props
 }
 
 /* ── Placement vertical (también con flip automático) ──────────────────── */
-.tooltip-bubble--top    { bottom: calc(100% + 8px); }
-.tooltip-bubble--bottom { top:    calc(100% + 8px); }
+.tooltip-bubble--top    { bottom: calc(100% + var(--spacing-sm)); }
+.tooltip-bubble--bottom { top:    calc(100% + var(--spacing-sm)); }
 
 /* Flecha — se posiciona según placement vertical Y align horizontal. La
    flecha apunta al trigger, así que cuando el bubble está align-end (a la
@@ -327,10 +327,10 @@ void props
 }
 .tooltip-bubble--align-start::after {
   /* trigger ~24px de ancho — la flecha cae sobre el centro del trigger */
-  left: 12px;
+  left: 0.75rem;
 }
 .tooltip-bubble--align-end::after {
-  right: 12px;
+  right: 0.75rem;
 }
 
 /* Mostrar: hover, focus dentro del wrapper, o pinned por click */
@@ -344,7 +344,7 @@ void props
 /* En móviles angostos, el bubble no debe salirse de la pantalla */
 @media (max-width: 480px) {
   .tooltip-bubble {
-    max-width: 220px;
+    max-width: 13.75rem;
     font-size: 0.75rem;
   }
 }
