@@ -160,9 +160,12 @@ this is a known, tracked gap — not an oversight to rediscover later. Cross-ref
       build ok.
 - [x] **C5** `doc/reglas-de-negocio.md` (new file, frontend) + cross-reference from
       `doc/api-contract-for-frontend.md`. Route: direct inline.
-- [ ] **C6** Verify: build, lint, `test:run` full suite (RED/GREEN evidence recorded per behavior above);
-      disclose (don't fake) the manual checks this environment cannot perform: real/emulated 375-414px
-      viewport screenshot, and confirming nothing overlaps/clips.
+- [x] **C6** Verify: full-repo `eslint .` clean, `npm run test:run` 125 files / 2379 tests green
+      (2357 baseline before this feature touched anything, +15 from C2/C3, +7 from C4), `npm run build`
+      exits 0. **Not performed, disclosed honestly**: a real/emulated 375-414px viewport check and
+      confirming nothing overlaps/clips visually — no browser available in this environment. A person needs
+      to open the app (DevTools device toolbar, phone in hand, or both) before this is considered visually
+      confirmed on top of unit-test-green.
 
 ## Acceptance criteria
 
