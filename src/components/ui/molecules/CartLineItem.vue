@@ -160,8 +160,8 @@ const emit = defineEmits<{
   align-items: center;
   justify-content: center;
   gap: var(--spacing-xs);
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-sm);

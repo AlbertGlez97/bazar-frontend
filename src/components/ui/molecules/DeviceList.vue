@@ -153,7 +153,7 @@ const STATUS: Record<DeviceStatus, { label: string; color: 'green' | 'amber' | '
 
 /* Cada acción es un objetivo táctil de al menos 44x44 (guía de marca) */
 .device-list__action {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
 }
 </style>

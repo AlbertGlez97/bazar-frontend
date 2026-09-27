@@ -167,8 +167,8 @@ function formatTime(iso: string): string {
 
 /* "Ver": 44 px al tacto aunque el texto sea chico */
 .sync-status__see {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-sm);
@@ -199,8 +199,8 @@ function formatTime(iso: string): string {
 
 .sync-status__dismiss {
   align-self: flex-start;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0 var(--spacing-lg);
   font-family: inherit;
   font-size: var(--font-size-md);

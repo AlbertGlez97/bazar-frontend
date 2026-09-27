@@ -278,7 +278,7 @@ const secondary = computed<{ label: string; event: 'new-sale' | 'back' } | null>
 .sale-result__summary { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
 .sale-result__detail { width: 100%; font-size: var(--font-size-sm); color: var(--color-text-muted); text-align: left; }
-.sale-result__detail summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
+.sale-result__detail summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 600; }
 .sale-result__detail p { margin: 0; padding: var(--spacing-sm) var(--spacing-md); background: var(--color-surface-alt); border-radius: var(--radius-md); overflow-wrap: anywhere; }
 
 .sale-result__actions { display: flex; flex-direction: column; gap: var(--spacing-sm); width: 100%; margin-top: var(--spacing-sm); }

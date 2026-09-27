@@ -55,8 +55,8 @@ const emit = defineEmits<{
 
 .category-filter__btn {
   flex: 0 0 auto;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-md);

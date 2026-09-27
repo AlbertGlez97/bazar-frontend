@@ -98,8 +98,8 @@ function onIncrement() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0;
   font-family: var(--font-display);
   font-size: var(--font-size-xl);

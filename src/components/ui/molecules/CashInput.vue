@@ -150,8 +150,8 @@ function onInput(event: Event) {
 /* Atajos: fila que envuelve, cada uno de al menos 44 px */
 .cash-input__chips { display: flex; flex-wrap: wrap; gap: var(--spacing-xs) var(--spacing-sm); }
 .cash-input__chip {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0 var(--spacing-sm);
   font-family: inherit;
   font-size: var(--font-size-md);

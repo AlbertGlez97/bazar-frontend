@@ -415,8 +415,8 @@ function handleLogout() {
   display:         flex;
   align-items:     center;
   justify-content: center;
-  min-width:       44px;
-  min-height:      44px;
+  min-width:       2.75rem;
+  min-height:      2.75rem;
   flex-shrink:     0;
   font-size:       18px;
   color:           var(--color-sidebar-text);

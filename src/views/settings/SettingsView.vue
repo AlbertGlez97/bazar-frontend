@@ -85,7 +85,7 @@ const items = computed(() => getSettingsItems({ isSocio: session.member?.role ==
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  min-height: 56px;
+  min-height: 3.5rem;
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--color-surface);
   border: 1px solid var(--color-border);

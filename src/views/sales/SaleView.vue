@@ -351,7 +351,7 @@ async function goToLogin() {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-sm);
-  min-height: 48px;
+  min-height: 3rem;
   margin-bottom: var(--spacing-md);
   padding: 0 var(--spacing-md);
   font-family: inherit;

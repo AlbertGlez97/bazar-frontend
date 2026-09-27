@@ -131,8 +131,8 @@ function confirmGestion() {
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
-  min-height: 44px;
-  min-width: 44px;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-sm);
@@ -162,7 +162,7 @@ function confirmGestion() {
 .ui-mode-switch--compact .ui-mode-switch__group { flex-direction: column; align-items: center; }
 .ui-mode-switch--compact .ui-mode-switch__btn {
   flex: 0 0 auto;
-  width: 44px;
+  width: 2.75rem;
   padding: 0;
 }
 

@@ -312,6 +312,6 @@ async function download(kind: 'pdf' | 'excel') {
   align-items: center;
   gap: var(--spacing-sm);
 }
-.reports-view__downloads :deep(.app-btn) { min-height: 44px; min-width: 44px; }
+.reports-view__downloads :deep(.app-btn) { min-height: 2.75rem; min-width: 2.75rem; }
 .reports-view__preparing { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 </style>

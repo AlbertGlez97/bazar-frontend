@@ -155,8 +155,8 @@ function handleSubmit() {
 /* Interruptor de mostrar/ocultar: objetivo táctil de 44 px (guía de marca) */
 .change-password-form__toggle {
   align-self: flex-start;
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0 var(--spacing-sm);
   background: transparent;
   border: 1px solid transparent;

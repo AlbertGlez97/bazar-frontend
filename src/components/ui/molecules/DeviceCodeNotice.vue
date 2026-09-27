@@ -126,7 +126,7 @@ const reissuedNote = computed(() => (props.action === 'reissued' ? 'El acceso an
 
 /* Copiar: objetivo táctil de al menos 44x44 (guía de marca) */
 .device-code-notice__copy {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
 }
 </style>

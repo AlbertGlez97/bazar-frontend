@@ -117,9 +117,9 @@ const pages = computed(() => {
 /* Táctil: área mínima de 44x44 px (guía de marca, "Objetivos táctiles") */
 .app-pagination--lg { gap: var(--spacing-sm); flex-wrap: wrap; justify-content: center; }
 .app-pagination--lg .app-pag-btn {
-  min-width:  44px;
-  min-height: 44px;
-  height:     44px;
+  min-width:  2.75rem;
+  min-height: 2.75rem;
+  height:     2.75rem;
   padding:    0 var(--spacing-sm);
   font-size:  var(--font-size-md);
 }

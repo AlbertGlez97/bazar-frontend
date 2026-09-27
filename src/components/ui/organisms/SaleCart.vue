@@ -199,8 +199,8 @@ function confirmClear() {
 
 /* Vaciar: pequeño en el diseño pero de 44 px al tacto, y en chile porque descarta */
 .sale-cart__clear {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-sm);

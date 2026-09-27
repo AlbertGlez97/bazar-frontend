@@ -124,8 +124,8 @@ function onSubmit() {
 
 /* Control segmentado: el activo lo dice el color Y el estado (aria-pressed). */
 .report-range-picker__preset {
-  min-width: 44px;
-  min-height: 44px;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-sm);
@@ -155,7 +155,7 @@ function onSubmit() {
   gap: var(--spacing-md);
 }
 .report-range-picker__date { flex: 0 1 12rem; min-width: 9rem; }
-.report-range-picker__apply { min-height: 44px; min-width: 44px; }
+.report-range-picker__apply { min-height: 2.75rem; min-width: 2.75rem; }
 
 .report-range-picker__error {
   margin: 0;

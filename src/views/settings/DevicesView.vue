@@ -389,7 +389,7 @@ async function confirmAction(payload: ReissueDevicePayload) {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 2.75rem;
   color: var(--color-primary);
   font-weight: 600;
   text-decoration: none;
