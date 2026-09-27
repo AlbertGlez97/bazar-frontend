@@ -22,15 +22,13 @@ describe('getNavItems', () => {
     expect(home?.modes).toEqual(['gestion'])
   })
 
-  it('Modo Gestión: "Vender" va después de "Productos"', () => {
-    expect(tos(getNavItems('gestion'))).toEqual(['/app', '/app/productos', '/app/venta'])
+  it('Modo Gestión: Inicio y Productos, sin "Vender"', () => {
+    expect(tos(getNavItems('gestion'))).toEqual(['/app', '/app/productos'])
   })
 
-  it('"Vender" está siempre, en los dos modos, con su ícono y etiqueta', () => {
-    for (const mode of ['venta', 'gestion'] as const) {
-      const sell = getNavItems(mode).find((item) => item.to === '/app/venta')
-      expect(sell).toMatchObject({ label: 'Vender', icon: '🛒', exact: false })
-    }
+  it('"Vender" existe solo en Modo Venta, con su ícono y etiqueta', () => {
+    expect(getNavItems('venta').find((item) => item.to === '/app/venta')).toMatchObject({ label: 'Vender', icon: '🛒', exact: false })
+    expect(getNavItems('gestion').find((item) => item.to === '/app/venta')).toBeUndefined()
   })
 
   it('"Inicio" es exacto (solo activo en /app) y el resto no', () => {
@@ -89,7 +87,7 @@ describe('getNavItems — Reportes (solo socios, solo Modo Gestión)', () => {
   })
 
   it('no altera el orden de los demás ítems', () => {
-    expect(tos(getNavItems('gestion', { isSocio: true }))).toEqual(['/app', '/app/productos', '/app/venta', '/app/reportes'])
-    expect(tos(getNavItems('gestion', { isSocio: false }))).toEqual(['/app', '/app/productos', '/app/venta'])
+    expect(tos(getNavItems('gestion', { isSocio: true }))).toEqual(['/app', '/app/productos', '/app/reportes'])
+    expect(tos(getNavItems('gestion', { isSocio: false }))).toEqual(['/app', '/app/productos'])
   })
 })

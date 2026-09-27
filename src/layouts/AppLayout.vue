@@ -184,7 +184,7 @@ const sidebarCollapsed = ref(startsOnPhone)
 function toggleSidebar() { sidebarCollapsed.value = !sidebarCollapsed.value }
 
 // Navegación principal, derivada del modo (ver ./nav-items.ts: ahí se agregan
-// ítems nuevos). "Vender" siempre está; su lugar cambia con el modo.
+// ítems nuevos). Cada modo tiene su menú: Venta solo "Vender"; Gestión nunca.
 // `exact`: '/app' es prefijo de todas las rutas operativas y, por cómo
 // vue-router resuelve el hijo con path '', quedaría resaltado en cualquiera
 // de ellas; "Inicio" solo se marca activo en la ruta exacta.

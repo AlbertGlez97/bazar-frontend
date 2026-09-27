@@ -7,8 +7,8 @@ import type { UiMode } from '@/types/ui-mode.types'
  *
  * Por modo:
  * - **Modo Venta**: solo "Vender". Quien vende no ve nada más en el menú.
- * - **Modo Gestión**: "Inicio", "Productos", "Vender" y "Reportes" (este solo
- *   para socios), y el espacio para las secciones que vienen.
+ * - **Modo Gestión**: "Inicio", "Productos" y "Reportes" (este solo para
+ *   socios), y el espacio para las secciones que vienen. Nunca "Vender".
  *
  * Punto de extensión (secciones futuras: Comisiones, Deudas, ...): se agregan
  * como una fila más de `NAV_ITEMS` con `modes: ['gestion']` (y `socioOnly: true`
@@ -36,15 +36,16 @@ export interface NavContext {
 }
 
 export const NAV_ITEMS: NavItemDef[] = [
-  // "Vender" está en los dos modos: es lo único en Modo Venta y va después de
-  // "Productos" en Modo Gestión.
-  { to: '/app/venta', label: 'Vender', icon: '🛒', exact: false, order: { venta: 1, gestion: 3 } },
+  // Cada ítem DECLARA sus modos (un test falla si falta): omitir `modes` lo dejaba
+  // en los dos, y así "Vender" se coló en Modo Gestión.
+  // "Vender": solo Modo Venta, y es lo único que ese modo muestra.
+  { to: '/app/venta', label: 'Vender', icon: '🛒', exact: false, modes: ['venta'], order: { venta: 1, gestion: 0 } },
   // "Inicio" y "Productos": solo Modo Gestión. (El guard también saca de "Inicio"
   // a quien lo escriba en la URL en Modo Venta: ver `requiresGestion` en el router.)
   { to: '/app', label: 'Inicio', icon: '🏠', exact: true, modes: ['gestion'], order: { venta: 2, gestion: 1 } },
   { to: '/app/productos', label: 'Productos', icon: '📦', exact: false, modes: ['gestion'], order: { venta: 3, gestion: 2 } },
-  // Reportes: solo socios y solo en Modo Gestión (la ruta lo exige también en el guard).
-  { to: '/app/reportes', label: 'Reportes', icon: '📊', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 4 } },
+  // Reportes: solo socios y solo Modo Gestión (la ruta lo exige también en el guard).
+  { to: '/app/reportes', label: 'Reportes', icon: '📊', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 3 } },
 ]
 
 /** Ítems visibles para el modo y la persona, en el orden de ese modo. */

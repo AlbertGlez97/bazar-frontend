@@ -107,10 +107,10 @@ describe('AppLayout', () => {
     expect(vm.sidebarCollapsed).toBe(false)
   })
 
-  it('navItems contiene inicio, productos y vender (Modo Gestión: vender al final)', () => {
+  it('navItems (Modo Gestión) contiene inicio y productos, sin vender', () => {
     const wrapper = shallowMount(AppLayout)
     const vm = wrapper.vm as unknown as AppLayoutVm
-    expect(vm.navItems.map((i) => i.to)).toEqual(['/app', '/app/productos', '/app/venta'])
+    expect(vm.navItems.map((i) => i.to)).toEqual(['/app', '/app/productos'])
   })
 
   it('currentRouteTitle muestra "Vender" en la pantalla de venta', () => {

@@ -29,7 +29,17 @@ The colaborador hypothesis is weak: the catalog already hides "Nuevo producto" a
 - Read-only catalog for non-socios reuses `session.member.role`, the same source as the nav and the route guards.
 
 ## Bug 2 — "Vender" shown in Modo Gestión
-(filled in by the second commit)
+
+### Root cause
+`src/layouts/nav-items.ts`: the "Vender" row was declared **without `modes`**, and the filter treats a missing `modes` as "all modes" (`!item.modes || item.modes.includes(mode)`). It was introduced by `6b38799` (sale screen, 2026-09-25) with `order: { venta: 1, gestion: 3 }`, and the previous Part 2 commit (`3f56f9b`) removed Inicio/Productos from Venta but kept "Vender" common on purpose (its tests even asserted "Vender siempre está a la vista, en cualquier modo"). There is ONE place that builds the menu (`AppLayout.vue`, `navItems` computed -> `getNavItems`); no mobile bottom bar or drawer variant exists, so the source fix covers every layout.
+
+### Fix (at the source, not visual)
+- "Vender" now declares `modes: ['venta']`. Every row must declare `modes` (a test fails if one is missing: omitting it is exactly how this slipped in).
+- Modo Gestión: Inicio, Productos, Reportes (socio only). Modo Venta: only Vender.
+- Route policy unchanged: `/app/venta` stays reachable by URL in Gestión; switching Venta -> Gestión while on Vender already lands on Inicio (existing watch in `AppLayout`).
+
+### Existing tests changed (they pinned the wrong behavior)
+`nav-items.test.ts`, `AppLayout.nav.test.ts` (Gestión menu, "Vender siempre a la vista", link count x2, active link in /app/venta now under Modo Venta), `AppLayout.mode-landing.test.ts` (Gestión menus), `AppLayout.test.ts` (`navItems`). New: `nav-mode-exclusivity.test.ts` (registry contract, both modes, socio/colaborador, mode switch, sidebar collapsed/expanded).
 
 ## Bug 3 — sidebar footer disappears when expanded
 (filled in by the third commit)

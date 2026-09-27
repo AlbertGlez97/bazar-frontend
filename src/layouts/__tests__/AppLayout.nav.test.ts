@@ -68,10 +68,10 @@ const linkLabels = (wrapper: Awaited<ReturnType<typeof mountAt>>) =>
   wrapper.findAll('a.sidebar__link').map((l) => `${l.get('.sidebar__link-icon').text()} ${l.get('.sidebar__link-label').text()}`)
 
 describe('AppLayout navegación', () => {
-  it('Modo Gestión: Inicio, Productos y después Vender', async () => {
+  it('Modo Gestión: Inicio y Productos, sin Vender', async () => {
     localStorage.setItem('la-marchanta-ui-mode', 'gestion')
     const wrapper = await mountAt('/app')
-    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '🛒 Vender'])
+    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos'])
   })
 
   // Regla nueva (Parte 2): en Modo Venta el menú es solo "Vender" (antes también
@@ -82,11 +82,11 @@ describe('AppLayout navegación', () => {
     expect(linkLabels(wrapper)).toEqual(['🛒 Vender'])
   })
 
-  it('Vender siempre está a la vista, en cualquier modo', async () => {
-    for (const mode of ['venta', 'gestion']) {
+  it('Vender está a la vista solo en Modo Venta (nunca en Gestión)', async () => {
+    for (const [mode, expected] of [['venta', true], ['gestion', false]] as const) {
       localStorage.setItem('la-marchanta-ui-mode', mode)
       const wrapper = await mountAt('/app')
-      expect(linkLabels(wrapper).some((label) => label.includes('Vender'))).toBe(true)
+      expect(linkLabels(wrapper).some((label) => label.includes('Vender'))).toBe(expected)
     }
   })
 
@@ -97,7 +97,8 @@ describe('AppLayout navegación', () => {
     expect(linkLabels(wrapper)[0]).toContain('Vender')
   })
 
-  it('en /app/venta solo "Vender" está activo, no "Inicio"', async () => {
+  it('en /app/venta (Modo Venta) solo "Vender" está activo, no "Inicio"', async () => {
+    localStorage.setItem('la-marchanta-ui-mode', 'venta')
     const wrapper = await mountAt('/app/venta')
     expect(activeLabels(wrapper)).toHaveLength(1)
     expect(activeLabels(wrapper)[0]).toContain('Vender')
@@ -112,7 +113,7 @@ describe('AppLayout navegación', () => {
     sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
     localStorage.setItem('la-marchanta-ui-mode', 'gestion')
     const wrapper = await mountAt('/app')
-    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '🛒 Vender', '📊 Reportes'])
+    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '📊 Reportes'])
     expect(wrapper.findAll('a.sidebar__link').at(-1)?.attributes('href')).toBe('/app/reportes')
   })
 
@@ -144,8 +145,8 @@ describe('AppLayout navegación', () => {
   it('muestra los enlaces a Inicio y Productos con sus rutas', async () => {
     const wrapper = await mountAt('/app')
     const links = wrapper.findAll('a.sidebar__link')
-    expect(links).toHaveLength(3)
-    expect(links.find((l) => l.text().includes('Vender'))?.attributes('href')).toBe('/app/venta')
+    expect(links).toHaveLength(2)
+    expect(links.find((l) => l.text().includes('Vender'))).toBeUndefined()
     expect(links.find((l) => l.text().includes('Productos'))?.attributes('href')).toBe('/app/productos')
     expect(links.find((l) => l.text().includes('Inicio'))?.attributes('href')).toBe('/app')
   })
@@ -244,7 +245,7 @@ describe('AppLayout engrane de ajustes (junto al nombre)', () => {
 
   it('no es parte de la navegación principal (no cambia los enlaces de arriba)', async () => {
     const wrapper = await mountAt('/app')
-    expect(wrapper.findAll('a.sidebar__link')).toHaveLength(3)
+    expect(wrapper.findAll('a.sidebar__link')).toHaveLength(2)
     expect(wrapper.find('.sidebar__nav a.sidebar__settings').exists()).toBe(false)
   })
 

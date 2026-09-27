@@ -75,14 +75,14 @@ describe('AppLayout — el menú depende del modo', () => {
     expect(links(wrapper)).toEqual(['/app/venta'])
   })
 
-  it('Modo Gestión: Inicio, Productos, Vender y (socio) Reportes', async () => {
+  it('Modo Gestión: Inicio, Productos y (socio) Reportes, sin Vender', async () => {
     const { wrapper } = await mountAt('/app/productos', 'gestion')
-    expect(links(wrapper)).toEqual(['/app', '/app/productos', '/app/venta', '/app/reportes'])
+    expect(links(wrapper)).toEqual(['/app', '/app/productos', '/app/reportes'])
   })
 
   it('Modo Gestión: un colaborador no ve Reportes', async () => {
     const { wrapper } = await mountAt('/app/productos', 'gestion', 'colaborador')
-    expect(links(wrapper)).toEqual(['/app', '/app/productos', '/app/venta'])
+    expect(links(wrapper)).toEqual(['/app', '/app/productos'])
   })
 
   it('el engrane de ajustes se ofrece en los dos modos', async () => {
