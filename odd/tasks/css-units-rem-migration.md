@@ -52,24 +52,40 @@ already-reported cramped Paso 2 / sidebar-footer layout issues.
 
 ## Checklist
 
-- [ ] **U1** `main.css`: convert `--spacing-*`/`--font-size-*` tokens to rem; fix the 4 magic-number paddings
+- [x] **U1** `main.css`: convert `--spacing-*`/`--font-size-*` tokens to rem; fix the 4 magic-number paddings
       (`.btn`, `.input`, `.badge`, `.alert`) to use the spacing tokens; convert `--sidebar-width`,
       `--sidebar-width-collapsed`, `--header-height` to rem. Route: direct inline (1 mechanical, understood file).
-- [ ] **U2** Touch targets: convert every `min-width`/`min-height`/`height: 44px|48px|56px|40px` interactive
+      Commit `27d58ac`. 124 files / 2357 tests green, lint clean, build ok.
+- [x] **U2** Touch targets: convert every `min-width`/`min-height`/`height: 44px|48px|56px|40px` interactive
       control across the flagged files to rem (safe per `touch-targets.test.ts`). Route: delegated writer
-      (2+ files).
-- [ ] **U3** Outer-layer components without tokens: route standalone font-size/spacing literals through
+      (2+ files). Commit `0b932f1`, 21 files. Writer cross-checked against `touch-targets.test.ts` itself
+      (ground truth), found and fixed one file missing from the initial audit (`SaleResult.vue`), and left
+      `TeamMemberList.vue`'s row height for U3 (not an interactive control under WCAG 2.5.5). Same 2357 tests
+      green, lint clean, build ok.
+- [x] **U3** Outer-layer components without tokens: route standalone font-size/spacing literals through
       `var(--font-size-*)`/`var(--spacing-*)` where a matching value exists, else a direct rem literal
       (`LoginView`, `AuthLayout`, `AppModal`, `AppCard`, `AppKebabMenu`, `AppToast`, `AppAlert`,
       `AppPagination`, `InstallAppButton`, `AppTooltip`, `SettingsView`, `AppLayout` nav-icon font-sizes,
-      `UiModeSwitch`). Route: delegated writer.
-- [ ] **U4** `100vh` → `100vh; 100dvh` fallback in the 5 remaining spots (F). Route: bundled with U3's writer
-      (same "outer layer" files, `AppLayout`/`PublicLayout`/`AuthLayout`/`SaleView`).
-- [ ] **U5** Document the convention in `doc/brand-guidelines.md` (when rem, when px is fine, why the iOS
+      `UiModeSwitch`), plus C-category dimensions (modal/toast/tooltip max-width, kebab menu min-width, auth
+      card, `TeamMemberList` row height) and the `InstallAppButton` install-modal `max-width` the writer
+      flagged as ambiguous (resolved: convert, same as the other C-category widths). `ProductQrCard.vue`
+      does not exist on `main` (it only exists on the unmerged `feat/qr-labels` branch) — left as a followup
+      for whenever that branch merges, not blocking here. Route: delegated writer. Commit `0252fee`, 15 files
+      + 1 follow-up edit. Same 2357 tests green, lint clean, build ok.
+- [x] **U4** `100vh` → `100vh; 100dvh` fallback in the 5 remaining spots (F). Route: bundled with U3's writer
+      (same "outer layer" files, `AppLayout`/`PublicLayout`/`AuthLayout`/`SaleView`). Bundled in commit
+      `0252fee`.
+- [x] **U5** Document the convention in `doc/brand-guidelines.md` (when rem, when px is fine, why the iOS
       16px input exception exists, why breakpoints stay px). Route: direct inline.
-- [ ] **U6** Verify: build, lint, `test:run` full suite; confirm `touch-targets.test.ts` and
-      `AppLayout.sidebar-footer.test.ts` still pass; manual note on the accessibility zoom check (disclose if
-      it cannot be performed in this environment).
+- [x] **U6** Verify: full-repo `eslint .` clean, `npm run test:run` 124 files / 2357 tests green (same total
+      as before this feature touched anything — no test needed changing), `npm run build`
+      (`vue-tsc -b && vite build`) exits 0, PWA precache regenerated (64 entries) with no new warnings beyond
+      the pre-existing large-chunk notice (`pdfmake`/`exceljs`/`vfs_fonts`, unrelated). **Not performed, disclosed
+      honestly**: the manual checks the task asked for (resizing a real/emulated 375-414px viewport, and
+      simulating a larger system/browser text size to confirm the layout scales without breaking) — this
+      environment has no browser to drive. These need a person to open the app in a real browser
+      (DevTools device toolbar + the browser's font-size/zoom setting) before this is considered visually
+      confirmed, not just unit-test-green.
 
 ## Acceptance criteria
 

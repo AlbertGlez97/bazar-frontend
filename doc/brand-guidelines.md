@@ -68,9 +68,15 @@ Además: `--color-border` (`#e3d5bc`) es solo decorativo (divisores de tarjetas)
 - El color nunca es la única señal: acompáñalo de texto o icono.
 - El tema del navegador y el `theme_color` del manifest son `--color-primary`; el `background_color` es `--color-bg` (`THEME_COLOR` y `BACKGROUND_COLOR` en `src/config/app.ts`, comprobado por test).
 
-### Espaciado, radios y sombras
+### Espaciado, tipografía, radios y sombras
 
-Tokens en `main.css`: `--spacing-xs..2xl` (4, 8, 16, 24, 32, 48 px), `--radius-sm/md/lg/xl/full` (6, 10, 16, 20, pastilla), `--shadow-sm/md/lg/pop` (tinte café, no negro puro). Foco visible: `outline: 3px solid var(--color-focus-ring)` con `outline-offset: 2px` (global, con `:focus-visible`).
+Tokens en `main.css`: `--spacing-xs..2xl` y `--font-size-xs..2xl` están en **rem**, no en px (`0.25/0.5/1/1.5/2/3rem` y `0.75/0.875/1/1.25/1.5/2rem`), para que escalen con el tamaño de fuente del sistema/navegador: alguien con baja visión que agranda su fuente ve crecer toda la app, no solo el texto suelto. `--radius-sm/md/lg/xl/full` (6, 10, 16, 20 px, pastilla) y `--shadow-sm/md/lg/pop` (tinte café, no negro puro) siguen en px: son decisiones de forma, no de legibilidad. Foco visible: `outline: 3px solid var(--color-focus-ring)` con `outline-offset: 2px` (global, con `:focus-visible`) — también en px, es un detalle de borde.
+
+**Cuándo usar `rem` y cuándo `px` es aceptable** (con `html { font-size: 16px }` como ancla, que nunca se toca):
+
+- **Siempre `rem`**: tamaño de fuente, espaciado (`padding`/`margin`/`gap`), objetivos táctiles (44/48/56 px — `touch-targets.test.ts` acepta ambas unidades, pero la convención del proyecto es rem), y dimensiones de panel/contenido de ancho fijo que no deben achicarse con el viewport (`--sidebar-width`, `--header-height`, `max-width` de modales/toasts/tooltips, la caja de un código QR). Ninguna de estas es relativa al ancho de pantalla: son paneles o cajas de tamaño fijo que solo deben crecer con la fuente de quien usa la app, nunca con el ancho de la ventana — por eso van a `rem`, jamás a `vw`/`%`.
+- **`px` está bien**: bordes, outlines y sombras de 1-3 px (un borde no necesita "leerse" más grande); radios de esquina y tamaños puramente decorativos (spinner, avatar, ícono suelto, `--radius-*`); breakpoints de media query (`@media (max-width/max-height: … px)` — son umbrales de diseño responsive, no texto, y convertirlos no aporta nada de accesibilidad); y el `font-size: 16px` de `AppInput`/`AppSelect`/`AppTextarea`, que es un requisito de iOS Safari (por debajo de 16 px el navegador hace zoom automático al enfocar el campo), no un token de marca — pasarlo a `rem` podría reintroducir ese zoom si la persona reduce su fuente del sistema.
+- **`100vh` en layouts de pantalla completa**: declara la propiedad dos veces, `…: 100vh;` y luego `…: 100dvh;` justo debajo (el navegador usa la última que soporte). `100vh` solo no cuenta la barra de direcciones dinámica de los navegadores móviles y puede recortar contenido. Patrón de referencia: `AppLayout.vue` (`.sidebar`, `.app-layout`, `.app-main`).
 
 ## 3. Tipografía
 
