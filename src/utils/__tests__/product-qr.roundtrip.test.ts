@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
 import { productQrDataUrl } from '../product-qr'
+import { LABEL_QR_QUIET_ZONE, LABEL_QR_SCALE } from '@/services/qr-label-sheet'
 import { useSaleCatalogStore } from '@/stores/sale-catalog.store'
 import ProductsService from '@/services/products.service'
 import type { Product } from '@/types/product.types'
@@ -46,7 +47,8 @@ beforeEach(() => {
 describe('QR round trip with the scanner engine', () => {
   it.each([
     ['screen / PNG download (scale 10, quiet zone 4)', {}],
-    ['label sheet (scale 12, quiet zone 2)', { scale: 12, quietZone: 2 }],
+    // Los ajustes REALES con los que la hoja de etiquetas incrusta cada QR en el PDF.
+    [`label sheet (scale ${LABEL_QR_SCALE}, quiet zone ${LABEL_QR_QUIET_ZONE})`, { scale: LABEL_QR_SCALE, quietZone: LABEL_QR_QUIET_ZONE }],
     ['small scale (4, quiet zone 2)', { scale: 4, quietZone: 2 }],
   ])('decodes EXACTLY the product id: %s', async (_label, options) => {
     const text = await decodeText(await productQrDataUrl(ID, options))
@@ -62,7 +64,7 @@ describe('QR round trip with the scanner engine', () => {
       '00000000-0000-7000-8000-000000000000',
     ]
     for (const id of ids) {
-      expect(await decodeText(await productQrDataUrl(id, { scale: 12, quietZone: 2 }))).toEqual([id])
+      expect(await decodeText(await productQrDataUrl(id, { scale: LABEL_QR_SCALE, quietZone: LABEL_QR_QUIET_ZONE }))).toEqual([id])
     }
   })
 

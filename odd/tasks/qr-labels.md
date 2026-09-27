@@ -32,12 +32,43 @@ No real problem was found with `qrcode`, so the user's preference stands. Both l
 ECC `M`, a 36-char lowercase UUID is byte mode: **version 3, 29 x 29 modules**. Quiet zone: 4 modules for the on-screen/downloaded PNG (spec value),
 2 modules inside the image for the label sheet (the white label paper around it adds more). Integer pixels per module (`scale`), never fractional.
 
-(The label geometry, row pitch and layout numbers are added by the next commits.)
+### D4. Sheet geometry and the row pitch (the physics problem)
+OFITURIA A4, 6 columns x 12 rows, 35 x 25 mm labels.
+- Columns: 6 x 35 = **210 mm** = the exact A4 width. Column pitch is a fixed constant (35 mm).
+- Rows: 12 x 25 = **300 mm**, an A4 is **297 mm**. An offset cannot fix it: the error accumulates row by row (0.25 mm per row, 3 mm by the last).
+  So the calibration has three numbers, all editable and saved: `offsetTopMm`, `offsetLeftMm` (-10..+10 mm, step 0.1, negatives allowed) and
+  **`rowPitchMm`, default 24.75 mm (= 297 / 12)**, range 20..26 mm. With 24.75 the 12 rows end exactly at 297 mm. The user can type 25 if they
+  really want it: the plan reports `bottomOverflowMm` (3 mm) and the print dialog explains it. The design box of a label is min(pitch, 25) mm high.
+- All math in mm, one rounding step (0.001 mm) per coordinate, never accumulated across cells (`cellOrigin` = offset + index x pitch).
+- jsPDF: `new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' })`, so the plan's mm go in unchanged. (A4 in jsPDF is 595.28 x 841.89 pt = 210.0016 mm.)
+
+### D5. Label layout (numbers for a 35 x 24.75 mm cell)
+| Item | Value |
+|---|---|
+| Safety margin to every cell edge | 1.5 mm -> inner box 32.0 x 21.75 mm |
+| Name font | Helvetica 6 pt, line pitch 2.434 mm (x1.15), max 2 lines, centred, ellipsis "..." |
+| Gap QR -> name | 0.5 mm |
+| **QR box (below layout)** | min(32, 21.75 - 2 x 2.434 - 0.5) = 16.38 -> **16.35 mm** (floor to 0.05), centred |
+| QR pixels | version 3 = 29 modules + 2 quiet = 33 modules; scale 12 -> 396 px over 16.35 mm = **~615 dpi**, 0.495 mm per module |
+| Text block bottom | cell top + 1.5 + 16.35 + 0.5 + 4.868 = 23.218 mm <= 23.25 mm (cell bottom minus margin) |
+| Side-by-side alternative | QR 21.75 mm, but the text column is only 9.75 mm wide (< 15 mm legible minimum) -> rejected |
+
+The name goes **below** the QR: the side layout gives a 33 % bigger QR but leaves ~9 characters per line, which cannot identify a product.
+No price on the label (it changes often). `evaluateLabelLayouts()` keeps this decision testable.
+
+### D6. Text and images in jsPDF
+Core fonts are Latin-1: Spanish accents and ñ work; emoji/CJK/etc. are replaced by a space (never a broken glyph) and whitespace is collapsed;
+an empty result becomes "Sin nombre". Each unique id is rasterised once and embedded with `alias = id` (repeated ids reuse the image).
+`doc.text(..., { align: 'center', baseline: 'top' })`: the plan's `y` is the top edge of each line.
+
+### D7. Calibration persistence
+`localStorage['la-marchanta-label-calibration']` = JSON `{offsetTopMm, offsetLeftMm, rowPitchMm}`, validated on read (bad JSON, wrong type, NaN, out of
+range -> defaults/clamped), storage errors swallowed, saved on every change, "Restablecer" button.
 
 ## Checklist
 
 - [x] **Q1** Client QR generation util + PNG download in the edit modal (commit 1)
-- [ ] **Q2** Label sheet planning + jsPDF render + calibration store (commit 2)
+- [x] **Q2** Label sheet planning + jsPDF render + calibration store (commit 2)
 - [ ] **Q3** Catalog multi-select + print dialog (commit 3)
 
 ## Evidence
@@ -54,3 +85,15 @@ ECC `M`, a 36-char lowercase UUID is byte mode: **version 3, 29 x 29 modules**. 
 - Bundle: the encoder lives in its own lazy chunk `browser-*.js` = **25.79 kB (10.14 kB gzip)**, referenced only with `import("./browser-*.js")`
   from the catalog chunk; the entry chunk (`index-*.js`, 225.49 kB) contains no QR code.
 - Checks: 127 files / 2413 tests, lint clean, build ok.
+
+### Commit 2 — label sheet plan + jsPDF renderer + calibration store
+- `utils/label-sheet-plan.ts` (pure): geometry constants, `normalizeCalibration`, `cellOrigin`, `sheetCount`, `sanitizeLabelText`, `wrapLabelName`,
+  `evaluateLabelLayouts`, `planLabelSheet`. 60 tests: page count math (0, 1, 72, 73, 144, 145, 1000), exact mm of cells (0,0) (5,0) (0,11) (5,11)
+  with default / positive / negative / decimal offsets and a custom pitch, last cell of the last page, label inside its cell minus margins, QR centred
+  and uniform, text <= 2 lines inside the cell, 25 mm pitch overflows by exactly 3 mm, determinism, invalid ids rejected.
+- `services/qr-label-sheet.ts`: `generateQrLabelSheet(products, calibration)` renders the plan with a lazily imported jsPDF. Spy tests (fake jsPDF) assert
+  the constructor options, every `addImage` (x, y, size, alias) and `text` coordinates equal the plan, `addPage` timing (73 -> one page break before the
+  73rd), one QR per unique id and alias reuse. Real-jsPDF tests: PDF header, A4, 72 -> 1 page, 73 -> 2, 144 -> 2, 145 -> 3, repeated id does not grow the
+  file per copy, emoji/CJK names do not fail. The round-trip test now decodes the QR with the renderer's REAL scale/quiet zone (12 / 2).
+- `stores/label-calibration.store.ts`: persistence round trip in a new session, corrupted JSON, wrong types, unavailable storage, clamping, reset.
+- Checks: 131 files / 2507 tests, lint clean, build ok. jsPDF is not in any chunk yet (nothing imports the renderer until commit 3).
