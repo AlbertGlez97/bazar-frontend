@@ -88,6 +88,18 @@
   --color-avatar-5:       var(--cafe-700);
   --color-avatar-6:       var(--maiz-800);
 
+  /* Denominaciones de efectivo (selector de billetes): mismos hex que los
+     avatares -> ya tienen contraste AA probado con texto blanco, ningún par
+     nuevo que sumar a brand-tokens.test.ts. El alias evita que un componente
+     de dinero use un token pensado para avatares de personas. Aproximan la
+     familia de color de cada billete real, sin reproducirlo. */
+  --color-denom-20:       var(--color-avatar-3);
+  --color-denom-50:       var(--color-avatar-4);
+  --color-denom-100:      var(--color-avatar-1);
+  --color-denom-200:      var(--color-avatar-2);
+  --color-denom-500:      var(--color-avatar-6);
+  --color-denom-1000:     var(--color-avatar-5);
+
   /* Espaciados: en rem (no px) para que escalen con el tamaño de fuente del
      sistema/navegador (accesibilidad). Ver doc/brand-guidelines.md. */
   --spacing-xs:    0.25rem; /* 4px */
