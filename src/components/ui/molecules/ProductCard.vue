@@ -7,9 +7,29 @@
     class="card product-card"
     :class="[
       `product-card--${size}`,
-      { 'product-card--inactive': !product.active },
+      { 'product-card--inactive': !product.active, 'product-card--selected': selectable && selected },
     ]"
   >
+    <!-- Selección para imprimir el código QR: casilla nativa (teclado y lectores de
+         pantalla) con un área táctil de 44 px. Un producto inactivo no se marca. -->
+    <div
+      v-if="selectable"
+      class="product-card__select"
+    >
+      <AppCheckbox
+        :model-value="selected"
+        :disabled="!product.active"
+        :aria-label="VOICE.labels.checkboxLabel(product.name)"
+        @update:model-value="$emit('toggle-select', product)"
+      />
+      <span
+        v-if="!product.active"
+        class="product-card__select-hint"
+      >
+        {{ VOICE.labels.inactiveHint }}
+      </span>
+    </div>
+
     <div class="product-card__media">
       <img
         v-if="product.image"
@@ -79,10 +99,12 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { VOICE } from '@/config/voice'
 import { minorToDisplay } from '@/utils/money'
 import type { Product } from '@/types/product.types'
 import AppBadge from '../atoms/AppBadge.vue'
 import AppButton from '../atoms/AppButton.vue'
+import AppCheckbox from '../atoms/AppCheckbox.vue'
 
 const props = withDefaults(defineProps<{
   product: Product
@@ -94,15 +116,21 @@ const props = withDefaults(defineProps<{
    * y leerse de un vistazo en el mostrador.
    */
   size?: 'default' | 'large'
+  /** Modo selección (imprimir códigos QR): muestra la casilla. */
+  selectable?: boolean
+  selected?: boolean
 }>(), {
   showActions: false,
   size: 'default',
+  selectable: false,
+  selected: false,
 })
 
 defineEmits<{
   edit: [product: Product]
   deactivate: [product: Product]
   reactivate: [product: Product]
+  'toggle-select': [product: Product]
 }>()
 
 // tipo="unica" siempre tiene stock 1 (o 0 si ya se vendió); tipo="cantidad"
@@ -121,6 +149,19 @@ const stockBadgeColor = computed(() => (props.product.stock > 0 ? 'green' : 'red
 <style scoped>
 .product-card { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 .product-card--inactive { opacity: 0.7; }
+.product-card--selected { outline: 3px solid var(--color-primary); outline-offset: -3px; }
+
+/* Área táctil de 44 px (guía de marca) aunque la casilla dibujada sea más chica. */
+.product-card__select {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-height: 2.75rem;
+  padding: 0 var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border);
+}
+.product-card__select :deep(.app-checkbox) { min-height: 2.75rem; min-width: 2.75rem; }
+.product-card__select-hint { font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
 .product-card__media {
   position: relative;

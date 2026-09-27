@@ -12,6 +12,8 @@ import {
   LABEL_WIDTH_MM,
   cellOrigin,
   evaluateLabelLayouts,
+  gridBottomOverflowMm,
+  labelSheetFileName,
   normalizeCalibration,
   planLabelSheet,
   sanitizeLabelText,
@@ -267,6 +269,34 @@ describe('planLabelSheet', () => {
 
   it('rejects a product whose id is not a UUID (its QR would be unreadable by the scanner)', () => {
     expect(() => planLabelSheet([{ id: 'p-1', name: 'X' }], DEFAULT_CALIBRATION, oneMmPerChar)).toThrow(/id/i)
+  })
+})
+
+describe('gridBottomOverflowMm', () => {
+  it.each([
+    [{ offsetTopMm: 0, offsetLeftMm: 0, rowPitchMm: 24.75 }, 0],
+    [{ offsetTopMm: 0, offsetLeftMm: 0, rowPitchMm: 25 }, 3],
+    [{ offsetTopMm: 2, offsetLeftMm: 0, rowPitchMm: 24.75 }, 2],
+    [{ offsetTopMm: -2, offsetLeftMm: 0, rowPitchMm: 24.75 }, 0],
+    [{ offsetTopMm: 1.5, offsetLeftMm: 0, rowPitchMm: 25 }, 4.5],
+    [{ offsetTopMm: 0, offsetLeftMm: 0, rowPitchMm: 24 }, 0],
+  ])('%j -> %s mm past the bottom of the A4 sheet', (cal, expected) => {
+    expect(gridBottomOverflowMm(cal)).toBe(expected)
+  })
+
+  it('normalizes a wild calibration first', () => {
+    expect(gridBottomOverflowMm({ offsetTopMm: Number.NaN, offsetLeftMm: 0, rowPitchMm: 24.75 })).toBe(0)
+  })
+})
+
+describe('labelSheetFileName', () => {
+  it('is etiquetas-qr-YYYYMMDD.pdf with the LOCAL date', () => {
+    expect(labelSheetFileName(new Date(2026, 8, 26, 23, 59))).toBe('etiquetas-qr-20260926.pdf')
+    expect(labelSheetFileName(new Date(2026, 0, 5, 0, 1))).toBe('etiquetas-qr-20260105.pdf')
+  })
+
+  it('defaults to today', () => {
+    expect(labelSheetFileName()).toMatch(/^etiquetas-qr-\d{8}\.pdf$/)
   })
 })
 

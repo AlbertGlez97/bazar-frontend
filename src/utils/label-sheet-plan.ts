@@ -155,6 +155,22 @@ export function cellOrigin(row: number, col: number, calibration: LabelCalibrati
 const cellHeight = (rowPitchMm: number) => Math.min(rowPitchMm, LABEL_NOMINAL_HEIGHT_MM)
 const linePitchMm = () => round3(NAME_FONT_PT * LINE_HEIGHT_FACTOR * MM_PER_PT)
 
+/**
+ * Cuánto se sale del A4 el borde inferior de la última fila con esta calibración (0 si cabe).
+ * Con el alto de fila por omisión (24,75) son 0 mm; con 25 mm son 3 mm.
+ */
+export function gridBottomOverflowMm(calibration: LabelCalibration): number {
+  const cal = normalizeCalibration(calibration)
+  const bottom = cal.offsetTopMm + (LABEL_ROWS - 1) * cal.rowPitchMm + cellHeight(cal.rowPitchMm)
+  return Math.max(0, round3(bottom - A4_HEIGHT_MM))
+}
+
+/** `etiquetas-qr-YYYYMMDD.pdf` con la fecha LOCAL. */
+export function labelSheetFileName(date: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `etiquetas-qr-${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}.pdf`
+}
+
 // ── Texto ────────────────────────────────────────────────────────────────────
 /**
  * Las fuentes base de PDF (Helvetica) cubren Latin-1: acentos y ñ sí; emoji, CJK y
@@ -280,7 +296,6 @@ export function planLabelSheet(
     return { id: product.id, index, page: Math.floor(index / LABELS_PER_SHEET), row, col, cell, qr, textLines }
   })
 
-  const lastRowBottom = cal.offsetTopMm + (LABEL_ROWS - 1) * cal.rowPitchMm + boxH
   return {
     calibration: cal,
     pages: sheetCount(products.length),
@@ -293,6 +308,6 @@ export function planLabelSheet(
       qrSizeMm: qrSize,
       textMaxWidthMm: innerW,
     },
-    bottomOverflowMm: Math.max(0, round3(lastRowBottom - A4_HEIGHT_MM)),
+    bottomOverflowMm: gridBottomOverflowMm(cal),
   }
 }

@@ -58,7 +58,12 @@ export default defineConfig({
         // precachean (cada instalación las bajaría de balde). Se cachean en runtime
         // al usarse (abajo). Los nombres salen del módulo importado; lo vigila
         // src/config/__tests__/pwa-precache.test.ts.
-        globIgnores: ['**/assets/pdfmake-*.js', '**/assets/vfs_fonts-*.js', '**/assets/exceljs*.js'],
+        // Igual con la hoja de etiquetas QR: jsPDF (~390 kB) y los chunks opcionales que
+        // arrastra y esta app nunca carga (html2canvas ~200 kB, DOMPurify ~30 kB).
+        globIgnores: [
+          '**/assets/pdfmake-*.js', '**/assets/vfs_fonts-*.js', '**/assets/exceljs*.js',
+          '**/assets/jspdf*.js', '**/assets/html2canvas*.js', '**/assets/purify*.js',
+        ],
 
         // Fallback cuando el user está offline y pide una ruta SPA que no tenemos precacheada
         navigateFallback: '/index.html',
@@ -90,11 +95,11 @@ export default defineConfig({
           // ── Librerías de exportación (PDF / Excel): CacheFirst al primer uso ──
           // Los archivos llevan hash en el nombre, así que un archivo cacheado nunca queda viejo.
           {
-            urlPattern: ({ url }) => /\/assets\/(pdfmake|vfs_fonts|exceljs)[^/]*\.js$/.test(url.pathname),
+            urlPattern: ({ url }) => /\/assets\/(pdfmake|vfs_fonts|exceljs|jspdf|html2canvas|purify)[^/]*\.js$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'export-libs',
-              expiration: { maxEntries: 6, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              expiration: { maxEntries: 8, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

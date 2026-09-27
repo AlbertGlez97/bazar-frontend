@@ -69,7 +69,7 @@ range -> defaults/clamped), storage errors swallowed, saved on every change, "Re
 
 - [x] **Q1** Client QR generation util + PNG download in the edit modal (commit 1)
 - [x] **Q2** Label sheet planning + jsPDF render + calibration store (commit 2)
-- [ ] **Q3** Catalog multi-select + print dialog (commit 3)
+- [x] **Q3** Catalog multi-select + print dialog (commit 3)
 
 ## Evidence
 
@@ -97,3 +97,29 @@ range -> defaults/clamped), storage errors swallowed, saved on every change, "Re
   file per copy, emoji/CJK names do not fail. The round-trip test now decodes the QR with the renderer's REAL scale/quiet zone (12 / 2).
 - `stores/label-calibration.store.ts`: persistence round trip in a new session, corrupted JSON, wrong types, unavailable storage, clamping, reset.
 - Checks: 131 files / 2507 tests, lint clean, build ok. jsPDF is not in any chunk yet (nothing imports the renderer until commit 3).
+
+### Commit 3 — catalog selection + print dialog
+- `product-selection.store.ts`: selection mode + `Map id -> {id, name}` outside the visible list, so paginating/searching never drops it; order of
+  selection = order on the sheet; inactive products cannot be selected; `selectAllMatching(search)` fetches every page (limit 100, never
+  `includeInactive`), keeps only active products, is all-or-nothing on error, exposes progress and ignores a second call while running.
+- `ProductSelectionBar` (Seleccionar / counter with `aria-live` / Seleccionar todos / Limpiar / Imprimir códigos QR only when >= 1 / Salir),
+  `ProductCard` checkbox (native input, 44 px touch area, accessible label, disabled + hint for inactive), `ProductCatalogGrid` selection props
+  (no selection in Modo Venta), `LabelPrintDialog` (sheet count text 72/73/144 -> 1/2/2 hojas, three numeric calibration fields with inline range
+  validation that never emits an invalid value, overflow warning, help text: 100 % / no "Ajustar a la página" / calibrate with one plain-paper sheet
+  / 12 x 25 = 300 mm vs 297 mm and the 24.75 default, busy + error states), `useLabelPrinting` composable (preview opens the tab BEFORE generating so
+  the pop-up is allowed, blocked pop-up message, blob URL revoked after 10 min, download `etiquetas-qr-YYYYMMDD.pdf`).
+- The view discards the selection on unmount and when switching to Modo Venta. Socios and colaboradores can both print (read-only).
+- Storage keys: `la-marchanta-label-calibration` (calibration, JSON); the selection is not persisted on purpose (it is transient work).
+- **Bundle**: entry chunk `index-*.js` 225.50 kB (unchanged, +0.01 kB); lazy chunks: `jspdf.es.min-*.js` **390.81 kB (128.85 kB gzip)**,
+  `browser-*.js` (qrcode) 25.79 kB (10.14 kB gzip), `qr-label-sheet-*.js` 1.48 kB, plus jsPDF's optional chunks `html2canvas` 202.38 kB and
+  `purify` 29.40 kB that this app never loads. **PWA**: like the report libraries, jsPDF/html2canvas/purify are excluded from the precache and cached
+  at runtime on first use (CacheFirst `export-libs`, 8 entries); verified in the generated `dist/sw.js` (68 precache entries, 1889 KiB, none of them).
+  The QR encoder and the renderer stub ARE precached (a product QR needs no internet). Guard test extended in `pwa-precache.test.ts`.
+- Checks: see the final report of the commit.
+
+## Manual checks on paper (cannot be verified by tests)
+1. Print ONE sheet on plain paper at 100 % ("Tamaño real"), never "Ajustar a la página".
+2. Hold it against an OFITURIA sheet to the light; adjust top/left margins (negative = up/left) until every cell matches; check the last row.
+3. If the last rows drift, adjust the row height (24.75 mm default; try 24.70-24.80 before 25).
+4. Scan a printed label with the phone camera in the sale screen: it must add the right product (16.35 mm QR, ~0.5 mm modules).
+5. Check the printer does not add its own margins (some drivers scale to a printable area).
