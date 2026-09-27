@@ -150,9 +150,14 @@ this is a known, tracked gap — not an oversight to rediscover later. Cross-ref
       (2 new). 125 files / 2372 tests green, lint clean, build ok. Note: `@lucide/vue` had been installed
       into the working tree earlier but not yet committed — its `package.json`/`package-lock.json` entry
       landed in this commit, not a separate one.
-- [ ] **C4** `SaleCart.vue`: wrap the line-items list in `<details :open="!prominent">`; re-check spacing/
+- [x] **C4** `SaleCart.vue`: wrap the line-items list in `<details :open="!prominent">`; re-check spacing/
       order of total, pad, change, and the already-sticky Cobrar button in `prominent` mode now that the pad
-      is taller than the old chips. TDD: RED first for the new collapsible behavior.
+      is taller than the old chips. TDD: RED observed (5/6 new tests failed looking for a `<details>` that
+      didn't exist yet), then GREEN. Found and fixed a real gap while implementing: the checkout-mode CSS
+      only enlarged the old `.cash-input__chip` selector, so the new pad buttons and "Limpiar selección"
+      would have stayed small in Paso 2 — added matching `:deep()` rules for
+      `.cash-denomination-pad__btn`/`.cash-input__clear`. 125 files / 2379 tests green (7 new), lint clean,
+      build ok.
 - [x] **C5** `doc/reglas-de-negocio.md` (new file, frontend) + cross-reference from
       `doc/api-contract-for-frontend.md`. Route: direct inline.
 - [ ] **C6** Verify: build, lint, `test:run` full suite (RED/GREEN evidence recorded per behavior above);

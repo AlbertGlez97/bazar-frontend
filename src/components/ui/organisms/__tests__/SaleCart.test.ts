@@ -237,3 +237,45 @@ describe('SaleCart — modo prominente (Paso 2 del cobro)', () => {
     expect(wrapper.emitted('update:cashText')?.at(-1)).toEqual(['100.5'])
   })
 })
+
+// La lista de productos vive dentro de un <details> (mismo patrón que
+// `SaleResult.vue`): fuera de Paso 2 se ve igual que siempre (abierta), y en
+// Paso 2 arranca cerrada porque el pad de billetes ya ocupa buena parte de la
+// pantalla — la persona la abre tocando el resumen cuando la necesita.
+describe('SaleCart — lista de productos colapsable', () => {
+  it('fuera de Paso 2 la lista está abierta por defecto (como hoy)', () => {
+    const details = mountCart().get('details.sale-cart__lines-wrap')
+    expect((details.element as HTMLDetailsElement).open).toBe(true)
+  })
+
+  it('fuera de Paso 2, con prominent=false explícito, también está abierta', () => {
+    const details = mountCart({ prominent: false }).get('details.sale-cart__lines-wrap')
+    expect((details.element as HTMLDetailsElement).open).toBe(true)
+  })
+
+  it('en Paso 2 la lista arranca cerrada por defecto', () => {
+    const details = mountCart({ prominent: true }).get('details.sale-cart__lines-wrap')
+    expect((details.element as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('el resumen dice cuántos productos hay y sigue siendo una lista con nombre adentro', () => {
+    const wrapper = mountCart({ prominent: true })
+    expect(wrapper.get('.sale-cart__lines-summary').text()).toBe('Ver productos (2)')
+    expect(wrapper.get('ul').attributes('aria-label')).toBe('Productos de la venta')
+  })
+
+  it('tocar el resumen abre la lista en Paso 2', async () => {
+    const wrapper = mountCart({ prominent: true })
+    const details = wrapper.get('details.sale-cart__lines-wrap')
+    expect((details.element as HTMLDetailsElement).open).toBe(false)
+
+    await wrapper.get('.sale-cart__lines-summary').trigger('click')
+
+    expect((details.element as HTMLDetailsElement).open).toBe(true)
+  })
+
+  it('vacío: no hay <details> (la rama vacía no cambia)', () => {
+    const wrapper = mountCart({ lines: [], itemCount: 0, totalMinor: 0, missingMinor: 0 })
+    expect(wrapper.find('details.sale-cart__lines-wrap').exists()).toBe(false)
+  })
+})

@@ -112,6 +112,10 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     expectAtLeast44('SaleCart.vue', '.sale-cart__clear', ['min-width', 'min-height'])
   })
 
+  it('carrito: el resumen que despliega la lista de productos mide al menos 44 px', () => {
+    expectAtLeast44('SaleCart.vue', '.sale-cart__lines-summary', ['min-height'])
+  })
+
   it('catálogo de venta: buscador de 56 px y botón "Escanear" de 56 px', () => {
     expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__search :deep(.app-input)', ['min-height'])
     expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker .sale-picker__scan', ['min-height'])

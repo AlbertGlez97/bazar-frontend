@@ -26,22 +26,30 @@
       </button>
     </header>
 
-    <ul
+    <details
       v-if="lines.length > 0"
-      class="sale-cart__lines"
-      aria-label="Productos de la venta"
+      class="sale-cart__lines-wrap"
+      :open="!prominent"
     >
-      <CartLineItem
-        v-for="line in lines"
-        :key="line.productId"
-        :line="line"
-        :disabled="loading"
-        @increment="emit('increment', line.productId)"
-        @decrement="emit('decrement', line.productId)"
-        @remove="emit('remove', line.productId)"
-        @limit="emit('limit', line.productId, $event)"
-      />
-    </ul>
+      <summary class="sale-cart__lines-summary">
+        Ver productos ({{ lines.length }})
+      </summary>
+      <ul
+        class="sale-cart__lines"
+        aria-label="Productos de la venta"
+      >
+        <CartLineItem
+          v-for="line in lines"
+          :key="line.productId"
+          :line="line"
+          :disabled="loading"
+          @increment="emit('increment', line.productId)"
+          @decrement="emit('decrement', line.productId)"
+          @remove="emit('remove', line.productId)"
+          @limit="emit('limit', line.productId, $event)"
+        />
+      </ul>
+    </details>
     <p
       v-else
       class="sale-cart__empty"
@@ -216,7 +224,9 @@ function confirmClear() {
 .sale-cart__clear:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 .sale-cart__clear:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.sale-cart__lines { display: flex; flex-direction: column; gap: var(--spacing-sm); margin: 0; padding: 0; list-style: none; }
+.sale-cart__lines-wrap { width: 100%; }
+.sale-cart__lines-summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 700; color: var(--color-text); }
+.sale-cart__lines { display: flex; flex-direction: column; gap: var(--spacing-sm); margin: var(--spacing-sm) 0 0; padding: 0; list-style: none; }
 
 .sale-cart__empty {
   margin: 0;
@@ -285,7 +295,9 @@ function confirmClear() {
 .sale-cart--checkout :deep(.cash-input__control) { min-height: 5rem; font-size: 2.5rem; }
 .sale-cart--checkout :deep(.cash-input__prefix) { font-size: 2rem; }
 .sale-cart--checkout :deep(.cash-input__chip) { min-height: 3.5rem; font-size: var(--font-size-lg); }
-.sale-cart--checkout .sale-cart__lines,
+.sale-cart--checkout :deep(.cash-denomination-pad__btn) { min-height: 3.5rem; font-size: var(--font-size-lg); }
+.sale-cart--checkout :deep(.cash-input__clear) { min-height: 3.5rem; font-size: var(--font-size-lg); }
+.sale-cart--checkout .sale-cart__lines-wrap,
 .sale-cart--checkout .sale-cart__empty { order: 3; }
 .sale-cart--checkout .sale-cart__hint { order: 5; }
 /* "Cobrar": el botón más grande de la pantalla, pegado abajo aunque la lista sea larga */
