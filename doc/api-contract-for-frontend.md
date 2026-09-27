@@ -1816,6 +1816,10 @@ Fuente: `src/reports/reports.controller.ts:48-55`, `src/reports/reports.service.
 <a id="mod-deudas"></a>
 ## 10. Deudas
 
+> **Pendiente en el frontend**: este contrato está listo desde BE-09, pero el flujo de venta (`SaleView`/
+> `cart.store`/`checkout.store`) todavía no lo consume — no existe ninguna opción de fiado/apartado en la
+> UI hoy. Ver `doc/reglas-de-negocio.md` para que quede explícito y no se pierda.
+
 Un solo concepto **Deuda** con dos tipos: `fiado` (el producto ya se entregó) y `apartado` (el producto se reserva). Reglas:
 
 - **Solo un socio puede crear una deuda** (autorizar crédito/apartado) y solo los socios listan/consultan deudas. **Cualquier Member activo** (también un colaborador) puede **registrar un abono** (`ContextGuard`).

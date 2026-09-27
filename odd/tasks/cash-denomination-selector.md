@@ -137,21 +137,23 @@ this is a known, tracked gap — not an oversight to rediscover later. Cross-ref
 
 ## Checklist
 
-- [ ] **C1** `main.css`: add the 6 `--color-denom-*` aliases (no new contrast pairs needed — same hex as
-      already-tested avatar tokens). Route: direct inline (mechanical, 1 file).
-- [ ] **C2** `CashDenominationPad.vue` (new molecule) + tests: renders 6 denomination cards, accumulates
+- [x] **C1** `main.css`: add the 6 `--color-denom-*` aliases (no new contrast pairs needed — same hex as
+      already-tested avatar tokens). Route: direct inline (mechanical, 1 file). Commit `21ce615`.
+- [x] **C2** `CashDenominationPad.vue` (new molecule) + tests: renders 6 denomination cards, accumulates
       taps, shows the count badge, accessible label includes the tally, touch target ≥ 44px, no icon on the
-      cards. TDD: RED first (render + tap behavior tests fail against no component), then GREEN.
-- [ ] **C3** `CashInput.vue` rewrite + tests: absorb the pad, implement the `lastEmittedByPad` sync rule,
-      "Limpiar selección" (with `RotateCcw` from `@lucide/vue`), keep "Justo" behavior. TDD: RED first
-      (accumulate multiple taps of the same denomination, combine different denominations, typing resets the
-      pad, Justo resets the pad, Limpiar resets both count and text, change recalculates on every
-      interaction), then GREEN. Public API (`modelValue`/`totalMinor`/`disabled`/`update:modelValue`)
-      unchanged — confirm `SaleCart.vue`'s existing tests still pass without editing `SaleCart.vue`.
+      cards. TDD: RED observed (import resolution failure against no component), then GREEN.
+- [x] **C3** `CashInput.vue` rewrite + tests: absorb the pad, implement the `lastEmittedByPad` sync rule,
+      "Limpiar selección" (with `RotateCcw` from `@lucide/vue`), keep "Justo" behavior. TDD: RED observed (9
+      failed / 38 passed on the new sync block before implementation), then GREEN (47/47). Public API
+      (`modelValue`/`totalMinor`/`disabled`/`update:modelValue`) confirmed unchanged — `SaleCart.vue` itself
+      needed no edits, only its test's selector for the old single-select chip. Commit `1268616`, 9 files
+      (2 new). 125 files / 2372 tests green, lint clean, build ok. Note: `@lucide/vue` had been installed
+      into the working tree earlier but not yet committed — its `package.json`/`package-lock.json` entry
+      landed in this commit, not a separate one.
 - [ ] **C4** `SaleCart.vue`: wrap the line-items list in `<details :open="!prominent">`; re-check spacing/
       order of total, pad, change, and the already-sticky Cobrar button in `prominent` mode now that the pad
       is taller than the old chips. TDD: RED first for the new collapsible behavior.
-- [ ] **C5** `doc/reglas-de-negocio.md` (new file, frontend) + cross-reference from
+- [x] **C5** `doc/reglas-de-negocio.md` (new file, frontend) + cross-reference from
       `doc/api-contract-for-frontend.md`. Route: direct inline.
 - [ ] **C6** Verify: build, lint, `test:run` full suite (RED/GREEN evidence recorded per behavior above);
       disclose (don't fake) the manual checks this environment cannot perform: real/emulated 375-414px
