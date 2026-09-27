@@ -223,6 +223,16 @@ export const VOICE = {
     done: 'Listo',
     retry: 'Intentar de nuevo',
   },
+  /** Código QR de un producto (se genera aquí mismo, sin servidor). */
+  qr: {
+    title: 'Código QR',
+    hint: 'Es el que lee el escáner de la pantalla de venta.',
+    imageAlt: (name: string) => `Código QR de ${name}`,
+    download: 'Descargar QR (PNG)',
+    generating: 'Preparando el código…',
+    generateError: 'No pudimos generar el código QR. Cierra y vuelve a abrir el producto.',
+    downloadError: 'No pudimos descargar el código QR. Intenta de nuevo.',
+  },
 } as const
 
 /** Códigos de falla del lector (los de `QrScannerError` más el contexto inseguro). */

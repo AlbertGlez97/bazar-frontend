@@ -72,6 +72,7 @@ export { default as MemberCreatedNotice } from './ui/molecules/MemberCreatedNoti
 export { default as TeamMemberList } from './ui/molecules/TeamMemberList.vue'
 export { default as MemberSelector      } from './ui/molecules/MemberSelector.vue'
 export { default as ProductCard         } from './ui/molecules/ProductCard.vue'
+export { default as ProductQrCard       } from './ui/molecules/ProductQrCard.vue'
 export { default as ProductForm         } from './ui/molecules/ProductForm.vue'
 export { default as CartLineItem        } from './ui/molecules/CartLineItem.vue'
 export { default as CartSummary         } from './ui/molecules/CartSummary.vue'

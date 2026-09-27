@@ -15,6 +15,15 @@
       @submit="$emit('submit', $event)"
       @cancel="$emit('update:modelValue', false)"
     />
+
+    <!-- Solo en edición: el producto ya existe y tiene id. En creación no hay
+         nada que codificar todavía. -->
+    <ProductQrCard
+      v-if="product"
+      class="product-form-modal__qr"
+      :product-id="product.id"
+      :product-name="product.name"
+    />
   </AppModal>
 </template>
 
@@ -22,6 +31,7 @@
 import type { Product, ProductFormSubmitPayload } from '@/types/product.types'
 import AppModal from './AppModal.vue'
 import ProductForm from '../molecules/ProductForm.vue'
+import ProductQrCard from '../molecules/ProductQrCard.vue'
 
 defineProps<{
   modelValue: boolean
