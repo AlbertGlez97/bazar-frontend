@@ -50,6 +50,24 @@ describe('generateQrLabelSheet (real jsPDF)', () => {
     expect(manySize - fewSize).toBeLessThan(fewSize * 4)
   }, 120_000)
 
+  // Regresión del tamaño: 80 etiquetas únicas daban un PDF de 37,656,340 bytes (píxeles sin comprimir).
+  // Estos topes fallan con ese comportamiento y dejan mucho margen al real (~100 kB por hoja).
+  const MB = 1024 * 1024
+
+  it('a full sheet of 72 UNIQUE labels is a small PDF (well under 2 MB)', async () => {
+    const sheet = await generateQrLabelSheet(items(72), DEFAULT_CALIBRATION)
+    expect(sheet.blob.size).toBeLessThan(2 * MB)
+    expect(sheet.blob.size).toBeLessThan(300 * 1024)
+  }, 120_000)
+
+  it('the size grows roughly linearly: 144 unique labels stay far below 4 MB and about twice 72', async () => {
+    const one = (await generateQrLabelSheet(items(72), DEFAULT_CALIBRATION)).blob.size
+    const two = (await generateQrLabelSheet(items(144), DEFAULT_CALIBRATION)).blob.size
+    expect(two).toBeLessThan(4 * MB)
+    expect(two).toBeLessThan(one * 2.5)
+    expect(two).toBeGreaterThan(one * 1.5)
+  }, 240_000)
+
   it('accepts names outside Latin-1 (emoji, CJK) without failing', async () => {
     const sheet = await generateQrLabelSheet([{ id: ID(1), name: '🌵 日本語 Cactus' }, { id: ID(2), name: '' }], DEFAULT_CALIBRATION)
     expect(sheet.doc.getNumberOfPages()).toBe(1)

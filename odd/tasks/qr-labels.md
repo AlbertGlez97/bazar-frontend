@@ -49,7 +49,7 @@ OFITURIA A4, 6 columns x 12 rows, 35 x 25 mm labels.
 | Name font | Helvetica 6 pt, line pitch 2.434 mm (x1.15), max 2 lines, centred, ellipsis "..." |
 | Gap QR -> name | 0.5 mm |
 | **QR box (below layout)** | min(32, 21.75 - 2 x 2.434 - 0.5) = 16.38 -> **16.35 mm** (floor to 0.05), centred |
-| QR pixels | version 3 = 29 modules + 2 quiet = 33 modules; scale 12 -> 396 px over 16.35 mm = **~615 dpi**, 0.495 mm per module |
+| QR pixels | version 3 = 29 modules + 2 quiet = 33 modules; **scale 8 -> 264 px over 16.35 mm = ~410 dpi**, 0.495 mm per module (8 whole pixels). (Commit 2 shipped scale 12 / ~615 dpi, uncompressed: see "Fix" below.) |
 | Text block bottom | cell top + 1.5 + 16.35 + 0.5 + 4.868 = 23.218 mm <= 23.25 mm (cell bottom minus margin) |
 | Side-by-side alternative | QR 21.75 mm, but the text column is only 9.75 mm wide (< 15 mm legible minimum) -> rejected |
 
@@ -80,7 +80,7 @@ range -> defaults/clamped), storage errors swallowed, saved on every change, "Re
   and only for a UUID id; token `--color-qr-paper` (white in both themes) added to `main.css` because the repo forbids fixed colors in components.
 - **Compatibility proof** (`product-qr.roundtrip.test.ts`, Node environment): the PNG is decoded with zxing (the engine behind the scanner's
   `barcode-detector`); the decoded text equals the product id exactly (36 chars, no prefix/URL/newline) for the on-screen settings, the label
-  settings (scale 12, quiet zone 2) and a small scale (4), for 5 ids incl. extremes; and `findByScannedText` resolves it to the product.
+  settings (the renderer's constants: scale 8 after the size fix, quiet zone 2) and a small scale (4), for 5 ids incl. extremes; and `findByScannedText` resolves it to the product.
 - PNG size = (29 modules + 2 x quiet zone) x scale exactly (370 px at the defaults); the quiet zone is white on all four sides.
 - Bundle: the encoder lives in its own lazy chunk `browser-*.js` = **25.79 kB (10.14 kB gzip)**, referenced only with `import("./browser-*.js")`
   from the catalog chunk; the entry chunk (`index-*.js`, 225.49 kB) contains no QR code.
@@ -117,9 +117,45 @@ range -> defaults/clamped), storage errors swallowed, saved on every change, "Re
   The QR encoder and the renderer stub ARE precached (a product QR needs no internet). Guard test extended in `pwa-precache.test.ts`.
 - Checks: see the final report of the commit.
 
+### Fix — the label sheet PDF was 32 MB (found by the coordinator inspecting a sample)
+**Finding.** `generateQrLabelSheet` added every QR with `doc.addImage(png, 'PNG', ..., alias, 'NONE')`. With `'NONE'` jsPDF embeds RAW pixels:
+~470 KB per unique label at scale 12 (396 x 396 x 3 bytes). An 80-label sheet (2 pages, unique ids) was **37,656,340 bytes**; my regression test
+measured **33,890,511 bytes for 72** and **67,778,376 for 144**. A few hundred labels would hang or crash a phone. My commit-2 tests only checked
+the page count and a non-empty PDF, so nothing caught it (lesson: assert size, not just validity).
+
+**Options measured** (real jsPDF, 72 / 144 unique labels, whole PDF, jsPDF time only per 72):
+| Scale (dpi) | Compression | 72 labels | 144 labels | jsPDF time / 72 |
+|---|---|---|---|---|
+| 12 (615) | NONE (before) | 33,095 KiB | ~66,000 KiB | - |
+| 12 (615) | FAST | 583 KiB | 1,164 KiB | 3.8 s |
+| 12 (615) | MEDIUM | 403 KiB | 804 KiB | 2.5 s |
+| 12 (615) | SLOW | 133 KiB | 264 KiB | 2.7 s |
+| **8 (410)** | **SLOW** | **98 KiB** | **193 KiB** | **1.2 s** |
+| 8 (410) | MEDIUM | 218 KiB | 433 KiB | 1.2 s |
+| 6 (308) | SLOW | 84 KiB | 166 KiB | 0.7 s |
+| 6 (308) | MEDIUM | 158 KiB | 314 KiB | 0.6 s |
+
+**Decision: scale 8 + `'SLOW'` (deflate level 9), `LABEL_QR_SCALE = 8`, `LABEL_IMAGE_COMPRESSION = 'SLOW'`.** 8 whole pixels per module keeps the integer
+grid and gives ~410 dpi at the printed 16.35 mm (>= 300); scale 6 is only ~308 dpi (no headroom); scale 12 doubles size and time without a visible gain
+on a 35 mm label. SLOW costs the same time as MEDIUM but is 2x smaller. The document itself is `compress: true`.
+
+**After** (real `generateQrLabelSheet`, incl. QR generation in Node): 72 unique labels = **100,757 bytes (98 KiB)**, 144 = **198,649 bytes (194 KiB)**,
+80 varied labels (accents, ñ, a 110-char name, an emoji, a 1-letter name) = **113,000 bytes (110 KiB)**, 2 pages. Before -> after for the 80-label sample:
+37,656,340 -> 113,000 bytes (-99.7 %). Each embedded image stream is ~1.3 kB; the 72 images of a sheet total well under 100 kB.
+
+**Guarantees re-proved on the raster actually inside the PDF** (`qr-label-sheet.embedded.test.ts`): the images are pulled out of the PDF bytes (jsPDF's
+stream uses PNG predictors, so it is exactly a PNG IDAT payload), rebuilt as PNGs and decoded with zxing: every one decodes EXACTLY to its product id
+(incl. extreme ids); size (29 + 2 x 2) x 8 = 264 px; only pure black/white and every module a uniform 8 x 8 block; white quiet zone on 4 sides; a
+repeated id is embedded once (alias reuse). Regression tests that FAIL on the old behavior: real-jsPDF sheet of 72 unique labels < 2 MB (and < 300 KiB),
+144 < 4 MB and ~2x the 72 size, compression argument is not `'NONE'`, 72 images < 100 kB in total. Mutation check: putting `'NONE'` back fails 9 tests.
+
+**Sample inspected** (no PDF rasterizer available here, so structurally, by inflating the page streams): 2 pages, 72 + 8 images, accents/ñ kept, the
+emoji removed, the long name on 2 lines ending in "...", QR 46.35 pt = 16.35 mm, first cell at 9.325 mm from the left as planned.
+
 ## Manual checks on paper (cannot be verified by tests)
 1. Print ONE sheet on plain paper at 100 % ("Tamaño real"), never "Ajustar a la página".
 2. Hold it against an OFITURIA sheet to the light; adjust top/left margins (negative = up/left) until every cell matches; check the last row.
 3. If the last rows drift, adjust the row height (24.75 mm default; try 24.70-24.80 before 25).
 4. Scan a printed label with the phone camera in the sale screen: it must add the right product (16.35 mm QR, ~0.5 mm modules).
+   Also compare the print of a QR at 410 dpi (scale 8) on your printer: if edges look soft, raise `LABEL_QR_SCALE` to 12 (133 KiB per sheet).
 5. Check the printer does not add its own margins (some drivers scale to a printable area).

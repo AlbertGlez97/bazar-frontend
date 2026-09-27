@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { generateQrLabelSheet } from '../qr-label-sheet'
+import { LABEL_IMAGE_COMPRESSION, LABEL_QR_QUIET_ZONE, LABEL_QR_SCALE, generateQrLabelSheet } from '../qr-label-sheet'
 import { NAME_FONT_PT, planLabelSheet } from '@/utils/label-sheet-plan'
 import source from '../qr-label-sheet.ts?raw'
 
@@ -117,6 +117,30 @@ describe('generateQrLabelSheet (jsPDF spy)', () => {
     // >= 300 dpi at the printed size: modules (29 + 2 x quiet zone) x scale pixels over 16.35 mm.
     const pixels = (29 + 2 * options.quietZone) * options.scale
     expect(pixels / (16.35 / 25.4)).toBeGreaterThanOrEqual(300)
+  })
+
+  // Regresión: con 'NONE' jsPDF incrusta los píxeles SIN comprimir (~470 kB por etiqueta única:
+  // 32 MB por hoja de 72). Un QR es casi todo blanco/negro plano y se comprime muchísimo.
+  it('embeds every image with flate compression, never NONE (an uncompressed sheet was ~32 MB)', async () => {
+    await generateQrLabelSheet(items(5), cal)
+    expect(calls.addImage).toHaveLength(5)
+    for (const args of calls.addImage) {
+      const compression = args[7]
+      expect(compression).toBe(LABEL_IMAGE_COMPRESSION)
+      expect(compression).not.toBe('NONE')
+      expect(['FAST', 'MEDIUM', 'SLOW']).toContain(compression)
+    }
+  })
+
+  it('the raster stays crisp: integer pixels per module and at least 300 dpi at the printed size', () => {
+    expect(Number.isInteger(LABEL_QR_SCALE)).toBe(true)
+    const modules = 29 + 2 * LABEL_QR_QUIET_ZONE
+    expect((modules * LABEL_QR_SCALE) / (16.35 / 25.4)).toBeGreaterThanOrEqual(300)
+  })
+
+  it('the document itself is compressed too', async () => {
+    await generateQrLabelSheet(items(1), cal)
+    expect(calls.ctor[0]).toMatchObject({ compress: true })
   })
 
   it('generates one QR per UNIQUE id and reuses the same image alias for repeated ids', async () => {
