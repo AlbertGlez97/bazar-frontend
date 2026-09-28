@@ -191,8 +191,10 @@ disclosed follow-up, same as prior features this session.
 
 - [x] **P0** Merge `feat/qr-labels` into `main` (prerequisite for Part 2). Verified 140/2646, lint clean,
       build ok.
-- [ ] **P1** Coins in the cash pad (D1). TDD: RED first for tap-accumulation of a coin, mixed bill+coin sums,
-      the "Monedas"/"Billetes" group labels being present, and the correct grammatical-gender aria-label.
+- [x] **P1** Coins in the cash pad (D1). TDD: RED observed (15 failed / 49 passed against unmodified code),
+      then GREEN (64/64). Bonus fix found along the way: the reused white badge text was unreadable on the
+      light silver coins — added a scoped color override, same AA-verified `--color-text` pair used
+      elsewhere, no new tokens. 140 files / 2656 tests green (+10), lint clean, build ok.
 - [ ] **P2** Codigos QR screen — route, nav item, search+print-list, calibration, PDF generation, offline
       guard, route protection. TDD: RED first for sheet-count math (72→1, 73→2), copies repeating/positioning
       correctly, and a colaborador never reaching the route.

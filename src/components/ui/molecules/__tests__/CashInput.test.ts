@@ -24,6 +24,7 @@ async function roundTrip(w: ReturnType<typeof mountCash>) {
 }
 
 const padButtons = (w: ReturnType<typeof mountCash>) => w.findAll('.cash-denomination-pad__btn')
+const padCoinButtons = (w: ReturnType<typeof mountCash>) => w.findAll('.cash-denomination-pad__btn--coin')
 const padBadges = (w: ReturnType<typeof mountCash>) => w.findAll('.cash-denomination-pad__badge')
 
 // El limpiador solo quita lo que no puede ser parte de un monto (letras, símbolos)
@@ -163,9 +164,9 @@ describe('CashInput — "Justo"', () => {
 })
 
 describe('CashInput — selector de billetes combinable', () => {
-  it('siempre muestra los 6 billetes del pad, sin importar el total', () => {
-    expect(padButtons(mountCash({ totalMinor: 0 }))).toHaveLength(6)
-    expect(padButtons(mountCash({ totalMinor: 12550 }))).toHaveLength(6)
+  it('siempre muestra los 6 billetes + 4 monedas del pad, sin importar el total', () => {
+    expect(padButtons(mountCash({ totalMinor: 0 }))).toHaveLength(10)
+    expect(padButtons(mountCash({ totalMinor: 12550 }))).toHaveLength(10)
   })
 
   it('tocar el mismo billete varias veces acumula su valor (p. ej. $200 x2 = $400)', async () => {
@@ -264,5 +265,41 @@ describe('CashInput — selector de billetes combinable', () => {
 
     await bill500.trigger('click')
     expect(lastEmitted(wrapper)).toBe('700.00')
+  })
+
+  it('tocar la misma moneda varias veces acumula su valor (p. ej. $5 x3 = $15)', async () => {
+    const wrapper = mountCash()
+    const coin5 = padCoinButtons(wrapper).find((b) => b.text().startsWith('$5'))!
+
+    await coin5.trigger('click')
+    expect(lastEmitted(wrapper)).toBe('5.00')
+    await roundTrip(wrapper)
+
+    await coin5.trigger('click')
+    expect(lastEmitted(wrapper)).toBe('10.00')
+    await roundTrip(wrapper)
+
+    await coin5.trigger('click')
+    expect(lastEmitted(wrapper)).toBe('15.00')
+  })
+
+  it('combina billetes y monedas en el mismo total (2×$200 + 1×$10 + 2×$5 = $420)', async () => {
+    const wrapper = mountCash()
+    const bill200 = padButtons(wrapper).find((b) => b.text().startsWith('$200'))!
+    const coin10 = padCoinButtons(wrapper).find((b) => b.text().startsWith('$10'))!
+    const coin5 = padCoinButtons(wrapper).find((b) => b.text().startsWith('$5'))!
+
+    await bill200.trigger('click')
+    await roundTrip(wrapper)
+    await bill200.trigger('click')
+    await roundTrip(wrapper)
+    await coin10.trigger('click')
+    await roundTrip(wrapper)
+    await coin5.trigger('click')
+    await roundTrip(wrapper)
+    await coin5.trigger('click')
+    await roundTrip(wrapper)
+
+    expect(lastEmitted(wrapper)).toBe('420.00')
   })
 })
