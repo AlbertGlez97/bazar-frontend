@@ -1,6 +1,17 @@
 import { describe, expect, it } from 'vitest'
-import { buildSalesReport, formatDayRange, rangeDescription, reportNotes, roleLabel, sharePercent, UNKNOWN_SELLER } from '../sales-report'
-import type { SalesByMemberReport, SalesByPeriodReport } from '@/types/report.types'
+import {
+  buildSalesReport,
+  formatDayRange,
+  gananciaCellText,
+  GANANCIA_NO_DISPONIBLE,
+  profitPartialNote,
+  rangeDescription,
+  reportNotes,
+  roleLabel,
+  sharePercent,
+  UNKNOWN_SELLER,
+} from '../sales-report'
+import type { SalesByMemberReport, SalesByPeriodReport, SalesDetailRow, SalesDetailTotals } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
 const FROM = '2026-09-24T06:00:00.000Z'
@@ -237,6 +248,65 @@ describe('buildSalesReport — consistency with the period report', () => {
     const report = build([sale({ totalMinor: 1000 })], { period: period(1000, 2) })
     expect(report.consistency.ok).toBe(false)
     expect(report.consistency).toMatchObject({ reportCount: 2, rowsCount: 1 })
+  })
+})
+
+describe('buildSalesReport — detail (D4: real profit by product/member)', () => {
+  const detailRows: SalesDetailRow[] = [
+    {
+      productId: 'p1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos',
+      units: 2, ingresoMinor: 1000, costoMinor: 400, gananciaMinor: 600, gananciaDisponible: true,
+    },
+    {
+      productId: 'p2', productName: 'Pulsera', memberId: 'm-x', memberName: null,
+      units: 1, ingresoMinor: 200, costoMinor: null, gananciaMinor: null, gananciaDisponible: false,
+    },
+  ]
+  const detailTotals: SalesDetailTotals = { ingresoMinor: 1200, gananciaMinor: 600, lineasSinCosto: 1 }
+
+  it('is undefined when no detail was given (existing reports keep working)', () => {
+    expect(build([]).detail).toBeUndefined()
+  })
+
+  it('maps detail rows, resolving the name and dropping costoMinor (unused in the report model)', () => {
+    const report = build([], { detail: { rows: detailRows, totals: detailTotals } })
+    expect(report.detail).toEqual({
+      rows: [
+        { productId: 'p1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos', units: 2, ingresoMinor: 1000, gananciaMinor: 600, gananciaDisponible: true },
+        { productId: 'p2', productName: 'Pulsera', memberId: 'm-x', memberName: 'Sin nombre', units: 1, ingresoMinor: 200, gananciaMinor: null, gananciaDisponible: false },
+      ],
+      totals: detailTotals,
+    })
+  })
+})
+
+describe('gananciaCellText', () => {
+  it('formats the money when the profit is available', () => {
+    expect(gananciaCellText({ gananciaMinor: 600, gananciaDisponible: true })).toBe('$6.00')
+  })
+
+  it('a real $0 profit still prints $0.00 (it is a known value, not a gap)', () => {
+    expect(gananciaCellText({ gananciaMinor: 0, gananciaDisponible: true })).toBe('$0.00')
+  })
+
+  it('never prints $0.00 for an unavailable profit — says "No disponible"', () => {
+    expect(gananciaCellText({ gananciaMinor: null, gananciaDisponible: false })).toBe(GANANCIA_NO_DISPONIBLE)
+    expect(GANANCIA_NO_DISPONIBLE).toBe('No disponible')
+  })
+})
+
+describe('profitPartialNote', () => {
+  it('is null when every line of the period has its cost', () => {
+    expect(profitPartialNote(0)).toBeNull()
+  })
+
+  it('states the exact gap, singular and plural', () => {
+    expect(profitPartialNote(1)).toBe(
+      'Ganancia calculada solo sobre las ventas con costo registrado — 1 venta sin costo capturado no se incluyen en el total.',
+    )
+    expect(profitPartialNote(3)).toBe(
+      'Ganancia calculada solo sobre las ventas con costo registrado — 3 ventas sin costo capturado no se incluyen en el total.',
+    )
   })
 })
 

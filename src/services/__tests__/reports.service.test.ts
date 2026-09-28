@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ReportsService from '../reports.service'
 import api from '../api'
-import type { SalesByMemberReport, SalesByPeriodReport } from '@/types/report.types'
+import type { SalesByMemberReport, SalesByPeriodReport, SalesDetailResponse } from '@/types/report.types'
 
 vi.mock('../api', () => ({
   default: { get: vi.fn() },
@@ -50,5 +50,50 @@ describe('ReportsService.getSalesByMember', () => {
       params: { from: '2026-09-24', to: '2026-09-24' },
     })
     expect(result).toEqual(byMember)
+  })
+})
+
+const salesDetail: SalesDetailResponse = {
+  items: [
+    {
+      productId: 'p-1',
+      productName: 'Reloj',
+      memberId: 'm-1',
+      memberName: 'Carlos',
+      units: 1,
+      ingresoMinor: 125000,
+      costoMinor: 90000,
+      gananciaMinor: 35000,
+      gananciaDisponible: true,
+    },
+  ],
+  total: 1,
+  page: 1,
+  limit: 20,
+  totals: { ingresoMinor: 125000, gananciaMinor: 35000, lineasSinCosto: 0 },
+}
+
+describe('ReportsService.getSalesDetail', () => {
+  it('GETs /reports/sales-detail with from, to, page and limit as query params', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: salesDetail })
+    const result = await ReportsService.getSalesDetail({ from: '2026-09-24', to: '2026-09-24', page: 1, limit: 100 })
+    expect(api.get).toHaveBeenCalledWith('/reports/sales-detail', {
+      params: { from: '2026-09-24', to: '2026-09-24', page: 1, limit: 100 },
+    })
+    expect(result).toEqual(salesDetail)
+  })
+
+  it('works without page/limit (server applies its own defaults)', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: salesDetail })
+    await ReportsService.getSalesDetail({ from: '2026-09-24', to: '2026-09-24' })
+    expect(api.get).toHaveBeenCalledWith('/reports/sales-detail', {
+      params: { from: '2026-09-24', to: '2026-09-24' },
+    })
+  })
+
+  it('propagates request errors untouched', async () => {
+    const failure = Object.assign(new Error('Forbidden'), { response: { status: 403 } })
+    vi.mocked(api.get).mockRejectedValue(failure)
+    await expect(ReportsService.getSalesDetail({ from: 'a', to: 'b' })).rejects.toBe(failure)
   })
 })

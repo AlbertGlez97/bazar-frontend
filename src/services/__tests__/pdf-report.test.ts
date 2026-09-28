@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces'
 import { buildPdfDefinition } from '../pdf-report'
 import { REPORT_COLORS } from '@/config/report-palette'
-import { buildSalesReport } from '@/utils/sales-report'
+import { buildSalesReport, type BuildSalesReportInput } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
@@ -17,7 +17,13 @@ function sale(id: string, memberId: string, receivedAt: string, totalMinor: numb
   }
 }
 
-function makeReport(overrides: { sales?: Sale[]; period?: { from: string; to: string }; truncated?: boolean; forceMismatch?: boolean } = {}): SalesReport {
+function makeReport(overrides: {
+  sales?: Sale[]
+  period?: { from: string; to: string }
+  truncated?: boolean
+  forceMismatch?: boolean
+  detail?: BuildSalesReportInput['detail']
+} = {}): SalesReport {
   const sales = overrides.sales ?? [
     sale('s-2', 'm-carlos', '2026-09-24T20:05:00.000Z', 125000, 150000, [2, 1]),
     sale('s-1', 'm-ana', '2026-09-24T18:00:00.000Z', 5050, 10000, [1]),
@@ -37,6 +43,7 @@ function makeReport(overrides: { sales?: Sale[]; period?: { from: string; to: st
     businessName: 'La Marchanta',
     generatedAt: '2026-09-25T04:00:00.000Z', // 24/09/2026 22:00 en hora de negocio
     truncated: overrides.truncated,
+    detail: overrides.detail,
   })
 }
 
@@ -156,6 +163,64 @@ describe('buildPdfDefinition — per person and final total', () => {
   it('ends with the total sold, big, after the tables', () => {
     // Lo último del documento es la cifra final, después de las dos tablas.
     expect(texts(def.content).slice(-3)).toEqual(['Total vendido', '$1,300.50', '2 ventas · 4 artículos'])
+  })
+})
+
+describe('buildPdfDefinition — product breakdown (D4: real profit by product/member)', () => {
+  const detailRows = [
+    { productId: 'p1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos Núñez', units: 3, ingresoMinor: 125000, costoMinor: 90000, gananciaMinor: 35000, gananciaDisponible: true },
+    { productId: 'p2', productName: 'Pulsera', memberId: 'm-ana', memberName: 'Ana', units: 1, ingresoMinor: 5050, costoMinor: null, gananciaMinor: null, gananciaDisponible: false },
+  ]
+  const totals = { ingresoMinor: 130050, gananciaMinor: 35000, lineasSinCosto: 1 }
+
+  it('adds no "Por producto" section when the report has no detail (existing reports unchanged)', () => {
+    const def = buildPdfDefinition(makeReport())
+    expect(texts(def.content)).not.toContain('Por producto')
+  })
+
+  it('has a product table with Producto / Persona / Unidades / Ingreso / Ganancia', () => {
+    const def = buildPdfDefinition(makeReport({ detail: { rows: detailRows, totals } }))
+    const table = findTable(def, 'Producto')
+    expect(rowTexts(table.body[0])).toEqual(['Producto', 'Persona', 'Unidades', 'Ingreso', 'Ganancia'])
+    expect(rowTexts(table.body[1])).toEqual(['Reloj', 'Carlos Núñez', '3', '$1,250.00', '$350.00'])
+  })
+
+  it('shows "No disponible" instead of $0.00 for a row without registered cost', () => {
+    const def = buildPdfDefinition(makeReport({ detail: { rows: detailRows, totals } }))
+    const table = findTable(def, 'Producto')
+    expect(rowTexts(table.body[2])).toEqual(['Pulsera', 'Ana', '1', '$50.50', 'No disponible'])
+  })
+
+  it('the totals row uses the period totals (ingreso/ganancia), not a sum of the visible rows', () => {
+    const def = buildPdfDefinition(makeReport({ detail: { rows: detailRows, totals } }))
+    const table = findTable(def, 'Producto')
+    const last = rowTexts(table.body.at(-1)!)
+    expect(last[3]).toBe('$1,300.50')
+    expect(last[4]).toBe('$350.00')
+  })
+
+  it('adds the partial-profit note only when lineasSinCosto > 0, with the exact wording', () => {
+    const withGap = texts(buildPdfDefinition(makeReport({ detail: { rows: detailRows, totals } })).content).join(' ')
+    const noGap = texts(buildPdfDefinition(makeReport({ detail: { rows: detailRows, totals: { ...totals, lineasSinCosto: 0 } } })).content).join(' ')
+    expect(withGap).toContain('Ganancia calculada solo sobre las ventas con costo registrado — 1 venta sin costo capturado no se incluyen en el total.')
+    expect(noGap).not.toContain('Ganancia calculada solo')
+  })
+
+  it('says there is no product detail yet when the section is present but empty', () => {
+    const def = buildPdfDefinition(makeReport({ detail: { rows: [], totals: { ingresoMinor: 0, gananciaMinor: 0, lineasSinCosto: 0 } } }))
+    expect(texts(def.content)).toContain('Todavía no hay detalle de productos en este periodo.')
+  })
+
+  it('places the product section after the existing tables and still before the final total', () => {
+    const def = buildPdfDefinition(makeReport({ detail: { rows: detailRows, totals } }))
+    expect(texts(def.content).slice(-3)).toEqual(['Total vendido', '$1,300.50', '2 ventas · 4 artículos'])
+  })
+
+  it('never prints cash-received/change columns in the product table', () => {
+    const def = buildPdfDefinition(makeReport({ detail: { rows: detailRows, totals } }))
+    const table = findTable(def, 'Producto')
+    expect(rowTexts(table.body[0])).not.toContain('Efectivo')
+    expect(rowTexts(table.body[0])).not.toContain('Cambio')
   })
 })
 

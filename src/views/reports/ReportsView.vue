@@ -88,6 +88,14 @@
       >
         {{ VOICE.reports.truncated }}
       </AppAlert>
+
+      <AppAlert
+        v-if="profitNote"
+        type="warning"
+      >
+        {{ profitNote }}
+      </AppAlert>
+      <SalesDetailBreakdown :rows="productRows" />
     </template>
 
     <!-- Descargas: sin ventas (o sin reporte) no hay nada que bajar -->
@@ -122,7 +130,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { AppAlert, AppButton, AppSkeleton, ReportRangePicker, SalesReportSummary } from '@/components'
+import { AppAlert, AppButton, AppSkeleton, ReportRangePicker, SalesDetailBreakdown, SalesReportSummary } from '@/components'
 import { APP_NAME } from '@/config/app'
 import {
   VOICE,
@@ -133,6 +141,7 @@ import {
 } from '@/config/voice'
 import ReportsService from '@/services/reports.service'
 import { collectSalesInRange } from '@/services/sales-report-collector'
+import { collectSalesDetail, type CollectedSalesDetail } from '@/services/sales-detail-collector'
 import { downloadPdf } from '@/services/pdf-report'
 import { downloadExcel } from '@/services/excel-report'
 import { useSessionStore } from '@/stores/session.store'
@@ -146,7 +155,7 @@ import {
   type RangePreset,
 } from '@/utils/business-time'
 import { reportFileName } from '@/utils/report-files'
-import { UNKNOWN_SELLER, buildSalesReport, formatDayRange, sharePercent } from '@/utils/sales-report'
+import { UNKNOWN_SELLER, buildSalesReport, formatDayRange, profitPartialNote, sharePercent } from '@/utils/sales-report'
 import type { SalesByMemberReport, SalesByPeriodReport, SalesReport } from '@/types/report.types'
 
 const router = useRouter()
@@ -190,8 +199,12 @@ function onTo(value: string) {
   selectedPreset.value = null
 }
 
-// ── Reportes (totales y por persona) ──────────────────────────────────────
-const loaded = shallowRef<{ period: SalesByPeriodReport; byMember: SalesByMemberReport } | null>(null)
+// ── Reportes (totales, por persona y por producto/vendedor) ───────────────
+// El desglose por producto (D4) se junta EAGER, junto con los otros dos: a
+// diferencia del detalle crudo de GET /sales (grande, solo hace falta para
+// el archivo), sales-detail ya viene agrupado — su propio tamaño es chico y
+// hace falta en pantalla, así que se reutiliza tal cual para el PDF/Excel.
+const loaded = shallowRef<{ period: SalesByPeriodReport; byMember: SalesByMemberReport; detail: CollectedSalesDetail } | null>(null)
 const status = ref<'loading' | 'ready' | 'error'>('loading')
 const loadError = ref('')
 // Cada consulta lleva un número: si el periodo cambia mientras otra sigue en
@@ -207,12 +220,13 @@ async function load() {
   prepared.value = null
   try {
     const params = { from: range.from, to: range.to }
-    const [period, byMember] = await Promise.all([
+    const [period, byMember, detail] = await Promise.all([
       ReportsService.getSalesByPeriod(params),
       ReportsService.getSalesByMember(params),
+      collectSalesDetail(params),
     ])
     if (token !== loadToken) return
-    loaded.value = { period, byMember }
+    loaded.value = { period, byMember, detail }
     status.value = 'ready'
   } catch (cause) {
     if (token !== loadToken) return
@@ -242,6 +256,25 @@ const people = computed(() => {
     .sort((a, b) => b.totalMinor - a.totalMinor || a.name.localeCompare(b.name, 'es'))
 })
 
+// Por producto y vendedor (D4): la API ya devuelve el orden estable
+// (ingresoMinor desc, productName asc) — se muestra tal cual.
+const productRows = computed(() => {
+  if (!loaded.value) return []
+  return loaded.value.detail.rows.map((row) => ({
+    productId: row.productId,
+    memberId: row.memberId,
+    productName: row.productName,
+    memberName: row.memberName?.trim() || UNKNOWN_SELLER,
+    units: row.units,
+    ingresoMinor: row.ingresoMinor,
+    gananciaMinor: row.gananciaMinor,
+    gananciaDisponible: row.gananciaDisponible,
+  }))
+})
+
+// Aviso de ganancia parcial (D4): solo cuando el periodo tiene partidas sin costo registrado.
+const profitNote = computed(() => (loaded.value ? profitPartialNote(loaded.value.detail.totals.lineasSinCosto) : null))
+
 // ── Descargas ─────────────────────────────────────────────────────────────
 // Ver totales NO baja ventas. El detalle (GET /sales, paginado y sin filtro por
 // fecha) se junta al pedir el primer archivo de un periodo y se reutiliza para el
@@ -255,7 +288,7 @@ const canDownload = computed(
 
 async function prepareReport(): Promise<SalesReport> {
   if (prepared.value) return prepared.value
-  const { period, byMember } = loaded.value!
+  const { period, byMember, detail } = loaded.value!
   const { sales, truncated } = await collectSalesInRange({ from: period.from, to: period.to })
   const report = buildSalesReport({
     period,
@@ -264,6 +297,7 @@ async function prepareReport(): Promise<SalesReport> {
     businessName: APP_NAME, // la API no expone el nombre del negocio: se usa el de la app
     generatedAt: new Date().toISOString(),
     truncated,
+    detail: { rows: detail.rows, totals: detail.totals },
   })
   prepared.value = report
   return report

@@ -33,6 +33,59 @@ export interface SalesByMemberReport {
   items: SalesByMemberItem[]
 }
 
+/** Query de GET /reports/sales-detail: mismo rango + paginación (máx. `limit: 100`, contrato §9). */
+export interface SalesDetailQuery extends ReportRangeParams {
+  page?: number
+  limit?: number
+}
+
+/**
+ * Una fila de GET /reports/sales-detail: TODAS las partidas del periodo
+ * agrupadas por par (producto, vendedor) — no una fila por venta ni por
+ * partida individual.
+ */
+export interface SalesDetailRow {
+  productId: string
+  productName: string
+  /** Quien vendió (socio o colaborador). */
+  memberId: string
+  memberName: string | null
+  /** Suma de `quantity` de todas las partidas del par. */
+  units: number
+  /** Suma de `subtotalMinor` de todas las partidas del par (siempre presente, no depende del costo). */
+  ingresoMinor: number
+  /** `null` cuando `gananciaDisponible` es `false`. */
+  costoMinor: number | null
+  /** `null` cuando `gananciaDisponible` es `false`. */
+  gananciaMinor: number | null
+  /** `true` solo si TODAS las partidas agrupadas en esta fila tienen `unitCostMinor`. */
+  gananciaDisponible: boolean
+}
+
+/** `totals` de GET /reports/sales-detail: SIEMPRE del periodo completo, igual en cualquier página. */
+export interface SalesDetailTotals {
+  /** Suma de `subtotalMinor` de TODAS las partidas del periodo. */
+  ingresoMinor: number
+  /** Suma de ganancia solo sobre partidas con costo; nunca `null`, `0` (no una estimación) si ninguna lo tiene. */
+  gananciaMinor: number
+  /** Partidas (`SaleItem`, no filas) del periodo sin `unitCostMinor`. */
+  lineasSinCosto: number
+}
+
+/**
+ * GET /reports/sales-detail. A diferencia de `sales-by-period`/`sales-by-member`,
+ * ESTE reporte sí pagina (`page`/`limit`, máx. `limit: 100`) — juntar el
+ * periodo completo requiere recorrer todas las páginas (`sales-detail-collector.ts`).
+ */
+export interface SalesDetailResponse {
+  items: SalesDetailRow[]
+  /** Filas `(productId, memberId)` del periodo completo (no `SaleItem`). */
+  total: number
+  page: number
+  limit: number
+  totals: SalesDetailTotals
+}
+
 // ── Modelo del reporte exportable (lo consumen el PDF y el Excel) ──────────
 // Todo el dinero sigue en centavos enteros; la conversión a pesos es lo último
 // que ocurre, al escribir cada archivo.
@@ -79,6 +132,36 @@ export interface SalesReportConsistency {
   rowsCount: number
 }
 
+/** Una fila del desglose por producto y vendedor (D4), con el nombre ya resuelto (nunca `null`). */
+export interface SalesReportDetailRow {
+  productId: string
+  productName: string
+  memberId: string
+  memberName: string
+  units: number
+  ingresoMinor: number
+  /** `null` cuando `gananciaDisponible` es `false` — nunca se muestra como `0`. */
+  gananciaMinor: number | null
+  gananciaDisponible: boolean
+}
+
+export interface SalesReportDetailTotals {
+  ingresoMinor: number
+  gananciaMinor: number
+  lineasSinCosto: number
+}
+
+/**
+ * Desglose de ganancia real por producto/vendedor (D4), armado desde
+ * `GET /reports/sales-detail`. Opcional: solo está presente cuando se pidió
+ * (`buildSalesReport({ detail })`) — un reporte sin este campo se comporta
+ * exactamente como antes de D4.
+ */
+export interface SalesReportDetail {
+  rows: SalesReportDetailRow[]
+  totals: SalesReportDetailTotals
+}
+
 export interface SalesReport {
   businessName: string
   /** Instante ISO en que se armó el reporte. */
@@ -99,6 +182,8 @@ export interface SalesReport {
   consistency: SalesReportConsistency
   /** `true` si se llegó al tope de páginas y el detalle puede estar incompleto. */
   truncated: boolean
+  /** Ver `SalesReportDetail` (D4). `undefined` cuando no se pidió el desglose. */
+  detail?: SalesReportDetail
 }
 
 // ── GET /dashboard/summary (doc/api-contract-for-frontend.md §"GET

@@ -8,24 +8,27 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import ReportsView from '../ReportsView.vue'
 import ReportsService from '@/services/reports.service'
 import { collectSalesInRange } from '@/services/sales-report-collector'
+import { collectSalesDetail, type CollectedSalesDetail } from '@/services/sales-detail-collector'
 import { downloadPdf } from '@/services/pdf-report'
 import { downloadExcel } from '@/services/excel-report'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
-import type { SalesByMemberReport, SalesByPeriodReport, SalesReport } from '@/types/report.types'
+import type { SalesByMemberReport, SalesByPeriodReport, SalesDetailRow, SalesReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
 vi.mock('@/services/reports.service', () => ({
   default: { getSalesByPeriod: vi.fn(), getSalesByMember: vi.fn() },
 }))
 vi.mock('@/services/sales-report-collector', () => ({ collectSalesInRange: vi.fn() }))
+vi.mock('@/services/sales-detail-collector', () => ({ collectSalesDetail: vi.fn() }))
 vi.mock('@/services/pdf-report', () => ({ downloadPdf: vi.fn() }))
 vi.mock('@/services/excel-report', () => ({ downloadExcel: vi.fn() }))
 
 const getSalesByPeriod = vi.mocked(ReportsService.getSalesByPeriod)
 const getSalesByMember = vi.mocked(ReportsService.getSalesByMember)
 const collect = vi.mocked(collectSalesInRange)
+const collectDetail = vi.mocked(collectSalesDetail)
 const pdf = vi.mocked(downloadPdf)
 const excel = vi.mocked(downloadExcel)
 
@@ -55,6 +58,17 @@ const DETAIL = [
   sale('s-2', 'm-carlos', '2026-09-24T20:05:00.000Z', 125000),
   sale('s-1', 'm-ana', '2026-09-24T18:00:00.000Z', 5050),
 ]
+
+function detailRow(over: Partial<SalesDetailRow> = {}): SalesDetailRow {
+  return {
+    productId: 'p-1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos Núñez',
+    units: 3, ingresoMinor: 125000, costoMinor: 90000, gananciaMinor: 35000, gananciaDisponible: true,
+    ...over,
+  }
+}
+const salesDetail = (over: Partial<CollectedSalesDetail> = {}): CollectedSalesDetail => ({
+  rows: [], totals: { ingresoMinor: 0, gananciaMinor: 0, lineasSinCosto: 0 }, truncated: false, pagesFetched: 1, ...over,
+})
 
 const SOCIO = { id: 'm-1', name: 'Ana', role: 'socio' as const, active: true }
 
@@ -90,6 +104,7 @@ beforeEach(() => {
   getSalesByPeriod.mockReset().mockResolvedValue(period())
   getSalesByMember.mockReset().mockResolvedValue(byMember())
   collect.mockReset().mockResolvedValue({ sales: DETAIL, truncated: false, pagesFetched: 1 })
+  collectDetail.mockReset().mockResolvedValue(salesDetail())
   pdf.mockReset().mockResolvedValue(undefined)
   excel.mockReset().mockResolvedValue(undefined)
 })
@@ -382,6 +397,77 @@ describe('ReportsView — descargas', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('más ventas de las que caben en un archivo')
     expect(pdf.mock.calls[0][0].truncated).toBe(true)
+  })
+})
+
+describe('ReportsView — desglose por producto (D4: ganancia real)', () => {
+  it('collects the sales-detail for the period alongside the other two reports', async () => {
+    await mountView()
+    expect(collectDetail).toHaveBeenCalledTimes(1)
+    expect(collectDetail).toHaveBeenCalledWith({ from: '2026-09-24', to: '2026-09-24' })
+  })
+
+  it('shows the breakdown table with product, person, units, income and profit', async () => {
+    collectDetail.mockResolvedValue(salesDetail({ rows: [detailRow()] }))
+    const { wrapper } = await mountView()
+    const table = wrapper.get('.sales-detail-breakdown__table')
+    expect(table.findAll('thead th').map((th) => th.text())).toEqual(['Producto', 'Persona', 'Unidades', 'Ingreso', 'Ganancia'])
+    const row = table.findAll('tbody tr')[0].findAll('td').map((td) => td.text())
+    expect(row).toEqual(['Reloj', 'Carlos Núñez', '3', '$1,250.00', '$350.00'])
+  })
+
+  it('shows "No disponible" instead of $0 when a row has no registered cost', async () => {
+    collectDetail.mockResolvedValue(salesDetail({ rows: [detailRow({ gananciaMinor: null, gananciaDisponible: false, costoMinor: null })] }))
+    const { wrapper } = await mountView()
+    const cells = wrapper.get('.sales-detail-breakdown__table tbody tr').findAll('td').map((td) => td.text())
+    expect(cells.at(-1)).toBe('No disponible')
+    expect(cells.at(-1)).not.toBe('$0.00')
+  })
+
+  it('a member with no resolved name falls back to "Sin nombre"', async () => {
+    collectDetail.mockResolvedValue(salesDetail({ rows: [detailRow({ memberName: null })] }))
+    const { wrapper } = await mountView()
+    expect(wrapper.get('.sales-detail-breakdown__table tbody tr').text()).toContain('Sin nombre')
+  })
+
+  it('shows the partial-profit warning only when lineasSinCosto > 0, with the exact wording', async () => {
+    collectDetail.mockResolvedValue(salesDetail({ totals: { ingresoMinor: 1000, gananciaMinor: 500, lineasSinCosto: 2 } }))
+    const { wrapper } = await mountView()
+    expect(wrapper.text()).toContain(
+      'Ganancia calculada solo sobre las ventas con costo registrado — 2 ventas sin costo capturado no se incluyen en el total.',
+    )
+  })
+
+  it('does not show the partial-profit warning when every line has its cost', async () => {
+    collectDetail.mockResolvedValue(salesDetail({ totals: { ingresoMinor: 1000, gananciaMinor: 1000, lineasSinCosto: 0 } }))
+    const { wrapper } = await mountView()
+    expect(wrapper.text()).not.toContain('Ganancia calculada solo sobre las ventas')
+  })
+
+  it('passes the collected detail into the exported report (PDF/Excel)', async () => {
+    collectDetail.mockResolvedValue(salesDetail({
+      rows: [detailRow()],
+      totals: { ingresoMinor: 1250, gananciaMinor: 350, lineasSinCosto: 1 },
+    }))
+    const { wrapper } = await mountView()
+    await button(wrapper, 'Descargar PDF').trigger('click')
+    await flushPromises()
+    const [report] = pdf.mock.calls[0] as [SalesReport, string]
+    expect(report.detail).toEqual({
+      rows: [{
+        productId: 'p-1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos Núñez',
+        units: 3, ingresoMinor: 125000, gananciaMinor: 35000, gananciaDisponible: true,
+      }],
+      totals: { ingresoMinor: 1250, gananciaMinor: 350, lineasSinCosto: 1 },
+    })
+  })
+
+  it('never shows cash-received or change columns in the new breakdown', async () => {
+    collectDetail.mockResolvedValue(salesDetail({ rows: [detailRow()] }))
+    const { wrapper } = await mountView()
+    const headers = wrapper.get('.sales-detail-breakdown__table').findAll('thead th').map((th) => th.text())
+    expect(headers).not.toContain('Efectivo')
+    expect(headers).not.toContain('Cambio')
   })
 })
 

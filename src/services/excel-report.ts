@@ -2,7 +2,7 @@ import type { Workbook, Row } from 'exceljs'
 import { REPORT_COLORS, toArgb } from '@/config/report-palette'
 import { businessWallClock, formatBusinessDateTime } from '@/utils/business-time'
 import { saveBlob } from '@/utils/report-files'
-import { plural, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
+import { GANANCIA_NO_DISPONIBLE, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -45,7 +45,16 @@ export interface ExcelSummaryRow {
   money?: boolean
 }
 
-/** Los datos de las tres hojas, ya en pesos y listos para escribir (sin ExcelJS). */
+export interface ExcelProductRow {
+  product: string
+  member: string
+  units: number
+  income: number
+  /** `null` cuando `gananciaDisponible` es `false` — se escribe "No disponible", NUNCA `0`. */
+  profit: number | null
+}
+
+/** Los datos de las hojas, ya en pesos y listos para escribir (sin ExcelJS). */
 export interface ExcelReportData {
   sales: {
     rows: ExcelSalesRow[]
@@ -54,6 +63,17 @@ export interface ExcelReportData {
   people: {
     rows: ExcelPersonRow[]
     totals: { count: number; total: number }
+  }
+  /**
+   * Desglose por producto/vendedor (D4). `undefined` cuando el reporte no
+   * pidió el detalle (`SalesReport.detail` ausente) — la hoja "Por producto"
+   * no se agrega en ese caso.
+   */
+  product?: {
+    rows: ExcelProductRow[]
+    /** Del periodo completo, no una suma de las filas visibles (misma regla que `sales-detail.totals`). */
+    totals: { income: number; profit: number }
+    note: string | null
   }
   summary: {
     title: string
@@ -93,6 +113,20 @@ export function buildExcelData(report: SalesReport): ExcelReportData {
         share: Math.round(person.sharePercent * 10) / 1000,
       })),
       totals: { count: totals.saleCount, total: toPesos(totals.totalMinor) },
+    },
+    product: report.detail && {
+      rows: report.detail.rows.map((row) => ({
+        product: row.productName,
+        member: row.memberName,
+        units: row.units,
+        income: toPesos(row.ingresoMinor),
+        profit: row.gananciaDisponible && row.gananciaMinor !== null ? toPesos(row.gananciaMinor) : null,
+      })),
+      totals: {
+        income: toPesos(report.detail.totals.ingresoMinor),
+        profit: toPesos(report.detail.totals.gananciaMinor),
+      },
+      note: profitPartialNote(report.detail.totals.lineasSinCosto),
     },
     summary: {
       title: report.businessName,
@@ -203,6 +237,54 @@ function addPeopleSheet(workbook: Workbook, data: ExcelReportData) {
   totalsStyle(totalsRow, 5)
 }
 
+/** Hoja "Por producto" (D4): ganancia real por producto/vendedor, con hueco explícito nunca escrito como `0`. */
+function addProductSheet(workbook: Workbook, data: ExcelReportData) {
+  const { rows, totals, note } = data.product!
+  const ws = workbook.addWorksheet('Por producto', { views: [{ state: 'frozen', ySplit: 1 }] })
+  ws.columns = [
+    { width: nameWidth(rows.map((r) => r.product), 20) },
+    { width: nameWidth(rows.map((r) => r.member), 16) },
+    { width: 11 },
+    { width: 14 },
+    { width: 14 },
+  ]
+
+  headerStyle(ws.addRow(['Producto', 'Persona', 'Unidades', 'Ingreso', 'Ganancia']), [3, 4, 5])
+
+  for (const item of rows) {
+    const row = ws.addRow([item.product, item.member, item.units, item.income, item.profit ?? GANANCIA_NO_DISPONIBLE])
+    row.getCell(1).numFmt = TEXT_FORMAT
+    row.getCell(2).numFmt = TEXT_FORMAT
+    row.getCell(4).numFmt = MONEY_FORMAT
+    if (item.profit !== null) row.getCell(5).numFmt = MONEY_FORMAT
+  }
+
+  const n = rows.length
+  // Los totales son del periodo COMPLETO (regla distinta a la de cada fila:
+  // una fila sin ganancia visible no participa en una suma parcial), así que
+  // se escriben tal cual en vez de una fórmula SUM sobre las filas visibles.
+  const totalsRow = ws.getRow(n + 2)
+  totalsRow.getCell(1).value = 'Total'
+  totalsRow.getCell(4).value = totals.income
+  totalsRow.getCell(4).numFmt = MONEY_FORMAT
+  totalsRow.getCell(5).value = totals.profit
+  totalsRow.getCell(5).numFmt = MONEY_FORMAT
+  totalsStyle(totalsRow, 5)
+
+  if (note) {
+    const noteRow = ws.getRow(n + 4)
+    const label = noteRow.getCell(1)
+    label.value = 'Aviso'
+    label.font = { bold: true, color: { argb: toArgb(REPORT_COLORS.warning) } }
+    const text = noteRow.getCell(2)
+    text.value = note
+    text.alignment = { wrapText: true, vertical: 'top' }
+    text.font = { color: { argb: toArgb(REPORT_COLORS.warning) } }
+    text.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: toArgb(REPORT_COLORS.warningSoft) } }
+    noteRow.height = 48
+  }
+}
+
 function addSummarySheet(workbook: Workbook, data: ExcelReportData) {
   const { title, subtitle, rows, notes } = data.summary
   const ws = workbook.addWorksheet('Resumen')
@@ -255,6 +337,7 @@ export async function buildWorkbook(report: SalesReport): Promise<Workbook> {
   workbook.created = new Date(report.generatedAt)
   addSalesSheet(workbook, data)
   addPeopleSheet(workbook, data)
+  if (data.product) addProductSheet(workbook, data)
   addSummarySheet(workbook, data)
   return workbook
 }

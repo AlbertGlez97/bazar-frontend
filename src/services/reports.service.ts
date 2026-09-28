@@ -1,5 +1,11 @@
 import api from './api'
-import type { ReportRangeParams, SalesByMemberReport, SalesByPeriodReport } from '@/types/report.types'
+import type {
+  ReportRangeParams,
+  SalesByMemberReport,
+  SalesByPeriodReport,
+  SalesDetailQuery,
+  SalesDetailResponse,
+} from '@/types/report.types'
 
 const ReportsService = {
   /**
@@ -19,6 +25,19 @@ const ReportsService = {
    */
   async getSalesByMember(params: ReportRangeParams): Promise<SalesByMemberReport> {
     const { data } = await api.get<SalesByMemberReport>('/reports/sales-by-member', { params })
+    return data
+  },
+
+  /**
+   * GET /reports/sales-detail — solo socios. A diferencia de los dos
+   * anteriores, ESTE reporte pagina (`page`/`limit`, máx. `limit: 100`, def.
+   * 20): para el periodo completo hay que recorrer todas las páginas
+   * (`services/sales-detail-collector.ts`). Ganancia real por par
+   * (producto, vendedor), con un hueco explícito (nunca estimado) cuando
+   * falta el costo de compra.
+   */
+  async getSalesDetail(params: SalesDetailQuery): Promise<SalesDetailResponse> {
+    const { data } = await api.get<SalesDetailResponse>('/reports/sales-detail', { params })
     return data
   },
 }

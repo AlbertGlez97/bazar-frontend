@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import ExcelJS from 'exceljs'
 import { buildExcelData, buildWorkbook, downloadExcel, renderExcelBlob, XLSX_MIME } from '../excel-report'
 import { saveBlob } from '@/utils/report-files'
-import { buildSalesReport } from '@/utils/sales-report'
+import { buildSalesReport, type BuildSalesReportInput } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
@@ -28,7 +28,7 @@ const DEFAULT_SALES = [
 function makeReport(
   sales: Sale[] = DEFAULT_SALES,
   names: Record<string, string> = { 'm-ana': 'Ana', 'm-carlos': 'Carlos Núñez' },
-  extra: { forceMismatch?: boolean; truncated?: boolean } = {},
+  extra: { forceMismatch?: boolean; truncated?: boolean; detail?: BuildSalesReportInput['detail'] } = {},
 ): SalesReport {
   const total = sales.reduce((sum, s) => sum + (s.totalMinor ?? 0), 0)
   return buildSalesReport({
@@ -43,6 +43,7 @@ function makeReport(
     businessName: 'La Marchanta',
     generatedAt: '2026-09-25T04:00:00.000Z',
     truncated: extra.truncated,
+    detail: extra.detail,
   })
 }
 
@@ -104,6 +105,86 @@ describe('buildExcelData (pure shaping, no exceljs)', () => {
     expect(notes).toHaveLength(2)
     expect(notes.join(' ')).toContain('límite de ventas')
     expect(notes.join(' ')).toContain('no coincide con el reporte del periodo')
+  })
+})
+
+describe('buildExcelData — product breakdown (D4: real profit by product/member)', () => {
+  const detailRows = [
+    { productId: 'p1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos Núñez', units: 3, ingresoMinor: 125000, costoMinor: 90000, gananciaMinor: 35000, gananciaDisponible: true },
+    { productId: 'p2', productName: 'Pulsera', memberId: 'm-ana', memberName: 'Ana', units: 1, ingresoMinor: 5050, costoMinor: null, gananciaMinor: null, gananciaDisponible: false },
+  ]
+  const totals = { ingresoMinor: 130050, gananciaMinor: 35000, lineasSinCosto: 1 }
+
+  it('is undefined when the report has no detail (existing reports unchanged)', () => {
+    expect(buildExcelData(makeReport()).product).toBeUndefined()
+  })
+
+  it('shapes product rows in pesos, keeping profit null (never 0) when unavailable', () => {
+    const { product } = buildExcelData(makeReport(DEFAULT_SALES, undefined, { detail: { rows: detailRows, totals } }))
+    expect(product!.rows).toEqual([
+      { product: 'Reloj', member: 'Carlos Núñez', units: 3, income: 1250, profit: 350 },
+      { product: 'Pulsera', member: 'Ana', units: 1, income: 50.5, profit: null },
+    ])
+    expect(product!.totals).toEqual({ income: 1300.5, profit: 350 })
+  })
+
+  it('carries the partial-profit note only when lineasSinCosto > 0, with the exact wording', () => {
+    const withGap = buildExcelData(makeReport(DEFAULT_SALES, undefined, { detail: { rows: detailRows, totals } })).product!.note
+    const noGap = buildExcelData(
+      makeReport(DEFAULT_SALES, undefined, { detail: { rows: detailRows, totals: { ...totals, lineasSinCosto: 0 } } }),
+    ).product!.note
+    expect(withGap).toBe('Ganancia calculada solo sobre las ventas con costo registrado — 1 venta sin costo capturado no se incluyen en el total.')
+    expect(noGap).toBeNull()
+  })
+})
+
+describe('buildWorkbook — product sheet (D4, real exceljs)', () => {
+  const detailRows = [
+    { productId: 'p1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos Núñez', units: 3, ingresoMinor: 125000, costoMinor: 90000, gananciaMinor: 35000, gananciaDisponible: true },
+    { productId: 'p2', productName: 'Pulsera', memberId: 'm-ana', memberName: 'Ana', units: 1, ingresoMinor: 5050, costoMinor: null, gananciaMinor: null, gananciaDisponible: false },
+  ]
+  const totals = { ingresoMinor: 130050, gananciaMinor: 35000, lineasSinCosto: 1 }
+
+  it('does not add a "Por producto" sheet when the report has no detail', async () => {
+    const wb = await buildWorkbook(makeReport())
+    expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Resumen'])
+  })
+
+  it('adds "Por producto" with header, rows and "No disponible" text for a missing profit', async () => {
+    const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { detail: { rows: detailRows, totals } }))
+    expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Por producto', 'Resumen'])
+    const ws = wb.getWorksheet('Por producto')!
+    expect(ws.getRow(1).values).toEqual([undefined, 'Producto', 'Persona', 'Unidades', 'Ingreso', 'Ganancia'])
+    expect(ws.getCell('A2').value).toBe('Reloj')
+    expect(ws.getCell('D2').value).toBe(1250)
+    expect(ws.getCell('E2').value).toBe(350)
+    expect(ws.getCell('E2').numFmt).toBe(MONEY_FORMAT)
+    expect(ws.getCell('E3').value).toBe('No disponible')
+    expect(ws.getCell('E3').numFmt).not.toBe(MONEY_FORMAT)
+  })
+
+  it('writes the period totals (not a sum of the visible rows) in the totals row', async () => {
+    const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { detail: { rows: detailRows, totals } }))
+    const ws = wb.getWorksheet('Por producto')!
+    expect(ws.getCell('A4').value).toBe('Total')
+    expect(ws.getCell('D4').value).toBe(1300.5)
+    expect(ws.getCell('E4').value).toBe(350)
+    expect(ws.getCell('D4').numFmt).toBe(MONEY_FORMAT)
+  })
+
+  it('adds an Aviso row with the exact partial-profit note when lineasSinCosto > 0', async () => {
+    const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { detail: { rows: detailRows, totals } }))
+    const ws = wb.getWorksheet('Por producto')!
+    const avisoRow = ws.getRows(1, 10)!.find((row) => row.getCell(1).value === 'Aviso')!
+    expect(avisoRow.getCell(2).value).toBe(
+      'Ganancia calculada solo sobre las ventas con costo registrado — 1 venta sin costo capturado no se incluyen en el total.',
+    )
+  })
+
+  it('adds no Aviso row when every line has its cost', async () => {
+    const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { detail: { rows: detailRows, totals: { ...totals, lineasSinCosto: 0 } } }))
+    const ws = wb.getWorksheet('Por producto')!
+    expect(ws.getRows(1, 10)!.some((row) => row.getCell(1).value === 'Aviso')).toBe(false)
   })
 })
 

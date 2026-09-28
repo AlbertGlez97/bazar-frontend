@@ -3,7 +3,7 @@ import { REPORT_COLORS } from '@/config/report-palette'
 import { formatBusinessDateTime } from '@/utils/business-time'
 import { saveBlob } from '@/utils/report-files'
 import { formatMinorMoney } from '@/utils/money'
-import { plural, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
+import { gananciaCellText, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 
 const C = REPORT_COLORS
@@ -122,6 +122,44 @@ function peopleTable(report: SalesReport): Content {
   }
 }
 
+/** Tabla del desglose por producto y vendedor (D4): ganancia real, con hueco explícito nunca como `$0.00`. */
+function productTable(report: SalesReport): Content {
+  const detail = report.detail!
+  const { totals } = detail
+  return {
+    table: {
+      headerRows: 1,
+      dontBreakRows: true,
+      widths: ['*', '*', 55, 62, 62],
+      body: [
+        [
+          headerCell('Producto'),
+          headerCell('Persona'),
+          headerCell('Unidades', 'right'),
+          headerCell('Ingreso', 'right'),
+          headerCell('Ganancia', 'right'),
+        ],
+        ...detail.rows.map((row) => [
+          cell(row.productName),
+          cell(row.memberName),
+          cell(String(row.units), 'right'),
+          cell(formatMinorMoney(row.ingresoMinor), 'right'),
+          cell(gananciaCellText(row), 'right'),
+        ]),
+        [
+          totalCell('Total'),
+          totalCell(''),
+          totalCell('', 'right'),
+          totalCell(formatMinorMoney(totals.ingresoMinor), 'right'),
+          totalCell(formatMinorMoney(totals.gananciaMinor), 'right'),
+        ],
+      ],
+    },
+    layout: TABLE_LAYOUT,
+    fontSize: 9,
+  }
+}
+
 /**
  * Definición del PDF de ventas (función pura: no toca pdfmake). El módulo de
  * pdfmake solo se carga en `renderPdfBlob`, al pedir el archivo.
@@ -163,6 +201,15 @@ export function buildPdfDefinition(report: SalesReport): TDocumentDefinitions {
   if (hasSales) {
     content.push({ text: 'Por persona', style: 'sectionTitle', margin: [0, 16, 0, 6] })
     content.push(peopleTable(report))
+  }
+
+  if (report.detail) {
+    content.push({ text: 'Por producto', style: 'sectionTitle', margin: [0, 16, 0, 6] })
+    content.push(report.detail.rows.length > 0
+      ? productTable(report)
+      : { text: 'Todavía no hay detalle de productos en este periodo.', color: C.textMuted, margin: [0, 0, 0, 8] })
+    const partialNote = profitPartialNote(report.detail.totals.lineasSinCosto)
+    if (partialNote) content.push(noteBox(partialNote))
   }
 
   content.push({

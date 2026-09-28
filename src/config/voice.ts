@@ -216,6 +216,13 @@ export const VOICE = {
     downloadError: 'No pudimos preparar tu archivo. Intenta de nuevo en un momento.',
     mismatch: 'Mientras preparábamos tu archivo se registraron ventas y sus cifras ya no coinciden con las de la pantalla. Toca «Actualizar» y descárgalo otra vez.',
     truncated: 'Este periodo tiene más ventas de las que caben en un archivo, así que el detalle puede estar incompleto. Elige un periodo más corto.',
+    // Desglose por producto y vendedor, con ganancia real (D4).
+    byProduct: 'Por producto',
+    columnProduct: 'Producto',
+    columnUnits: 'Unidades',
+    columnIncome: 'Ingreso',
+    columnProfit: 'Ganancia',
+    emptyProduct: 'Todavía no hay detalle de productos en este periodo.',
   },
   /** Inicio de Modo Gestión (solo socios): resumen del día (`GET /dashboard/summary`). */
   dashboard: {

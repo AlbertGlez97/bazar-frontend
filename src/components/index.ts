@@ -102,3 +102,4 @@ export { default as SaleCatalogPicker  } from './ui/organisms/SaleCatalogPicker.
 export { default as SaleResult         } from './ui/organisms/SaleResult.vue'
 export { default as SyncStatusIndicator } from './ui/organisms/SyncStatusIndicator.vue'
 export { default as SalesReportSummary } from './ui/organisms/SalesReportSummary.vue'
+export { default as SalesDetailBreakdown } from './ui/organisms/SalesDetailBreakdown.vue'

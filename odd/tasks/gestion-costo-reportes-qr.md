@@ -204,7 +204,16 @@ disclosed follow-up, same as prior features this session.
       frontend block and the backend's 400 reuse the same `purchaseCostLocked` message. TDD: RED observed for
       all 5 behaviors. Fixed fallout: 2 catalog-view test files had create-flow fixtures missing the
       now-required cost. 140 files / 2662 tests green (+6), lint clean, build ok.
-- [ ] **P4** Reports view: per-product/per-person breakdown, never-estimated profit, PDF/Excel columns.
+- [x] **P4** Reports view: new `SalesDetailBreakdown.vue` organism (per-product/person table), never-estimated
+      profit (`gananciaCellText` prints "No disponible", never `$0.00`, when `gananciaDisponible` is false),
+      partial-profit `AppAlert` warning using `lineasSinCosto` directly. New `sales-detail-collector.ts`
+      pages the whole period (100-page/10k-row cap, same order of magnitude as the existing `GET /sales`
+      collector), fetched eagerly alongside the two existing report calls and reused as-is for PDF (new
+      `productTable()`) and Excel (new "Por producto" sheet). `SalesReport.detail` is optional — every
+      pre-existing report test stayed green unchanged, confirming the two existing tables/sheets never
+      reference the new fields. A real type bug (`vue-tsc` caught a missing `ingresoMinor`) was found and
+      fixed during the build check. TDD: RED observed file-by-file across service/collector/model/PDF/Excel/
+      view. 145 files / 2726 tests green (+48), lint clean, build ok.
 - [x] **P5** Gestion home: `GET /dashboard/summary` cards (new `dashboard.service.ts`, new `AppStatCard`
       atom), loading/error states, links only to Reportes (ventas) and Productos (poca existencia) — ganancia/
       incidencias/deudas are plain, unlinked cards, verified by an explicit test on `wrapper.findAll('a')`.

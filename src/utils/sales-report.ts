@@ -3,7 +3,10 @@ import { addMinor, formatMinorMoney } from './money'
 import type {
   SalesByMemberReport,
   SalesByPeriodReport,
+  SalesDetailRow,
+  SalesDetailTotals,
   SalesReport,
+  SalesReportDetail,
   SalesReportPerson,
   SalesReportRow,
   SalesReportTotals,
@@ -60,6 +63,30 @@ export function roleLabel(role: MemberRole | null): string {
   return '—'
 }
 
+/** Texto cuando una fila no tiene ganancia calculable (D4) — NUNCA se imprime `$0.00` en su lugar. */
+export const GANANCIA_NO_DISPONIBLE = 'No disponible'
+
+/**
+ * Texto de la celda de ganancia de una fila del desglose por producto (D4).
+ * Un `$0.00` real (ganancia efectivamente nula) sigue siendo un dato válido y
+ * se imprime tal cual; solo la falta de costo registrado imprime el hueco.
+ */
+export function gananciaCellText(row: { gananciaMinor: number | null; gananciaDisponible: boolean }): string {
+  return row.gananciaDisponible && row.gananciaMinor !== null ? formatMinorMoney(row.gananciaMinor) : GANANCIA_NO_DISPONIBLE
+}
+
+/**
+ * Aviso de ganancia parcial (D4): el periodo tiene partidas sin costo
+ * registrado, así que `totals.gananciaMinor` no cubre el periodo entero.
+ * `null` cuando no falta nada (`lineasSinCosto === 0`) — el aviso no se
+ * imprime cuando todo cuadra. Usa `lineasSinCosto` tal cual: el endpoint no
+ * expone un total de líneas comparable para frasearlo como "X de Y".
+ */
+export function profitPartialNote(lineasSinCosto: number): string | null {
+  if (lineasSinCosto <= 0) return null
+  return `Ganancia calculada solo sobre las ventas con costo registrado — ${plural(lineasSinCosto, 'venta', 'ventas')} sin costo capturado no se incluyen en el total.`
+}
+
 export interface BuildSalesReportInput {
   /** Reporte de sales-by-period del rango (extremos normalizados y totales oficiales). */
   period: SalesByPeriodReport
@@ -72,6 +99,13 @@ export interface BuildSalesReportInput {
   generatedAt: string
   /** `true` si el detalle se cortó en el tope de páginas. */
   truncated?: boolean
+  /**
+   * Desglose por producto/vendedor de GET /reports/sales-detail (D4, ver
+   * `collectSalesDetail`). Opcional: cuando no se pasa, `SalesReport.detail`
+   * queda `undefined` y el reporte se comporta exactamente igual que antes de
+   * D4 (PDF/Excel no agregan la sección nueva).
+   */
+  detail?: { rows: SalesDetailRow[]; totals: SalesDetailTotals }
 }
 
 /**
@@ -91,7 +125,7 @@ export function sharePercent(part: number, whole: number): number {
  * de imprimir cifras que no cuadran en silencio.
  */
 export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
-  const { period, byMember, sales, businessName, generatedAt, truncated = false } = input
+  const { period, byMember, sales, businessName, generatedAt, truncated = false, detail: rawDetail } = input
 
   const known = new Map<string, { name: string; role: MemberRole | null }>()
   for (const item of byMember.items) {
@@ -140,6 +174,20 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
     }))
     .sort((a, b) => b.totalMinor - a.totalMinor || a.name.localeCompare(b.name, 'es'))
 
+  const detail: SalesReportDetail | undefined = rawDetail && {
+    rows: rawDetail.rows.map((row) => ({
+      productId: row.productId,
+      productName: row.productName,
+      memberId: row.memberId,
+      memberName: row.memberName?.trim() || UNKNOWN_SELLER,
+      units: row.units,
+      ingresoMinor: row.ingresoMinor,
+      gananciaMinor: row.gananciaMinor,
+      gananciaDisponible: row.gananciaDisponible,
+    })),
+    totals: rawDetail.totals,
+  }
+
   return {
     businessName,
     generatedAt,
@@ -160,5 +208,6 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
       rowsCount: totals.saleCount,
     },
     truncated,
+    detail,
   }
 }
