@@ -104,8 +104,8 @@ describe('getNavItems, por modo y por rol', () => {
     expect(getNavItems('venta', { isSocio }).map((i) => i.to)).toEqual([SELL])
   })
 
-  it('Modo Gestión: un socio ve Inicio, Productos y Reportes, en ese orden', () => {
-    expect(getNavItems('gestion', { isSocio: true }).map((i) => i.to)).toEqual(['/app', '/app/productos', '/app/reportes'])
+  it('Modo Gestión: un socio ve Inicio, Productos, Reportes y Códigos QR, en ese orden', () => {
+    expect(getNavItems('gestion', { isSocio: true }).map((i) => i.to)).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr'])
   })
 
   it('Modo Gestión: un colaborador ve Inicio y Productos', () => {
@@ -129,9 +129,9 @@ describe('AppLayout (todo lo que dibuja: menú lateral, enlaces del pie y de la 
     expect(wrapper.find('.sidebar__nav').text()).not.toMatch(/Inicio|Productos|Reportes/)
   })
 
-  it('Modo Gestión (socio): Inicio, Productos y Reportes', async () => {
+  it('Modo Gestión (socio): Inicio, Productos, Reportes y Códigos QR', async () => {
     const wrapper = await mountLayout('gestion', 'socio')
-    expect(navLabels(wrapper)).toEqual(['Inicio', 'Productos', 'Reportes'])
+    expect(navLabels(wrapper)).toEqual(['Inicio', 'Productos', 'Reportes', 'Códigos QR'])
   })
 
   it('Modo Gestión (colaborador): Inicio y Productos, sin Reportes', async () => {

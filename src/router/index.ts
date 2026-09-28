@@ -100,6 +100,16 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        // Códigos QR (D2): buscar productos y armar una hoja de etiquetas para
+        // imprimir. Solo socios y solo en Modo Gestión: mismo guard que
+        // Reportes (no basta con ocultar el ítem del menú) y la vista lo
+        // vuelve a comprobar si el modo o el rol cambian.
+        path: 'codigos-qr',
+        name: 'CodigosQr',
+        component: () => import('@/views/products/CodigosQrView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         // Ajustes (engrane del pie de la barra lateral). Para cualquier persona
         // con el contexto listo, en cualquier modo; las entradas de socios
         // (equipo, dispositivos) declaran `requiresSocio` en su propia ruta.

@@ -299,6 +299,25 @@ export const VOICE = {
     printError: 'No pudimos preparar tus etiquetas. Intenta de nuevo.',
     previewBlocked: 'Tu navegador bloqueó la ventana de la vista previa. Permite las ventanas emergentes o usa «Descargar PDF».',
   },
+  /**
+   * Pantalla "Códigos QR" (solo socios, Modo Gestión, D2): buscar productos y
+   * armar la lista de impresión (copias por producto) antes de generar la hoja
+   * de etiquetas. `VOICE.labels` cubre la calibración/generación (reutilizada
+   * tal cual en el diálogo); este bloque es solo lo nuevo de esta pantalla.
+   */
+  codigosQr: {
+    title: 'Códigos QR',
+    lead: 'Busca tus productos, agrega cuántas etiquetas necesitas de cada uno y genera la hoja para imprimir.',
+    searchLabel: 'Buscar producto',
+    searchPlaceholder: 'Escribe el nombre del producto',
+    searching: 'Buscando…',
+    searchEmpty: 'No encontramos productos con ese nombre.',
+    retry: 'Intentar de nuevo',
+    add: 'Agregar',
+    remove: 'Quitar',
+    listTitle: 'Tu lista de impresión',
+    listEmpty: 'Todavía no agregaste productos. Búscalos arriba y toca «Agregar».',
+  },
 } as const
 
 /** Códigos de falla del lector (los de `QrScannerError` más el contexto inseguro). */

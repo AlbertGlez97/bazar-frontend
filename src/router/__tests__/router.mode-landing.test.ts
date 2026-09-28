@@ -77,7 +77,7 @@ describe('aterrizaje por modo tras iniciar sesión o volver a abrir la app', () 
 })
 
 describe('las redirecciones por rol o por modo también respetan el modo', () => {
-  it.each(['/app/ajustes/equipo', '/app/ajustes/dispositivos', '/app/reportes'])(
+  it.each(['/app/ajustes/equipo', '/app/ajustes/dispositivos', '/app/reportes', '/app/codigos-qr'])(
     'un colaborador en Modo Venta que escribe %s llega a Vender',
     async (path) => {
       fullSession('colaborador', 'venta')
@@ -86,7 +86,7 @@ describe('las redirecciones por rol o por modo también respetan el modo', () =>
     },
   )
 
-  it.each(['/app/ajustes/equipo', '/app/ajustes/dispositivos', '/app/reportes'])(
+  it.each(['/app/ajustes/equipo', '/app/ajustes/dispositivos', '/app/reportes', '/app/codigos-qr'])(
     'un colaborador en Modo Gestión que escribe %s llega a Inicio',
     async (path) => {
       fullSession('colaborador', 'gestion')
@@ -95,10 +95,27 @@ describe('las redirecciones por rol o por modo también respetan el modo', () =>
     },
   )
 
-  it('un socio en Modo Venta que escribe /app/reportes llega a Vender (sin bucles)', async () => {
-    fullSession('socio', 'venta')
-    await router.push('/app/reportes')
-    expect(router.currentRoute.value.name).toBe('Sale')
+  it.each(['/app/reportes', '/app/codigos-qr'])(
+    'un socio en Modo Venta que escribe %s llega a Vender (sin bucles)',
+    async (path) => {
+      fullSession('socio', 'venta')
+      await router.push(path)
+      expect(router.currentRoute.value.name).toBe('Sale')
+    },
+  )
+})
+
+describe('"Códigos QR" (D2): mismo guard que Reportes', () => {
+  it('declara `requiresSocio` y `requiresGestion` en su meta', () => {
+    const meta = router.resolve('/app/codigos-qr').meta
+    expect(meta.requiresSocio).toBe(true)
+    expect(meta.requiresGestion).toBe(true)
+  })
+
+  it('un socio en Modo Gestión lo alcanza', async () => {
+    fullSession('socio', 'gestion')
+    await router.push('/app/codigos-qr')
+    expect(router.currentRoute.value.name).toBe('CodigosQr')
   })
 })
 

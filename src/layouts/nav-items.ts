@@ -46,6 +46,8 @@ export const NAV_ITEMS: NavItemDef[] = [
   { to: '/app/productos', label: 'Productos', icon: '📦', exact: false, modes: ['gestion'], order: { venta: 3, gestion: 2 } },
   // Reportes: solo socios y solo Modo Gestión (la ruta lo exige también en el guard).
   { to: '/app/reportes', label: 'Reportes', icon: '📊', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 3 } },
+  // Códigos QR (D2): solo socios y solo Modo Gestión, mismo criterio que Reportes.
+  { to: '/app/codigos-qr', label: 'Códigos QR', icon: '🏷️', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 4 } },
 ]
 
 /** Ítems visibles para el modo y la persona, en el orden de ese modo. */

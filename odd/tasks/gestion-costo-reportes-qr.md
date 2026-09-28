@@ -195,9 +195,24 @@ disclosed follow-up, same as prior features this session.
       then GREEN (64/64). Bonus fix found along the way: the reused white badge text was unreadable on the
       light silver coins — added a scoped color override, same AA-verified `--color-text` pair used
       elsewhere, no new tokens. 140 files / 2656 tests green (+10), lint clean, build ok.
-- [ ] **P2** Codigos QR screen — route, nav item, search+print-list, calibration, PDF generation, offline
-      guard, route protection. TDD: RED first for sheet-count math (72→1, 73→2), copies repeating/positioning
-      correctly, and a colaborador never reaching the route.
+- [x] **P2** Codigos QR screen — route `/app/codigos-qr` (`CodigosQr`), nav item (order `gestion: 4`, after
+      Reportes), new view `src/views/products/CodigosQrView.vue` (kept in `views/products/` alongside
+      `ProductCatalogView.vue`, per the D2 note this is product-centric, not a new `views/labels/` folder), two
+      new presentational organisms (`ProductSearchPicker.vue` — debounced search, no fetch inside `ui/`, per
+      barrel rule; `LabelPrintList.vue` — rows + `QuantityStepper` + `sheetCount` summary reusing
+      `VOICE.labels.summary` verbatim). Print list is local `reactive(Map)` state in the view (not a store),
+      insertion order preserved for the PDF's row order. Route protection mirrors Reportes exactly (router meta
+      + live `watch` in the view). Search network errors use the existing reactive pattern
+      (`isNetworkError`/`VOICE.networkError` + retry), no new proactive gate. New `VOICE.codigosQr` block for
+      the screen's own copy (title/lead/search/empty/add/remove); `VOICE.labels` reused as-is for the print
+      dialog. TDD: RED observed for LabelPrintList (72→1 hoja, 73→2 hojas; +/− min-1 removes row; Quitar),
+      ProductSearchPicker (debounce, results, loading, error+retry) and CodigosQrView (route guard file missing
+      → import error; search/add/increment/decrement/remove/PDF-array/network-error, all RED before the view
+      existed), then GREEN. Fallout fixed (new nav item, same pattern as P3's catalog fixtures): 4 pre-existing
+      tests across `AppLayout.nav.test.ts`, `AppLayout.mode-landing.test.ts` and `nav-mode-exclusivity.test.ts`
+      assumed Reportes was the last/only Gestión-socio item; updated to include Códigos QR. 148 files / 2764
+      tests green (+3 files / +38 tests), lint clean (`eslint` on every touched/created file), build ok
+      (`vue-tsc -b && vite build`, no type errors).
 - [x] **P3** `ProductForm`: mandatory cost on create (accepts `0`, unlike price's `> 0` rule), friendly
       capture-invitation on legacy edit ("Con esto calculamos tu ganancia en los reportes."), and a set cost
       can't be blanked in edit mode (mirrors `unitPriceMinor`'s existing pattern) — both the proactive

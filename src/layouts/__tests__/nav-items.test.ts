@@ -71,9 +71,10 @@ describe('getNavItems — Reportes (solo socios, solo Modo Gestión)', () => {
   const reports = (mode: 'venta' | 'gestion', isSocio?: boolean) =>
     getNavItems(mode, { isSocio }).find((item) => item.to === '/app/reportes')
 
-  it('un socio en Modo Gestión ve "Reportes" con su ícono, al final del menú', () => {
+  it('un socio en Modo Gestión ve "Reportes" con su ícono, antes de Códigos QR', () => {
     expect(reports('gestion', true)).toMatchObject({ label: 'Reportes', icon: '📊', exact: false })
-    expect(tos(getNavItems('gestion', { isSocio: true })).at(-1)).toBe('/app/reportes')
+    const items = tos(getNavItems('gestion', { isSocio: true }))
+    expect(items.indexOf('/app/reportes')).toBeLessThan(items.indexOf('/app/codigos-qr'))
   })
 
   it('un socio en Modo Venta no lo ve', () => {
@@ -85,9 +86,29 @@ describe('getNavItems — Reportes (solo socios, solo Modo Gestión)', () => {
     expect(reports('venta', false)).toBeUndefined()
     expect(reports('gestion')).toBeUndefined()
   })
+})
+
+describe('getNavItems — Códigos QR (solo socios, solo Modo Gestión, D2)', () => {
+  const codigosQr = (mode: 'venta' | 'gestion', isSocio?: boolean) =>
+    getNavItems(mode, { isSocio }).find((item) => item.to === '/app/codigos-qr')
+
+  it('un socio en Modo Gestión ve "Códigos QR" con su ícono, al final del menú', () => {
+    expect(codigosQr('gestion', true)).toMatchObject({ label: 'Códigos QR', icon: '🏷️', exact: false })
+    expect(tos(getNavItems('gestion', { isSocio: true })).at(-1)).toBe('/app/codigos-qr')
+  })
+
+  it('un socio en Modo Venta no lo ve', () => {
+    expect(codigosQr('venta', true)).toBeUndefined()
+  })
+
+  it('un colaborador no lo ve en ningún modo', () => {
+    expect(codigosQr('gestion', false)).toBeUndefined()
+    expect(codigosQr('venta', false)).toBeUndefined()
+    expect(codigosQr('gestion')).toBeUndefined()
+  })
 
   it('no altera el orden de los demás ítems', () => {
-    expect(tos(getNavItems('gestion', { isSocio: true }))).toEqual(['/app', '/app/productos', '/app/reportes'])
+    expect(tos(getNavItems('gestion', { isSocio: true }))).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr'])
     expect(tos(getNavItems('gestion', { isSocio: false }))).toEqual(['/app', '/app/productos'])
   })
 })

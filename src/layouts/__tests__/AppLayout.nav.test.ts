@@ -109,12 +109,12 @@ describe('AppLayout navegación', () => {
     expect(wrapper.get('.app-header__title').text()).toBe('Vender')
   })
 
-  it('Reportes: solo un socio en Modo Gestión lo ve, y va al final', async () => {
+  it('Reportes: solo un socio en Modo Gestión lo ve, antes de Códigos QR', async () => {
     sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
     localStorage.setItem('la-marchanta-ui-mode', 'gestion')
     const wrapper = await mountAt('/app')
-    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '📊 Reportes'])
-    expect(wrapper.findAll('a.sidebar__link').at(-1)?.attributes('href')).toBe('/app/reportes')
+    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '📊 Reportes', '🏷️ Códigos QR'])
+    expect(wrapper.findAll('a.sidebar__link').at(-1)?.attributes('href')).toBe('/app/codigos-qr')
   })
 
   it('Reportes no aparece para un socio en Modo Venta', async () => {
