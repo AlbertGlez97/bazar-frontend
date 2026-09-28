@@ -237,8 +237,15 @@ disclosed follow-up, same as prior features this session.
       (`canSeeDashboard`), never redirects, shows a friendly "solo socios" note instead — adding
       `requiresSocio` to the route would loop a colaborador's own landing page. TDD: RED observed (6/7 failing
       against the unmodified static view). 143 files / 2678 tests green (+16), lint clean, build ok.
-- [ ] **P6** Verify: build, lint, `test:run` full suite. Disclose (don't fake) what a real/emulated tablet +
-      phone viewport pass would need, since this environment has no browser.
+- [x] **P6** Verify: whole-branch pass after P2 (commit 1315ccf), no code changes of its own. `npm run test:run`
+      → 148 files / 2764 tests green. `npx eslint .` → clean, zero warnings. `npm run build`
+      (`vue-tsc -b && vite build`) → clean, no type errors, only the pre-existing pdfmake/exceljs/vfs_fonts
+      chunk-size warnings (present before this branch, unrelated to it). Tablet/phone viewport pass: NOT
+      performed — this environment has no browser, real or emulated (no Playwright/Cypress runner, no headed
+      Chromium). A real pass would need a viewport-capable runner (e.g. Playwright at 768px/390px) exercising:
+      the coin buttons at touch size on the Venta cash pad, the Códigos QR search+print-list flow at phone
+      width, and the new dashboard stat-card grid's `auto-fill` wrap on a narrow screen. Same disclosure as
+      every prior feature this session — reported honestly rather than claimed.
 
 ## Acceptance criteria
 
