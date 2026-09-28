@@ -42,6 +42,10 @@ const PRODUCT_VALIDATION_COPY: Array<[RegExp, string]> = [
   [/^name\b/i, VOICE.apiErrors.product.name],
   [/^unitPriceMinor\b/i, VOICE.apiErrors.product.price],
   [/^category\b/i, VOICE.apiErrors.product.category],
+  // Debe ir antes del genérico `purchaseCostMinor` de abajo: ambos patrones
+  // matchean este mensaje, y el primero que coincide gana (ver comentario de
+  // arriba). BE-13: un costo ya fijado no se puede volver a vaciar.
+  [/^purchaseCostMinor cannot be cleared\b/i, VOICE.apiErrors.product.purchaseCostLocked],
   [/^purchaseCostMinor\b/i, VOICE.apiErrors.product.purchaseCost],
   [/^initialStock\b/i, VOICE.apiErrors.product.stock],
   [/^tipo\b/i, VOICE.apiErrors.product.tipo],

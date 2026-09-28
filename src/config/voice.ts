@@ -53,7 +53,9 @@ export const VOICE = {
       name: 'Escribe el nombre del producto (hasta 200 caracteres).',
       price: 'El precio no es válido. Escribe un monto como 1,500.00 (máximo 21,474,836.47).',
       category: 'La categoría debe tener entre 1 y 100 caracteres, o déjala vacía.',
-      purchaseCost: 'El costo de compra no es válido. Escribe un monto como 800.00, o déjalo vacío.',
+      purchaseCost: 'El costo de compra no es válido. Escribe un monto como 800.00.',
+      /** 400 "purchaseCostMinor cannot be cleared once it has been set": ya tenía costo y se intentó vaciar. */
+      purchaseCostLocked: 'Este producto ya tiene costo registrado: no se puede dejar vacío. Escribe un monto para actualizarlo.',
       stock: 'La existencia inicial debe ser un número entero, de 0 en adelante.',
       tipo: 'Elige si es pieza única o por cantidad.',
       supplier: 'El proveedor debe tener entre 1 y 200 caracteres, o déjalo vacío.',

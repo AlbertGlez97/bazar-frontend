@@ -234,8 +234,9 @@ describe('ProductCatalogView', () => {
 
     // El primer <input> de la vista es el buscador del grid, no el nombre.
     await wrapper.find('input[placeholder="Ej. Consola PS5 usada"]').setValue('Producto nuevo')
-    const priceInput = wrapper.findAll('input').find((i) => i.attributes('inputmode') === 'decimal')
-    await priceInput?.setValue('10.00')
+    const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+    await decimals[0]?.setValue('10.00') // precio
+    await decimals[1]?.setValue('0') // costo de compra — obligatorio en creación (D3)
 
     await wrapper.find('form').trigger('submit')
     await vi.waitFor(() => expect(ProductsService.createProduct).toHaveBeenCalled())
@@ -260,8 +261,9 @@ describe('ProductCatalogView', () => {
 
     // El primer <input> de la vista es el buscador del grid, no el nombre.
     await wrapper.find('input[placeholder="Ej. Consola PS5 usada"]').setValue('Producto nuevo')
-    const priceInput = wrapper.findAll('input').find((i) => i.attributes('inputmode') === 'decimal')
-    await priceInput?.setValue('10.00')
+    const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+    await decimals[0]?.setValue('10.00') // precio
+    await decimals[1]?.setValue('0') // costo de compra — obligatorio en creación (D3)
 
     await wrapper.find('form').trigger('submit')
     await vi.waitFor(() => expect(ProductsService.uploadProductImage).toHaveBeenCalled())

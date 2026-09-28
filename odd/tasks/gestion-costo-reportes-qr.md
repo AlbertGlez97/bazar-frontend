@@ -198,7 +198,12 @@ disclosed follow-up, same as prior features this session.
 - [ ] **P2** Codigos QR screen — route, nav item, search+print-list, calibration, PDF generation, offline
       guard, route protection. TDD: RED first for sheet-count math (72→1, 73→2), copies repeating/positioning
       correctly, and a colaborador never reaching the route.
-- [ ] **P3** `ProductForm`: mandatory cost on create, friendly capture-invitation on legacy edit.
+- [x] **P3** `ProductForm`: mandatory cost on create (accepts `0`, unlike price's `> 0` rule), friendly
+      capture-invitation on legacy edit ("Con esto calculamos tu ganancia en los reportes."), and a set cost
+      can't be blanked in edit mode (mirrors `unitPriceMinor`'s existing pattern) — both the proactive
+      frontend block and the backend's 400 reuse the same `purchaseCostLocked` message. TDD: RED observed for
+      all 5 behaviors. Fixed fallout: 2 catalog-view test files had create-flow fixtures missing the
+      now-required cost. 140 files / 2662 tests green (+6), lint clean, build ok.
 - [ ] **P4** Reports view: per-product/per-person breakdown, never-estimated profit, PDF/Excel columns.
 - [ ] **P5** Gestion home: `GET /dashboard/summary` cards, loading/empty/error states, links only where the
       destination screen exists.

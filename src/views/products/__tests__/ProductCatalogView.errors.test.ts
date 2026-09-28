@@ -63,7 +63,9 @@ async function openCreateFormAndSubmit(wrapper: ReturnType<typeof mount>) {
   await vi.waitFor(() => expect(wrapper.text()).toContain('Nuevo producto'))
   await wrapper.findAll('button').find((b) => b.text().includes('Nuevo producto'))?.trigger('click')
   await wrapper.find('input[placeholder="Ej. Consola PS5 usada"]').setValue('Bonsai')
-  await wrapper.findAll('input').find((i) => i.attributes('inputmode') === 'decimal')?.setValue('1,500.00')
+  const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+  await decimals[0]?.setValue('1,500.00') // precio
+  await decimals[1]?.setValue('0') // costo de compra — obligatorio en creación (D3)
   await wrapper.find('form').trigger('submit')
 }
 
@@ -166,12 +168,16 @@ describe('crear producto: el motivo real llega a la pantalla', () => {
     await wrapper.findAll('button').find((b) => b.text().includes('Nuevo producto'))?.trigger('click')
 
     const nameInput = () => document.body.querySelector('input[placeholder="Ej. Consola PS5 usada"]') as HTMLInputElement
-    const priceInput = () => Array.from(document.body.querySelectorAll('input')).find((i) => i.getAttribute('inputmode') === 'decimal') as HTMLInputElement
+    const decimalInputs = () => Array.from(document.body.querySelectorAll('input')).filter((i) => i.getAttribute('inputmode') === 'decimal') as HTMLInputElement[]
+    const priceInput = () => decimalInputs()[0]
+    const costInput = () => decimalInputs()[1]
     const form = () => document.body.querySelector('form') as HTMLFormElement
     nameInput().value = 'Bonsai'
     nameInput().dispatchEvent(new Event('input'))
     priceInput().value = '1,500.00'
     priceInput().dispatchEvent(new Event('input'))
+    costInput().value = '0' // costo de compra — obligatorio en creación (D3)
+    costInput().dispatchEvent(new Event('input'))
     form().dispatchEvent(new Event('submit', { cancelable: true }))
 
     await vi.waitFor(() => expect(lastToast()).toContain(VOICE.apiErrors.product.price))
@@ -308,7 +314,9 @@ describe('las demás acciones del catálogo también dicen el motivo', () => {
     Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
     await wrapper.find('input[type="file"]').trigger('change')
     await wrapper.find('input[placeholder="Ej. Consola PS5 usada"]').setValue('Bonsai')
-    await wrapper.findAll('input').find((i) => i.attributes('inputmode') === 'decimal')?.setValue('10.00')
+    const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+    await decimals[0]?.setValue('10.00') // precio
+    await decimals[1]?.setValue('0') // costo de compra — obligatorio en creación (D3)
     await wrapper.find('form').trigger('submit')
 
     await vi.waitFor(() => expect(toasts().some((m) => m.startsWith(VOICE.apiErrors.catalog.image))).toBe(true))

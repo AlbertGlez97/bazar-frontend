@@ -85,6 +85,12 @@ describe('describeApiError', () => {
       expect(described.message).not.toContain('must')
     })
 
+    it('BE-13 "purchaseCostMinor cannot be cleared once it has been set" -> the dedicated locked message, not the generic invalid-amount one', () => {
+      const described = validation('purchaseCostMinor cannot be cleared once it has been set')
+      expect(described.message).toBe(VOICE.apiErrors.product.purchaseCostLocked)
+      expect(described.message).not.toBe(VOICE.apiErrors.product.purchaseCost)
+    })
+
     it('several messages: the first known one leads and the rest stay available as detail', () => {
       const described = validation('unitPriceMinor must be an integer number', 'unitPriceMinor must not be less than 0', 'category must be longer than or equal to 1 characters')
       expect(described.message.toLowerCase()).toContain('precio')

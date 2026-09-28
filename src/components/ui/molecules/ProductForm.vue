@@ -80,12 +80,18 @@
 
     <AppInput
       v-model="purchaseCostDisplay"
-      label="Costo de compra (MXN, opcional)"
+      :label="purchaseCostLabel"
       type="text"
       inputmode="decimal"
       placeholder="0.00"
       :error="errors.purchaseCostMinor"
     />
+    <p
+      v-if="showPurchaseCostInvite"
+      class="product-form__hint"
+    >
+      Con esto calculamos tu ganancia en los reportes.
+    </p>
 
     <AppInput
       v-model="supplier"
@@ -127,6 +133,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { minorToDisplay, parseMoneyText } from '@/utils/money'
+import { VOICE } from '@/config/voice'
 import type {
   Product,
   ProductFormSubmitPayload,
@@ -174,6 +181,20 @@ const formError = ref('')
 
 const AMBIGUOUS_AMOUNT_MESSAGE =
   'No entiendo ese monto. Usa coma para miles y punto para centavos, ej. 1,000.50.'
+const PURCHASE_COST_REQUIRED_MESSAGE = 'Escribe el costo de compra (puede ser 0 si no te costó).'
+
+/**
+ * D3: el costo de compra es obligatorio salvo un caso — editar un producto
+ * legado que nunca tuvo costo (`purchaseCostMinor === null` al abrir el
+ * form). Ahí se queda opcional para no romper el guardado de catálogo viejo.
+ * En creación, y al editar un producto que ya tiene costo, se comporta como
+ * `unitPriceMinor` ya se comporta hoy: obligatorio y nunca se deja vacío.
+ */
+const purchaseCostRequired = computed(() => !isEditMode.value || props.product?.purchaseCostMinor != null)
+const purchaseCostLabel = computed(() =>
+  purchaseCostRequired.value ? 'Costo de compra (MXN)' : 'Costo de compra (MXN, opcional)'
+)
+const showPurchaseCostInvite = computed(() => !purchaseCostRequired.value)
 
 // Si tipo cambia a "unica" en modo creación, la existencia se fija a 1
 // (el backend la fuerza igual, pero reflejarlo en el form evita confusión).
@@ -199,9 +220,18 @@ function validate(): { unitPriceMinor: number; purchaseCostMinor: number | null 
     errors.value.unitPriceMinor = 'Escribe un precio mayor a 0.'
   }
 
-  // El costo es opcional: vacío = sin costo; con texto debe leerse sin ambigüedad.
+  // D3: el costo es obligatorio salvo el caso legado (ver `purchaseCostRequired`).
+  // A diferencia del precio, el costo acepta 0 (`parseMoneyText` nunca da
+  // negativos, así que no hace falta una comparación `< 0` aparte).
   let purchaseCostMinor: number | null = null
-  if (purchaseCostDisplay.value.trim()) {
+  const purchaseCostText = purchaseCostDisplay.value.trim()
+  if (!purchaseCostText) {
+    if (purchaseCostRequired.value) {
+      errors.value.purchaseCostMinor = isEditMode.value
+        ? VOICE.apiErrors.product.purchaseCostLocked
+        : PURCHASE_COST_REQUIRED_MESSAGE
+    }
+  } else {
     purchaseCostMinor = parseMoneyText(purchaseCostDisplay.value)
     if (purchaseCostMinor === null) errors.value.purchaseCostMinor = AMBIGUOUS_AMOUNT_MESSAGE
   }
@@ -268,7 +298,8 @@ function handleSubmit() {
   flex-direction: column;
   gap: var(--spacing-md);
 }
-.product-form__readonly-note {
+.product-form__readonly-note,
+.product-form__hint {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   margin: 0;

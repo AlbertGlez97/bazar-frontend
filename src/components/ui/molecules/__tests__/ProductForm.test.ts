@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ProductForm from '../ProductForm.vue'
 import type { Product } from '@/types/product.types'
+import { VOICE } from '@/config/voice'
 
 const product: Product = {
   id: 'p-1',
@@ -32,6 +33,7 @@ describe('ProductForm', () => {
     expect(wrapper.emitted('submit')).toBeUndefined()
     expect(wrapper.text()).toContain('Ponle un nombre al producto.')
     expect(wrapper.text()).toContain('Escribe un precio mayor a 0.')
+    expect(wrapper.text()).toContain('Escribe el costo de compra')
   })
 
   it('modo creación: tipo "unica" fija existencia inicial en 1 y deshabilitada', () => {
@@ -45,8 +47,9 @@ describe('ProductForm', () => {
     const inputs = wrapper.findAll('input')
     await inputs[0].setValue('Producto nuevo') // input de nombre
 
-    const priceInput = wrapper.findAll('input').find((i) => i.attributes('inputmode') === 'decimal')
-    await priceInput?.setValue('125.50')
+    const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+    await decimals[0].setValue('125.50') // precio
+    await decimals[1].setValue('80.00') // costo — obligatorio en creación
 
     await wrapper.find('form').trigger('submit')
 
@@ -55,6 +58,7 @@ describe('ProductForm', () => {
     const payload = emitted![0][0] as Record<string, unknown>
     expect(payload.name).toBe('Producto nuevo')
     expect(payload.unitPriceMinor).toBe(12550)
+    expect(payload.purchaseCostMinor).toBe(8000)
     expect(payload.tipo).toBe('unica')
     expect(payload.imageFile).toBeNull()
   })
@@ -62,12 +66,15 @@ describe('ProductForm', () => {
   describe('montos con la convención es-MX (coma = miles, punto = decimal)', () => {
     const AMBIGUOUS_MESSAGE = 'No entiendo ese monto'
 
-    async function fill(price: string, cost?: string) {
+    // El costo tiene su propia batería de tests (obligatorio en creación desde
+    // D3); por defecto se llena con "0" (válido) para no interferir con los
+    // tests que solo ejercitan el precio.
+    async function fill(price: string, cost = '0') {
       const wrapper = mount(ProductForm)
       await wrapper.findAll('input')[0].setValue('Producto nuevo')
       const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
       await decimals[0].setValue(price)
-      if (cost !== undefined) await decimals[1].setValue(cost)
+      await decimals[1].setValue(cost)
       await wrapper.find('form').trigger('submit')
       return wrapper
     }
@@ -114,10 +121,16 @@ describe('ProductForm', () => {
       },
     )
 
-    it('costo de compra vacío sigue siendo válido y no se envía', async () => {
+    it('modo creación: costo vacío bloquea el envío (D3: el costo ya no es opcional al crear)', async () => {
       const wrapper = await fill('20', '')
+      expect(wrapper.emitted('submit')).toBeUndefined()
+      expect(wrapper.text()).toContain('Escribe el costo de compra')
+    })
+
+    it('modo creación: costo "0" es válido (a diferencia del precio, el costo acepta 0)', async () => {
+      const wrapper = await fill('20', '0')
       const payload = wrapper.emitted('submit')![0][0] as Record<string, unknown>
-      expect(payload.purchaseCostMinor).toBeUndefined()
+      expect(payload.purchaseCostMinor).toBe(0)
     })
 
     it('modo edición: el precio precargado ("1000.00") se lee de vuelta sin cambios', async () => {
@@ -144,13 +157,59 @@ describe('ProductForm', () => {
       expect(wrapper.emitted('submit')).toBeUndefined()
       expect(wrapper.text()).toContain(AMBIGUOUS_MESSAGE)
     })
+
+    describe('D3: costo obligatorio/bloqueado según el estado del producto', () => {
+      it('producto legado (purchaseCostMinor null): guarda sin tocar el campo y muestra la nota de invitación', async () => {
+        const legacyProduct = { ...product, purchaseCostMinor: null }
+        const wrapper = mount(ProductForm, { props: { product: legacyProduct } })
+
+        expect(wrapper.text()).toContain('Con esto calculamos tu ganancia en los reportes.')
+        expect(wrapper.text()).toContain('Costo de compra (MXN, opcional)')
+
+        await wrapper.find('form').trigger('submit')
+
+        // Nada cambió (ni el costo, que sigue vacío) -> sigue guardando igual que hoy.
+        const payload = wrapper.emitted('submit')![0][0] as Record<string, unknown>
+        expect(payload).toEqual({ imageFile: null })
+      })
+
+      it('producto legado: no muestra la nota de invitación cuando ya tiene costo', () => {
+        const wrapper = mount(ProductForm, { props: { product } }) // product.purchaseCostMinor = 350000
+        expect(wrapper.text()).not.toContain('Con esto calculamos tu ganancia en los reportes.')
+        expect(wrapper.text()).toContain('Costo de compra (MXN)')
+        expect(wrapper.text()).not.toContain('Costo de compra (MXN, opcional)')
+      })
+
+      it('producto con costo ya fijado: vaciar el campo bloquea el envío en el frontend (no confía solo en el 400)', async () => {
+        const wrapper = mount(ProductForm, { props: { product } })
+        const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+        await decimals[1].setValue('')
+
+        await wrapper.find('form').trigger('submit')
+
+        expect(wrapper.emitted('submit')).toBeUndefined()
+        expect(wrapper.text()).toContain(VOICE.apiErrors.product.purchaseCostLocked)
+      })
+
+      it('producto con costo ya fijado: se puede corregir a otro valor', async () => {
+        const wrapper = mount(ProductForm, { props: { product } })
+        const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+        await decimals[1].setValue('400.00')
+
+        await wrapper.find('form').trigger('submit')
+
+        const payload = wrapper.emitted('submit')![0][0] as Record<string, unknown>
+        expect(payload.purchaseCostMinor).toBe(40000)
+      })
+    })
   })
 
   it('modo creación: tipo "cantidad" incluye la existencia inicial capturada', async () => {
     const wrapper = mount(ProductForm)
     await wrapper.findAll('input')[0].setValue('Producto nuevo')
-    const priceInput = wrapper.findAll('input').find((i) => i.attributes('inputmode') === 'decimal')
-    await priceInput?.setValue('10')
+    const decimals = wrapper.findAll('input').filter((i) => i.attributes('inputmode') === 'decimal')
+    await decimals[0].setValue('10')
+    await decimals[1].setValue('0')
 
     await wrapper.find('select').setValue('cantidad')
     await wrapper.findAll('input').find((i) => i.attributes('type') === 'number')?.setValue(5)
