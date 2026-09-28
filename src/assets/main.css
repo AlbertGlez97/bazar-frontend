@@ -45,6 +45,9 @@
   --color-primary-hover:  var(--terracota-700);
   --color-primary-soft:   var(--terracota-100);
   --color-on-primary:     #ffffff;
+  /* Fondo del código QR: blanco fijo en cualquier tema. Un QR sobre un fondo
+     oscuro o tintado no lo lee la cámara (lo lee "negro sobre claro"). */
+  --color-qr-paper:       #ffffff;
   --color-accent:         var(--maiz-400);
   --color-accent-soft:    var(--maiz-100);
   --color-on-accent:      var(--cafe-900);

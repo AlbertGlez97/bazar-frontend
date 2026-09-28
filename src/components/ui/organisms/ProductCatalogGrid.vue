@@ -48,6 +48,9 @@
         :product="product"
         :size="isVenta ? 'large' : 'default'"
         :show-actions="showActions && !isVenta"
+        :selectable="selectable"
+        :selected="selectedSet.has(product.id)"
+        @toggle-select="$emit('toggle-select', $event)"
         @edit="$emit('edit', product)"
         @deactivate="$emit('deactivate', product)"
         @reactivate="$emit('reactivate', product)"
@@ -91,6 +94,13 @@ const props = withDefaults(defineProps<{
    * las habilite. El organismo solo presenta: el modo lo decide el contenedor.
    */
   mode?: UiMode
+  /**
+   * Modo selección (imprimir códigos QR): casilla en cada tarjeta. Es gestión: en Modo
+   * Venta no se ofrece aunque el padre lo pida.
+   */
+  selectionMode?: boolean
+  /** Ids elegidos (pueden incluir productos de otras páginas que no están en pantalla). */
+  selectedIds?: readonly string[]
 }>(), {
   loading: false,
   showActions: false,
@@ -98,9 +108,13 @@ const props = withDefaults(defineProps<{
   includeInactive: false,
   debounceMs: 350,
   mode: 'gestion',
+  selectionMode: false,
+  selectedIds: () => [],
 })
 
 const isVenta = computed(() => props.mode === 'venta')
+const selectable = computed(() => props.selectionMode && !isVenta.value)
+const selectedSet = computed(() => new Set(props.selectedIds))
 
 const emit = defineEmits<{
   search: [term: string]
@@ -109,6 +123,7 @@ const emit = defineEmits<{
   edit: [product: Product]
   deactivate: [product: Product]
   reactivate: [product: Product]
+  'toggle-select': [product: Product]
 }>()
 
 const searchTerm = ref('')

@@ -43,6 +43,21 @@
       </AppButton>
     </AppAlert>
 
+    <!-- Imprimir códigos QR: elegir productos (de cualquier página) y sacar la hoja
+         de etiquetas. Gestión, no venta. -->
+    <ProductSelectionBar
+      v-if="!isVenta"
+      :active="selection.active"
+      :count="selection.count"
+      :selecting-all="selection.selectingAll"
+      :progress="selection.progress"
+      @enter="selection.enter()"
+      @exit="selection.exit()"
+      @clear="selection.clear()"
+      @select-all="handleSelectAll"
+      @print="isPrintDialogOpen = true"
+    />
+
     <ProductCatalogGrid
       :products="store.items"
       :page="store.page"
@@ -52,6 +67,9 @@
       :show-actions="isSocio"
       :show-inactive-toggle="isSocio"
       :include-inactive="store.includeInactive"
+      :selection-mode="selection.active"
+      :selected-ids="selectedIds"
+      @toggle-select="selection.toggle($event)"
       @search="handleSearch"
       @update:include-inactive="handleIncludeInactive"
       @update:page="handlePageChange"
@@ -65,6 +83,18 @@
       :product="editingProduct"
       :loading="isSubmitting"
       @submit="handleFormSubmit"
+    />
+
+    <LabelPrintDialog
+      v-model="isPrintDialogOpen"
+      :label-count="selection.count"
+      :calibration="labelCalibration.calibration"
+      :busy="printBusy"
+      :error="printError"
+      @update:calibration="labelCalibration.set($event)"
+      @reset="labelCalibration.reset()"
+      @preview="previewLabels(selection.items)"
+      @download="downloadLabels(selection.items)"
     />
 
     <AppModal
@@ -81,10 +111,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { AppAlert, AppButton, AppModal, ProductCatalogGrid, ProductFormModal } from '@/components'
+import { AppAlert, AppButton, AppModal, LabelPrintDialog, ProductCatalogGrid, ProductFormModal, ProductSelectionBar } from '@/components'
 import { VOICE } from '@/config/voice'
+import { useLabelPrinting } from '@/composables/useLabelPrinting'
+import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
+import { useProductSelectionStore } from '@/stores/product-selection.store'
 import { useProductsStore } from '@/stores/products.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -124,6 +157,31 @@ const isVenta = computed(() => uiMode.currentMode === 'venta')
 // backend lo rechazaría con 403 de todas formas), así que se ocultan esas
 // acciones directamente en vez de mostrarlas y dejar que fallen.
 const isSocio = computed(() => session.member?.role === 'socio')
+
+// ── Imprimir códigos QR (selección múltiple) ─────────────────────────────
+// Imprimir etiquetas es de solo lectura: socios y colaboradores por igual. Es
+// gestión: en Modo Venta no se ofrece. La selección vive en su store (no se pierde
+// al paginar o buscar) y se descarta al salir de la pantalla.
+const selection = useProductSelectionStore()
+const labelCalibration = useLabelCalibrationStore()
+const { busy: printBusy, error: printError, preview: previewLabels, download: downloadLabels } = useLabelPrinting()
+const isPrintDialogOpen = ref(false)
+const selectedIds = computed(() => selection.items.map((item) => item.id))
+
+async function handleSelectAll() {
+  try {
+    const added = await selection.selectAllMatching(store.search)
+    if (added > 0) toast.success(VOICE.labels.selectAllDone(added))
+    else toast.info(VOICE.labels.selectAllNothing)
+  } catch (error) {
+    reportFailure(VOICE.labels.selectAllError, error)
+  }
+}
+
+watch(isVenta, (venta) => {
+  if (venta) selection.exit()
+})
+onBeforeUnmount(() => selection.exit())
 
 const isFormModalOpen = ref(false)
 const editingProduct = ref<Product | null>(null)
