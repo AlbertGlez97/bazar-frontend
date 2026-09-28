@@ -53,6 +53,7 @@ export { default as AppTextarea } from './ui/atoms/AppTextarea.vue'
 export { default as AppImageUpload } from './ui/atoms/AppImageUpload.vue'
 export { default as BrandLogo   } from './ui/atoms/BrandLogo.vue'
 export { default as QuantityStepper } from './ui/atoms/QuantityStepper.vue'
+export { default as AppStatCard } from './ui/atoms/AppStatCard.vue'
 
 // ── MOLÉCULAS — combinación de átomos, responsabilidad única ─────────
 export { default as AppAlert            } from './ui/molecules/AppAlert.vue'

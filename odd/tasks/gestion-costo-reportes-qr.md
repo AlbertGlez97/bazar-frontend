@@ -205,8 +205,14 @@ disclosed follow-up, same as prior features this session.
       all 5 behaviors. Fixed fallout: 2 catalog-view test files had create-flow fixtures missing the
       now-required cost. 140 files / 2662 tests green (+6), lint clean, build ok.
 - [ ] **P4** Reports view: per-product/per-person breakdown, never-estimated profit, PDF/Excel columns.
-- [ ] **P5** Gestion home: `GET /dashboard/summary` cards, loading/empty/error states, links only where the
-      destination screen exists.
+- [x] **P5** Gestion home: `GET /dashboard/summary` cards (new `dashboard.service.ts`, new `AppStatCard`
+      atom), loading/error states, links only to Reportes (ventas) and Productos (poca existencia) — ganancia/
+      incidencias/deudas are plain, unlinked cards, verified by an explicit test on `wrapper.findAll('a')`.
+      Route guard decision: `/app` keeps only `requiresGestion` (it's the Gestión landing for colaboradores
+      too, per `nav-items.ts`); the socio check for the dashboard data lives inside the view itself
+      (`canSeeDashboard`), never redirects, shows a friendly "solo socios" note instead — adding
+      `requiresSocio` to the route would loop a colaborador's own landing page. TDD: RED observed (6/7 failing
+      against the unmodified static view). 143 files / 2678 tests green (+16), lint clean, build ok.
 - [ ] **P6** Verify: build, lint, `test:run` full suite. Disclose (don't fake) what a real/emulated tablet +
       phone viewport pass would need, since this environment has no browser.
 

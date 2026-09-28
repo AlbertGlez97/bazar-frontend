@@ -217,6 +217,27 @@ export const VOICE = {
     mismatch: 'Mientras preparábamos tu archivo se registraron ventas y sus cifras ya no coinciden con las de la pantalla. Toca «Actualizar» y descárgalo otra vez.',
     truncated: 'Este periodo tiene más ventas de las que caben en un archivo, así que el detalle puede estar incompleto. Elige un periodo más corto.',
   },
+  /** Inicio de Modo Gestión (solo socios): resumen del día (`GET /dashboard/summary`). */
+  dashboard: {
+    title: 'Inicio',
+    lead: 'Un vistazo rápido a cómo va tu negocio hoy.',
+    loading: 'Cargando tu resumen…',
+    loadError: 'No pudimos cargar tu resumen. Intenta de nuevo en un momento.',
+    forbidden: 'Este resumen es solo para socios.',
+    retry: 'Intentar de nuevo',
+    /** Un colaborador SÍ llega a "Inicio" (es la casa de Modo Gestión para cualquiera), pero los números son de socios. */
+    notSocio: 'Los números del negocio (ventas, ganancias, deudas) son solo para socios. Mientras tanto, échale un ojo a tu catálogo de productos.',
+    salesToday: 'Ventas de hoy',
+    profitToday: 'Ganancia de hoy',
+    incidents: 'Incidencias pendientes',
+    debts: 'Deudas por cobrar',
+    debtsPeople: (count: number) => (count === 1 ? '1 persona' : `${count} personas`),
+    lowStock: 'Poca existencia',
+    lowStockEmpty: 'Ningún producto está bajo de existencia.',
+    lowStockMore: (extra: number) => (extra === 1 ? 'y 1 producto más' : `y ${extra} productos más`),
+    viewReports: 'Ver reportes',
+    viewProducts: 'Ver productos',
+  },
   /** Lector de QR: textos fijos de la pantalla; las fallas de cámara salen de `cameraErrorMessage`. */
   scan: {
     title: 'Escanear producto',
@@ -587,4 +608,40 @@ export function reportDownloadErrorMessage(cause: unknown): string {
 /** Confirma la descarga con un hecho concreto: el nombre del archivo. */
 export function reportDownloadDoneMessage(filename: string): string {
   return `Listo, se descargó ${filename}.`
+}
+
+/**
+ * Falla al cargar el resumen de Inicio (mismo patrón que `reportLoadErrorMessage`:
+ * red primero, después el 403 con su propio texto). No es un alias genérico
+ * porque el texto de "solo para socios" es el de `VOICE.dashboard`, no el de
+ * `VOICE.reports`.
+ */
+export function dashboardLoadErrorMessage(cause: unknown): string {
+  if (isNetworkError(cause)) return VOICE.networkError
+  const status = (cause as { response?: { status?: number } } | null)?.response?.status
+  return status === 403 ? VOICE.dashboard.forbidden : VOICE.dashboard.loadError
+}
+
+/**
+ * Compara las ventas de hoy con las de ayer. Sin ventas ayer no hay
+ * porcentaje que calcular (dividir entre 0), así que se dice el hecho en vez
+ * de inventar una cifra; si además hoy tampoco hubo, no hay nada que comparar.
+ */
+export function dashboardVsYesterdayMessage(todayMinor: number, yesterdayMinor: number): string {
+  if (yesterdayMinor === 0) return todayMinor === 0 ? 'Sin ventas, igual que ayer.' : 'Ayer no hubo ventas.'
+  if (todayMinor === yesterdayMinor) return 'Igual que ayer.'
+  const percent = Math.round(((todayMinor - yesterdayMinor) / yesterdayMinor) * 100)
+  return `${percent > 0 ? '+' : ''}${percent}% vs. ayer`
+}
+
+/**
+ * Aviso de que la ganancia de hoy no cuenta partidas sin costo capturado
+ * (mismo espíritu que el aviso de ganancia parcial de Reportes: nunca se
+ * estima, se dice el hueco). Cadena vacía cuando no hay ninguna partida así.
+ */
+export function dashboardPartialProfitMessage(lineasSinCosto: number): string {
+  if (lineasSinCosto <= 0) return ''
+  const linea = lineasSinCosto === 1 ? 'línea' : 'líneas'
+  const incluye = lineasSinCosto === 1 ? 'incluye' : 'incluyen'
+  return `Ganancia calculada solo sobre lo que ya tiene costo registrado — ${lineasSinCosto} ${linea} de hoy sin costo capturado no se ${incluye} en este número.`
 }

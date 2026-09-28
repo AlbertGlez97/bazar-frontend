@@ -100,3 +100,52 @@ export interface SalesReport {
   /** `true` si se llegó al tope de páginas y el detalle puede estar incompleto. */
   truncated: boolean
 }
+
+// ── GET /dashboard/summary (doc/api-contract-for-frontend.md §"GET
+// /api/v1/dashboard/summary"). Resumen de la pantalla de inicio de Gestión.
+// Solo socios. "Hoy"/"ayer" los resuelve el servidor con el día de negocio
+// UTC-6 actual; no son parámetros.
+
+/** Único query: umbral de stock (inclusive) para "productos con poca existencia". Opcional, default 2 en el servidor. */
+export interface DashboardSummaryQuery {
+  umbral?: number
+}
+
+export interface DashboardMoneyCount {
+  totalMinor: number
+  count: number
+}
+
+export interface DashboardDebtSummary {
+  /** Suma del saldo pendiente de toda Deuda `pendiente`. */
+  totalMinor: number
+  /** Deudores distintos con al menos una deuda pendiente. */
+  personas: number
+}
+
+export interface DashboardLowStockItem {
+  id: string
+  name: string
+  stock: number
+  category: string | null
+}
+
+export interface DashboardLowStockSummary {
+  umbral: number
+  /** Cuántos productos activos tienen `stock <= umbral` (puede ser más que `items.length`). */
+  total: number
+  /** Hasta 5, ordenados por stock ascendente y luego nombre. */
+  items: DashboardLowStockItem[]
+}
+
+export interface DashboardSummary {
+  ventasHoy: DashboardMoneyCount
+  ventasAyer: DashboardMoneyCount
+  /** Nunca `null`: `0` si ninguna venta de hoy tiene costo (no es una estimación). */
+  gananciaHoyMinor: number
+  /** Partidas de ventas de hoy sin `unitCostMinor`. */
+  lineasSinCostoHoy: number
+  incidenciasPendientes: number
+  deudasPendientes: DashboardDebtSummary
+  productosPocaExistencia: DashboardLowStockSummary
+}
