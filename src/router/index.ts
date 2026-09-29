@@ -110,6 +110,18 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        // Incidencias (P2): revisar y resolver conflictos de stock/fecha ya
+        // detectados por el servidor. Solo socios y solo en Modo Gestión:
+        // mismo guard que Reportes/Códigos QR (no basta con ocultar el ítem
+        // del menú) y la vista lo vuelve a comprobar si el modo o el rol
+        // cambian. El detalle + resolver es un modal sobre la lista (D2): no
+        // hay ninguna ruta `:id` dinámica en este proyecto.
+        path: 'incidencias',
+        name: 'Incidencias',
+        component: () => import('@/views/incidencias/IncidenciasView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         // Ajustes (engrane del pie de la barra lateral). Para cualquier persona
         // con el contexto listo, en cualquier modo; las entradas de socios
         // (equipo, dispositivos) declaran `requiresSocio` en su propia ruta.

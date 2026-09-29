@@ -130,12 +130,56 @@ no backend changes needed for the multi-line case — out of scope, not silently
   - Verification: `npm run test:run` → 149 files / 2797 tests passed (baseline was 148/2764). `npx eslint .` →
     clean. `npm run build` (`vue-tsc -b && vite build`) → passed. Independently re-verified by the coordinator
     (same exact counts) before committing.
-- [ ] **P2** Incidencias screen: new route `/app/incidencias` (`meta: { requiresSocio: true, requiresGestion:
-      true }`, same guard pattern as Reportes/Códigos QR — router meta + live `watch` in the view), paginated
-      list (type/status filter, search, sort by date), detail+resolve as a modal (D2), nav item in
-      `nav-items.ts` alongside Inicio/Productos/Reportes/Códigos QR, "Incidencias pendientes" card in
-      `AppHomeView.vue` navigating here (filtered to pendientes if a query param convention is established —
-      reuse whatever P1 establishes for Productos' query-param navigation, for consistency).
+- [x] **P2** Incidencias screen — done, uncommitted (coordinator to review/commit):
+  - New files: `src/types/incidencia.types.ts` (contract types, verified against `doc/api-contract-for-
+    frontend.md` §7 before writing), `src/services/incidencias.service.ts` (`listIncidencias`, `getIncidencia`,
+    `resolverIncidencia` — same thin-wrapper pattern as `reports.service.ts`), `src/views/incidencias/
+    IncidenciasView.vue` (list container: filters, search, sort, pagination, opens the detail modal),
+    `src/components/ui/organisms/IncidenciaDetailModal.vue` (detail + resolve, D2: a modal over the list, not
+    a `:id` route — matches `DevicesView.vue`'s revoke-confirmation pattern exactly).
+  - Router: new `incidencias` child of `/app`, `name: 'Incidencias'`, `meta: { requiresSocio: true,
+    requiresGestion: true }` — identical meta to Reportes/Códigos QR. `IncidenciasView.vue` also runs the same
+    live `watch([uiMode.currentMode, session.member?.role])` guard as `ReportsView.vue`/`CodigosQrView.vue`.
+  - Nav item: `nav-items.ts`, `{ to: '/app/incidencias', label: 'Incidencias', icon: '⚠️', exact: false,
+    modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 5 } }` — next available `order.gestion`
+    after Códigos QR (4).
+  - Query param convention (reusing P1's `pocaExistencia` pattern for consistency): the state filter reuses the
+    API's own param name, `resolutionStatus` — `AppHomeView.vue`'s "Incidencias pendientes" card now navigates
+    to `/app/incidencias?resolutionStatus=pendiente`; `IncidenciasView.vue` reads `route?.query.resolutionStatus`
+    on mount (optional-chained, same reason as `ProductCatalogView.vue`: several tests mount the view without
+    a router).
+  - Filters: `type`, `resolutionStatus`, `search` (vendedor de la venta, not the resolver — per the contract),
+    `sort` (`asc`/`desc`, default `desc`). Changing type/status/search resets to page 1; changing sort does not
+    (matches `products.store.ts`'s convention of resetting pagination only on filters that change the result
+    set's identity, not its order).
+  - Detail modal: `GET /incidencias/:id` on open (only call that exposes the nested `sale`); pendiente shows
+    the resolve form (`AppTextarea`, client-side 1..2000 check before calling the API); resuelta shows
+    `resolutionNotes`/`resolvedAt` read-only, no form. A 409 on resolve (someone else resolved it meanwhile)
+    shows `VOICE.incidencias.alreadyResolved` and re-fetches the detail to reflect the real current state,
+    instead of leaving the form open on stale data.
+  - VOICE: added `VOICE.incidencias` block plus `incidenciaLoadErrorMessage`, `incidenciaResolveErrorMessage`,
+    `isIncidenciaNotesValidationError` in `src/config/voice.ts`, following the exact `reportLoadErrorMessage`/
+    `dashboardLoadErrorMessage` pattern (red → 403/409 → generic).
+  - Decisions not 100% explicit in the brief, made during implementation:
+    - Icon `⚠️` for the nav item (no icon was specified).
+    - The nested nav item's own "unresuelta ya resuelta" 409 message triggers a full detail re-fetch (not just
+      a static warning) so the modal always ends up showing the real server state.
+    - The sale summary inside the modal shows total + date + item count only (no per-product breakdown): the
+      nested sale's items only carry `productId` (no product name), and the task didn't ask for a product
+      lookup — kept it to what the contract actually gives without an extra `GET /products/:id` per item.
+  - Collateral test updates (existing tests asserting an exact nav-item list/array broke by design when a new
+    item was added — same kind of update Códigos QR made to the Reportes-only assertions before it):
+    `src/layouts/__tests__/nav-items.test.ts`, `AppLayout.nav.test.ts`, `AppLayout.mode-landing.test.ts`,
+    `nav-mode-exclusivity.test.ts` (exact arrays now include `/app/incidencias`), and
+    `src/views/__tests__/AppHomeView.test.ts` (the "incidencias/deudas are not clickable" test split in two:
+    incidencias is now a link, deudas still isn't).
+  - TDD: RED confirmed (import-not-found / assertion failure) before implementing, for the service, the router
+    guard (`router.test.ts` + `router.mode-landing.test.ts`), the nav item, the detail modal, and the list
+    view — then GREEN after each. The VOICE helper functions were written together with their tests (behavior
+    didn't exist before; same "RED implied, not observed" note as P1's `umbral` plumbing).
+  - Verification: `npm run test:run` → 152 files / 2861 tests passed (baseline after P1 was 149/2797 — this
+    task added 3 test files and 64 tests). `npx eslint .` → clean. `npm run build` (`vue-tsc -b && vite build`)
+    → passed (pre-existing large-chunk warnings for `pdfmake`/`exceljs`/`vfs_fonts`, unrelated to this change).
 - [ ] **P3** Fiado/apartado in checkout: "Registrar como fiado/apartado" option in `SaleCart.vue` gated on
       `cart.lines.length === 1` and `!cart.canCharge` (D3), deudor-capture form (nombre required,
       telefono/nota optional, tipo fiado/apartado), `POST /deudas` then conditionally `POST /deudas/:id/abonos`

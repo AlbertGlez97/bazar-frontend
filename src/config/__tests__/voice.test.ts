@@ -22,6 +22,9 @@ import {
   changePasswordError,
   createMemberError,
   deviceAdminError,
+  incidenciaLoadErrorMessage,
+  incidenciaResolveErrorMessage,
+  isIncidenciaNotesValidationError,
 } from '@/config/voice'
 
 describe('deviceAdminError (GET/POST /devices, revoke, reissue)', () => {
@@ -489,6 +492,40 @@ describe('saleCartRefusalMessage (avisos al tocar un producto)', () => {
 
   it('un motivo desconocido no rompe', () => {
     expect(saleCartRefusalMessage('otro' as never)).toBe('No pudimos hacer ese cambio. Intenta de nuevo.')
+  })
+})
+
+describe('incidenciaLoadErrorMessage (GET /incidencias, GET /incidencias/:id)', () => {
+  it('sin respuesta: mensaje de red', () => {
+    expect(incidenciaLoadErrorMessage({ request: {} })).toBe(VOICE.networkError)
+  })
+  it('403: solo para socios', () => {
+    expect(incidenciaLoadErrorMessage({ response: { status: 403 } })).toBe(VOICE.incidencias.forbidden)
+  })
+  it('cualquier otra falla: mensaje genérico de carga', () => {
+    expect(incidenciaLoadErrorMessage({ response: { status: 500 } })).toBe(VOICE.incidencias.loadError)
+  })
+})
+
+describe('incidenciaResolveErrorMessage (PATCH /incidencias/:id/resolver)', () => {
+  it('sin respuesta: mensaje de red', () => {
+    expect(incidenciaResolveErrorMessage({ request: {} })).toBe(VOICE.networkError)
+  })
+  it('409: ya estaba resuelta (no culpa a la red ni al servidor)', () => {
+    expect(incidenciaResolveErrorMessage({ response: { status: 409 } })).toBe(VOICE.incidencias.alreadyResolved)
+  })
+  it('400/403/404/500: mensaje genérico de resolver', () => {
+    for (const status of [400, 403, 404, 500]) {
+      expect(incidenciaResolveErrorMessage({ response: { status } })).toBe(VOICE.incidencias.resolveError)
+    }
+  })
+})
+
+describe('isIncidenciaNotesValidationError', () => {
+  it('true solo para 400', () => {
+    expect(isIncidenciaNotesValidationError({ response: { status: 400 } })).toBe(true)
+    expect(isIncidenciaNotesValidationError({ response: { status: 409 } })).toBe(false)
+    expect(isIncidenciaNotesValidationError({ request: {} })).toBe(false)
   })
 })
 

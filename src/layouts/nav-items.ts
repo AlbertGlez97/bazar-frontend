@@ -48,6 +48,8 @@ export const NAV_ITEMS: NavItemDef[] = [
   { to: '/app/reportes', label: 'Reportes', icon: '📊', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 3 } },
   // Códigos QR (D2): solo socios y solo Modo Gestión, mismo criterio que Reportes.
   { to: '/app/codigos-qr', label: 'Códigos QR', icon: '🏷️', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 4 } },
+  // Incidencias (P2): solo socios y solo Modo Gestión, mismo criterio que Reportes/Códigos QR.
+  { to: '/app/incidencias', label: 'Incidencias', icon: '⚠️', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 5 } },
 ]
 
 /** Ítems visibles para el modo y la persona, en el orden de ese modo. */

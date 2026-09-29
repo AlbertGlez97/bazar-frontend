@@ -318,6 +318,55 @@ export const VOICE = {
     listTitle: 'Tu lista de impresión',
     listEmpty: 'Todavía no agregaste productos. Búscalos arriba y toca «Agregar».',
   },
+  /**
+   * Incidencias (P2, solo socios): conflictos de stock o fechas fuera de rango
+   * que el servidor detecta solo, al procesar una venta. Se revisan y se
+   * resuelven aquí; nunca se crean a mano. Detalle + resolver es un modal
+   * sobre la lista (D2), no una ruta nueva.
+   */
+  incidencias: {
+    title: 'Incidencias',
+    lead: 'Revisa los conflictos de stock y las fechas fuera de rango que detectó el sistema, y anota cómo se resolvieron con el cliente.',
+    loading: 'Cargando tus incidencias…',
+    loadError: 'No pudimos cargar las incidencias. Intenta de nuevo en un momento.',
+    forbidden: 'Las incidencias son solo para socios.',
+    retry: 'Intentar de nuevo',
+    empty: 'No hay incidencias con estos filtros.',
+    filterTypeLabel: 'Tipo',
+    filterTypeAll: 'Todos los tipos',
+    typeConflictoStock: 'Conflicto de stock',
+    typeIncidenciaFecha: 'Fecha fuera de rango',
+    filterStatusLabel: 'Estado',
+    filterStatusAll: 'Todas',
+    statusPendiente: 'Pendiente',
+    statusResuelta: 'Resuelta',
+    searchLabel: 'Buscar por vendedor',
+    searchPlaceholder: 'Nombre de quien vendió',
+    sortLabel: 'Orden',
+    sortDesc: 'Más recientes primero',
+    sortAsc: 'Más antiguas primero',
+    columnDate: 'Detectada',
+    columnType: 'Tipo',
+    columnStatus: 'Estado',
+    columnReason: 'Motivo',
+    viewDetail: 'Ver detalle',
+    detailTitle: 'Detalle de la incidencia',
+    detailLoading: 'Cargando el detalle…',
+    detailLoadError: 'No pudimos cargar el detalle de esta incidencia.',
+    saleTitle: 'Venta relacionada',
+    saleMissing: 'No pudimos mostrar la venta relacionada.',
+    resolutionNotesLabel: 'Notas de lo que se acordó con el cliente',
+    resolutionNotesPlaceholder: 'Qué se acordó, por ejemplo: no se cobra la pieza faltante…',
+    resolutionNotesRequired: 'Escribe qué se acordó (hasta 2000 caracteres).',
+    resolutionNotesTooLong: 'Son demasiadas notas (máximo 2000 caracteres).',
+    resolve: 'Marcar como resuelta',
+    resolving: 'Guardando…',
+    resolveError: 'No pudimos guardar la resolución.',
+    alreadyResolved: 'Esta incidencia ya estaba resuelta (alguien más la resolvió mientras tanto). Se actualizó con lo más reciente.',
+    resolvedByTitle: 'Resuelta',
+    resolvedNotesTitle: 'Notas de la resolución',
+    close: 'Cerrar',
+  },
 } as const
 
 /** Códigos de falla del lector (los de `QrScannerError` más el contexto inseguro). */
@@ -670,4 +719,27 @@ export function dashboardPartialProfitMessage(lineasSinCosto: number): string {
   const linea = lineasSinCosto === 1 ? 'línea' : 'líneas'
   const incluye = lineasSinCosto === 1 ? 'incluye' : 'incluyen'
   return `Ganancia calculada solo sobre lo que ya tiene costo registrado — ${lineasSinCosto} ${linea} de hoy sin costo capturado no se ${incluye} en este número.`
+}
+
+/** Falla al cargar la lista o el detalle de Incidencias: red, permiso o genérica. Mismo patrón que `reportLoadErrorMessage`. */
+export function incidenciaLoadErrorMessage(cause: unknown): string {
+  if (isNetworkError(cause)) return VOICE.networkError
+  const status = (cause as { response?: { status?: number } } | null)?.response?.status
+  return status === 403 ? VOICE.incidencias.forbidden : VOICE.incidencias.loadError
+}
+
+/**
+ * Falla al resolver una incidencia. El 409 ("ya estaba resuelta") es el único
+ * caso donde no se culpa a la red ni al servidor: alguien más (otra pestaña, otro
+ * socio) la resolvió mientras tanto. Nunca "des-resuelve" ni reintenta sola.
+ */
+export function incidenciaResolveErrorMessage(cause: unknown): string {
+  if (isNetworkError(cause)) return VOICE.networkError
+  const status = (cause as { response?: { status?: number } } | null)?.response?.status
+  return status === 409 ? VOICE.incidencias.alreadyResolved : VOICE.incidencias.resolveError
+}
+
+/** `true` si el 400 al resolver es por el campo `resolutionNotes` (409 no es esto, ver `incidenciaResolveErrorMessage`). */
+export function isIncidenciaNotesValidationError(cause: unknown): boolean {
+  return (cause as { response?: { status?: number } } | null)?.response?.status === 400
 }

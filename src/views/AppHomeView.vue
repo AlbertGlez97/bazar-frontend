@@ -88,6 +88,7 @@
         <AppStatCard
           :label="VOICE.dashboard.incidents"
           :value="String(summary.incidenciasPendientes)"
+          to="/app/incidencias?resolutionStatus=pendiente"
         />
 
         <AppStatCard

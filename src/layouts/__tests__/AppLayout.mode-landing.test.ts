@@ -75,9 +75,9 @@ describe('AppLayout — el menú depende del modo', () => {
     expect(links(wrapper)).toEqual(['/app/venta'])
   })
 
-  it('Modo Gestión: Inicio, Productos y (socio) Reportes y Códigos QR, sin Vender', async () => {
+  it('Modo Gestión: Inicio, Productos y (socio) Reportes, Códigos QR e Incidencias, sin Vender', async () => {
     const { wrapper } = await mountAt('/app/productos', 'gestion')
-    expect(links(wrapper)).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr'])
+    expect(links(wrapper)).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias'])
   })
 
   it('Modo Gestión: un colaborador no ve Reportes', async () => {

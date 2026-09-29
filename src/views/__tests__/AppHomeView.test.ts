@@ -98,13 +98,21 @@ describe('AppHomeView — carga y presentación', () => {
   })
 })
 
-describe('AppHomeView — incidencias y deudas no llevan a ningún lado', () => {
-  it('se ven pero no son clickeables (sin <a>/<router-link>)', async () => {
+describe('AppHomeView — "Incidencias pendientes" lleva a la lista filtrada (P2)', () => {
+  it('es clickeable y navega con el filtro de pendientes preactivado', async () => {
     const { wrapper } = await mountView()
-    // Solo "ventas hoy" (→ Reportes) y "poca existencia" (→ Productos, con el
-    // filtro preactivado) son enlaces.
     const hrefs = wrapper.findAll('a').map((a) => a.attributes('href'))
-    expect(hrefs).toEqual(['/app/reportes', '/app/productos?pocaExistencia=1'])
+    // "ventas hoy" (→ Reportes), "incidencias pendientes" (→ Incidencias,
+    // filtrado) y "poca existencia" (→ Productos, con el filtro preactivado).
+    expect(hrefs).toEqual(['/app/reportes', '/app/incidencias?resolutionStatus=pendiente', '/app/productos?pocaExistencia=1'])
+  })
+})
+
+describe('AppHomeView — deudas no lleva a ningún lado (aún)', () => {
+  it('se ve pero no es clickeable (sin <a>/<router-link>)', async () => {
+    const { wrapper } = await mountView()
+    const debtsCard = wrapper.findAll('.app-home__cards > *').find((el) => el.text().includes('Deudas por cobrar'))!
+    expect(debtsCard.element.tagName).not.toBe('A')
   })
 })
 
