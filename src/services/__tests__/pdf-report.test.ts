@@ -122,19 +122,19 @@ describe('buildPdfDefinition — sales table', () => {
   const def = buildPdfDefinition(makeReport())
   const table = findTable(def, 'Fecha')
 
-  it('has the columns Fecha / Persona / Artículos / Total / Efectivo / Cambio and repeats the header row per page', () => {
-    expect(rowTexts(table.body[0])).toEqual(['Fecha', 'Persona', 'Artículos', 'Total', 'Efectivo', 'Cambio'])
+  it('has the columns Fecha / Persona / Artículos / Total (sin Efectivo ni Cambio) y repite el encabezado por página', () => {
+    expect(rowTexts(table.body[0])).toEqual(['Fecha', 'Persona', 'Artículos', 'Total'])
     expect((table.node.table as { headerRows?: number }).headerRows).toBe(1)
   })
 
   it('lists sales oldest first with business-time dates and formatted amounts', () => {
-    expect(rowTexts(table.body[1])).toEqual(['24/09/2026 12:00', 'Ana', '1', '$50.50', '$100.00', '$49.50'])
-    expect(rowTexts(table.body[2])).toEqual(['24/09/2026 14:05', 'Carlos Núñez', '3', '$1,250.00', '$1,500.00', '$250.00'])
+    expect(rowTexts(table.body[1])).toEqual(['24/09/2026 12:00', 'Ana', '1', '$50.50'])
+    expect(rowTexts(table.body[2])).toEqual(['24/09/2026 14:05', 'Carlos Núñez', '3', '$1,250.00'])
   })
 
   it('ends with a totals row summed from the rows', () => {
     const last = rowTexts(table.body[table.body.length - 1])
-    expect(last).toEqual(['Total', '2 ventas', '4', '$1,300.50', '$1,600.00', '$299.50'])
+    expect(last).toEqual(['Total', '2 ventas', '4', '$1,300.50'])
     expect(table.body).toHaveLength(1 + 2 + 1)
   })
 

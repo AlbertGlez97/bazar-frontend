@@ -99,7 +99,7 @@
         <AppStatCard
           :label="VOICE.dashboard.lowStock"
           :value="String(summary.productosPocaExistencia.total)"
-          to="/app/productos"
+          to="/app/productos?pocaExistencia=1"
         >
           <ul
             v-if="summary.productosPocaExistencia.items.length"

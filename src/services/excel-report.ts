@@ -26,8 +26,6 @@ export interface ExcelSalesRow {
   seller: string
   articles: number
   total: number
-  cash: number
-  change: number
 }
 
 export interface ExcelPersonRow {
@@ -58,7 +56,7 @@ export interface ExcelProductRow {
 export interface ExcelReportData {
   sales: {
     rows: ExcelSalesRow[]
-    totals: { count: number; articles: number; total: number; cash: number; change: number }
+    totals: { count: number; articles: number; total: number }
   }
   people: {
     rows: ExcelPersonRow[]
@@ -93,15 +91,11 @@ export function buildExcelData(report: SalesReport): ExcelReportData {
         seller: row.sellerName,
         articles: row.articleCount,
         total: toPesos(row.totalMinor),
-        cash: toPesos(row.cashReceivedMinor),
-        change: toPesos(row.changeMinor),
       })),
       totals: {
         count: totals.saleCount,
         articles: totals.articleCount,
         total: toPesos(totals.totalMinor),
-        cash: toPesos(totals.cashReceivedMinor),
-        change: toPesos(totals.changeMinor),
       },
     },
     people: {
@@ -180,17 +174,15 @@ function addSalesSheet(workbook: Workbook, data: ExcelReportData) {
     { width: nameWidth(rows.map((r) => r.seller), 16) },
     { width: 11 },
     { width: 14 },
-    { width: 18 },
-    { width: 14 },
   ]
 
-  headerStyle(ws.addRow(['Fecha', 'Persona', 'Artículos', 'Total', 'Efectivo recibido', 'Cambio']), [3, 4, 5, 6])
+  headerStyle(ws.addRow(['Fecha', 'Persona', 'Artículos', 'Total']), [3, 4])
 
   for (const item of rows) {
-    const row = ws.addRow([item.date, item.seller, item.articles, item.total, item.cash, item.change])
+    const row = ws.addRow([item.date, item.seller, item.articles, item.total])
     row.getCell(1).numFmt = DATE_FORMAT
     row.getCell(2).numFmt = TEXT_FORMAT
-    for (const column of [4, 5, 6]) row.getCell(column).numFmt = MONEY_FORMAT
+    row.getCell(4).numFmt = MONEY_FORMAT
   }
 
   const n = rows.length
@@ -202,17 +194,15 @@ function addSalesSheet(workbook: Workbook, data: ExcelReportData) {
   const sums: Array<[column: number, letter: string, result: number]> = [
     [3, 'C', totals.articles],
     [4, 'D', totals.total],
-    [5, 'E', totals.cash],
-    [6, 'F', totals.change],
   ]
   for (const [column, letter, result] of sums) {
     const cell = totalsRow.getCell(column)
     cell.value = n === 0 ? result : { formula: `SUM(${letter}2:${letter}${n + 1})`, result }
     if (column >= 4) cell.numFmt = MONEY_FORMAT
   }
-  totalsStyle(totalsRow, 6)
+  totalsStyle(totalsRow, 4)
 
-  if (n > 0) ws.autoFilter = `A1:F${n + 1}`
+  if (n > 0) ws.autoFilter = `A1:D${n + 1}`
 }
 
 function addPeopleSheet(workbook: Workbook, data: ExcelReportData) {

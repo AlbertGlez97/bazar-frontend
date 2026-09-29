@@ -53,9 +53,11 @@ describe('buildExcelData (pure shaping, no exceljs)', () => {
     expect(data.sales.rows).toHaveLength(2)
     const [first, second] = data.sales.rows
     expect(first.date.toISOString()).toBe('2026-09-24T12:00:00.000Z') // 18:00Z = 12:00 en el negocio
-    expect(first).toMatchObject({ seller: 'Ana', articles: 1, total: 50.5, cash: 100, change: 49.5 })
+    expect(first).toMatchObject({ seller: 'Ana', articles: 1, total: 50.5 })
+    expect(first).not.toHaveProperty('cash')
+    expect(first).not.toHaveProperty('change')
     expect(second.date.toISOString()).toBe('2026-09-24T14:05:00.000Z')
-    expect(second).toMatchObject({ seller: 'Carlos Núñez', articles: 3, total: 1250, cash: 1500, change: 250 })
+    expect(second).toMatchObject({ seller: 'Carlos Núñez', articles: 3, total: 1250 })
   })
 
   it('sums in minor units and converts last (10 + 20 cents is exactly 0.30, not 0.30000000000000004)', () => {
@@ -194,14 +196,14 @@ describe('buildWorkbook (real exceljs)', () => {
     expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Resumen'])
   })
 
-  it('writes the Ventas header styled, frozen and filtered', async () => {
+  it('writes the Ventas header styled, frozen and filtered (sin Efectivo ni Cambio)', async () => {
     const ws = (await buildWorkbook(makeReport())).getWorksheet('Ventas')!
-    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Persona', 'Artículos', 'Total', 'Efectivo recibido', 'Cambio'])
+    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Persona', 'Artículos', 'Total'])
     const head = ws.getCell('A1')
     expect(head.font?.bold).toBe(true)
     expect(head.fill).toMatchObject({ type: 'pattern', fgColor: { argb: 'FFB8501C' } })
     expect(ws.views[0]).toMatchObject({ state: 'frozen', ySplit: 1 })
-    expect(ws.autoFilter).toBe('A1:F3')
+    expect(ws.autoFilter).toBe('A1:D3')
   })
 
   it('writes real dates, real numbers and money/date formats', async () => {
@@ -212,7 +214,7 @@ describe('buildWorkbook (real exceljs)', () => {
     expect(date.numFmt).toBe('dd/mm/yyyy hh:mm')
     expect(ws.getCell('B2').value).toBe('Ana')
     expect(ws.getCell('C2').value).toBe(1)
-    for (const address of ['D2', 'E2', 'F2', 'D3']) {
+    for (const address of ['D2', 'D3']) {
       const cell = ws.getCell(address)
       expect(typeof cell.value).toBe('number')
       expect(cell.numFmt).toBe(MONEY_FORMAT)
@@ -228,10 +230,9 @@ describe('buildWorkbook (real exceljs)', () => {
     expect(ws.getCell('B5').value).toBe('2 ventas')
     expect(ws.getCell('C5').value).toEqual({ formula: 'SUM(C2:C3)', result: 4 })
     expect(ws.getCell('D5').value).toEqual({ formula: 'SUM(D2:D3)', result: 1300.5 })
-    expect(ws.getCell('E5').value).toEqual({ formula: 'SUM(E2:E3)', result: 1600 })
-    expect(ws.getCell('F5').value).toEqual({ formula: 'SUM(F2:F3)', result: 299.5 })
     expect(ws.getCell('D5').numFmt).toBe(MONEY_FORMAT)
     expect(ws.getCell('D5').font?.bold).toBe(true)
+    expect(ws.getCell('E5').value).toBeNull()
   })
 
   it('sets readable column widths', async () => {
@@ -242,7 +243,7 @@ describe('buildWorkbook (real exceljs)', () => {
 
   it('builds an empty report without formulas or crashes', async () => {
     const ws = (await buildWorkbook(makeReport([]))).getWorksheet('Ventas')!
-    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Persona', 'Artículos', 'Total', 'Efectivo recibido', 'Cambio'])
+    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Persona', 'Artículos', 'Total'])
     expect(ws.getCell('A2').value).toBe('Total')
     expect(ws.getCell('D2').value).toBe(0)
     expect(ws.autoFilter).toBeFalsy()
@@ -298,7 +299,7 @@ describe('buildWorkbook (real exceljs)', () => {
     expect((ws.getCell('A3').value as Date).toISOString()).toBe('2026-09-24T14:05:00.000Z')
     expect(ws.getCell('D5').value).toEqual({ formula: 'SUM(D2:D3)', result: 1300.5 })
     expect(ws.getCell('A1').type).toBe(ExcelJS.ValueType.String)
-    expect(ws.autoFilter).toBe('A1:F3')
+    expect(ws.autoFilter).toBe('A1:D3')
     expect(loaded.getWorksheet('Por persona')!.getCell('D2').value).toBe(1250)
   })
 })

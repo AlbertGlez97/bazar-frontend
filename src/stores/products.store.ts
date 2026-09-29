@@ -8,6 +8,9 @@ import type {
   UpdateProductPayload,
 } from '@/types/product.types'
 
+/** Mismo umbral por defecto que usa el resumen del dashboard para "poca existencia" (stock <= umbral). */
+export const LOW_STOCK_UMBRAL = 2
+
 export const useProductsStore = defineStore('products', () => {
   const items = ref<Product[]>([])
   const total = ref(0)
@@ -15,6 +18,10 @@ export const useProductsStore = defineStore('products', () => {
   const limit = ref(20)
   const search = ref('')
   const includeInactive = ref(false)
+  // `undefined` = sin filtro de poca existencia (el de siempre); un número = solo
+  // productos con stock <= umbral. Se guarda como filtro activo, igual que
+  // includeInactive: paginar o buscar de nuevo lo mantiene sin repetirlo.
+  const umbral = ref<number | undefined>(undefined)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -29,6 +36,9 @@ export const useProductsStore = defineStore('products', () => {
     if (params.page !== undefined) page.value = params.page
     if (params.search !== undefined) search.value = params.search
     if (params.includeInactive !== undefined) includeInactive.value = params.includeInactive
+    // `'umbral' in params` (no `!== undefined`) para poder apagar el filtro
+    // pasando `{ umbral: undefined }` explícito, distinto de no mencionarlo.
+    if ('umbral' in params) umbral.value = params.umbral
 
     loading.value = true
     error.value = null
@@ -38,6 +48,7 @@ export const useProductsStore = defineStore('products', () => {
         limit: limit.value,
         search: search.value || undefined,
         includeInactive: includeInactive.value || undefined,
+        umbral: umbral.value,
       })
       let response = await query(page.value)
 
@@ -93,7 +104,7 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   return {
-    items, total, page, limit, search, includeInactive, loading, error, totalPages,
+    items, total, page, limit, search, includeInactive, umbral, loading, error, totalPages,
     fetchProducts, createProduct, updateProduct, uploadProductImage,
     deactivateProduct, reactivateProduct,
   }

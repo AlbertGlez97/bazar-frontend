@@ -61,31 +61,25 @@ function salesTable(report: SalesReport): Content {
     table: {
       headerRows: 1,
       dontBreakRows: true,
-      widths: [88, '*', 50, 62, 62, 58],
+      widths: [88, '*', 50, 62],
       body: [
         [
           headerCell('Fecha'),
           headerCell('Persona'),
           headerCell('Artículos', 'right'),
           headerCell('Total', 'right'),
-          headerCell('Efectivo', 'right'),
-          headerCell('Cambio', 'right'),
         ],
         ...report.rows.map((row) => [
           cell(formatBusinessDateTime(row.receivedAt)),
           cell(row.sellerName),
           cell(String(row.articleCount), 'right'),
           cell(formatMinorMoney(row.totalMinor), 'right'),
-          cell(formatMinorMoney(row.cashReceivedMinor), 'right'),
-          cell(formatMinorMoney(row.changeMinor), 'right'),
         ]),
         [
           totalCell('Total'),
           totalCell(plural(totals.saleCount, 'venta', 'ventas')),
           totalCell(String(totals.articleCount), 'right'),
           totalCell(formatMinorMoney(totals.totalMinor), 'right'),
-          totalCell(formatMinorMoney(totals.cashReceivedMinor), 'right'),
-          totalCell(formatMinorMoney(totals.changeMinor), 'right'),
         ],
       ],
     },

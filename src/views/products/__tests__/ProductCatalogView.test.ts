@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import ProductCatalogView from '../ProductCatalogView.vue'
 import ProductsService from '@/services/products.service'
 import { useSessionStore } from '@/stores/session.store'
@@ -185,6 +186,107 @@ describe('ProductCatalogView según el modo de interfaz', () => {
       await vi.waitFor(() => expect(wrapper.find('.product-card--default').exists()).toBe(true))
       expect(wrapper.find('.product-card__footer').exists()).toBe(false)
       expect(wrapper.text()).not.toContain('Nuevo producto')
+    })
+  })
+})
+
+describe('ProductCatalogView — vista de cuadrícula/lista (Gestión)', () => {
+  it('arranca en cuadrícula y cambia a lista al elegirla, guardándolo en su propio store', async () => {
+    setMember('socio')
+    const wrapper = mount(ProductCatalogView, mountOptions)
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+
+    expect(wrapper.find('button[data-view="grid"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.product-catalog-grid__grid').classes()).not.toContain('product-catalog-grid__grid--list')
+
+    await wrapper.find('button[data-view="list"]').trigger('click')
+
+    expect(wrapper.get('.product-catalog-grid__grid').classes()).toContain('product-catalog-grid__grid--list')
+    const { useManageCatalogViewStore } = await import('@/stores/manageCatalogView.store')
+    expect(useManageCatalogViewStore().view).toBe('list')
+  })
+})
+
+describe('ProductCatalogView — filtro de poca existencia (umbral)', () => {
+  function lowStockInput(wrapper: ReturnType<typeof mount>) {
+    const label = wrapper.findAll('label').find((l) => l.text().includes('Poca existencia'))
+    return label!.find('input[type="checkbox"]')
+  }
+  const lastListCall = () => vi.mocked(ProductsService.listProducts).mock.calls.at(-1)?.[0]
+
+  it('el interruptor está apagado por defecto y no manda "umbral"', async () => {
+    setMember('socio')
+    const wrapper = mount(ProductCatalogView, mountOptions)
+    await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+    expect(wrapper.text()).toContain('Poca existencia')
+    expect((lowStockInput(wrapper).element as HTMLInputElement).checked).toBe(false)
+    expect(lastListCall()?.umbral).toBeUndefined()
+  })
+
+  it('activarlo recarga con umbral=2 y vuelve a la página 1', async () => {
+    setMember('socio')
+    vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [product()], total: 50, page: 3, limit: 20 })
+    const wrapper = mount(ProductCatalogView, mountOptions)
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Poca existencia'))
+
+    await lowStockInput(wrapper).setValue(true)
+
+    await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, umbral: 2 }),
+    ))
+  })
+
+  it('apagarlo vuelve a pedir sin "umbral"', async () => {
+    setMember('socio')
+    const wrapper = mount(ProductCatalogView, mountOptions)
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Poca existencia'))
+    await lowStockInput(wrapper).setValue(true)
+    await vi.waitFor(() => expect(lastListCall()?.umbral).toBe(2))
+
+    await lowStockInput(wrapper).setValue(false)
+
+    await vi.waitFor(() => expect(lastListCall()?.umbral).toBeUndefined())
+  })
+
+  it('un colaborador también puede usarlo (no es cosa de socios)', async () => {
+    setMember('colaborador')
+    const wrapper = mount(ProductCatalogView, mountOptions)
+    await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+    expect(wrapper.text()).toContain('Poca existencia')
+  })
+
+  it('no se ofrece en Modo Venta', async () => {
+    setMember('socio')
+    useUiModeStore().setMode('venta')
+    const wrapper = mount(ProductCatalogView, mountOptions)
+    await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
+    expect(wrapper.text()).not.toContain('Poca existencia')
+  })
+
+  describe('llega desde la tarjeta "Poca existencia" de Inicio (?pocaExistencia=1)', () => {
+    async function mountWithQuery(query: Record<string, string>) {
+      const router = createRouter({
+        history: createMemoryHistory(),
+        routes: [{ path: '/app/productos', name: 'ProductCatalog', component: ProductCatalogView }],
+      })
+      await router.push({ path: '/app/productos', query })
+      await router.isReady()
+      return mount(ProductCatalogView, { global: { plugins: [router], stubs: { teleport: true } } })
+    }
+
+    it('con el query param activa el filtro desde el arranque', async () => {
+      setMember('socio')
+      const wrapper = await mountWithQuery({ pocaExistencia: '1' })
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      expect(lastListCall()?.umbral).toBe(2)
+      expect((lowStockInput(wrapper).element as HTMLInputElement).checked).toBe(true)
+    })
+
+    it('sin el query param arranca apagado, como siempre', async () => {
+      setMember('socio')
+      await mountWithQuery({})
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      expect(lastListCall()?.umbral).toBeUndefined()
     })
   })
 })

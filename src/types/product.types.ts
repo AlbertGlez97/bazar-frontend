@@ -26,6 +26,8 @@ export interface ProductListParams {
   search?: string
   /** Solo tiene efecto real si quien pregunta es un socio activo (ver §5) */
   includeInactive?: boolean
+  /** "Poca existencia": solo productos con stock <= umbral. Ausente = sin filtro. */
+  umbral?: number
 }
 
 export interface ProductListResponse {

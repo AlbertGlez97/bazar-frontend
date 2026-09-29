@@ -189,4 +189,42 @@ describe('ProductCatalogGrid', () => {
     await editButton?.trigger('click')
     expect(wrapper.emitted('edit')?.[0]).toEqual([p])
   })
+
+  describe('vista (cuadrícula/lista)', () => {
+    it('por defecto muestra el selector en gestión con "Cuadrícula" activa', () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [product()], page: 1, totalPages: 1 } })
+      const gridBtn = wrapper.find('button[data-view="grid"]')
+      const listBtn = wrapper.find('button[data-view="list"]')
+      expect(gridBtn.exists()).toBe(true)
+      expect(listBtn.exists()).toBe(true)
+      expect(gridBtn.attributes('aria-pressed')).toBe('true')
+      expect(listBtn.attributes('aria-pressed')).toBe('false')
+      expect(wrapper.get('.product-catalog-grid__grid').classes()).not.toContain('product-catalog-grid__grid--list')
+    })
+
+    it('con view="list" marca "Lista" activa y aplica la clase de lista a la grilla', () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [product()], page: 1, totalPages: 1, view: 'list' } })
+      expect(wrapper.find('button[data-view="list"]').attributes('aria-pressed')).toBe('true')
+      expect(wrapper.find('button[data-view="grid"]').attributes('aria-pressed')).toBe('false')
+      expect(wrapper.get('.product-catalog-grid__grid').classes()).toContain('product-catalog-grid__grid--list')
+    })
+
+    it('emite update:view al elegir la otra vista', async () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [product()], page: 1, totalPages: 1 } })
+      await wrapper.find('button[data-view="list"]').trigger('click')
+      expect(wrapper.emitted('update:view')?.[0]).toEqual(['list'])
+    })
+
+    it('tocar la vista ya activa no emite nada', async () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [product()], page: 1, totalPages: 1 } })
+      await wrapper.find('button[data-view="grid"]').trigger('click')
+      expect(wrapper.emitted('update:view')).toBeUndefined()
+    })
+
+    it('no muestra el selector de vista en Modo Venta', () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [product()], page: 1, totalPages: 1, mode: 'venta' } })
+      expect(wrapper.find('button[data-view="grid"]').exists()).toBe(false)
+      expect(wrapper.find('button[data-view="list"]').exists()).toBe(false)
+    })
+  })
 })

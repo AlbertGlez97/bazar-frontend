@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { useProductsStore } from '../products.store'
+import { LOW_STOCK_UMBRAL, useProductsStore } from '../products.store'
 import ProductsService from '@/services/products.service'
 import type { Product } from '@/types/product.types'
 
@@ -157,5 +157,50 @@ describe('products.store', () => {
 
     expect(reactivated.active).toBe(true)
     expect(ProductsService.reactivateProduct).toHaveBeenCalledExactlyOnceWith('p-1')
+  })
+
+  describe('filtro de poca existencia (umbral)', () => {
+    it('sin pedirlo nunca manda "umbral" al backend', async () => {
+      vi.mocked(ProductsService.listProducts).mockResolvedValue(listResponse)
+      const store = useProductsStore()
+
+      await store.fetchProducts()
+
+      expect(ProductsService.listProducts).toHaveBeenCalledExactlyOnceWith({ page: 1, limit: 20 })
+      expect(store.umbral).toBeUndefined()
+    })
+
+    it('fetchProducts con umbral lo guarda como filtro activo y lo manda al backend', async () => {
+      vi.mocked(ProductsService.listProducts).mockResolvedValue(listResponse)
+      const store = useProductsStore()
+
+      await store.fetchProducts({ page: 1, umbral: LOW_STOCK_UMBRAL })
+
+      expect(ProductsService.listProducts).toHaveBeenCalledExactlyOnceWith({ page: 1, limit: 20, umbral: 2 })
+      expect(store.umbral).toBe(2)
+    })
+
+    it('paginar con el filtro activo lo sigue mandando (se guardó como filtro)', async () => {
+      vi.mocked(ProductsService.listProducts).mockResolvedValue(listResponse)
+      const store = useProductsStore()
+      await store.fetchProducts({ umbral: LOW_STOCK_UMBRAL })
+      vi.mocked(ProductsService.listProducts).mockClear()
+
+      await store.fetchProducts({ page: 2 })
+
+      expect(ProductsService.listProducts).toHaveBeenCalledExactlyOnceWith({ page: 2, limit: 20, umbral: 2 })
+    })
+
+    it('apagar el filtro (umbral: undefined explícito) deja de mandarlo', async () => {
+      vi.mocked(ProductsService.listProducts).mockResolvedValue(listResponse)
+      const store = useProductsStore()
+      await store.fetchProducts({ umbral: LOW_STOCK_UMBRAL })
+      vi.mocked(ProductsService.listProducts).mockClear()
+
+      await store.fetchProducts({ page: 1, umbral: undefined })
+
+      expect(ProductsService.listProducts).toHaveBeenCalledExactlyOnceWith({ page: 1, limit: 20 })
+      expect(store.umbral).toBeUndefined()
+    })
   })
 })

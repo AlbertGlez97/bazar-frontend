@@ -69,14 +69,32 @@
       :include-inactive="store.includeInactive"
       :selection-mode="selection.active"
       :selected-ids="selectedIds"
+      :view="catalogView.view"
       @toggle-select="selection.toggle($event)"
       @search="handleSearch"
       @update:include-inactive="handleIncludeInactive"
       @update:page="handlePageChange"
+      @update:view="catalogView.setView"
       @edit="openEditModal"
       @deactivate="openDeactivateConfirm"
       @reactivate="handleReactivate"
     />
+
+    <!-- "Poca existencia" (D1): solo productos con stock <= umbral (mismo
+         umbral por defecto que el resumen del dashboard). Después del grid,
+         no antes: así "Mostrar inactivos" (dentro del grid) sigue siendo la
+         primera casilla de la pantalla, como ya asumen otras pruebas. No es
+         cosa de socios: cualquier persona autenticada puede consultarlo. Va
+         por el query `umbral` al backend (el catálogo pagina del lado del
+         servidor), nunca como `.filter()` sobre lo ya cargado. -->
+    <AppSwitch
+      v-if="!isVenta"
+      class="product-catalog-view__low-stock"
+      :model-value="lowStockActive"
+      @update:model-value="handleLowStock"
+    >
+      Poca existencia
+    </AppSwitch>
 
     <ProductFormModal
       v-model="isFormModalOpen"
@@ -112,13 +130,14 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { AppAlert, AppButton, AppModal, LabelPrintDialog, ProductCatalogGrid, ProductFormModal, ProductSelectionBar } from '@/components'
+import { useRoute, useRouter } from 'vue-router'
+import { AppAlert, AppButton, AppModal, AppSwitch, LabelPrintDialog, ProductCatalogGrid, ProductFormModal, ProductSelectionBar } from '@/components'
 import { VOICE } from '@/config/voice'
 import { useLabelPrinting } from '@/composables/useLabelPrinting'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
+import { useManageCatalogViewStore } from '@/stores/manageCatalogView.store'
 import { useProductSelectionStore } from '@/stores/product-selection.store'
-import { useProductsStore } from '@/stores/products.store'
+import { LOW_STOCK_UMBRAL, useProductsStore } from '@/stores/products.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
@@ -130,6 +149,11 @@ const session = useSessionStore()
 const toast = useToastStore()
 const uiMode = useUiModeStore()
 const router = useRouter()
+// `useRoute()` sin router instalado (varios tests montan la vista sola, sin
+// plugin de router) da `undefined`: se lee con `?.`, nunca se asume presente.
+const route = useRoute()
+// Cuadrícula o lista: preferencia del dispositivo para Gestión, guardada en localStorage.
+const catalogView = useManageCatalogViewStore()
 
 // `true` cuando el servidor dice que el dispositivo/persona guardados ya no
 // valen: se ofrece identificar el dispositivo otra vez. Nada se borra solo.
@@ -190,13 +214,20 @@ const isSubmitting = ref(false)
 const isConfirmModalOpen = ref(false)
 const productPendingDeactivation = ref<Product | null>(null)
 
+// "Poca existencia" (D1): la tarjeta de Inicio llega con `?pocaExistencia=1`
+// para preactivar el filtro; sin el query param arranca apagado, como siempre.
+const QUERY_LOW_STOCK = 'pocaExistencia'
+const lowStockActive = computed(() => store.umbral !== undefined)
+
 onMounted(() => {
   // El store sobrevive al cierre de sesión: un colaborador que entra después
   // de un socio no debe heredar "Mostrar inactivos" (no tendría cómo apagarlo).
   // En Modo Venta tampoco: lo inactivo es cosa de gestión y nunca se ofrece
   // para vender, así que se pide el catálogo solo con productos activos.
   const includeInactive = isSocio.value && !isVenta.value && store.includeInactive
-  store.fetchProducts({ includeInactive }).catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
+  const initialLowStock = route?.query[QUERY_LOW_STOCK] === '1'
+  store.fetchProducts({ includeInactive, umbral: initialLowStock ? LOW_STOCK_UMBRAL : undefined })
+    .catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
 })
 
 // Cambiar a Modo Venta con "Mostrar inactivos" encendido: se apaga el filtro y
@@ -209,6 +240,13 @@ watch(isVenta, (venta) => {
 // Cambiar el filtro invalida la paginación actual: se vuelve a la página 1.
 function handleIncludeInactive(value: boolean) {
   store.fetchProducts({ page: 1, includeInactive: value }).catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
+}
+
+// Mismo criterio que "Mostrar inactivos": cambiar el filtro vuelve a la página 1.
+// `umbral: undefined` explícito apaga el filtro (distinto de no mandarlo).
+function handleLowStock(value: boolean) {
+  store.fetchProducts({ page: 1, umbral: value ? LOW_STOCK_UMBRAL : undefined })
+    .catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
 }
 
 function handleSearch(term: string) {

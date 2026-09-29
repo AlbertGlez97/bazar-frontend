@@ -101,9 +101,10 @@ describe('AppHomeView — carga y presentación', () => {
 describe('AppHomeView — incidencias y deudas no llevan a ningún lado', () => {
   it('se ven pero no son clickeables (sin <a>/<router-link>)', async () => {
     const { wrapper } = await mountView()
-    // Solo "ventas hoy" (→ Reportes) y "poca existencia" (→ Productos) son enlaces.
+    // Solo "ventas hoy" (→ Reportes) y "poca existencia" (→ Productos, con el
+    // filtro preactivado) son enlaces.
     const hrefs = wrapper.findAll('a').map((a) => a.attributes('href'))
-    expect(hrefs).toEqual(['/app/reportes', '/app/productos'])
+    expect(hrefs).toEqual(['/app/reportes', '/app/productos?pocaExistencia=1'])
   })
 })
 

@@ -23,6 +23,36 @@
       >
         Mostrar inactivos
       </AppSwitch>
+
+      <!-- Vista: cuadrícula o lista. Solo en gestión (venta tiene su propio
+           selector en SaleCatalogPicker, con su propia preferencia guardada). -->
+      <div
+        v-if="!isVenta"
+        class="product-catalog-grid__view"
+        role="group"
+        aria-label="Vista del catálogo"
+      >
+        <button
+          type="button"
+          class="product-catalog-grid__view-btn"
+          data-view="grid"
+          :aria-pressed="view === 'grid'"
+          @click="setView('grid')"
+        >
+          <span aria-hidden="true">▦</span>
+          Cuadrícula
+        </button>
+        <button
+          type="button"
+          class="product-catalog-grid__view-btn"
+          data-view="list"
+          :aria-pressed="view === 'list'"
+          @click="setView('list')"
+        >
+          <span aria-hidden="true">☰</span>
+          Lista
+        </button>
+      </div>
     </div>
 
     <p
@@ -41,6 +71,7 @@
     <div
       v-else
       class="product-catalog-grid__grid"
+      :class="{ 'product-catalog-grid__grid--list': view === 'list' && !isVenta }"
     >
       <ProductCard
         v-for="product in products"
@@ -68,6 +99,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import type { ManageCatalogView } from '@/types/manage-catalog-view.types'
 import type { Product } from '@/types/product.types'
 import type { UiMode } from '@/types/ui-mode.types'
 import AppInput from '../atoms/AppInput.vue'
@@ -101,6 +133,8 @@ const props = withDefaults(defineProps<{
   selectionMode?: boolean
   /** Ids elegidos (pueden incluir productos de otras páginas que no están en pantalla). */
   selectedIds?: readonly string[]
+  /** Cuadrícula (por defecto) o lista compacta. Solo aplica en gestión; quien la usa la guarda. */
+  view?: ManageCatalogView
 }>(), {
   loading: false,
   showActions: false,
@@ -110,6 +144,7 @@ const props = withDefaults(defineProps<{
   mode: 'gestion',
   selectionMode: false,
   selectedIds: () => [],
+  view: 'grid',
 })
 
 const isVenta = computed(() => props.mode === 'venta')
@@ -124,7 +159,13 @@ const emit = defineEmits<{
   deactivate: [product: Product]
   reactivate: [product: Product]
   'toggle-select': [product: Product]
+  'update:view': [view: ManageCatalogView]
 }>()
+
+/** Tocar la vista que ya está activa no cambia nada: no hay evento que guardar. */
+function setView(next: ManageCatalogView) {
+  if (next !== props.view) emit('update:view', next)
+}
 
 const searchTerm = ref('')
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
@@ -164,6 +205,35 @@ defineExpose({ handleSearchInput })
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--spacing-md);
 }
+/* Vista de lista: una sola columna, tarjetas a lo ancho — mismos datos y
+   acciones de siempre, solo cambia cuántas caben sin desplazarse de lado. */
+.product-catalog-grid__grid--list {
+  grid-template-columns: 1fr;
+}
+
+/* ── Selector de vista (cuadrícula / lista) — mismo patrón que el de Venta ── */
+.product-catalog-grid__view { display: inline-flex; gap: var(--spacing-xs); padding: var(--spacing-xs); background: var(--color-surface-alt); border-radius: var(--radius-lg); }
+.product-catalog-grid__view-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 var(--spacing-md);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text);
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.product-catalog-grid__view-btn:hover { background: var(--color-surface); }
+.product-catalog-grid__view-btn[aria-pressed='true'] { font-weight: 800; background: var(--color-surface); border-color: var(--color-border-strong); box-shadow: var(--shadow-sm); }
+.product-catalog-grid__view-btn:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 
 /* ── Modo Venta: presentación táctil y visual ───────────────────
    Todo lo interactivo mide al menos 44 px (guía de marca): el buscador
