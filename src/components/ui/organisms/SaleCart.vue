@@ -106,6 +106,19 @@
       >
         {{ hint }}
       </p>
+
+      <!-- D3: solo con UNA línea y efectivo insuficiente (nunca por carrito
+           vacío ni por un efectivo ambiguo) — el contrato de Deuda es de un
+           solo producto/cantidad, nunca un carrito. -->
+      <button
+        v-if="canRegisterDebt"
+        type="button"
+        class="sale-cart__debt-option"
+        data-action="open-debt-modal"
+        @click="emit('open-debt-modal')"
+      >
+        {{ VOICE.deuda.offerTitle }}
+      </button>
     </div>
 
     <!-- Vaciar borra el trabajo de un rato: nunca de un solo toque. "Mejor no"
@@ -142,7 +155,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { saleChargeHint } from '@/config/voice'
+import { VOICE, saleChargeHint } from '@/config/voice'
 import type { CartLineView } from '@/types/cart.types'
 import AppButton from '../atoms/AppButton.vue'
 import CartLineItem from '../molecules/CartLineItem.vue'
@@ -164,6 +177,8 @@ const props = defineProps<{
   cashText: string
   /** Cobro en curso: todo se bloquea y el botón dice "Cobrando…" */
   loading: boolean
+  /** El efectivo escrito es ambiguo (§D3): mientras esto sea `true` no se ofrece fiado/apartado. */
+  cashInvalid?: boolean
   /**
    * Paso 2 del cobro en celular: el total y el campo de efectivo pasan a ser lo
    * más grande y prominente de la pantalla, arriba; la lista de productos baja y
@@ -180,11 +195,27 @@ const emit = defineEmits<{
   'update:cashText': [text: string]
   charge: []
   clear: []
+  'open-debt-modal': []
 }>()
 
 const confirmOpen = ref(false)
 
 const hint = computed(() => (props.canCharge ? '' : saleChargeHint(props)))
+
+/**
+ * D3: "Registrar como fiado/apartado" solo con exactamente UNA línea (la
+ * Deuda es de un solo producto/cantidad, nunca un carrito), y solo cuando lo
+ * que falta es efectivo — nunca por carrito vacío (ya cubierto por exigir 1
+ * línea) ni por un efectivo ambiguo (`cashInvalid`: ahí el problema es el
+ * texto, no que falte dinero). Se apaga igual que el resto mientras se cobra.
+ */
+const canRegisterDebt = computed(() =>
+  !props.loading
+  && props.lines.length === 1
+  && !props.canCharge
+  && props.missingMinor > 0
+  && !props.cashInvalid,
+)
 
 function onCharge() {
   // Doble candado: el botón ya está deshabilitado, pero un toque doble o un
@@ -277,6 +308,24 @@ function confirmClear() {
 @keyframes sale-cart-spin { to { transform: rotate(360deg); } }
 
 .sale-cart__hint { margin: 0; text-align: center; font-size: var(--font-size-md); font-weight: 600; color: var(--color-text-muted); }
+
+/* D3: alternativa al cobro de contado, nunca confundible con "Cobrar" (ni su
+   color ni su tamaño); 44 px mínimos al tacto. */
+.sale-cart__debt-option {
+  min-height: 2.75rem;
+  padding: 0 var(--spacing-md);
+  font-family: inherit;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.sale-cart__debt-option:hover { background: var(--color-surface-alt); }
+.sale-cart__debt-option:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 
 /* ── Paso 2 del cobro en celular (`prominent`) ───────────────────────────
    Lo importante va arriba y en grande: total, efectivo y cambio. La lista de

@@ -6,9 +6,13 @@ import { useSessionStore } from './session.store'
 import SalesService from '@/services/sales.service'
 import * as salesQueue from '@/services/sales-queue'
 import { classifySaleError, friendlySaleErrorMessage } from '@/services/sale-errors'
+import DeudasService from '@/services/deudas.service'
+import { friendlyDeudaErrorMessage } from '@/services/deuda-errors'
 import { VOICE, saleConflictMessage } from '@/config/voice'
 import { buildSalePayload, newSaleId } from '@/utils/sale'
+import { subtractMinor, sumMinor } from '@/utils/money'
 import type { CreateSalePayload, Sale } from '@/types/sale.types'
+import type { DeudaType } from '@/types/deuda.types'
 
 /**
  * Orquestación del cobro (decisión: store de Pinia, no composable, porque el
@@ -33,7 +37,7 @@ import type { CreateSalePayload, Sale } from '@/types/sale.types'
  *   conserva para corregirlo.
  */
 
-export type CheckoutBlockedReason = 'empty-cart' | 'cash-insufficient' | 'missing-context'
+export type CheckoutBlockedReason = 'empty-cart' | 'cash-insufficient' | 'missing-context' | 'debt-invalid-cart'
 
 export type CheckoutResult =
   /** Venta cobrada. Totales del SERVIDOR. Stock local descontado. */
@@ -50,6 +54,22 @@ export type CheckoutResult =
   | { kind: 'failed-to-save'; message: string }
   /** No se intentó: falta algo para poder cobrar. */
   | { kind: 'blocked'; reason: CheckoutBlockedReason }
+  /**
+   * Fiado/apartado registrado (D3: solo con una línea en el carrito). NUNCA
+   * es una venta de contado: no existe ningún Sale para esta transacción, el
+   * servidor descontó el stock al crear la Deuda directamente. `abonoFailed`
+   * (D4) indica que había efectivo ya ingresado y el servidor rechazó el
+   * primer abono; la Deuda YA existe igual, con `abonos: []`.
+   */
+  | {
+      kind: 'debt-registered'
+      deudaId: string
+      debtType: DeudaType
+      totalMinor: number
+      pendingMinor: number
+      initialAbonoMinor: number
+      abonoFailed: boolean
+    }
 
 /** El intento en curso: todo lo que debe repetirse idéntico en un reintento. */
 interface Attempt {
@@ -73,10 +93,13 @@ export const useCheckoutStore = defineStore('checkout', () => {
 
   /** `true` mientras un cobro está en curso (deshabilita el botón "Cobrar"). */
   const loading = ref(false)
+  /** `true` mientras se registra un fiado/apartado (independiente de `loading`: no es un cobro). */
+  const registeringDebt = ref(false)
   const lastResult = ref<CheckoutResult | null>(null)
 
   let attempt: Attempt | null = null
   let inFlight: Promise<CheckoutResult> | null = null
+  let debtInFlight: Promise<CheckoutResult> | null = null
 
   const isOnline = () => typeof navigator === 'undefined' || navigator.onLine !== false
 
@@ -236,6 +259,82 @@ export const useCheckoutStore = defineStore('checkout', () => {
     return current
   }
 
+  /**
+   * Registra un fiado/apartado (D3: solo con exactamente una línea en el
+   * carrito — el contrato de Deuda es de un solo producto/cantidad, nunca un
+   * carrito). Es una transacción alternativa completa: NUNCA llama a
+   * `POST /sales` (crear la Deuda ya descuenta el stock por sí sola).
+   */
+  async function runRegisterDebt(
+    input: { type: DeudaType; deudor: { nombre: string; telefono?: string; notas?: string } },
+  ): Promise<CheckoutResult> {
+    if (cart.lines.length !== 1) return { kind: 'blocked', reason: 'debt-invalid-cart' }
+    const [line] = cart.lines
+    const cashMinor = cart.cashReceivedMinor
+
+    let deuda
+    try {
+      deuda = await DeudasService.createDeuda({
+        type: input.type,
+        productId: line.productId,
+        cantidad: line.quantity,
+        deudor: input.deudor,
+      })
+    } catch (error) {
+      return { kind: 'rejected', reasonMessage: friendlyDeudaErrorMessage(error), canFix: true }
+    }
+
+    // El servidor ya descontó el stock al crear la Deuda: el catálogo local se
+    // actualiza igual que tras una venta, para no ofrecer piezas que ya no hay.
+    await catalog.applySoldItems([{ productId: line.productId, quantity: line.quantity }])
+
+    let initialAbonoMinor = 0
+    let abonoFailed = false
+    if (cashMinor > 0) {
+      try {
+        deuda = await DeudasService.createAbono(deuda.id, { montoMinor: cashMinor })
+        initialAbonoMinor = cashMinor
+      } catch {
+        // D4: la Deuda YA existe (con abonos: []); no se fingirá éxito completo, el resultado lo dice.
+        abonoFailed = true
+      }
+    }
+
+    const abonadoMinor = sumMinor(deuda.abonos.map((abono) => abono.montoMinor))
+    return {
+      kind: 'debt-registered',
+      deudaId: deuda.id,
+      debtType: deuda.type,
+      totalMinor: deuda.totalMinor,
+      pendingMinor: subtractMinor(deuda.totalMinor, abonadoMinor),
+      initialAbonoMinor,
+      abonoFailed,
+    }
+  }
+
+  /**
+   * Registra el fiado/apartado. Nunca lanza. Doble candado como `charge()`:
+   * un segundo llamado mientras hay uno en curso devuelve el mismo resultado.
+   */
+  function registerDebt(
+    input: { type: DeudaType; deudor: { nombre: string; telefono?: string; notas?: string } },
+  ): Promise<CheckoutResult> {
+    if (debtInFlight) return debtInFlight
+    registeringDebt.value = true
+    const current = runRegisterDebt(input)
+      .catch((): CheckoutResult => ({ kind: 'rejected', reasonMessage: VOICE.genericError, canFix: true }))
+      .then((result) => {
+        lastResult.value = result
+        return result
+      })
+      .finally(() => {
+        registeringDebt.value = false
+        if (debtInFlight === current) debtInFlight = null
+      })
+    debtInFlight = current
+    return current
+  }
+
   /** Venta nueva: vacía carrito y efectivo y olvida el intento congelado. */
   function startNewSale(): void {
     cart.clear()
@@ -252,5 +351,5 @@ export const useCheckoutStore = defineStore('checkout', () => {
     lastResult.value = null
   }
 
-  return { loading, lastResult, charge, startNewSale, dismissResult }
+  return { loading, registeringDebt, lastResult, charge, registerDebt, startNewSale, dismissResult }
 })

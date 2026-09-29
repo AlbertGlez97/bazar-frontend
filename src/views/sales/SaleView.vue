@@ -85,6 +85,7 @@
             :can-charge="cart.canCharge"
             :cash-text="cashText"
             :loading="checkout.loading"
+            :cash-invalid="cart.cashInvalid"
             @increment="onIncrement"
             @decrement="onDecrement"
             @remove="onRemove"
@@ -92,6 +93,7 @@
             @update:cash-text="onCashText"
             @charge="charge"
             @clear="clearCart"
+            @open-debt-modal="debtModalOpen = true"
           />
         </div>
       </div>
@@ -125,13 +127,22 @@
       :feedback="scanFeedback"
       @scan="onScan"
     />
+
+    <!-- D3: fiado/apartado, solo alcanzable con una línea y efectivo
+         insuficiente (SaleCart ya lo garantiza). Presentacional; las llamadas
+         reales las hace checkout.registerDebt. -->
+    <RegistrarDeudaModal
+      v-model="debtModalOpen"
+      :submitting="checkout.registeringDebt"
+      @confirm="onRegisterDebt"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AppButton, QrScannerModal, SaleCart, SaleCatalogPicker, SaleResult } from '@/components'
+import { AppButton, QrScannerModal, RegistrarDeudaModal, SaleCart, SaleCatalogPicker, SaleResult } from '@/components'
 import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
@@ -143,6 +154,7 @@ import { useToastStore } from '@/stores/toast.store'
 import { saleCartRefusalMessage, saleScanAddedMessage, saleScanUnknownMessage } from '@/config/voice'
 import { minorToDisplay, parseCashInput } from '@/utils/money'
 import type { Product } from '@/types/product.types'
+import type { DeudaType } from '@/types/deuda.types'
 import { describeCheckoutResult } from './sale-result'
 
 const catalog = useSaleCatalogStore()
@@ -309,6 +321,15 @@ const resultView = computed(() =>
 /** Nunca lanza; el resultado queda en `checkout.lastResult` y lo pinta SaleResult. */
 async function charge() {
   await checkout.charge()
+}
+
+// ── Fiado/apartado (D3) ──────────────────────────────────────────────────
+const debtModalOpen = ref(false)
+
+/** El modal se cierra siempre: el resultado (éxito, con abono fallido, o rechazo) toma la pantalla. */
+async function onRegisterDebt(payload: { type: DeudaType; deudor: { nombre: string; telefono?: string; notas?: string } }) {
+  await checkout.registerDebt(payload)
+  debtModalOpen.value = false
 }
 
 /** La venta nueva vacía el carrito: el watcher de arriba saca el Paso 2 de la URL. */

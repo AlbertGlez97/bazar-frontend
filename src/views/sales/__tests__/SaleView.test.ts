@@ -18,12 +18,15 @@ import { closeLocalDb } from '@/services/local-db'
 import * as salesQueue from '@/services/sales-queue'
 import SalesService from '@/services/sales.service'
 import ProductsService from '@/services/products.service'
+import DeudasService from '@/services/deudas.service'
 import { makeProduct } from '@/test/factories'
 import { mockDevice, type MockDevice } from '@/test/mockDevice'
 import type { CreateSalePayload, CreateSaleResult, Sale } from '@/types/sale.types'
+import type { Deuda } from '@/types/deuda.types'
 
 vi.mock('@/services/sales.service', () => ({ default: { createSale: vi.fn() } }))
 vi.mock('@/services/products.service', () => ({ default: { listProducts: vi.fn() } }))
+vi.mock('@/services/deudas.service', () => ({ default: { createDeuda: vi.fn(), createAbono: vi.fn() } }))
 
 const { startQrScanner, getScanSupport } = vi.hoisted(() => ({
   startQrScanner: vi.fn(),
@@ -47,6 +50,25 @@ const JARRITO = makeProduct({ name: 'Jarrito', unitPriceMinor: 1200, stock: 0 })
 
 const createSale = vi.mocked(SalesService.createSale)
 const listProducts = vi.mocked(ProductsService.listProducts)
+const createDeuda = vi.mocked(DeudasService.createDeuda)
+const createAbono = vi.mocked(DeudasService.createAbono)
+
+function deudaFor(overrides: Partial<Deuda> = {}): Deuda {
+  return {
+    id: '70000000-0000-4000-8000-000000000001',
+    type: 'apartado',
+    deudorId: '60000000-0000-4000-8000-000000000001',
+    productId: CAFE.id,
+    contextId: 'bazar-local',
+    cantidad: 1,
+    totalMinor: 1999,
+    status: 'pendiente',
+    createdByMemberId: MEMBER.id,
+    createdAt: '2026-09-25T12:00:00.000Z',
+    abonos: [],
+    ...overrides,
+  }
+}
 
 function saleFor(payload: CreateSalePayload, status: Sale['status'] = 'completada', totalMinor = 1999): Sale {
   const rejected = status === 'rechazada_por_conflicto'
@@ -126,6 +148,9 @@ beforeEach(() => {
   createSale.mockImplementation(async (payload) => completed(payload))
   listProducts.mockReset()
   listProducts.mockResolvedValue({ items: [CAFE, PAN, RADIO, JARRITO], total: 4, page: 1, limit: 100 })
+  createDeuda.mockReset()
+  createDeuda.mockImplementation(async () => deudaFor())
+  createAbono.mockReset()
   startQrScanner.mockReset()
   getScanSupport.mockReset()
   getScanSupport.mockReturnValue('ok')
@@ -1297,5 +1322,154 @@ describe('SaleView — cuadrícula o lista', () => {
     await flushPromises()
     expect(wrapper.find('ul.sale-picker__list').exists()).toBe(true)
     expect(lines(wrapper)).toHaveLength(1)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// Fiado/apartado (D3/D4): solo con exactamente UNA línea y efectivo
+// insuficiente. Crear la Deuda ya descuenta el stock en el servidor —
+// NUNCA se llama POST /sales para este flujo.
+// ─────────────────────────────────────────────────────────────────────────
+describe('SaleView — fiado/apartado', () => {
+  const debtBtn = (w: Wrapper) => w.find('button[data-action="open-debt-modal"]')
+  const confirmDebtBtn = (w: Wrapper) => w.get('button[data-action="confirm-debt"]')
+  // Ojo: `input` a secas también matchea la búsqueda del catálogo y el
+  // efectivo — el formulario de deuda se busca dentro de su propio bloque.
+  const nombreInput = (w: Wrapper) => w.get('.registrar-deuda-modal__body').findAll('input')[0]
+
+  it('con una sola línea y efectivo insuficiente, aparece la opción', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+
+    expect(debtBtn(wrapper).exists()).toBe(true)
+  })
+
+  it('con 2+ líneas NO aparece: el cobro sigue bloqueado exactamente como hoy', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await tap(wrapper, 'Pan dulce')
+
+    expect(debtBtn(wrapper).exists()).toBe(false)
+    expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
+  })
+
+  it('con el carrito vacío NO aparece', async () => {
+    const { wrapper } = await mountSale()
+    expect(debtBtn(wrapper).exists()).toBe(false)
+  })
+
+  it('si ya alcanza el efectivo (canCharge) NO aparece', async () => {
+    const { wrapper } = await mountSale()
+    await sellCafe(wrapper, '100')
+    expect(debtBtn(wrapper).exists()).toBe(false)
+  })
+
+  it('abre el formulario, valida el nombre y llama POST /deudas con el producto/cantidad de la única línea', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await tap(wrapper, 'Café de olla') // 2 piezas
+    await debtBtn(wrapper).trigger('click')
+
+    // nombre vacío no manda nada
+    await confirmDebtBtn(wrapper).trigger('click')
+    expect(createDeuda).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Escribe el nombre de quien debe.')
+
+    await nombreInput(wrapper).setValue('Lucía')
+    await confirmDebtBtn(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith({
+      type: 'fiado',
+      productId: CAFE.id,
+      cantidad: 2,
+      deudor: { nombre: 'Lucía' },
+    })
+  })
+
+  it('con efectivo ya ingresado, además llama POST /deudas/:id/abonos con ese monto (D4)', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await payWith(wrapper, '10') // insuficiente para $19.99, pero ya hay algo escrito
+    await debtBtn(wrapper).trigger('click')
+    await nombreInput(wrapper).setValue('Lucía')
+    createAbono.mockImplementation(async (id, payload) => deudaFor({
+      id,
+      abonos: [{ id: 'a-1', deudaId: id, contextId: 'bazar-local', montoMinor: payload.montoMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }],
+    }))
+
+    await confirmDebtBtn(wrapper).trigger('click')
+    // catalog.applySoldItems guarda el snapshot en IndexedDB (fake-indexeddb):
+    // no basta con vaciar microtareas, hay que esperar de verdad.
+    await vi.waitFor(() => expect(createAbono).toHaveBeenCalled())
+
+    expect(createAbono).toHaveBeenCalledExactlyOnceWith(deudaFor().id, { montoMinor: 1000 })
+  })
+
+  it('muestra el resultado: NO "Venta registrada", el tipo, el saldo pendiente, y "Nueva venta" vacía el carrito', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await debtBtn(wrapper).trigger('click')
+    await wrapper.get('select').setValue('apartado')
+    await nombreInput(wrapper).setValue('Lucía')
+
+    await confirmDebtBtn(wrapper).trigger('click')
+    await vi.waitFor(() => expect(wrapper.find('.sale-result').exists()).toBe(true))
+
+    expect(wrapper.get('h2').text()).toBe('Fiado/apartado registrado')
+    expect(wrapper.text()).not.toContain('Venta registrada')
+    expect(wrapper.text()).toMatch(/no es una venta de contado/i)
+    expect(wrapper.text()).toContain('Apartado')
+    expect(wrapper.get('.sale-result__change').text()).toContain('Saldo pendiente')
+    expect(createSale).not.toHaveBeenCalled()
+
+    await wrapper.get('button.sale-result__primary').trigger('click')
+    expect(wrapper.find('.sale-result').exists()).toBe(false)
+    expect(lines(wrapper)).toHaveLength(0)
+    expect(useCartStore().cashReceivedMinor).toBe(0)
+  })
+
+  it('D4: si el abono inicial falla, lo muestra honesto (Deuda registrada, abono no) sin fingir éxito completo', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await payWith(wrapper, '10')
+    await debtBtn(wrapper).trigger('click')
+    await nombreInput(wrapper).setValue('Lucía')
+    createAbono.mockRejectedValue({ isAxiosError: true, response: { status: 400, data: { message: 'Abono of 1000 exceeds the remaining balance of 0' } } })
+
+    await confirmDebtBtn(wrapper).trigger('click')
+    await vi.waitFor(() => expect(wrapper.find('.sale-result').exists()).toBe(true))
+
+    expect(wrapper.get('h2').text()).toBe('Fiado/apartado registrado')
+    expect(wrapper.text()).toMatch(/no pudimos anotar el efectivo/i)
+    expect(wrapper.text()).not.toMatch(/no pudimos registrar el fiado/i)
+  })
+
+  it('un fallo al crear la deuda (p.ej. sin stock) es "rejected", nunca "Fiado/apartado registrado", y conserva el carrito', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await debtBtn(wrapper).trigger('click')
+    await nombreInput(wrapper).setValue('Lucía')
+    createDeuda.mockRejectedValue({ isAxiosError: true, response: { status: 400, data: { message: `Insufficient stock for product ${CAFE.id}` } } })
+
+    await confirmDebtBtn(wrapper).trigger('click')
+    await vi.waitFor(() => expect(wrapper.find('.sale-result').exists()).toBe(true))
+
+    expect(wrapper.get('h2').text()).toBe('No pudimos registrar la venta')
+    expect(wrapper.text()).toContain('Ya no hay suficientes piezas de este producto')
+    expect(createAbono).not.toHaveBeenCalled()
+
+    await wrapper.get('button.sale-result__primary').trigger('click')
+    expect(lines(wrapper)).toHaveLength(1)
+  })
+
+  it('el flujo de cobro de contado normal (2+ líneas o efectivo suficiente) sigue exactamente igual', async () => {
+    const { wrapper } = await mountSale()
+    await sellCafe(wrapper, '100')
+
+    await submit(wrapper)
+
+    expect(wrapper.get('h2').text()).toBe('Venta registrada')
+    expect(createDeuda).not.toHaveBeenCalled()
   })
 })

@@ -95,7 +95,8 @@ describe.each([['normal', false], ['prominente (Paso 2)', true]] as const)('el c
 describe('el carrito solo emite las acciones permitidas', () => {
   it('SaleCart declara únicamente los eventos de siempre (sin evento de precio ni de descuento)', () => {
     const declared = ((SaleCart as unknown as { emits?: string[] }).emits ?? []).slice().sort()
-    expect(declared).toEqual(['charge', 'clear', 'decrement', 'increment', 'limit', 'remove', 'update:cashText'])
+    // "open-debt-modal" (D3, fiado/apartado) es aditivo, no de precio/descuento.
+    expect(declared).toEqual(['charge', 'clear', 'decrement', 'increment', 'limit', 'open-debt-modal', 'remove', 'update:cashText'])
     for (const event of declared) expect(event).not.toMatch(PRICE_CHANGE_WORDS)
   })
 

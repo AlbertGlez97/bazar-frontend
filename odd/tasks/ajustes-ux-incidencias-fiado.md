@@ -180,20 +180,39 @@ no backend changes needed for the multi-line case — out of scope, not silently
   - Verification: `npm run test:run` → 152 files / 2861 tests passed (baseline after P1 was 149/2797 — this
     task added 3 test files and 64 tests). `npx eslint .` → clean. `npm run build` (`vue-tsc -b && vite build`)
     → passed (pre-existing large-chunk warnings for `pdfmake`/`exceljs`/`vfs_fonts`, unrelated to this change).
-- [ ] **P3** Fiado/apartado in checkout: "Registrar como fiado/apartado" option in `SaleCart.vue` gated on
-      `cart.lines.length === 1` and `!cart.canCharge` (D3), deudor-capture form (nombre required,
-      telefono/nota optional, tipo fiado/apartado), `POST /deudas` then conditionally `POST /deudas/:id/abonos`
-      for the pre-entered cash (D4), new `debt-registered` (or similarly named) `CheckoutResult` variant with
-      its own honest result screen (saldo pendiente visible, explicitly NOT a completed cash sale, and the
-      partial-failure case from D4 surfaced if it happens). TDD RED-first, including the D4 partial-failure
-      path.
-- [ ] **P-docs** Update `doc/reglas-de-negocio.md` and `doc/api-contract-for-frontend.md` in BOTH repos only if
-      P1's `umbral` addition needs it here too (bazar-api's own task doc already covers updating them there;
-      this entry is to confirm the frontend-side doc, if any, doesn't also need a matching note) — no changes
-      expected for P2/P3 since neither changes the backend contract.
-- [ ] **P-verify** Full branch verification: build, lint, `npm run test:run`, exact counts. Disclose (don't
-      fake) what a real/emulated tablet+phone viewport pass would need — same disclosure as every prior
-      feature this session, this environment has no browser.
+- [x] **P3** Fiado/apartado in checkout — `src/types/deuda.types.ts`, `src/services/deudas.service.ts`,
+      `src/services/deuda-errors.ts` (new). `checkout.store.ts` gains `registerDebt()` (double-tap guarded like
+      `charge()`) and a new `CheckoutResult` variant `debt-registered` (deudaId, debtType, totalMinor,
+      pendingMinor, initialAbonoMinor, abonoFailed) plus `debt-invalid-cart` blocked reason. New organism
+      `RegistrarDeudaModal.vue` (tipo, nombre required, telefono/notas optional). `SaleCart.vue` gains
+      `canRegisterDebt` computed (`lines.length === 1 && !canCharge && missingMinor > 0 && !cashInvalid &&
+      !loading`, D3) showing a "Registrar como fiado/apartado" button distinct from "Cobrar". D4: `POST /deudas`
+      then, only if `cashReceivedMinor > 0`, an immediate `POST /deudas/:id/abonos` — if that second call fails
+      the Deuda still exists (`abonos: []`) and the result screen says so honestly (`abonoFailed`), never
+      claiming full success. Creating the Deuda never calls `POST /sales` (Deuda creation already decrements
+      stock on its own) — the result screen (`SaleResult.vue`) explicitly says this is not a completed cash
+      sale, shows "saldo pendiente" (never "cambio"). TDD: RED confirmed for the gating condition, the modal's
+      required-name validation, the `POST /deudas`→`POST /deudas/:id/abonos` sequencing, the D4 failure path,
+      and the result screen's copy — then GREEN. Re-ran `SaleCart.*`/`cart.store`/`checkout.store*`/`sale-
+      result*`/`SaleView.test.ts` explicitly (267/267) to confirm the normal cash-sale flow (2+ lines or
+      sufficient cash) is unchanged. 158 files / 2939 tests green (+6 files/+78 tests), lint clean, build ok.
+      Reviewed and independently re-verified by the coordinator (same exact counts) before committing.
+- [x] **P-docs** `doc/api-contract-for-frontend.md` in bazar-frontend was still missing BE-14's `umbral`
+      addition to `GET /products` (the sync predates BE-14) — synced the query-param table row, the `GET
+      /products` query/errors text, the `/:id/audit` ignores-it note, and the `Fuente:` line, verbatim from
+      bazar-api's own doc. `doc/reglas-de-negocio.md`: confirmed no matching addition needed, consistent with
+      BE-14's own T3 (deliberately skipped there too — that file has no query-param/filter table for `GET
+      /products`). P2/P3 needed no doc sync: neither changes the backend contract (Incidencias and Deudas were
+      already fully documented and unchanged).
+- [x] **P-verify** Whole-branch verification after all 3 commits (P1 `dc04c13`, P2 `31969f9`, P3 pending
+      commit): `npm run test:run` → 158 files / 2939 tests green. `npx eslint .` → clean. `npm run build`
+      (`vue-tsc -b && vite build`) → clean, only the pre-existing pdfmake/exceljs/vfs_fonts chunk-size warnings.
+      Tablet/phone viewport pass: NOT performed — this environment has no browser, real or emulated. Same
+      disclosure as every prior feature this session. A real pass would need a viewport-capable runner (e.g.
+      Playwright at 768px/390px) exercising: the grid/list toggle and "Poca existencia" switch on Productos at
+      phone width, the Incidencias list/filters/modal on a narrow screen, and the new "Registrar como
+      fiado/apartado" button/modal alongside "Cobrar" in Paso 2 (touch target separation from the charge
+      button is the one thing most worth a real-device check here).
 
 ## Out of scope / explicitly deferred
 

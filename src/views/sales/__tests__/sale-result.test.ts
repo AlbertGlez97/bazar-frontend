@@ -71,5 +71,40 @@ describe('describeCheckoutResult', () => {
       .toEqual({ kind: 'blocked', message: VOICE.sale.cashInsufficient })
     expect(describeCheckoutResult({ kind: 'blocked', reason: 'missing-context' }))
       .toEqual({ kind: 'blocked', message: VOICE.sale.blockedMissingContext })
+    expect(describeCheckoutResult({ kind: 'blocked', reason: 'debt-invalid-cart' }))
+      .toEqual({ kind: 'blocked', message: VOICE.sale.blockedDebtInvalidCart })
+  })
+
+  it('debt-registered: pasa el tipo, los montos y si el abono inicial falló (D4)', () => {
+    const view = describeCheckoutResult({
+      kind: 'debt-registered',
+      deudaId: 'd-1',
+      debtType: 'apartado',
+      totalMinor: 5997,
+      pendingMinor: 3997,
+      initialAbonoMinor: 2000,
+      abonoFailed: false,
+    })
+    expect(view).toEqual({
+      kind: 'debt-registered',
+      debtType: 'apartado',
+      totalMinor: 5997,
+      pendingMinor: 3997,
+      initialAbonoMinor: 2000,
+      abonoFailed: false,
+    })
+  })
+
+  it('debt-registered con abono fallido (D4): abonoFailed pasa tal cual, nunca se pierde', () => {
+    const view = describeCheckoutResult({
+      kind: 'debt-registered',
+      deudaId: 'd-1',
+      debtType: 'fiado',
+      totalMinor: 5997,
+      pendingMinor: 5997,
+      initialAbonoMinor: 0,
+      abonoFailed: true,
+    })
+    expect(view).toMatchObject({ kind: 'debt-registered', abonoFailed: true, pendingMinor: 5997 })
   })
 })

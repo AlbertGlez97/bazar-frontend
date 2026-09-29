@@ -29,6 +29,15 @@ export function describeCheckoutResult(result: CheckoutResult, sellerName?: stri
       return { kind: 'failed-to-save', message: result.message }
     case 'blocked':
       return { kind: 'blocked', message: BLOCKED_MESSAGES[result.reason] }
+    case 'debt-registered':
+      return {
+        kind: 'debt-registered',
+        debtType: result.debtType,
+        totalMinor: result.totalMinor,
+        pendingMinor: result.pendingMinor,
+        initialAbonoMinor: result.initialAbonoMinor,
+        abonoFailed: result.abonoFailed,
+      }
   }
 }
 
@@ -36,4 +45,5 @@ const BLOCKED_MESSAGES = {
   'empty-cart': VOICE.sale.blockedEmptyCart,
   'cash-insufficient': VOICE.sale.cashInsufficient,
   'missing-context': VOICE.sale.blockedMissingContext,
+  'debt-invalid-cart': VOICE.sale.blockedDebtInvalidCart,
 } as const

@@ -39,6 +39,21 @@
       </p>
     </div>
 
+    <!-- Fiado/apartado: total + SALDO PENDIENTE (nunca "cambio"; no hubo cobro) -->
+    <div
+      v-if="result.kind === 'debt-registered'"
+      class="sale-result__amounts"
+    >
+      <p class="sale-result__total">
+        <span class="sale-result__label">{{ VOICE.saleResult.totalLabel }}</span>
+        <span class="sale-result__number">${{ minorToDisplay(result.totalMinor) }}</span>
+      </p>
+      <p class="sale-result__change">
+        <span class="sale-result__label">{{ VOICE.saleResult.pendingLabel }}</span>
+        <span class="sale-result__number sale-result__number--change">${{ minorToDisplay(result.pendingMinor) }}</span>
+      </p>
+    </div>
+
     <p
       v-if="body"
       class="sale-result__body"
@@ -56,6 +71,20 @@
       class="sale-result__summary"
     >
       {{ result.summary }}
+    </p>
+    <p
+      v-if="result.kind === 'debt-registered' && result.initialAbonoMinor > 0 && !result.abonoFailed"
+      class="sale-result__summary"
+    >
+      {{ VOICE.saleResult.initialAbonoLabel }}: ${{ minorToDisplay(result.initialAbonoMinor) }}.
+    </p>
+    <!-- D4: hubo efectivo ya ingresado y el primer abono no se pudo registrar; la
+         Deuda YA existe igual — nunca se finge éxito completo. -->
+    <p
+      v-if="result.kind === 'debt-registered' && result.abonoFailed"
+      class="sale-result__body sale-result__body--action"
+    >
+      {{ VOICE.deuda.abonoFailedWarning }}
     </p>
 
     <!-- El motivo técnico del servidor es solo un detalle para el socio -->
@@ -121,7 +150,11 @@ const headingEl = ref<HTMLElement | null>(null)
 // teclado empieza desde ahí (la pantalla anterior desaparece de golpe).
 onMounted(() => headingEl.value?.focus())
 
-const isAlert = computed(() => props.result.kind !== 'success' && props.result.kind !== 'saved-offline')
+// Se siente como éxito (success/saved-offline) o como un hecho completado sin
+// error (debt-registered: no falló nada, solo no fue un cobro de contado).
+const isAlert = computed(() =>
+  props.result.kind !== 'success' && props.result.kind !== 'saved-offline' && props.result.kind !== 'debt-registered',
+)
 
 const ICONS: Record<SaleResultView['kind'], string> = {
   success: '✓',
@@ -131,6 +164,7 @@ const ICONS: Record<SaleResultView['kind'], string> = {
   'auth-needed': '🔒',
   'failed-to-save': '💾',
   blocked: '!',
+  'debt-registered': '🤝',
 }
 // La venta guardada sin señal lleva una nube junto a la palomita: se siente
 // como éxito, pero es distinguible de "Venta registrada".
@@ -144,6 +178,7 @@ const TITLES: Record<SaleResultView['kind'], string> = {
   'auth-needed': VOICE.saleResult.authNeededTitle,
   'failed-to-save': VOICE.saleResult.failedToSaveTitle,
   blocked: VOICE.saleResult.blockedTitle,
+  'debt-registered': VOICE.saleResult.debtTitle,
 }
 const title = computed(() => TITLES[props.result.kind])
 
@@ -151,6 +186,10 @@ const body = computed(() => {
   const result = props.result
   if (result.kind === 'saved-offline') return VOICE.saleResult.savedBody
   if (result.kind === 'success') return ''
+  if (result.kind === 'debt-registered') {
+    const typeLabel = result.debtType === 'fiado' ? VOICE.saleResult.debtTypeFiado : VOICE.saleResult.debtTypeApartado
+    return `${typeLabel}. ${VOICE.saleResult.debtNotASale}`
+  }
   return result.message
 })
 
@@ -168,7 +207,8 @@ const amounts = computed(() => {
 const primaryLabel = computed(() => {
   switch (props.result.kind) {
     case 'success':
-    case 'saved-offline': return VOICE.saleResult.newSale
+    case 'saved-offline':
+    case 'debt-registered': return VOICE.saleResult.newSale
     case 'conflict': return VOICE.saleResult.newSaleAfterConflict
     case 'auth-needed': return VOICE.saleResult.login
     case 'failed-to-save': return VOICE.saleResult.retry
@@ -181,6 +221,7 @@ function onPrimary() {
     case 'success':
     case 'saved-offline':
     case 'conflict':
+    case 'debt-registered':
       emit('new-sale')
       break
     case 'auth-needed':
@@ -229,7 +270,8 @@ const secondary = computed<{ label: string; event: 'new-sale' | 'back' } | null>
 .sale-result--blocked { --result-color: var(--color-warning); --result-soft: var(--color-warning-soft); }
 .sale-result--rejected,
 .sale-result--failed-to-save { --result-color: var(--color-danger); --result-soft: var(--color-danger-soft); }
-.sale-result--auth-needed { --result-color: var(--color-info); --result-soft: var(--color-info-soft); }
+.sale-result--auth-needed,
+.sale-result--debt-registered { --result-color: var(--color-info); --result-soft: var(--color-info-soft); }
 
 .sale-result__icon {
   display: inline-flex;

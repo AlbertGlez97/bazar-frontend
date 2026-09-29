@@ -168,6 +168,8 @@ export const VOICE = {
     blockedEmptyCart: 'La venta está vacía. Agrega un producto para poder cobrar.',
     blockedMissingContext: 'Falta saber quién vende o en qué dispositivo. Vuelve a elegirlo e intenta de nuevo.',
     conflict: 'Otra venta se llevó la última pieza de un producto justo antes que esta, así que no se cobró. Un socio la revisará en incidencias.',
+    /** Defensivo: la opción solo aparece con exactamente una línea (D3). */
+    blockedDebtInvalidCart: 'Esta opción solo está disponible con un producto a la vez en el carrito.',
   },
   /** Pantallas de resultado del cobro (cada una con un solo botón principal). */
   saleResult: {
@@ -189,6 +191,17 @@ export const VOICE = {
     failedToSaveTitle: 'No se guardó la venta',
     retry: 'Intentar de nuevo',
     blockedTitle: 'Todavía no se puede cobrar',
+    /**
+     * Fiado/apartado registrado (D3/D4): NUNCA se parece a "Venta registrada"
+     * — no hubo venta de contado, el producto se descontó del inventario al
+     * crear la Deuda (independiente de /sales) y el saldo queda pendiente.
+     */
+    debtTitle: 'Fiado/apartado registrado',
+    debtTypeFiado: 'Fiado',
+    debtTypeApartado: 'Apartado',
+    debtNotASale: 'No es una venta de contado: el producto ya se descontó del inventario, pero el pago queda pendiente.',
+    pendingLabel: 'Saldo pendiente',
+    initialAbonoLabel: 'Abono inicial registrado',
   },
   /** Reportes de ventas (solo socios, Modo Gestión) y sus descargas. */
   reports: {
@@ -366,6 +379,33 @@ export const VOICE = {
     resolvedByTitle: 'Resuelta',
     resolvedNotesTitle: 'Notas de la resolución',
     close: 'Cerrar',
+  },
+  /**
+   * Registrar un fiado/apartado desde el cobro cuando el efectivo no alcanza
+   * (D3: solo con una línea en el carrito). NO es una venta de contado: el
+   * servidor descuenta el stock al crear la Deuda, sin pasar por /sales.
+   */
+  deuda: {
+    offerTitle: 'Registrar como fiado/apartado',
+    typeLabel: 'Tipo',
+    typeFiado: 'Fiado (ya se entregó)',
+    typeApartado: 'Apartado (se reserva)',
+    nombreLabel: 'Nombre de quien debe',
+    nombrePlaceholder: 'Nombre completo',
+    nombreRequired: 'Escribe el nombre de quien debe.',
+    telefonoLabel: 'Teléfono (opcional)',
+    notasLabel: 'Notas (opcional)',
+    notasPlaceholder: 'Ej. viene el sábado por su pieza',
+    submit: 'Registrar',
+    submitting: 'Registrando…',
+    cancel: 'Cancelar',
+    /** 400 genérico o sin clasificar de POST /deudas. */
+    createError: 'No pudimos registrar el fiado/apartado. Revisa los datos e intenta de nuevo.',
+    productDeactivated: 'Uno de los productos ya no está a la venta. Quítalo del carrito e intenta de nuevo.',
+    productMissing: 'Uno de los productos ya no existe en tu catálogo. Quítalo del carrito e intenta de nuevo.',
+    insufficientStock: 'Ya no hay suficientes piezas de este producto. Baja la cantidad e intenta de nuevo.',
+    /** D4: la Deuda YA se creó (con abonos: []) pero el abono inicial no se pudo registrar. Nunca se finge éxito completo. */
+    abonoFailedWarning: 'El fiado/apartado se registró, pero no pudimos anotar el efectivo que ya recibiste como primer abono. Regístralo a mano en cuanto puedas.',
   },
 } as const
 

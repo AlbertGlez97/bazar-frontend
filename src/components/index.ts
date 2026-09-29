@@ -106,3 +106,4 @@ export { default as SyncStatusIndicator } from './ui/organisms/SyncStatusIndicat
 export { default as SalesReportSummary } from './ui/organisms/SalesReportSummary.vue'
 export { default as SalesDetailBreakdown } from './ui/organisms/SalesDetailBreakdown.vue'
 export { default as IncidenciaDetailModal } from './ui/organisms/IncidenciaDetailModal.vue'
+export { default as RegistrarDeudaModal } from './ui/organisms/RegistrarDeudaModal.vue'
