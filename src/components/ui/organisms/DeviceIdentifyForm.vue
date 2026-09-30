@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: formulario para identificar el dispositivo físico (tablet).
+  <!-- Organismo: formulario para identificar el dispositivo físico (tablet).
        No hace fetch (regla del barrel @/components): solo valida y emite
        `submit`; la vista (SelectContextView) hace la llamada real a
        POST /devices/identify y decide qué hacer con la respuesta/error. -->

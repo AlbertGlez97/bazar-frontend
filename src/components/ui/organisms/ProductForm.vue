@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: formulario de producto — modo creación o edición según si
+  <!-- Organismo: formulario de producto — modo creación o edición según si
        se recibe la prop `product`. Agrupa además la subida de imagen (la
        decisión de UX fue combinar "editar" y "subir imagen" en un mismo
        formulario en vez de un botón separado, ya que es el flujo más común
@@ -144,7 +144,7 @@ import AppSelect from '../molecules/AppSelect.vue'
 import AppTextarea from '../molecules/AppTextarea.vue'
 import AppButton from '../atoms/AppButton.vue'
 import AppImageUpload from '../molecules/AppImageUpload.vue'
-import AppAlert from './AppAlert.vue'
+import AppAlert from '../molecules/AppAlert.vue'
 
 const props = defineProps<{
   /** Si se pasa un producto, el formulario opera en modo edición */

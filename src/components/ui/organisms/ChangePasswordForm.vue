@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: formulario de "Cambiar mi contraseña". No hace fetch (regla del
+  <!-- Organismo: formulario de "Cambiar mi contraseña". No hace fetch (regla del
        barrel @/components): valida en el cliente y emite `submit`; la vista
        llama a POST /auth/change-password y devuelve aquí lo que salió mal
        (contraseña actual incorrecta, contraseña nueva rechazada, error general).

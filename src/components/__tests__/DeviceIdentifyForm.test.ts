@@ -2,7 +2,7 @@
 // `submit`. No hace fetch (eso vive en SelectContextView).
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
-import DeviceIdentifyForm from '@/components/ui/molecules/DeviceIdentifyForm.vue'
+import DeviceIdentifyForm from '@/components/ui/organisms/DeviceIdentifyForm.vue'
 
 function fillValidForm(wrapper: ReturnType<typeof mount>) {
   const inputs = wrapper.findAll('input')

@@ -8,6 +8,10 @@ const ui = resolve(src, 'components/ui')
 const compoundControls = [
   'AppInput', 'AppSelect', 'AppTextarea', 'AppImageUpload', 'QuantityStepper', 'AppStatCard',
 ]
+const completeSections = [
+  'BusinessRegistrationForm', 'ChangePasswordForm', 'DeviceCreateForm', 'DeviceIdentifyForm',
+  'MemberCreateForm', 'ProductForm', 'DeviceList', 'TeamMemberList', 'ProductCard',
+]
 
 function imports(source: string): string[] {
   return [...source.matchAll(/(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"]+)['"]/g)]
@@ -21,6 +25,10 @@ function resolveImport(file: string, specifier: string): string {
 }
 
 describe('Atomic Design boundaries', () => {
+  it.each(completeSections)('%s is a complete organism rather than a small functional molecule', (name) => {
+    expect(existsSync(resolve(ui, 'organisms', `${name}.vue`))).toBe(true)
+    expect(existsSync(resolve(ui, 'molecules', `${name}.vue`))).toBe(false)
+  })
   it.each(compoundControls)('%s is a composed molecule, not an atom', (name) => {
     expect(existsSync(resolve(ui, 'molecules', `${name}.vue`))).toBe(true)
     expect(existsSync(resolve(ui, 'atoms', `${name}.vue`))).toBe(false)

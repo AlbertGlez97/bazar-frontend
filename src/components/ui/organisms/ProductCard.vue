@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: tarjeta de producto para el grid del catálogo.
+  <!-- Organismo: tarjeta de producto para el grid del catálogo.
        No usa el organismo AppCard (las moléculas no pueden depender de
        organismos, según la regla del proyecto) — reutiliza en su lugar la
        clase utilitaria `.card` ya definida en assets/main.css. -->

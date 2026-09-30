@@ -3,7 +3,7 @@
 // RegisterBusinessView).
 import { describe, it, expect } from 'vitest'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
-import BusinessRegistrationForm from '@/components/ui/molecules/BusinessRegistrationForm.vue'
+import BusinessRegistrationForm from '@/components/ui/organisms/BusinessRegistrationForm.vue'
 
 // VeeValidate valida el esquema con un pequeño debounce (~5 ms): además de vaciar
 // las promesas hay que dejar pasar ese tiempo antes de leer los errores.

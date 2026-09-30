@@ -104,7 +104,7 @@ import type { Product } from '@/types/product.types'
 import type { UiMode } from '@/types/ui-mode.types'
 import AppInput from '../molecules/AppInput.vue'
 import AppSwitch from '../atoms/AppSwitch.vue'
-import ProductCard from '../molecules/ProductCard.vue'
+import ProductCard from '../organisms/ProductCard.vue'
 import AppPagination from '../molecules/AppPagination.vue'
 
 const props = withDefaults(defineProps<{

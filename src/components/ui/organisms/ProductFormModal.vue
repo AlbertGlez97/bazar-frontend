@@ -30,7 +30,7 @@
 <script setup lang="ts">
 import type { Product, ProductFormSubmitPayload } from '@/types/product.types'
 import AppModal from './AppModal.vue'
-import ProductForm from '../molecules/ProductForm.vue'
+import ProductForm from '../organisms/ProductForm.vue'
 import ProductQrCard from '../molecules/ProductQrCard.vue'
 
 defineProps<{

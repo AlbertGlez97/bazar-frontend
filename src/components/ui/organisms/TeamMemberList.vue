@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: lista del equipo. Solo renderiza: el rol y el estado se leen en
+  <!-- Organismo: lista del equipo. Solo renderiza: el rol y el estado se leen en
        texto (nunca solo por color) y la persona que tiene la sesión abierta lleva
        "Tú". Sin ids ni datos internos. -->
   <div class="team-list">

@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: formulario para registrar un dispositivo (solo socios). No hace
+  <!-- Organismo: formulario para registrar un dispositivo (solo socios). No hace
        fetch (regla del barrel @/components): valida y emite `submit`; la vista llama
        a POST /devices. El nombre es lo que la persona tendrá que escribir, exacto,
        junto al código; el correo es opcional: sin él, el código se muestra aquí. -->

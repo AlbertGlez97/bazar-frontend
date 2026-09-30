@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: formulario para agregar a una persona al equipo (solo socios).
+  <!-- Organismo: formulario para agregar a una persona al equipo (solo socios).
        No hace fetch (regla del barrel @/components): valida en el cliente y
        emite `submit`; la vista llama a POST /members y devuelve aquí lo que el
        servidor señaló. La comisión solo existe para un colaborador: para un socio

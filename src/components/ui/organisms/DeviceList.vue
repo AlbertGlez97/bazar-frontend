@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: lista de dispositivos del negocio con su estado y sus acciones.
+  <!-- Organismo: lista de dispositivos del negocio con su estado y sus acciones.
        Solo renderiza y emite: el estado se lee en texto (no solo por color), un
        dispositivo heredado (sin token) se dice con honestidad, y el CÓDIGO nunca se
        pinta aquí: solo se puede copiar. Cada botón lleva el nombre del dispositivo

@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: formulario de registro de negocio, validado con VeeValidate +
+  <!-- Organismo: formulario de registro de negocio, validado con VeeValidate +
        Zod (src/validation/business-registration.schema.ts). A diferencia de un
        formulario simulado, este SÍ dispara una llamada real — pero esa llamada
        vive en la vista (RegisterBusinessView), no aquí: las moléculas de ui/ no

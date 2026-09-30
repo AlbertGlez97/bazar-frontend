@@ -199,7 +199,7 @@ import AppBadge from '../atoms/AppBadge.vue'
 import AppButton from '../atoms/AppButton.vue'
 import AppInput from '../molecules/AppInput.vue'
 import CategoryQuickFilter from '../molecules/CategoryQuickFilter.vue'
-import ProductCard from '../molecules/ProductCard.vue'
+import ProductCard from '../organisms/ProductCard.vue'
 
 const props = withDefaults(defineProps<{
   /** Productos ya filtrados por búsqueda y categoría */
