@@ -60,7 +60,25 @@ const emit = defineEmits<{
   'update:modelValue': [file: File | null]
 }>()
 
+// Debe coincidir con lo que el backend realmente acepta y decodifica —
+// ACCEPTED_IMAGE_MIME_TYPES en bazar-api/src/storage/storage.service.ts
+// (ver también doc/api-contract-for-frontend.md, endpoint
+// POST /products/:id/image) — porque el servidor, no el cliente, es la
+// fuente de verdad de qué formatos puede procesar sharp. Si esa lista
+// cambia en el backend, actualizar esta también.
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp']
+
+// Firmas típicas de HEIC/HEIF (foto "alta eficiencia" por defecto en
+// celulares/tablets modernos). Muchos navegadores no reconocen su MIME
+// type y reportan file.type === '', así que también miramos la
+// extensión del nombre de archivo para poder dar un mensaje específico
+// en vez del genérico "formato no soportado".
+const HEIC_TYPES = ['image/heic', 'image/heif']
+const HEIC_EXTENSION = /\.(heic|heif)$/i
+
+function isHeic(file: File) {
+  return HEIC_TYPES.includes(file.type) || HEIC_EXTENSION.test(file.name)
+}
 
 const inputRef = ref<HTMLInputElement | null>(null)
 const localError = ref('')
@@ -85,7 +103,9 @@ function handleChange(event: Event) {
   }
 
   if (!ALLOWED_TYPES.includes(file.type)) {
-    localError.value = 'Solo aceptamos imágenes PNG, JPEG o WebP.'
+    localError.value = isHeic(file)
+      ? 'Las fotos HEIC/HEIF no son compatibles. Expórtala o compártela como JPG, PNG o WebP antes de subirla.'
+      : 'Solo aceptamos imágenes PNG, JPEG o WebP.'
     resetSelection()
     return
   }

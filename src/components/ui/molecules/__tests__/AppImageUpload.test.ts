@@ -42,6 +42,19 @@ describe('AppImageUpload', () => {
     expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null])
   })
 
+  it('rechaza una foto HEIC/HEIF con un mensaje específico, incluso cuando el navegador no reporta su MIME type', async () => {
+    // Muchos navegadores devuelven file.type === '' para HEIC/HEIF (no lo
+    // reconocen), así que la detección no puede depender solo del MIME
+    // type declarado — también mira la extensión del nombre de archivo.
+    const file = new File(['x'], 'IMG_1234.HEIC', { type: '' })
+    const wrapper = mount(AppImageUpload)
+
+    await selectFile(wrapper, file)
+
+    expect(wrapper.text()).toContain('HEIC')
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([null])
+  })
+
   it('rechaza archivos que exceden el tamaño máximo', async () => {
     const bigFile = new File(['x'], 'grande.png', { type: 'image/png' })
     Object.defineProperty(bigFile, 'size', { value: 6 * 1024 * 1024 })
