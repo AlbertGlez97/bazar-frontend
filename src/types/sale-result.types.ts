@@ -18,10 +18,10 @@ export type SaleResultView =
   /** No se intentó cobrar (red de seguridad: la UI ya apaga el botón). */
   | { kind: 'blocked'; message: string }
   /**
-   * Fiado/apartado registrado (D3/D4). NUNCA es una venta de contado: no hay
-   * ningún Sale para esta transacción. `abonoFailed` (D4) es honesto: hubo
-   * efectivo ya ingresado y el primer abono no se pudo registrar, aunque la
-   * Deuda ya exista.
+   * Fiado/apartado registrado (D3, con abono inicial explícito D1/BE-15).
+   * NUNCA es una venta de contado: no hay ningún Sale para esta transacción.
+   * El abono inicial va dentro de la misma transacción del servidor: o la
+   * deuda se crea completa (con el abono ya aplicado) o no se crea nada.
    */
   | {
       kind: 'debt-registered'
@@ -29,7 +29,6 @@ export type SaleResultView =
       totalMinor: number
       pendingMinor: number
       initialAbonoMinor: number
-      abonoFailed: boolean
     }
 
 export type SaleResultKind = SaleResultView['kind']

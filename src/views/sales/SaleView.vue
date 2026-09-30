@@ -134,6 +134,7 @@
     <RegistrarDeudaModal
       v-model="debtModalOpen"
       :submitting="checkout.registeringDebt"
+      :total-minor="cart.totalMinor"
       @confirm="onRegisterDebt"
     />
   </div>
@@ -326,8 +327,13 @@ async function charge() {
 // ── Fiado/apartado (D3) ──────────────────────────────────────────────────
 const debtModalOpen = ref(false)
 
-/** El modal se cierra siempre: el resultado (éxito, con abono fallido, o rechazo) toma la pantalla. */
-async function onRegisterDebt(payload: { type: DeudaType; deudor: { nombre: string; telefono?: string; notas?: string } }) {
+/** El modal se cierra siempre: el resultado (éxito o rechazo) toma la pantalla. */
+async function onRegisterDebt(payload: {
+  type: DeudaType
+  deudor: { nombre: string; telefono?: string; notas?: string }
+  abonoInicialMinor: number
+  cuotasPlaneadas: { fechaEsperada: string; montoEsperadoMinor: number }[]
+}) {
   await checkout.registerDebt(payload)
   debtModalOpen.value = false
 }

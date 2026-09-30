@@ -36,7 +36,6 @@ export function describeCheckoutResult(result: CheckoutResult, sellerName?: stri
         totalMinor: result.totalMinor,
         pendingMinor: result.pendingMinor,
         initialAbonoMinor: result.initialAbonoMinor,
-        abonoFailed: result.abonoFailed,
       }
   }
 }

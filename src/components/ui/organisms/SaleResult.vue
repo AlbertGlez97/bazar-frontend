@@ -73,18 +73,10 @@
       {{ result.summary }}
     </p>
     <p
-      v-if="result.kind === 'debt-registered' && result.initialAbonoMinor > 0 && !result.abonoFailed"
+      v-if="result.kind === 'debt-registered' && result.initialAbonoMinor > 0"
       class="sale-result__summary"
     >
       {{ VOICE.saleResult.initialAbonoLabel }}: ${{ minorToDisplay(result.initialAbonoMinor) }}.
-    </p>
-    <!-- D4: hubo efectivo ya ingresado y el primer abono no se pudo registrar; la
-         Deuda YA existe igual — nunca se finge éxito completo. -->
-    <p
-      v-if="result.kind === 'debt-registered' && result.abonoFailed"
-      class="sale-result__body sale-result__body--action"
-    >
-      {{ VOICE.deuda.abonoFailedWarning }}
     </p>
 
     <!-- El motivo técnico del servidor es solo un detalle para el socio -->

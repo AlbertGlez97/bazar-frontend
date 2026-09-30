@@ -57,9 +57,11 @@ export type CheckoutResult =
   /**
    * Fiado/apartado registrado (D3: solo con una línea en el carrito). NUNCA
    * es una venta de contado: no existe ningún Sale para esta transacción, el
-   * servidor descontó el stock al crear la Deuda directamente. `abonoFailed`
-   * (D4) indica que había efectivo ya ingresado y el servidor rechazó el
-   * primer abono; la Deuda YA existe igual, con `abonos: []`.
+   * servidor descontó el stock al crear la Deuda directamente. Desde BE-15
+   * (D1) el abono inicial va DENTRO del mismo `POST /deudas` (transacción
+   * atómica del servidor): o la deuda se crea completa (con el abono ya
+   * aplicado) o no se crea nada — ya no existe el estado intermedio "deuda
+   * creada pero el abono falló" (antes D4, con una segunda llamada aparte).
    */
   | {
       kind: 'debt-registered'
@@ -68,7 +70,6 @@ export type CheckoutResult =
       totalMinor: number
       pendingMinor: number
       initialAbonoMinor: number
-      abonoFailed: boolean
     }
 
 /** El intento en curso: todo lo que debe repetirse idéntico en un reintento. */
@@ -264,13 +265,23 @@ export const useCheckoutStore = defineStore('checkout', () => {
    * carrito — el contrato de Deuda es de un solo producto/cantidad, nunca un
    * carrito). Es una transacción alternativa completa: NUNCA llama a
    * `POST /sales` (crear la Deuda ya descuenta el stock por sí sola).
+   *
+   * D1 (BE-15): `abonoInicialMinor` es EXPLÍCITO en el input — nunca se lee
+   * `cart.cashReceivedMinor` para esto. Va dentro del mismo `POST /deudas`
+   * (transacción atómica del servidor): no hay una segunda llamada a
+   * `createAbono` para el abono inicial. `createAbono` sigue existiendo en
+   * `DeudasService` para abonos POSTERIORES a la creación (vista de Deudas).
    */
   async function runRegisterDebt(
-    input: { type: DeudaType; deudor: { nombre: string; telefono?: string; notas?: string } },
+    input: {
+      type: DeudaType
+      deudor: { nombre: string; telefono?: string; notas?: string }
+      abonoInicialMinor: number
+      cuotasPlaneadas?: { fechaEsperada: string; montoEsperadoMinor: number }[]
+    },
   ): Promise<CheckoutResult> {
     if (cart.lines.length !== 1) return { kind: 'blocked', reason: 'debt-invalid-cart' }
     const [line] = cart.lines
-    const cashMinor = cart.cashReceivedMinor
 
     let deuda
     try {
@@ -279,6 +290,8 @@ export const useCheckoutStore = defineStore('checkout', () => {
         productId: line.productId,
         cantidad: line.quantity,
         deudor: input.deudor,
+        abonoInicialMinor: input.abonoInicialMinor,
+        ...(input.cuotasPlaneadas?.length ? { cuotasPlaneadas: input.cuotasPlaneadas } : {}),
       })
     } catch (error) {
       return { kind: 'rejected', reasonMessage: friendlyDeudaErrorMessage(error), canFix: true }
@@ -288,18 +301,6 @@ export const useCheckoutStore = defineStore('checkout', () => {
     // actualiza igual que tras una venta, para no ofrecer piezas que ya no hay.
     await catalog.applySoldItems([{ productId: line.productId, quantity: line.quantity }])
 
-    let initialAbonoMinor = 0
-    let abonoFailed = false
-    if (cashMinor > 0) {
-      try {
-        deuda = await DeudasService.createAbono(deuda.id, { montoMinor: cashMinor })
-        initialAbonoMinor = cashMinor
-      } catch {
-        // D4: la Deuda YA existe (con abonos: []); no se fingirá éxito completo, el resultado lo dice.
-        abonoFailed = true
-      }
-    }
-
     const abonadoMinor = sumMinor(deuda.abonos.map((abono) => abono.montoMinor))
     return {
       kind: 'debt-registered',
@@ -307,8 +308,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
       debtType: deuda.type,
       totalMinor: deuda.totalMinor,
       pendingMinor: subtractMinor(deuda.totalMinor, abonadoMinor),
-      initialAbonoMinor,
-      abonoFailed,
+      initialAbonoMinor: abonadoMinor,
     }
   }
 
@@ -317,7 +317,12 @@ export const useCheckoutStore = defineStore('checkout', () => {
    * un segundo llamado mientras hay uno en curso devuelve el mismo resultado.
    */
   function registerDebt(
-    input: { type: DeudaType; deudor: { nombre: string; telefono?: string; notas?: string } },
+    input: {
+      type: DeudaType
+      deudor: { nombre: string; telefono?: string; notas?: string }
+      abonoInicialMinor: number
+      cuotasPlaneadas?: { fechaEsperada: string; montoEsperadoMinor: number }[]
+    },
   ): Promise<CheckoutResult> {
     if (debtInFlight) return debtInFlight
     registeringDebt.value = true

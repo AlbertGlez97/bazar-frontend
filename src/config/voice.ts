@@ -236,6 +236,18 @@ export const VOICE = {
     columnIncome: 'Ingreso',
     columnProfit: 'Ganancia',
     emptyProduct: 'Todavía no hay detalle de productos en este periodo.',
+    // BE-15/D7: abonos recibidos y deudas liquidadas del periodo, más el total combinado.
+    byAbonos: 'Abonos recibidos',
+    columnDate: 'Fecha',
+    columnDeudor: 'Deudor',
+    columnDeudaType: 'Tipo',
+    columnAmount: 'Monto',
+    emptyAbonos: 'Todavía no hay abonos en este periodo.',
+    byDeudasLiquidadas: 'Deudas liquidadas',
+    columnSaldadaAt: 'Liquidada el',
+    emptyDeudasLiquidadas: 'Todavía no hay deudas liquidadas en este periodo.',
+    totalIngresadoLabel: 'Total ingresado',
+    totalIngresadoHint: 'Ventas de contado + abonos reales del periodo.',
   },
   /** Inicio de Modo Gestión (solo socios): resumen del día (`GET /dashboard/summary`). */
   dashboard: {
@@ -404,8 +416,69 @@ export const VOICE = {
     productDeactivated: 'Uno de los productos ya no está a la venta. Quítalo del carrito e intenta de nuevo.',
     productMissing: 'Uno de los productos ya no existe en tu catálogo. Quítalo del carrito e intenta de nuevo.',
     insufficientStock: 'Ya no hay suficientes piezas de este producto. Baja la cantidad e intenta de nuevo.',
-    /** D4: la Deuda YA se creó (con abonos: []) pero el abono inicial no se pudo registrar. Nunca se finge éxito completo. */
-    abonoFailedWarning: 'El fiado/apartado se registró, pero no pudimos anotar el efectivo que ya recibiste como primer abono. Regístralo a mano en cuanto puedas.',
+    /**
+     * BE-15: el abono inicial ahora va DENTRO de `POST /deudas` (transacción
+     * atómica) — si por sí solo excede el total, no se crea nada (ni la
+     * deuda). Reemplaza al viejo `abonoFailedWarning` de D4 (la llamada
+     * separada a `createAbono` para el abono inicial ya no existe).
+     */
+    abonoInicialExceedsBalance: 'El abono inicial que escribiste es mayor al total de la deuda. Bájalo e intenta de nuevo.',
+    /** D1: campo de abono inicial explícito del modal. */
+    abonoInicialLabel: 'Abono inicial',
+    abonoInicialHint: 'Lo que ya te pagaron al momento de registrar. Déjalo en $0.00 si no recibiste nada.',
+    /** D2: sección opcional de calendario de cuotas planeadas (informativo, nunca obligatorio). */
+    cuotasToggleLabel: '¿Quieres programar fechas de pago?',
+    cuotasHint: 'Elige una o varias fechas; te sugerimos un monto parejo para cada una, pero puedes cambiarlo.',
+    cuotasDatesLabel: 'Fechas de pago',
+    cuotasRowLabel: (date: string) => `Cuota del ${date}`,
+  },
+  /**
+   * Vista `/app/deudas` (solo socios, Modo Gestión): fiados/apartados
+   * activos, con su calendario de cuotas y su historial de abonos. Detalle
+   * como modal sobre la lista (mismo patrón que Incidencias): no hay ninguna
+   * ruta `:id` en este proyecto.
+   */
+  deudasView: {
+    title: 'Deudas',
+    lead: 'Fiados y apartados: quién debe, cuánto y desde cuándo.',
+    loading: 'Cargando tus deudas…',
+    loadError: 'No pudimos cargar las deudas. Intenta de nuevo en un momento.',
+    forbidden: 'Las deudas son solo para socios.',
+    retry: 'Intentar de nuevo',
+    empty: 'No hay deudas con estos filtros.',
+    totalPendingLabel: 'Total pendiente por cobrar',
+    totalPendingPeople: (count: number) => (count === 1 ? '1 persona' : `${count} personas`),
+    filterAtrasadoLabel: 'Solo atrasadas',
+    sortLabel: 'Orden',
+    sortCreatedAt: 'Más recientes primero',
+    sortSaldoPendiente: 'Mayor saldo primero',
+    sortCuotaVencida: 'Más atrasada primero',
+    searchLabel: 'Buscar por nombre',
+    searchPlaceholder: 'Nombre de quien debe',
+    statusPendiente: 'Activa',
+    statusSaldada: 'Liquidada',
+    atrasadaBadge: 'Atrasada',
+    columnDeudor: 'Deudor',
+    columnSaldo: 'Saldo pendiente',
+    columnTotal: 'Total',
+    viewDetail: 'Ver detalle',
+    detailTitle: 'Detalle de la deuda',
+    detailLoading: 'Cargando el detalle…',
+    detailLoadError: 'No pudimos cargar el detalle de esta deuda.',
+    productLabel: 'Producto',
+    quantityLabel: 'Cantidad',
+    abonosTitle: 'Historial de abonos',
+    abonosEmpty: 'Todavía no hay abonos registrados.',
+    cuotasTitle: 'Calendario de cuotas',
+    cuotasEmpty: 'No se programaron fechas de pago para esta deuda.',
+    registerAbonoTitle: 'Registrar abono',
+    registerAbonoLabel: 'Monto del abono',
+    registerAbonoRequired: 'Escribe un monto mayor a $0.00.',
+    registerAbonoNotaLabel: 'Nota (opcional)',
+    registerAbono: 'Registrar abono',
+    registeringAbono: 'Registrando…',
+    registerAbonoError: 'No pudimos registrar el abono.',
+    close: 'Cerrar',
   },
 } as const
 

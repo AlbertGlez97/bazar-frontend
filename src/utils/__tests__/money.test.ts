@@ -2,7 +2,38 @@ import { describe, it, expect } from 'vitest'
 import {
   minorToDisplay, displayToMinor, formatMinorMoney, parseCashInput, parseMoneyText,
   addMinor, subtractMinor, multiplyMinor, sumMinor, changeDueMinor, shortfallMinor,
+  splitEvenMinor,
 } from '../money'
+
+// D2: reparto parejo de cuotas planeadas — el mismo monto por fecha, redondeado
+// hacia abajo, con la ÚLTIMA cuota absorbiendo el resto (nunca la primera: así
+// la persona ve el mismo número en todas menos la última).
+describe('splitEvenMinor', () => {
+  it('reparte exacto cuando divide sin resto', () => {
+    expect(splitEvenMinor(30000, 3)).toEqual([10000, 10000, 10000])
+  })
+
+  it('la última cuota absorbe el resto cuando no divide exacto', () => {
+    expect(splitEvenMinor(10000, 3)).toEqual([3333, 3333, 3334])
+  })
+
+  it('con n=1 devuelve el total completo en una sola cuota', () => {
+    expect(splitEvenMinor(5000, 1)).toEqual([5000])
+  })
+
+  it('con n<=0 devuelve un arreglo vacío', () => {
+    expect(splitEvenMinor(5000, 0)).toEqual([])
+    expect(splitEvenMinor(5000, -1)).toEqual([])
+  })
+
+  it('con total 0 reparte ceros', () => {
+    expect(splitEvenMinor(0, 4)).toEqual([0, 0, 0, 0])
+  })
+
+  it('la suma de las cuotas siempre da el total exacto', () => {
+    expect(splitEvenMinor(9997, 7).reduce((a, b) => a + b, 0)).toBe(9997)
+  })
+})
 
 describe('formatMinorMoney', () => {
   it.each([

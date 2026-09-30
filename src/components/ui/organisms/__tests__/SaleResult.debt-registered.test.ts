@@ -1,6 +1,9 @@
-// Fiado/apartado registrado (D3/D4): pantalla propia, NUNCA parecida a "Venta
-// registrada" — no hubo venta de contado. Debe mostrar el tipo, el saldo
-// pendiente y, si el abono inicial falló (D4), avisarlo sin fingir éxito.
+// Fiado/apartado registrado (D3, abono inicial explícito D1/BE-15): pantalla
+// propia, NUNCA parecida a "Venta registrada" — no hubo venta de contado.
+// Debe mostrar el tipo, el saldo pendiente y, si hubo abono inicial, el
+// monto ya aplicado (va dentro de la misma transacción del servidor: o la
+// deuda se crea completa, o no se crea nada — ya no hay un estado de "abono
+// fallido" aparte, como antes de BE-15).
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SaleResult from '../SaleResult.vue'
@@ -11,13 +14,10 @@ function mountResult(result: SaleResultView) {
 }
 
 const apartado: SaleResultView = {
-  kind: 'debt-registered', debtType: 'apartado', totalMinor: 5997, pendingMinor: 3997, initialAbonoMinor: 2000, abonoFailed: false,
+  kind: 'debt-registered', debtType: 'apartado', totalMinor: 5997, pendingMinor: 3997, initialAbonoMinor: 2000,
 }
 const fiadoSinAbono: SaleResultView = {
-  kind: 'debt-registered', debtType: 'fiado', totalMinor: 5997, pendingMinor: 5997, initialAbonoMinor: 0, abonoFailed: false,
-}
-const abonoFallido: SaleResultView = {
-  kind: 'debt-registered', debtType: 'fiado', totalMinor: 5997, pendingMinor: 5997, initialAbonoMinor: 0, abonoFailed: true,
+  kind: 'debt-registered', debtType: 'fiado', totalMinor: 5997, pendingMinor: 5997, initialAbonoMinor: 0,
 }
 
 describe('SaleResult — fiado/apartado registrado', () => {
@@ -61,18 +61,6 @@ describe('SaleResult — fiado/apartado registrado', () => {
     const apart = mountResult(apartado)
     expect(apart.text()).toContain('Apartado')
     apart.unmount()
-  })
-
-  it('D4: abono fallido se avisa honestamente, sin fingir éxito completo', () => {
-    const wrapper = mountResult(abonoFallido)
-    expect(wrapper.text()).toMatch(/no pudimos anotar el efectivo/i)
-    wrapper.unmount()
-  })
-
-  it('sin abono fallido, no aparece ningún aviso de abono', () => {
-    const wrapper = mountResult(fiadoSinAbono)
-    expect(wrapper.text()).not.toMatch(/no pudimos anotar el efectivo/i)
-    wrapper.unmount()
   })
 
   it('es una región de estado (no un error): role status, no alert', () => {

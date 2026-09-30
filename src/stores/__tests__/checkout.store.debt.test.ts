@@ -1,7 +1,7 @@
 // registerDebt: fiado/apartado desde el cobro (D3: solo con una línea en el
-// carrito) y el abono inicial del efectivo ya ingresado (D4, segunda
-// llamada). Usa los stores REALES (carrito, catálogo); solo se simula la red
-// (DeudasService, ProductsService).
+// carrito). D1 (BE-15): el abono inicial es un campo EXPLÍCITO del input —
+// va DENTRO de POST /deudas (transacción atómica del servidor), nunca una
+// llamada aparte a createAbono ni algo inferido de cart.cashReceivedMinor.
 import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -45,9 +45,12 @@ function deudaFor(overrides: Partial<Deuda> = {}): Deuda {
     cantidad: 3,
     totalMinor: 5997,
     status: 'pendiente',
+    unitCostMinor: null,
+    saldadaAt: null,
     createdByMemberId: MEMBER.id,
     createdAt: '2026-09-25T12:00:00.000Z',
     abonos: [],
+    cuotasPlaneadas: [],
     ...overrides,
   }
 }
@@ -59,7 +62,7 @@ const httpError = (status: number, message: string | string[] = 'x') => ({
 const createDeuda = vi.mocked(DeudasService.createDeuda)
 const createAbono = vi.mocked(DeudasService.createAbono)
 
-const DEUDOR_INPUT = { type: 'apartado' as const, deudor: { nombre: 'Lucía', telefono: '555-0001' } }
+const DEUDOR_INPUT = { type: 'apartado' as const, deudor: { nombre: 'Lucía', telefono: '555-0001' }, abonoInicialMinor: 0, cuotasPlaneadas: [] }
 
 /** Sesión lista + catálogo cargado + carrito con 3 tazas. */
 async function ready() {
@@ -116,36 +119,46 @@ describe('checkout.store.registerDebt — solo con una línea (D3)', () => {
   })
 })
 
-describe('checkout.store.registerDebt — POST /deudas', () => {
-  it('manda type, productId y cantidad de la única línea, y el deudor tal cual', async () => {
-    const { checkout } = await ready()
+describe('checkout.store.registerDebt — POST /deudas (D1: abonoInicialMinor explícito, nunca del carrito)', () => {
+  it('manda type, productId, cantidad, deudor y abonoInicialMinor tal cual el input — NUNCA lee cart.cashReceivedMinor', async () => {
+    const { cart, checkout } = await ready()
+    cart.setCashFromDisplay('999') // efectivo ya escrito en el carrito: debe ser IGNORADO por completo
 
-    await checkout.registerDebt(DEUDOR_INPUT)
+    await checkout.registerDebt({ ...DEUDOR_INPUT, abonoInicialMinor: 1500 })
 
     expect(createDeuda).toHaveBeenCalledExactlyOnceWith({
       type: 'apartado',
       productId: TAZA.id,
       cantidad: 3,
       deudor: { nombre: 'Lucía', telefono: '555-0001' },
+      abonoInicialMinor: 1500,
     })
   })
 
-  it('sin efectivo ingresado no llama a createAbono; el resultado trae el saldo completo pendiente', async () => {
+  it('sin cuotasPlaneadas (arreglo vacío) NO manda ese campo al backend (opcional)', async () => {
     const { checkout } = await ready()
 
-    const result = await checkout.registerDebt(DEUDOR_INPUT)
+    await checkout.registerDebt(DEUDOR_INPUT)
+
+    const sentPayload = createDeuda.mock.calls[0][0]
+    expect(sentPayload).not.toHaveProperty('cuotasPlaneadas')
+  })
+
+  it('con cuotasPlaneadas, las manda tal cual dentro del mismo POST /deudas', async () => {
+    const { checkout } = await ready()
+    const cuotas = [{ fechaEsperada: '2026-10-15T00:00:00.000Z', montoEsperadoMinor: 2000 }]
+
+    await checkout.registerDebt({ ...DEUDOR_INPUT, cuotasPlaneadas: cuotas })
+
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ cuotasPlaneadas: cuotas }))
+  })
+
+  it('el abonoInicialMinor 0 explícito no llama a createAbono por separado: nunca hay una segunda llamada', async () => {
+    const { checkout } = await ready()
+
+    await checkout.registerDebt(DEUDOR_INPUT)
 
     expect(createAbono).not.toHaveBeenCalled()
-    expect(result).toEqual({
-      kind: 'debt-registered',
-      deudaId: deudaFor().id,
-      debtType: 'apartado',
-      totalMinor: 5997,
-      pendingMinor: 5997,
-      initialAbonoMinor: 0,
-      abonoFailed: false,
-    })
-    expect(checkout.lastResult).toEqual(result)
   })
 
   it('descuenta el stock local igual que una venta (la Deuda ya lo descontó en el servidor)', async () => {
@@ -164,14 +177,13 @@ describe('checkout.store.registerDebt — POST /deudas', () => {
     expect(cart.lines).toHaveLength(1)
   })
 
-  it('400 (p.ej. stock insuficiente): rejected con mensaje amable, sin llamar a createAbono, carrito intacto', async () => {
+  it('400 (p.ej. stock insuficiente): rejected con mensaje amable, carrito intacto', async () => {
     const { cart, checkout } = await ready()
     createDeuda.mockRejectedValue(httpError(400, `Insufficient stock for product ${TAZA.id}`))
 
     const result = await checkout.registerDebt(DEUDOR_INPUT)
 
     expect(result).toEqual({ kind: 'rejected', reasonMessage: VOICE.deuda.insufficientStock, canFix: true })
-    expect(createAbono).not.toHaveBeenCalled()
     expect(cart.lines).toHaveLength(1)
   })
 
@@ -185,25 +197,32 @@ describe('checkout.store.registerDebt — POST /deudas', () => {
   })
 })
 
-describe('checkout.store.registerDebt — abono inicial del efectivo ya ingresado (D4)', () => {
-  it('con efectivo ingresado, llama a createAbono con ese monto tras crear la deuda', async () => {
-    const { cart, checkout } = await ready()
-    cart.setCashFromDisplay('20')
-
-    await checkout.registerDebt(DEUDOR_INPUT)
-
-    expect(createAbono).toHaveBeenCalledExactlyOnceWith(deudaFor().id, { montoMinor: 2000 })
-  })
-
-  it('el abono exitoso descuenta del saldo pendiente y lo refleja en el resultado', async () => {
-    const { cart, checkout } = await ready()
-    cart.setCashFromDisplay('20')
-    createAbono.mockImplementation(async (id, payload) => deudaFor({
-      id,
-      abonos: [{ id: 'a-1', deudaId: id, contextId: 'bazar-local', montoMinor: payload.montoMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }],
-    }))
+describe('checkout.store.registerDebt — resultado con el abono inicial ya incluido (BE-15, transacción atómica)', () => {
+  it('sin abono inicial, el resultado trae el saldo completo pendiente', async () => {
+    const { checkout } = await ready()
 
     const result = await checkout.registerDebt(DEUDOR_INPUT)
+
+    expect(result).toEqual({
+      kind: 'debt-registered',
+      deudaId: deudaFor().id,
+      debtType: 'apartado',
+      totalMinor: 5997,
+      pendingMinor: 5997,
+      initialAbonoMinor: 0,
+    })
+    expect(checkout.lastResult).toEqual(result)
+  })
+
+  it('con abono inicial, el servidor ya devuelve la deuda con el abono incluido en abonos[] — el resultado lo refleja', async () => {
+    const { checkout } = await ready()
+    createDeuda.mockImplementation(async (payload) => deudaFor({
+      abonos: payload.abonoInicialMinor > 0
+        ? [{ id: 'a-1', deudaId: deudaFor().id, contextId: 'bazar-local', montoMinor: payload.abonoInicialMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }]
+        : [],
+    }))
+
+    const result = await checkout.registerDebt({ ...DEUDOR_INPUT, abonoInicialMinor: 2000 })
 
     expect(result).toEqual({
       kind: 'debt-registered',
@@ -212,36 +231,16 @@ describe('checkout.store.registerDebt — abono inicial del efectivo ya ingresad
       totalMinor: 5997,
       pendingMinor: 3997,
       initialAbonoMinor: 2000,
-      abonoFailed: false,
     })
   })
 
-  it('D4: si el abono falla, la Deuda YA existe (abonos: []) — el resultado lo muestra honesto, NUNCA como éxito completo', async () => {
-    const { cart, checkout } = await ready()
-    cart.setCashFromDisplay('20')
-    createAbono.mockRejectedValue(httpError(400, 'Abono of 2000 exceeds the remaining balance of 0'))
+  it('BE-15: si el abono inicial por sí solo excede el total, la creación entera falla (rejected) — nunca "debt-registered" con abono fallido', async () => {
+    const { checkout } = await ready()
+    createDeuda.mockRejectedValue(httpError(400, 'Abono of 20000 exceeds the remaining balance of 5997'))
 
-    const result = await checkout.registerDebt(DEUDOR_INPUT)
+    const result = await checkout.registerDebt({ ...DEUDOR_INPUT, abonoInicialMinor: 20000 })
 
-    expect(result).toEqual({
-      kind: 'debt-registered',
-      deudaId: deudaFor().id,
-      debtType: 'apartado',
-      totalMinor: 5997,
-      pendingMinor: 5997, // sigue con abonos: [] en el servidor
-      initialAbonoMinor: 0,
-      abonoFailed: true,
-    })
-  })
-
-  it('D4: el fallo del abono NO es un fallo de la deuda (nunca kind rejected)', async () => {
-    const { cart, checkout } = await ready()
-    cart.setCashFromDisplay('20')
-    createAbono.mockRejectedValue({ isAxiosError: true, code: 'ERR_NETWORK' })
-
-    const result = await checkout.registerDebt(DEUDOR_INPUT)
-
-    expect(result.kind).toBe('debt-registered')
+    expect(result).toEqual({ kind: 'rejected', reasonMessage: VOICE.deuda.abonoInicialExceedsBalance, canFix: true })
   })
 })
 

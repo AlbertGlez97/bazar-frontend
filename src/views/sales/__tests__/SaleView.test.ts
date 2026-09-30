@@ -64,9 +64,12 @@ function deudaFor(overrides: Partial<Deuda> = {}): Deuda {
     cantidad: 1,
     totalMinor: 1999,
     status: 'pendiente',
+    unitCostMinor: null,
+    saldadaAt: null,
     createdByMemberId: MEMBER.id,
     createdAt: '2026-09-25T12:00:00.000Z',
     abonos: [],
+    cuotasPlaneadas: [],
     ...overrides,
   }
 }
@@ -1383,7 +1386,7 @@ describe('SaleView — fiado/apartado', () => {
     expect(debtBtn(wrapper).exists()).toBe(false)
   })
 
-  it('abre el formulario, valida el nombre y llama POST /deudas con el producto/cantidad de la única línea', async () => {
+  it('abre el formulario, valida el nombre y llama POST /deudas con el producto/cantidad de la única línea y abonoInicialMinor: 0', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
     await tap(wrapper, 'Café de olla') // 2 piezas
@@ -1403,26 +1406,43 @@ describe('SaleView — fiado/apartado', () => {
       productId: CAFE.id,
       cantidad: 2,
       deudor: { nombre: 'Lucía' },
+      abonoInicialMinor: 0,
     })
   })
 
-  it('con efectivo ya ingresado, además llama POST /deudas/:id/abonos con ese monto (D4)', async () => {
+  // D1 (BE-15): el abono inicial del modal es EXPLÍCITO — lo que ya esté
+  // escrito en el campo de efectivo del carrito se IGNORA por completo; nunca
+  // se llama createAbono aparte, va dentro del mismo POST /deudas.
+  it('D1: el efectivo ya escrito en el carrito se ignora — el abono inicial es el del propio campo del modal', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
     await payWith(wrapper, '10') // insuficiente para $19.99, pero ya hay algo escrito
     await debtBtn(wrapper).trigger('click')
     await nombreInput(wrapper).setValue('Lucía')
-    createAbono.mockImplementation(async (id, payload) => deudaFor({
-      id,
-      abonos: [{ id: 'a-1', deudaId: id, contextId: 'bazar-local', montoMinor: payload.montoMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }],
+
+    await confirmDebtBtn(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ abonoInicialMinor: 0 }))
+    expect(createAbono).not.toHaveBeenCalled()
+  })
+
+  it('D1: escribir un abono inicial en el propio campo del modal lo manda en el mismo POST /deudas', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await debtBtn(wrapper).trigger('click')
+    await nombreInput(wrapper).setValue('Lucía')
+    const abonoInput = wrapper.get('.registrar-deuda-modal__body input[inputmode="decimal"]')
+    await abonoInput.setValue('10.00')
+    createDeuda.mockImplementation(async (payload) => deudaFor({
+      abonos: [{ id: 'a-1', deudaId: deudaFor().id, contextId: 'bazar-local', montoMinor: payload.abonoInicialMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }],
     }))
 
     await confirmDebtBtn(wrapper).trigger('click')
-    // catalog.applySoldItems guarda el snapshot en IndexedDB (fake-indexeddb):
-    // no basta con vaciar microtareas, hay que esperar de verdad.
-    await vi.waitFor(() => expect(createAbono).toHaveBeenCalled())
+    await flushPromises()
 
-    expect(createAbono).toHaveBeenCalledExactlyOnceWith(deudaFor().id, { montoMinor: 1000 })
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ abonoInicialMinor: 1000 }))
+    expect(createAbono).not.toHaveBeenCalled()
   })
 
   it('muestra el resultado: NO "Venta registrada", el tipo, el saldo pendiente, y "Nueva venta" vacía el carrito', async () => {
@@ -1448,20 +1468,24 @@ describe('SaleView — fiado/apartado', () => {
     expect(useCartStore().cashReceivedMinor).toBe(0)
   })
 
-  it('D4: si el abono inicial falla, lo muestra honesto (Deuda registrada, abono no) sin fingir éxito completo', async () => {
+  // BE-15: el abono inicial va DENTRO de POST /deudas (transacción atómica) —
+  // si por sí solo excede el total, la creación entera falla: nunca "Fiado/
+  // apartado registrado" con un abono fallido aparte (ese estado ya no existe).
+  it('BE-15: si el abono inicial excede el total, la creación entera falla como "rejected"', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
-    await payWith(wrapper, '10')
     await debtBtn(wrapper).trigger('click')
     await nombreInput(wrapper).setValue('Lucía')
-    createAbono.mockRejectedValue({ isAxiosError: true, response: { status: 400, data: { message: 'Abono of 1000 exceeds the remaining balance of 0' } } })
+    const abonoInput = wrapper.get('.registrar-deuda-modal__body input[inputmode="decimal"]')
+    await abonoInput.setValue('50.00')
+    createDeuda.mockRejectedValue({ isAxiosError: true, response: { status: 400, data: { message: 'Abono of 5000 exceeds the remaining balance of 1999' } } })
 
     await confirmDebtBtn(wrapper).trigger('click')
     await vi.waitFor(() => expect(wrapper.find('.sale-result').exists()).toBe(true))
 
-    expect(wrapper.get('h2').text()).toBe('Fiado/apartado registrado')
-    expect(wrapper.text()).toMatch(/no pudimos anotar el efectivo/i)
-    expect(wrapper.text()).not.toMatch(/no pudimos registrar el fiado/i)
+    expect(wrapper.get('h2').text()).toBe('No pudimos registrar la venta')
+    expect(wrapper.text()).toMatch(/abono inicial que escribiste es mayor al total/i)
+    expect(createAbono).not.toHaveBeenCalled()
   })
 
   it('un fallo al crear la deuda (p.ej. sin stock) es "rejected", nunca "Fiado/apartado registrado", y conserva el carrito', async () => {

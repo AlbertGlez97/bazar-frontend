@@ -75,7 +75,7 @@ describe('describeCheckoutResult', () => {
       .toEqual({ kind: 'blocked', message: VOICE.sale.blockedDebtInvalidCart })
   })
 
-  it('debt-registered: pasa el tipo, los montos y si el abono inicial falló (D4)', () => {
+  it('debt-registered: pasa el tipo y los montos (D1/BE-15: abono inicial ya incluido, transacción atómica)', () => {
     const view = describeCheckoutResult({
       kind: 'debt-registered',
       deudaId: 'd-1',
@@ -83,7 +83,6 @@ describe('describeCheckoutResult', () => {
       totalMinor: 5997,
       pendingMinor: 3997,
       initialAbonoMinor: 2000,
-      abonoFailed: false,
     })
     expect(view).toEqual({
       kind: 'debt-registered',
@@ -91,11 +90,10 @@ describe('describeCheckoutResult', () => {
       totalMinor: 5997,
       pendingMinor: 3997,
       initialAbonoMinor: 2000,
-      abonoFailed: false,
     })
   })
 
-  it('debt-registered con abono fallido (D4): abonoFailed pasa tal cual, nunca se pierde', () => {
+  it('debt-registered sin abono inicial: pendingMinor es el total completo', () => {
     const view = describeCheckoutResult({
       kind: 'debt-registered',
       deudaId: 'd-1',
@@ -103,8 +101,7 @@ describe('describeCheckoutResult', () => {
       totalMinor: 5997,
       pendingMinor: 5997,
       initialAbonoMinor: 0,
-      abonoFailed: true,
     })
-    expect(view).toMatchObject({ kind: 'debt-registered', abonoFailed: true, pendingMinor: 5997 })
+    expect(view).toMatchObject({ kind: 'debt-registered', pendingMinor: 5997, initialAbonoMinor: 0 })
   })
 })

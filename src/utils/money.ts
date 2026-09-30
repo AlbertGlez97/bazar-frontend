@@ -58,6 +58,20 @@ export function sumMinor(values: readonly number[]): number {
   return toMinor(values.reduce((acc, value) => add(acc, toDinero(value)), toDinero(0)))
 }
 
+/**
+ * Reparto parejo de centavos en `n` partes (D2, cuotas planeadas): división
+ * entera hacia abajo, con la ÚLTIMA parte absorbiendo el resto — así la suma
+ * siempre da exacto el total, sin aritmética de flotantes. `n <= 0` devuelve
+ * un arreglo vacío (nada que repartir).
+ */
+export function splitEvenMinor(totalMinor: number, n: number): number[] {
+  if (!Number.isSafeInteger(n) || n <= 0) return []
+  const base = Math.floor(totalMinor / n)
+  const parts = new Array(n).fill(base)
+  parts[n - 1] = subtractMinor(totalMinor, base * (n - 1))
+  return parts
+}
+
 /** Cambio a devolver: efectivo - total, nunca negativo. */
 export function changeDueMinor(cashMinor: number, totalMinor: number): number {
   return Math.max(0, subtractMinor(cashMinor, totalMinor))
