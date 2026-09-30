@@ -95,7 +95,7 @@ RDD status is **unknown**: parent observed `.git` ownership failures for read-on
 
 - Initial base: `f0d0c58899403f3e3bfd916f4f22d5cea47cce89`.
 - Integration branch created; current child branch is `feat/atomic-design-01-controls`.
-- Completed implementation tasks: T1 (writer checks). Work-unit commit and authored count will be recorded immediately after commit creation.
+- Completed implementation tasks: T1 (writer checks). Work-unit commit: `8f50d613bca3e0b803fac9083045e9a6660f90e4` (`refactor(ui): classify compound controls as molecules`), 203 additions + 35 deletions = 238 authored changed lines, including the initial feature document; nine renames detected. This evidence follow-up changes two documentation lines (four authored changed lines), giving a T1 running work-unit count of 242; no generated files committed.
 - Baseline `npm.cmd run test:run`: 164 test files / 3,050 tests passed. Baseline lint: exit 0. Baseline build: exit 0 after an approved escalated retry. Sandbox test/build attempts could not read ancestor directories while loading Vitest/Vite configuration; elevated retries passed without configuration changes. Build already warns about the toast static/dynamic import and chunks over 500 kB.
 - T1 RED `npm.cmd run test:run -- src/architecture/__tests__/atomic-design.test.ts`: 12 failed / 1 passed, exit 1, because the six compound controls were still atoms.
 - T1 GREEN `npm.cmd run test:run -- src/components src/architecture/__tests__/atomic-design.test.ts`: 61 files / 797 tests passed, exit 0. Repeated after classification-comment/export cleanup: same 61 files / 797 passed, exit 0.
@@ -105,4 +105,4 @@ RDD status is **unknown**: parent observed `.git` ownership failures for read-on
 - Coverage and independent verification: pending. RDD outcome: unavailable/unknown, no review invoked.
 - Engram mirror: parent saved planning document as observation 183 under `odd/atomic-design/tasks`; full readback was blocked by ambiguous MCP project context. Current progress mirror update and full readback remain pending parent action; locator `odd/tasks/atomic-design.md`.
 - Evidence per completed task must include commit ID, exact commands/results, authored line count, runtime scenario/outcome or explicit unavailability, rollback boundary, assessed risk and RDD outcome (or unavailable).
-- Next step: record T1 commit, then parent updates mirror and independently verifies T1. Do not start T2 yet.
+- Next step: parent updates mirror and independently verifies committed T1 against initial base `f0d0c58899403f3e3bfd916f4f22d5cea47cce89`. Do not start T2 yet.
