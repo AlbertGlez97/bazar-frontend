@@ -96,6 +96,12 @@
         {{ profitNote }}
       </AppAlert>
       <SalesDetailBreakdown :rows="productRows" />
+
+      <DeudasReportBreakdown
+        :abonos-recibidos="loaded.period.abonosRecibidos"
+        :deudas-liquidadas="loaded.period.deudasLiquidadas"
+        :total-ingresado-minor="loaded.period.totalIngresadoMinor"
+      />
     </template>
 
     <!-- Descargas: sin ventas (o sin reporte) no hay nada que bajar -->
@@ -130,7 +136,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { AppAlert, AppButton, AppSkeleton, ReportRangePicker, SalesDetailBreakdown, SalesReportSummary } from '@/components'
+import { AppAlert, AppButton, AppSkeleton, DeudasReportBreakdown, ReportRangePicker, SalesDetailBreakdown, SalesReportSummary } from '@/components'
 import { APP_NAME } from '@/config/app'
 import {
   VOICE,

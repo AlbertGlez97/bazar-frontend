@@ -14,7 +14,7 @@ import { downloadExcel } from '@/services/excel-report'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
-import type { SalesByMemberReport, SalesByPeriodReport, SalesDetailRow, SalesReport } from '@/types/report.types'
+import type { AbonoRecibidoRow, DeudaLiquidadaRow, SalesByMemberReport, SalesByPeriodReport, SalesDetailRow, SalesReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
 vi.mock('@/services/reports.service', () => ({
@@ -35,9 +35,18 @@ const excel = vi.mocked(downloadExcel)
 const FROM_UTC = '2026-09-24T06:00:00.000Z'
 const TO_UTC = '2026-09-25T05:59:59.999Z'
 
-const period = (over: Partial<SalesByPeriodReport> = {}): SalesByPeriodReport => ({
-  from: FROM_UTC, to: TO_UTC, totalSoldMinor: 130050, saleCount: 2, ...over,
-})
+const period = (over: Partial<SalesByPeriodReport> = {}): SalesByPeriodReport => {
+  const totalSoldMinor = over.totalSoldMinor ?? 130050
+  const abonosRecibidos: AbonoRecibidoRow[] = over.abonosRecibidos ?? []
+  const abonosRecibidosMinor = over.abonosRecibidosMinor ?? abonosRecibidos.reduce((sum, a) => sum + a.montoMinor, 0)
+  return {
+    from: FROM_UTC, to: TO_UTC, totalSoldMinor, saleCount: 2,
+    abonosRecibidos, abonosRecibidosMinor,
+    deudasLiquidadas: over.deudasLiquidadas ?? [],
+    totalIngresadoMinor: over.totalIngresadoMinor ?? totalSoldMinor + abonosRecibidosMinor,
+    ...over,
+  }
+}
 const byMember = (over: Partial<SalesByMemberReport> = {}): SalesByMemberReport => ({
   from: FROM_UTC, to: TO_UTC,
   items: [
@@ -468,6 +477,53 @@ describe('ReportsView — desglose por producto (D4: ganancia real)', () => {
     const headers = wrapper.get('.sales-detail-breakdown__table').findAll('thead th').map((th) => th.text())
     expect(headers).not.toContain('Efectivo')
     expect(headers).not.toContain('Cambio')
+  })
+})
+
+// BE-15 (D7): dos tablas nuevas en pantalla, más el total combinado. A
+// diferencia del desglose por producto (D4), estos datos ya vienen en
+// sales-by-period — no requieren un colector aparte.
+describe('ReportsView — abonos recibidos y deudas liquidadas (BE-15)', () => {
+  const abonosRecibidos: AbonoRecibidoRow[] = [
+    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' },
+  ]
+  const deudasLiquidadas: DeudaLiquidadaRow[] = [
+    { id: 'd-1', type: 'fiado', deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true },
+  ]
+
+  it('shows the "Abonos recibidos" and "Deudas liquidadas" tables separately from ventas/por persona/por producto', async () => {
+    getSalesByPeriod.mockResolvedValue(period({ abonosRecibidos, deudasLiquidadas }))
+    const { wrapper } = await mountView()
+
+    expect(wrapper.text()).toContain('Lucía')
+    expect(wrapper.text()).toContain('Carlos')
+    const tables = wrapper.findAll('table')
+    expect(tables.length).toBeGreaterThanOrEqual(3) // Por persona, Abonos recibidos, Deudas liquidadas
+  })
+
+  it('shows the combined total (ventas de contado + abonos reales)', async () => {
+    getSalesByPeriod.mockResolvedValue(period({ totalSoldMinor: 130050, abonosRecibidos, abonosRecibidosMinor: 20000, totalIngresadoMinor: 150050 }))
+    const { wrapper } = await mountView()
+
+    expect(wrapper.text()).toContain('$1,500.50')
+    expect(wrapper.text()).toMatch(/total ingresado/i)
+  })
+
+  it('without abonos or deudas liquidadas, says so honestly (never omits the section)', async () => {
+    const { wrapper } = await mountView()
+    expect(wrapper.text()).toContain('Todavía no hay abonos en este periodo.')
+    expect(wrapper.text()).toContain('Todavía no hay deudas liquidadas en este periodo.')
+  })
+
+  it('passes the period abonos/deudas liquidadas into the exported report (PDF/Excel), without an extra network call', async () => {
+    getSalesByPeriod.mockResolvedValue(period({ abonosRecibidos, deudasLiquidadas }))
+    const { wrapper } = await mountView()
+    await button(wrapper, 'Descargar PDF').trigger('click')
+    await flushPromises()
+    const [report] = pdf.mock.calls[0] as [SalesReport, string]
+    expect(report.abonosRecibidos).toEqual(abonosRecibidos)
+    expect(report.deudasLiquidadas).toEqual(deudasLiquidadas)
+    expect(getSalesByPeriod).toHaveBeenCalledTimes(1) // una sola vez: sales-by-period ya trae todo
   })
 })
 

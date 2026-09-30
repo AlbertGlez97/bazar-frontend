@@ -63,6 +63,11 @@ export function roleLabel(role: MemberRole | null): string {
   return '—'
 }
 
+/** Tipo de deuda en español, para las tablas de "Abonos recibidos"/"Deudas liquidadas" (BE-15/D7). */
+export function deudaTypeLabel(type: 'fiado' | 'apartado'): string {
+  return type === 'fiado' ? 'Fiado' : 'Apartado'
+}
+
 /** Texto cuando una fila no tiene ganancia calculable (D4) — NUNCA se imprime `$0.00` en su lugar. */
 export const GANANCIA_NO_DISPONIBLE = 'No disponible'
 
@@ -209,5 +214,11 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
     },
     truncated,
     detail,
+    // BE-15: sales-by-period ya trae estas cuatro cosas agregadas del
+    // servidor (no hay nada que recalcular aquí, a diferencia de rows/people).
+    abonosRecibidos: period.abonosRecibidos,
+    abonosRecibidosMinor: period.abonosRecibidosMinor,
+    deudasLiquidadas: period.deudasLiquidadas,
+    totalIngresadoMinor: period.totalIngresadoMinor,
   }
 }

@@ -10,12 +10,48 @@ export interface ReportRangeParams {
   to: string
 }
 
-/** GET /reports/sales-by-period. `from`/`to` vuelven normalizados como instantes UTC. */
+/** Un abono real recibido en el periodo (BE-15), de una Deuda activa o ya saldada. */
+export interface AbonoRecibidoRow {
+  /** ISO 8601, = `Abono.receivedAt`. */
+  fecha: string
+  deudor: string
+  montoMinor: number
+  type: 'fiado' | 'apartado'
+}
+
+/**
+ * Una Deuda liquidada en el periodo (BE-15): `saldadaAt` cae en el rango (no
+ * `createdAt`). `gananciaMinor` nunca se estima: `null` cuando `unitCostMinor`
+ * de la deuda es `null` (mismo criterio que `sales-detail`).
+ */
+export interface DeudaLiquidadaRow {
+  id: string
+  type: 'fiado' | 'apartado'
+  deudor: string
+  totalMinor: number
+  saldadaAt: string
+  gananciaMinor: number | null
+  gananciaDisponible: boolean
+}
+
+/**
+ * GET /reports/sales-by-period. `from`/`to` vuelven normalizados como
+ * instantes UTC. BE-15 extiende este endpoint (en vez de crear uno nuevo)
+ * con dos tablas de deudas y el total combinado.
+ */
 export interface SalesByPeriodReport {
   from: string
   to: string
   totalSoldMinor: number
   saleCount: number
+  /** BE-15. Todo Abono real con `receivedAt` en el periodo. */
+  abonosRecibidos: AbonoRecibidoRow[]
+  /** BE-15. Suma de `abonosRecibidos[].montoMinor`; `0` si no hubo. */
+  abonosRecibidosMinor: number
+  /** BE-15. Deudas cuyo `saldadaAt` cae en el periodo. */
+  deudasLiquidadas: DeudaLiquidadaRow[]
+  /** BE-15. `totalSoldMinor + abonosRecibidosMinor`, ya sumado por el servidor. */
+  totalIngresadoMinor: number
 }
 
 export interface SalesByMemberItem {
@@ -184,6 +220,16 @@ export interface SalesReport {
   truncated: boolean
   /** Ver `SalesReportDetail` (D4). `undefined` cuando no se pidió el desglose. */
   detail?: SalesReportDetail
+  /**
+   * Abonos/deudas liquidadas del periodo (BE-15), tal cual los devuelve
+   * `sales-by-period` — a diferencia de `detail`, SIEMPRE presentes (no son
+   * opcionales: el endpoint los trae desde que existe BE-15, sin pedirlo aparte).
+   */
+  abonosRecibidos: AbonoRecibidoRow[]
+  abonosRecibidosMinor: number
+  deudasLiquidadas: DeudaLiquidadaRow[]
+  /** `totalSoldMinor + abonosRecibidosMinor`. */
+  totalIngresadoMinor: number
 }
 
 // ── GET /dashboard/summary (doc/api-contract-for-frontend.md §"GET

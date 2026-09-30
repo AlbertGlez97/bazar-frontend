@@ -11,7 +11,7 @@ import {
   sharePercent,
   UNKNOWN_SELLER,
 } from '../sales-report'
-import type { SalesByMemberReport, SalesByPeriodReport, SalesDetailRow, SalesDetailTotals } from '@/types/report.types'
+import type { AbonoRecibidoRow, DeudaLiquidadaRow, SalesByMemberReport, SalesByPeriodReport, SalesDetailRow, SalesDetailTotals } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
 const FROM = '2026-09-24T06:00:00.000Z'
@@ -42,7 +42,20 @@ function sale(overrides: Partial<Sale> & { quantities?: number[] } = {}): Sale {
   }
 }
 
-const period = (totalSoldMinor: number, saleCount: number): SalesByPeriodReport => ({ from: FROM, to: TO, totalSoldMinor, saleCount })
+const period = (
+  totalSoldMinor: number,
+  saleCount: number,
+  extra: { abonosRecibidos?: AbonoRecibidoRow[]; deudasLiquidadas?: DeudaLiquidadaRow[] } = {},
+): SalesByPeriodReport => {
+  const abonosRecibidos = extra.abonosRecibidos ?? []
+  const abonosRecibidosMinor = abonosRecibidos.reduce((sum, a) => sum + a.montoMinor, 0)
+  return {
+    from: FROM, to: TO, totalSoldMinor, saleCount,
+    abonosRecibidos, abonosRecibidosMinor,
+    deudasLiquidadas: extra.deudasLiquidadas ?? [],
+    totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor,
+  }
+}
 
 const members: SalesByMemberReport = {
   from: FROM,
@@ -64,6 +77,30 @@ function build(sales: Sale[], overrides: Partial<Parameters<typeof buildSalesRep
     ...overrides,
   })
 }
+
+// BE-15: sales-by-period trae abonos/deudas liquidadas y el total combinado
+// del periodo; buildSalesReport los pasa TAL CUAL (ya vienen agregados del
+// servidor, no hay nada que recalcular aquí, a diferencia de `rows`/`people`).
+describe('buildSalesReport — abonos/deudas liquidadas (BE-15, pass-through)', () => {
+  it('pasa abonosRecibidos, abonosRecibidosMinor, deudasLiquidadas y totalIngresadoMinor tal cual del período', () => {
+    const abonosRecibidos: AbonoRecibidoRow[] = [{ fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' }]
+    const deudasLiquidadas: DeudaLiquidadaRow[] = [{ id: 'd-1', type: 'fiado', deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true }]
+    const report = build([], { period: period(0, 0, { abonosRecibidos, deudasLiquidadas }) })
+
+    expect(report.abonosRecibidos).toEqual(abonosRecibidos)
+    expect(report.abonosRecibidosMinor).toBe(20000)
+    expect(report.deudasLiquidadas).toEqual(deudasLiquidadas)
+    expect(report.totalIngresadoMinor).toBe(20000)
+  })
+
+  it('sin abonos ni deudas liquidadas, quedan vacíos y el total combinado es solo lo vendido', () => {
+    const s = sale({ totalMinor: 5000 })
+    const report = build([s])
+    expect(report.abonosRecibidos).toEqual([])
+    expect(report.deudasLiquidadas).toEqual([])
+    expect(report.totalIngresadoMinor).toBe(5000)
+  })
+})
 
 describe('buildSalesReport — rows', () => {
   it('maps each sale to a row with seller name, article count and amounts', () => {
@@ -184,7 +221,10 @@ describe('buildSalesReport — per person', () => {
 describe('rangeDescription and reportNotes (shared by PDF and Excel)', () => {
   it('describes a single day and a multi-day range in business dates', () => {
     expect(rangeDescription(build([]))).toBe('24/09/2026')
-    const week = build([], { period: { from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0 } })
+    const week = build([], { period: {
+      from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0,
+      abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0,
+    } })
     expect(rangeDescription(week)).toBe('20/09/2026 al 26/09/2026')
   })
 
@@ -319,7 +359,10 @@ describe('buildSalesReport — header data', () => {
   })
 
   it('a multi-day range gives its first and last business day', () => {
-    const report = build([], { period: { from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0 } })
+    const report = build([], { period: {
+      from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0,
+      abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0,
+    } })
     expect(report.range).toMatchObject({ fromDay: '2026-09-20', toDay: '2026-09-26' })
   })
 

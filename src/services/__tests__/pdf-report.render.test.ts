@@ -5,7 +5,10 @@ import { buildSalesReport } from '@/utils/sales-report'
 // Render REAL con pdfmake (sin mocks): comprueba que la definición es válida
 // para pdfmake, que las fuentes empaquetadas cubren acentos y "$" y que sale un PDF de verdad.
 const report = buildSalesReport({
-  period: { from: '2026-09-24T06:00:00.000Z', to: '2026-09-25T05:59:59.999Z', totalSoldMinor: 125000, saleCount: 1 },
+  period: {
+    from: '2026-09-24T06:00:00.000Z', to: '2026-09-25T05:59:59.999Z', totalSoldMinor: 125000, saleCount: 1,
+    abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 125000,
+  },
   byMember: { from: '', to: '', items: [{ memberId: 'm-1', memberName: 'María Núñez', role: 'socio', totalSoldMinor: 125000 }] },
   sales: [{
     id: 's-1', memberId: 'm-1', deviceId: 'd', occurredAt: '2026-09-24T20:05:00.000Z', receivedAt: '2026-09-24T20:05:00.000Z',

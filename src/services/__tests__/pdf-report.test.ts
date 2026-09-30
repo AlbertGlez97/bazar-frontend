@@ -3,7 +3,7 @@ import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces'
 import { buildPdfDefinition } from '../pdf-report'
 import { REPORT_COLORS } from '@/config/report-palette'
 import { buildSalesReport, type BuildSalesReportInput } from '@/utils/sales-report'
-import type { SalesReport } from '@/types/report.types'
+import type { AbonoRecibidoRow, DeudaLiquidadaRow, SalesReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
 const FROM = '2026-09-24T06:00:00.000Z'
@@ -23,6 +23,9 @@ function makeReport(overrides: {
   truncated?: boolean
   forceMismatch?: boolean
   detail?: BuildSalesReportInput['detail']
+  /** BE-15: abonos/deudas liquidadas del periodo (dos tablas nuevas). */
+  abonosRecibidos?: AbonoRecibidoRow[]
+  deudasLiquidadas?: DeudaLiquidadaRow[]
 } = {}): SalesReport {
   const sales = overrides.sales ?? [
     sale('s-2', 'm-carlos', '2026-09-24T20:05:00.000Z', 125000, 150000, [2, 1]),
@@ -30,8 +33,16 @@ function makeReport(overrides: {
   ]
   const total = sales.reduce((sum, s) => sum + (s.totalMinor ?? 0), 0)
   const range = overrides.period ?? { from: FROM, to: TO }
+  const abonosRecibidos = overrides.abonosRecibidos ?? []
+  const abonosRecibidosMinor = abonosRecibidos.reduce((sum, a) => sum + a.montoMinor, 0)
+  const totalSoldMinor = overrides.forceMismatch ? total + 100 : total
   return buildSalesReport({
-    period: { ...range, totalSoldMinor: overrides.forceMismatch ? total + 100 : total, saleCount: sales.length },
+    period: {
+      ...range, totalSoldMinor, saleCount: sales.length,
+      abonosRecibidos, abonosRecibidosMinor,
+      deudasLiquidadas: overrides.deudasLiquidadas ?? [],
+      totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor,
+    },
     byMember: {
       ...range,
       items: [
@@ -79,8 +90,9 @@ function tables(def: TDocumentDefinitions): Array<{ body: Content[][]; widths?: 
 }
 
 const rowTexts = (row: Content[]) => row.map((cell) => texts(cell).join(''))
-const findTable = (def: TDocumentDefinitions, firstHeader: string) =>
-  tables(def).find((t) => rowTexts(t.body[0])[0] === firstHeader)!
+/** `occurrence` distingue tablas con el mismo primer encabezado (p.ej. "Fecha" en Ventas y en Abonos recibidos). */
+const findTable = (def: TDocumentDefinitions, firstHeader: string, occurrence = 0) =>
+  tables(def).filter((t) => rowTexts(t.body[0])[0] === firstHeader)[occurrence]!
 
 describe('buildPdfDefinition — document', () => {
   it('is an A4 portrait document with the bundled Roboto font (works offline)', () => {
@@ -221,6 +233,53 @@ describe('buildPdfDefinition — product breakdown (D4: real profit by product/m
     const table = findTable(def, 'Producto')
     expect(rowTexts(table.body[0])).not.toContain('Efectivo')
     expect(rowTexts(table.body[0])).not.toContain('Cambio')
+  })
+})
+
+// BE-15 (D7): dos tablas nuevas ("Abonos recibidos en el periodo", "Deudas
+// liquidadas en el periodo") más el total combinado — mismo patrón que
+// salesTable/peopleTable/productTable, SIEMPRE presentes (a diferencia de
+// "Por producto", que depende de si se pidió el detalle).
+describe('buildPdfDefinition — abonos recibidos y deudas liquidadas (BE-15)', () => {
+  const abonosRecibidos = [
+    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' as const },
+  ]
+  const deudasLiquidadas = [
+    { id: 'd-1', type: 'fiado' as const, deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true },
+  ]
+
+  it('has an "Abonos recibidos" table with Fecha / Deudor / Tipo / Monto', () => {
+    const def = buildPdfDefinition(makeReport({ abonosRecibidos }))
+    const table = findTable(def, 'Fecha', 1)
+    expect(rowTexts(table.body[0])).toEqual(['Fecha', 'Deudor', 'Tipo', 'Monto'])
+    expect(rowTexts(table.body[1])).toEqual(['22/09/2026 09:30', 'Lucía', 'Apartado', '$200.00'])
+  })
+
+  it('has a "Deudas liquidadas" table with Deudor / Tipo / Total / Liquidada el / Ganancia', () => {
+    const def = buildPdfDefinition(makeReport({ deudasLiquidadas }))
+    const table = findTable(def, 'Deudor')
+    expect(rowTexts(table.body[0])).toEqual(['Deudor', 'Tipo', 'Total', 'Liquidada el', 'Ganancia'])
+    expect(rowTexts(table.body[1])).toEqual(['Carlos', 'Fiado', '$650.00', '23/09/2026 07:00', '$150.00'])
+  })
+
+  it('a row without cost shows "No disponible" instead of $0.00 in Deudas liquidadas', () => {
+    const def = buildPdfDefinition(makeReport({
+      deudasLiquidadas: [{ id: 'd-2', type: 'apartado', deudor: 'Ana', totalMinor: 10000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: null, gananciaDisponible: false }],
+    }))
+    const table = findTable(def, 'Deudor')
+    expect(rowTexts(table.body[1])).toEqual(['Ana', 'Apartado', '$100.00', '23/09/2026 07:00', 'No disponible'])
+  })
+
+  it('without abonos or deudas liquidadas, says so in each section (never omits them silently)', () => {
+    const def = buildPdfDefinition(makeReport())
+    const text = texts(def.content).join(' ')
+    expect(text).toContain('Todavía no hay abonos en este periodo.')
+    expect(text).toContain('Todavía no hay deudas liquidadas en este periodo.')
+  })
+
+  it('shows the combined total (ventas de contado + abonos reales)', () => {
+    const def = buildPdfDefinition(makeReport({ abonosRecibidos }))
+    expect(texts(def.content)).toContain('Total ingresado')
   })
 })
 

@@ -3,7 +3,7 @@ import { REPORT_COLORS } from '@/config/report-palette'
 import { formatBusinessDateTime } from '@/utils/business-time'
 import { saveBlob } from '@/utils/report-files'
 import { formatMinorMoney } from '@/utils/money'
-import { gananciaCellText, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
+import { deudaTypeLabel, gananciaCellText, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 
 const C = REPORT_COLORS
@@ -154,6 +154,68 @@ function productTable(report: SalesReport): Content {
   }
 }
 
+/** Tabla "Abonos recibidos en el periodo" (BE-15/D7): todo Abono real, sea su Deuda activa o ya saldada. */
+function abonosTable(report: SalesReport): Content {
+  return {
+    table: {
+      headerRows: 1,
+      dontBreakRows: true,
+      widths: [88, '*', 55, 62],
+      body: [
+        [
+          headerCell('Fecha'),
+          headerCell('Deudor'),
+          headerCell('Tipo'),
+          headerCell('Monto', 'right'),
+        ],
+        ...report.abonosRecibidos.map((abono) => [
+          cell(formatBusinessDateTime(abono.fecha)),
+          cell(abono.deudor),
+          cell(deudaTypeLabel(abono.type)),
+          cell(formatMinorMoney(abono.montoMinor), 'right'),
+        ]),
+        [
+          totalCell('Total'),
+          totalCell(''),
+          totalCell(''),
+          totalCell(formatMinorMoney(report.abonosRecibidosMinor), 'right'),
+        ],
+      ],
+    },
+    layout: TABLE_LAYOUT,
+    fontSize: 9,
+  }
+}
+
+/** Tabla "Deudas liquidadas en el periodo" (BE-15/D7): ganancia real, con hueco explícito nunca como `$0.00`. */
+function deudasLiquidadasTable(report: SalesReport): Content {
+  return {
+    table: {
+      headerRows: 1,
+      dontBreakRows: true,
+      widths: ['*', 55, 62, 88, 62],
+      body: [
+        [
+          headerCell('Deudor'),
+          headerCell('Tipo'),
+          headerCell('Total', 'right'),
+          headerCell('Liquidada el'),
+          headerCell('Ganancia', 'right'),
+        ],
+        ...report.deudasLiquidadas.map((deuda) => [
+          cell(deuda.deudor),
+          cell(deudaTypeLabel(deuda.type)),
+          cell(formatMinorMoney(deuda.totalMinor), 'right'),
+          cell(formatBusinessDateTime(deuda.saldadaAt)),
+          cell(gananciaCellText(deuda), 'right'),
+        ]),
+      ],
+    },
+    layout: TABLE_LAYOUT,
+    fontSize: 9,
+  }
+}
+
 /**
  * Definición del PDF de ventas (función pura: no toca pdfmake). El módulo de
  * pdfmake solo se carga en `renderPdfBlob`, al pedir el archivo.
@@ -206,13 +268,37 @@ export function buildPdfDefinition(report: SalesReport): TDocumentDefinitions {
     if (partialNote) content.push(noteBox(partialNote))
   }
 
+  // BE-15 (D7): dos tablas nuevas, SIEMPRE presentes (a diferencia de "Por
+  // producto", que depende de si se pidió el detalle) — sales-by-period ya
+  // las trae, sin pedir nada aparte.
+  content.push({ text: 'Abonos recibidos en el periodo', style: 'sectionTitle', margin: [0, 16, 0, 6] })
+  content.push(report.abonosRecibidos.length > 0
+    ? abonosTable(report)
+    : { text: 'Todavía no hay abonos en este periodo.', color: C.textMuted, margin: [0, 0, 0, 8] })
+
+  content.push({ text: 'Deudas liquidadas en el periodo', style: 'sectionTitle', margin: [0, 16, 0, 6] })
+  content.push(report.deudasLiquidadas.length > 0
+    ? deudasLiquidadasTable(report)
+    : { text: 'Todavía no hay deudas liquidadas en este periodo.', color: C.textMuted, margin: [0, 0, 0, 8] })
+
   content.push({
-    stack: [
-      { text: 'Total vendido', fontSize: 10, color: C.textMuted },
-      { text: formatMinorMoney(totals.totalMinor), fontSize: 24, bold: true, color: C.primary },
-      { text: `${plural(totals.saleCount, 'venta', 'ventas')} · ${plural(totals.articleCount, 'artículo', 'artículos')}`, fontSize: 10, color: C.textMuted },
+    columns: [
+      {
+        stack: [
+          { text: 'Total ingresado', fontSize: 10, color: C.textMuted },
+          { text: formatMinorMoney(report.totalIngresadoMinor), fontSize: 16, bold: true, color: C.text },
+          { text: 'ventas de contado + abonos reales', fontSize: 8, color: C.textMuted },
+        ],
+      },
+      {
+        stack: [
+          { text: 'Total vendido', fontSize: 10, color: C.textMuted },
+          { text: formatMinorMoney(totals.totalMinor), fontSize: 24, bold: true, color: C.primary },
+          { text: `${plural(totals.saleCount, 'venta', 'ventas')} · ${plural(totals.articleCount, 'artículo', 'artículos')}`, fontSize: 10, color: C.textMuted },
+        ],
+        alignment: 'right',
+      },
     ],
-    alignment: 'right',
     margin: [0, 18, 0, 0],
     unbreakable: true,
   })

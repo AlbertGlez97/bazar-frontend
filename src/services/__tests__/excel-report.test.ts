@@ -3,7 +3,7 @@ import ExcelJS from 'exceljs'
 import { buildExcelData, buildWorkbook, downloadExcel, renderExcelBlob, XLSX_MIME } from '../excel-report'
 import { saveBlob } from '@/utils/report-files'
 import { buildSalesReport, type BuildSalesReportInput } from '@/utils/sales-report'
-import type { SalesReport } from '@/types/report.types'
+import type { AbonoRecibidoRow, DeudaLiquidadaRow, SalesReport } from '@/types/report.types'
 import type { Sale } from '@/types/sale.types'
 
 vi.mock('@/utils/report-files', () => ({ saveBlob: vi.fn() }))
@@ -28,11 +28,26 @@ const DEFAULT_SALES = [
 function makeReport(
   sales: Sale[] = DEFAULT_SALES,
   names: Record<string, string> = { 'm-ana': 'Ana', 'm-carlos': 'Carlos Núñez' },
-  extra: { forceMismatch?: boolean; truncated?: boolean; detail?: BuildSalesReportInput['detail'] } = {},
+  extra: {
+    forceMismatch?: boolean
+    truncated?: boolean
+    detail?: BuildSalesReportInput['detail']
+    /** BE-15: abonos/deudas liquidadas del periodo (dos tablas nuevas). */
+    abonosRecibidos?: AbonoRecibidoRow[]
+    deudasLiquidadas?: DeudaLiquidadaRow[]
+  } = {},
 ): SalesReport {
   const total = sales.reduce((sum, s) => sum + (s.totalMinor ?? 0), 0)
+  const abonosRecibidos = extra.abonosRecibidos ?? []
+  const abonosRecibidosMinor = abonosRecibidos.reduce((sum, a) => sum + a.montoMinor, 0)
+  const totalSoldMinor = extra.forceMismatch ? total + 1 : total
   return buildSalesReport({
-    period: { from: FROM, to: TO, totalSoldMinor: extra.forceMismatch ? total + 1 : total, saleCount: sales.length },
+    period: {
+      from: FROM, to: TO, totalSoldMinor, saleCount: sales.length,
+      abonosRecibidos, abonosRecibidosMinor,
+      deudasLiquidadas: extra.deudasLiquidadas ?? [],
+      totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor,
+    },
     byMember: {
       from: FROM, to: TO,
       items: Object.entries(names).map(([memberId, memberName]) => ({
@@ -88,12 +103,17 @@ describe('buildExcelData (pure shaping, no exceljs)', () => {
       { label: 'Ventas', value: 2 },
       { label: 'Artículos', value: 4 },
       { label: 'Total vendido', value: 1300.5, money: true },
+      { label: 'Abonos recibidos', value: 0, money: true },
+      { label: 'Total ingresado', value: 1300.5, money: true },
     ])
   })
 
   it('says "del ... al ..." for a multi-day range', () => {
     const report = buildSalesReport({
-      period: { from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0 },
+      period: {
+        from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0,
+        abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0,
+      },
       byMember: { from: '', to: '', items: [] }, sales: [], businessName: 'La Marchanta', generatedAt: '2026-09-25T04:00:00.000Z',
     })
     const { summary } = buildExcelData(report)
@@ -149,12 +169,12 @@ describe('buildWorkbook — product sheet (D4, real exceljs)', () => {
 
   it('does not add a "Por producto" sheet when the report has no detail', async () => {
     const wb = await buildWorkbook(makeReport())
-    expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Resumen'])
+    expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Abonos recibidos', 'Deudas liquidadas', 'Resumen'])
   })
 
   it('adds "Por producto" with header, rows and "No disponible" text for a missing profit', async () => {
     const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { detail: { rows: detailRows, totals } }))
-    expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Por producto', 'Resumen'])
+    expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Por producto', 'Abonos recibidos', 'Deudas liquidadas', 'Resumen'])
     const ws = wb.getWorksheet('Por producto')!
     expect(ws.getRow(1).values).toEqual([undefined, 'Producto', 'Persona', 'Unidades', 'Ingreso', 'Ganancia'])
     expect(ws.getCell('A2').value).toBe('Reloj')
@@ -190,10 +210,52 @@ describe('buildWorkbook — product sheet (D4, real exceljs)', () => {
   })
 })
 
+// BE-15 (D7): dos hojas nuevas, SIEMPRE presentes (a diferencia de "Por
+// producto", que depende de si se pidió el detalle).
+describe('buildWorkbook — abonos recibidos y deudas liquidadas (BE-15, real exceljs)', () => {
+  const abonosRecibidos = [
+    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' as const },
+  ]
+  const deudasLiquidadas = [
+    { id: 'd-1', type: 'fiado' as const, deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true },
+    { id: 'd-2', type: 'apartado' as const, deudor: 'Ana', totalMinor: 10000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: null, gananciaDisponible: false },
+  ]
+
+  it('writes "Abonos recibidos" with Fecha/Deudor/Tipo/Monto and a totals row', async () => {
+    const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { abonosRecibidos }))
+    const ws = wb.getWorksheet('Abonos recibidos')!
+    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Deudor', 'Tipo', 'Monto'])
+    expect(ws.getCell('B2').value).toBe('Lucía')
+    expect(ws.getCell('C2').value).toBe('Apartado')
+    expect(ws.getCell('D2').value).toBe(200)
+    expect(ws.getCell('D2').numFmt).toBe(MONEY_FORMAT)
+  })
+
+  it('writes "Deudas liquidadas" with Deudor/Tipo/Total/Liquidada el/Ganancia, "No disponible" for a missing profit', async () => {
+    const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { deudasLiquidadas }))
+    const ws = wb.getWorksheet('Deudas liquidadas')!
+    expect(ws.getRow(1).values).toEqual([undefined, 'Deudor', 'Tipo', 'Total', 'Liquidada el', 'Ganancia'])
+    expect(ws.getCell('A2').value).toBe('Carlos')
+    expect(ws.getCell('C2').value).toBe(650)
+    expect(ws.getCell('E2').value).toBe(150)
+    expect(ws.getCell('E2').numFmt).toBe(MONEY_FORMAT)
+    expect(ws.getCell('E3').value).toBe('No disponible')
+    expect(ws.getCell('E3').numFmt).not.toBe(MONEY_FORMAT)
+  })
+
+  it('the Resumen sheet includes the combined total ("Total ingresado")', async () => {
+    const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { abonosRecibidos }))
+    const ws = wb.getWorksheet('Resumen')!
+    const row = ws.getRows(1, 12)!.find((r) => r.getCell(1).value === 'Total ingresado')!
+    expect(row.getCell(2).value).toBe(1500.5) // 1300.50 vendido + 200.00 abonado
+    expect(row.getCell(2).numFmt).toBe(MONEY_FORMAT)
+  })
+})
+
 describe('buildWorkbook (real exceljs)', () => {
-  it('has the sheets Ventas, Por persona and Resumen', async () => {
+  it('has the sheets Ventas, Por persona, Abonos recibidos, Deudas liquidadas and Resumen', async () => {
     const wb = await buildWorkbook(makeReport())
-    expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Resumen'])
+    expect(wb.worksheets.map((ws) => ws.name)).toEqual(['Ventas', 'Por persona', 'Abonos recibidos', 'Deudas liquidadas', 'Resumen'])
   })
 
   it('writes the Ventas header styled, frozen and filtered (sin Efectivo ni Cambio)', async () => {

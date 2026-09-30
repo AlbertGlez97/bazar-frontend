@@ -2,7 +2,7 @@ import type { Workbook, Row } from 'exceljs'
 import { REPORT_COLORS, toArgb } from '@/config/report-palette'
 import { businessWallClock, formatBusinessDateTime } from '@/utils/business-time'
 import { saveBlob } from '@/utils/report-files'
-import { GANANCIA_NO_DISPONIBLE, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
+import { deudaTypeLabel, GANANCIA_NO_DISPONIBLE, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -52,6 +52,24 @@ export interface ExcelProductRow {
   profit: number | null
 }
 
+/** Una fila de la hoja "Abonos recibidos" (BE-15/D7). */
+export interface ExcelAbonoRow {
+  date: Date
+  deudor: string
+  type: string
+  amount: number
+}
+
+/** Una fila de la hoja "Deudas liquidadas" (BE-15/D7). */
+export interface ExcelDeudaLiquidadaRow {
+  deudor: string
+  type: string
+  total: number
+  saldadaAt: Date
+  /** `null` cuando `gananciaDisponible` es `false` — se escribe "No disponible", NUNCA `0`. */
+  profit: number | null
+}
+
 /** Los datos de las hojas, ya en pesos y listos para escribir (sin ExcelJS). */
 export interface ExcelReportData {
   sales: {
@@ -73,6 +91,12 @@ export interface ExcelReportData {
     totals: { income: number; profit: number }
     note: string | null
   }
+  /**
+   * BE-15/D7: abonos recibidos y deudas liquidadas del periodo, SIEMPRE
+   * presentes (a diferencia de `product`) — `sales-by-period` ya las trae.
+   */
+  abonos: { rows: ExcelAbonoRow[]; totalAmount: number }
+  deudasLiquidadas: { rows: ExcelDeudaLiquidadaRow[] }
   summary: {
     title: string
     subtitle: string
@@ -122,6 +146,24 @@ export function buildExcelData(report: SalesReport): ExcelReportData {
       },
       note: profitPartialNote(report.detail.totals.lineasSinCosto),
     },
+    abonos: {
+      rows: report.abonosRecibidos.map((abono) => ({
+        date: businessWallClock(abono.fecha),
+        deudor: abono.deudor,
+        type: deudaTypeLabel(abono.type),
+        amount: toPesos(abono.montoMinor),
+      })),
+      totalAmount: toPesos(report.abonosRecibidosMinor),
+    },
+    deudasLiquidadas: {
+      rows: report.deudasLiquidadas.map((deuda) => ({
+        deudor: deuda.deudor,
+        type: deudaTypeLabel(deuda.type),
+        total: toPesos(deuda.totalMinor),
+        saldadaAt: businessWallClock(deuda.saldadaAt),
+        profit: deuda.gananciaDisponible && deuda.gananciaMinor !== null ? toPesos(deuda.gananciaMinor) : null,
+      })),
+    },
     summary: {
       title: report.businessName,
       subtitle: `Ventas del ${rangeDescription(report)}`,
@@ -131,6 +173,9 @@ export function buildExcelData(report: SalesReport): ExcelReportData {
         { label: 'Ventas', value: totals.saleCount },
         { label: 'Artículos', value: totals.articleCount },
         { label: 'Total vendido', value: toPesos(totals.totalMinor), money: true },
+        { label: 'Abonos recibidos', value: toPesos(report.abonosRecibidosMinor), money: true },
+        // BE-15/D7: total combinado — ventas de contado + abonos reales.
+        { label: 'Total ingresado', value: toPesos(report.totalIngresadoMinor), money: true },
       ],
       notes: reportNotes(report),
     },
@@ -275,6 +320,74 @@ function addProductSheet(workbook: Workbook, data: ExcelReportData) {
   }
 }
 
+/** Hoja "Abonos recibidos" (BE-15/D7): todo Abono real del periodo, con totales SUM (la lista completa, sin paginar). */
+function addAbonosSheet(workbook: Workbook, data: ExcelReportData) {
+  const { rows, totalAmount } = data.abonos
+  const ws = workbook.addWorksheet('Abonos recibidos', { views: [{ state: 'frozen', ySplit: 1 }] })
+  ws.columns = [
+    { width: 18 },
+    { width: nameWidth(rows.map((r) => r.deudor), 16) },
+    { width: 12 },
+    { width: 14 },
+  ]
+
+  headerStyle(ws.addRow(['Fecha', 'Deudor', 'Tipo', 'Monto']), [4])
+
+  for (const item of rows) {
+    const row = ws.addRow([item.date, item.deudor, item.type, item.amount])
+    row.getCell(1).numFmt = DATE_FORMAT
+    row.getCell(2).numFmt = TEXT_FORMAT
+    row.getCell(4).numFmt = MONEY_FORMAT
+  }
+
+  const n = rows.length
+  const totalsRow = ws.getRow(n === 0 ? 2 : n + 3)
+  totalsRow.getCell(1).value = 'Total'
+  const amountCell = totalsRow.getCell(4)
+  amountCell.value = n === 0 ? totalAmount : { formula: `SUM(D2:D${n + 1})`, result: totalAmount }
+  amountCell.numFmt = MONEY_FORMAT
+  totalsStyle(totalsRow, 4)
+}
+
+/** Hoja "Deudas liquidadas" (BE-15/D7): ganancia real, con hueco explícito nunca escrito como `0`. */
+function addDeudasLiquidadasSheet(workbook: Workbook, data: ExcelReportData) {
+  const { rows } = data.deudasLiquidadas
+  const ws = workbook.addWorksheet('Deudas liquidadas', { views: [{ state: 'frozen', ySplit: 1 }] })
+  ws.columns = [
+    { width: nameWidth(rows.map((r) => r.deudor), 18) },
+    { width: 12 },
+    { width: 14 },
+    { width: 18 },
+    { width: 14 },
+  ]
+
+  headerStyle(ws.addRow(['Deudor', 'Tipo', 'Total', 'Liquidada el', 'Ganancia']), [3, 5])
+
+  for (const item of rows) {
+    const row = ws.addRow([item.deudor, item.type, item.total, item.saldadaAt, item.profit ?? GANANCIA_NO_DISPONIBLE])
+    row.getCell(1).numFmt = TEXT_FORMAT
+    row.getCell(3).numFmt = MONEY_FORMAT
+    row.getCell(4).numFmt = DATE_FORMAT
+    if (item.profit !== null) row.getCell(5).numFmt = MONEY_FORMAT
+  }
+
+  if (rows.length === 0) return
+  const n = rows.length
+  const totalsRow = ws.getRow(n + 2)
+  totalsRow.getCell(1).value = 'Total'
+  totalsRow.getCell(3).value = { formula: `SUM(C2:C${n + 1})`, result: rows.reduce((sum, r) => sum + r.total, 0) }
+  totalsRow.getCell(3).numFmt = MONEY_FORMAT
+  const profitableRows = rows.map((r, i) => ({ r, i })).filter(({ r }) => r.profit !== null)
+  if (profitableRows.length > 0) {
+    totalsRow.getCell(5).value = {
+      formula: `SUM(${profitableRows.map(({ i }) => `E${i + 2}`).join(',')})`,
+      result: profitableRows.reduce((sum, { r }) => sum + (r.profit ?? 0), 0),
+    }
+    totalsRow.getCell(5).numFmt = MONEY_FORMAT
+  }
+  totalsStyle(totalsRow, 5)
+}
+
 function addSummarySheet(workbook: Workbook, data: ExcelReportData) {
   const { title, subtitle, rows, notes } = data.summary
   const ws = workbook.addWorksheet('Resumen')
@@ -328,6 +441,8 @@ export async function buildWorkbook(report: SalesReport): Promise<Workbook> {
   addSalesSheet(workbook, data)
   addPeopleSheet(workbook, data)
   if (data.product) addProductSheet(workbook, data)
+  addAbonosSheet(workbook, data)
+  addDeudasLiquidadasSheet(workbook, data)
   addSummarySheet(workbook, data)
   return workbook
 }

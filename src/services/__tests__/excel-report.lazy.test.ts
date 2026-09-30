@@ -20,7 +20,10 @@ vi.mock('exceljs', () => {
 })
 
 const report = buildSalesReport({
-  period: { from: '2026-09-24T06:00:00.000Z', to: '2026-09-25T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0 },
+  period: {
+    from: '2026-09-24T06:00:00.000Z', to: '2026-09-25T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0,
+    abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0,
+  },
   byMember: { from: '', to: '', items: [] }, sales: [], businessName: 'La Marchanta', generatedAt: '2026-09-25T04:00:00.000Z',
 })
 
