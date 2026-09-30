@@ -120,12 +120,22 @@ const props = withDefaults(defineProps<{
    * cambia la presentación (CSS); el contenido y las acciones son los mismos.
    */
   size?: 'default' | 'large' | 'list'
+  /**
+   * Fuerza la disponibilidad simplificada (Disponible/Agotado) aunque el
+   * tamaño no sea `large`. La usa SaleCatalogPicker (Modo Venta) en su vista
+   * "Lista": misma fila compacta de `size="list"`, pero al mostrador solo le
+   * importa si se puede vender, nunca el número de existencias — igual que
+   * `large`. Sin esta prop, `size="list"` conserva el contenido de
+   * `default` (existencias reales), como en la Vista de Lista de Gestión.
+   */
+  simplifiedAvailability?: boolean
   /** Modo selección (imprimir códigos QR): muestra la casilla. */
   selectable?: boolean
   selected?: boolean
 }>(), {
   showActions: false,
   size: 'default',
+  simplifiedAvailability: false,
   selectable: false,
   selected: false,
 })
@@ -141,7 +151,7 @@ defineEmits<{
 // muestra el número real de existencias. En tamaño grande (venta) solo importa
 // saber si se puede vender: Disponible / Agotado.
 const stockLabel = computed(() => {
-  if (props.product.tipo === 'unica' || props.size === 'large') {
+  if (props.product.tipo === 'unica' || props.size === 'large' || props.simplifiedAvailability) {
     return isProductAvailable(props.product) ? 'Disponible' : 'Agotado'
   }
   return `${props.product.stock} en existencia`

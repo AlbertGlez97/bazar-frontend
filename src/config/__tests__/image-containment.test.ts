@@ -75,19 +75,11 @@ describe('miniatura de producto: contención de imagen (contrato de CSS)', () =>
     expect(propOf(ruleBody(source, '.cart-line__img'), 'object-fit')).toBe('cover')
   })
 
-  it('SaleCatalogPicker: la fila de la Vista de Lista trae miniatura fija recortada y nombre truncado', () => {
-    const source = sourceOf('SaleCatalogPicker.vue')
-    const thumb = ruleBody(source, '.sale-picker__thumb')
-    expect(propOf(thumb, 'width')).toBe('3rem')
-    expect(propOf(thumb, 'height')).toBe('3rem')
-    expect(propOf(thumb, 'overflow')).toBe('hidden')
-    expect(propOf(ruleBody(source, '.sale-picker__thumb-img'), 'object-fit')).toBe('cover')
-
-    const name = ruleBody(source, '.sale-picker__row-name')
-    expect(propOf(name, 'white-space')).toBe('nowrap')
-    expect(propOf(name, 'overflow')).toBe('hidden')
-    expect(propOf(name, 'text-overflow')).toBe('ellipsis')
-  })
+  // SaleCatalogPicker (Modo Venta) ya no dibuja su propia miniatura/fila en
+  // Vista de Lista: envuelve un ProductCard size="list", la misma fila
+  // compacta de la Vista de Lista de Gestión. La contención de imagen y
+  // truncado de nombre queda cubierta arriba, una sola vez, por los tests de
+  // ProductCard tamaño "list".
 })
 
 describe('"Tu venta" y catálogos: blindaje flex/grid contra desborde (contrato de CSS)', () => {
@@ -97,9 +89,13 @@ describe('"Tu venta" y catálogos: blindaje flex/grid contra desborde (contrato 
     expect(columns).toMatch(/minmax\(21rem,\s*26rem\)/)
   })
 
-  it('SaleCatalogPicker: cada fila de la Vista de Lista reserva su columna central con minmax(0, 1fr)', () => {
-    const columns = propOf(ruleBody(sourceOf('SaleCatalogPicker.vue'), '.sale-picker__item--row'), 'grid-template-columns')
-    expect(columns).toMatch(/minmax\(0,\s*1fr\)/)
+  // El guardado antes vivía en el grid-template-columns propio de
+  // .sale-picker__item--row; ahora la fila envuelve un ProductCard size="list"
+  // y el mismo blindaje (min-width: 0 en el cuerpo flex, equivalente a
+  // minmax(0, 1fr)) vive ahí, compartido con la Vista de Lista de Gestión.
+  it('ProductCard: el cuerpo de la fila "list" admite encogerse por debajo de su contenido (min-width: 0)', () => {
+    const body = ruleBody(sourceOf('ProductCard.vue'), '.product-card--list .product-card__body')
+    expect(propOf(body, 'min-width')).toBe('0')
   })
 
   it('SaleCatalogPicker: cada celda de la cuadrícula admite encogerse por debajo de su contenido', () => {

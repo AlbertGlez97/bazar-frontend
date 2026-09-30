@@ -147,40 +147,12 @@
           @click="onSelect(product)"
         >
           <ProductCard
-            v-if="view !== 'list'"
             :product="product"
-            size="large"
+            :size="view === 'list' ? 'list' : 'large'"
+            simplified-availability
           />
-          <template v-else>
-            <span class="sale-picker__thumb">
-              <img
-                v-if="product.image"
-                :src="product.image"
-                alt=""
-                class="sale-picker__thumb-img"
-              >
-              <span
-                v-else
-                class="sale-picker__thumb-placeholder"
-                aria-hidden="true"
-              >📦</span>
-            </span>
-            <span class="sale-picker__row-body">
-              <span class="sale-picker__row-name">{{ product.name }}</span>
-              <span class="sale-picker__row-meta">
-                <AppBadge :color="isSoldOut(product) ? 'red' : 'green'">
-                  {{ isSoldOut(product) ? 'Agotado' : 'Disponible' }}
-                </AppBadge>
-                <span
-                  v-if="inCart.has(product.id)"
-                  class="sale-picker__mark"
-                >En tu venta</span>
-              </span>
-            </span>
-            <span class="sale-picker__row-price">${{ minorToDisplay(product.unitPriceMinor) }}</span>
-          </template>
           <span
-            v-if="view !== 'list' && inCart.has(product.id)"
+            v-if="inCart.has(product.id)"
             class="sale-picker__mark"
           >En tu venta</span>
         </button>
@@ -196,7 +168,6 @@ import { isProductAvailable } from '@/utils/product-status'
 import { catalogSnapshotMessage } from '@/config/voice'
 import type { Product } from '@/types/product.types'
 import type { SaleCatalogView } from '@/types/sale-catalog-view.types'
-import AppBadge from '../atoms/AppBadge.vue'
 import AppButton from '../atoms/AppButton.vue'
 import AppInput from '../molecules/AppInput.vue'
 import CategoryQuickFilter from '../molecules/CategoryQuickFilter.vue'
@@ -336,29 +307,13 @@ function onSelect(product: Product) {
 .sale-picker__view-btn:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 .sale-picker__view-icon { font-size: 1.1rem; line-height: 1; }
 
-/* ── Vista de lista: filas compactas, varios productos sin tanto desplazamiento ── */
+/* ── Vista de lista: filas compactas, varios productos sin tanto desplazamiento ──
+   La fila es el mismo botón que la tarjeta, envolviendo un ProductCard
+   size="list" (miniatura fija, nombre truncado, precio alineado — su propio
+   layout de fila, fuente única con la Vista de Lista de Gestión). El botón
+   solo necesita dejarlo ocupar todo el ancho; el hover ya lo cubre la sombra
+   compartida de :deep(.product-card) más abajo. */
 .sale-picker__list { display: flex; flex-direction: column; gap: var(--spacing-xs); margin: 0; padding: 0; list-style: none; }
-/* La fila es el mismo botón que la tarjeta: se le cambia la forma, no el comportamiento.
-   64 px de alto: cómodo para el dedo y caben unas ocho a la vista en un celular. */
-.sale-picker__item--row {
-  display: grid;
-  grid-template-columns: 3rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--spacing-sm);
-  min-height: 4rem;
-  padding: var(--spacing-xs) var(--spacing-sm);
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius-lg);
-}
-.sale-picker__item--row:hover:not(.sale-picker__item--sold-out) { border-color: var(--color-border-strong); }
-.sale-picker__thumb { display: flex; align-items: center; justify-content: center; width: 3rem; height: 3rem; overflow: hidden; background: var(--color-bg); border-radius: var(--radius-md); }
-.sale-picker__thumb-img { width: 100%; height: 100%; object-fit: cover; }
-.sale-picker__thumb-placeholder { font-size: 1.5rem; opacity: 0.4; }
-.sale-picker__row-body { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
-.sale-picker__row-name { font-size: var(--font-size-md); font-weight: 700; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sale-picker__row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs); }
-.sale-picker__row-price { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 800; white-space: nowrap; color: var(--color-text); }
 /* En la fila la marca "En tu venta" va en la línea de estado, no flotando sobre una foto */
 .sale-picker__item--row .sale-picker__mark { position: static; padding: 0.1rem 0.5rem; box-shadow: none; }
 

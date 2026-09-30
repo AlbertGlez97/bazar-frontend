@@ -139,6 +139,30 @@ describe('ProductCard', () => {
       expect(wrapper.find('input[type="checkbox"]').exists()).toBe(true)
       expect(wrapper.text()).toContain('Editar')
     })
+
+    it('size="list" sin simplifiedAvailability sigue mostrando existencias para tipo cantidad (Gestión)', () => {
+      const cantidad = { ...baseProduct, tipo: 'cantidad' as const, stock: 7, initialStock: 10 }
+      const wrapper = mount(ProductCard, { props: { product: cantidad, size: 'list' } })
+      expect(wrapper.text()).toContain('7 en existencia')
+    })
+
+    // Venta/SaleCatalogPicker reutiliza size="list" para su vista "Lista" pero,
+    // como en size="large", solo le importa si se puede vender: Disponible/Agotado,
+    // nunca el número de existencias.
+    it('size="list" con simplifiedAvailability muestra Disponible/Agotado, nunca existencias (Venta)', () => {
+      const cantidad = { ...baseProduct, tipo: 'cantidad' as const, stock: 7, initialStock: 10 }
+      const disponible = mount(ProductCard, {
+        props: { product: cantidad, size: 'list', simplifiedAvailability: true },
+      })
+      expect(disponible.text()).toContain('Disponible')
+      expect(disponible.text()).not.toContain('en existencia')
+
+      const agotado = mount(ProductCard, {
+        props: { product: { ...cantidad, stock: 0 }, size: 'list', simplifiedAvailability: true },
+      })
+      expect(agotado.text()).toContain('Agotado')
+      expect(agotado.text()).not.toContain('en existencia')
+    })
   })
 
   it('emite "reactivate" cuando el producto está inactivo', async () => {

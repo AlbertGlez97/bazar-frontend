@@ -123,7 +123,10 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
 
   it('catálogo de venta: los botones de vista (cuadrícula/lista) y cada fila de la lista miden al menos 44 px', () => {
     expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__view-btn', ['min-width', 'min-height'])
-    expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__item--row', ['min-height'])
+    // La fila de la Vista de Lista ya no fija su propio alto: envuelve un
+    // ProductCard size="list", que trae el min-height (compartido con la
+    // Vista de Lista de Gestión).
+    expectAtLeast44('ProductCard.vue', '.product-card--list', ['min-height'])
   })
 
   it('indicador de sincronización: "Ver", "Entendido" y "Cerrar" miden al menos 44 px', () => {

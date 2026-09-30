@@ -90,11 +90,13 @@ describe('SaleCatalogPicker — vista de cuadrícula (la de siempre)', () => {
 describe('SaleCatalogPicker — vista de lista', () => {
   const list = (props: Partial<Props> = {}) => mountPicker({ view: 'list', products: [cafe, pan, agotado, unica], ...props })
 
-  it('muestra una lista de filas compactas y no la cuadrícula ni las tarjetas', () => {
+  it('muestra una lista de filas compactas, cada una con ProductCard size="list", y no la cuadrícula', () => {
     const wrapper = list()
     expect(wrapper.find('ul.sale-picker__list').exists()).toBe(true)
     expect(wrapper.find('ul.sale-picker__grid').exists()).toBe(false)
-    expect(wrapper.findAll('.product-card')).toHaveLength(0)
+    expect(wrapper.findAll('.product-card')).toHaveLength(4)
+    expect(wrapper.findAll('.product-card--list')).toHaveLength(4)
+    expect(wrapper.findAll('.product-card--large')).toHaveLength(0)
     expect(items(wrapper)).toHaveLength(4)
     expect(items(wrapper).every((b) => b.classes().includes('sale-picker__item--row'))).toBe(true)
   })
@@ -114,11 +116,13 @@ describe('SaleCatalogPicker — vista de lista', () => {
     expect(list().text()).not.toMatch(/en existencia/)
   })
 
-  it('con imagen la muestra (decorativa) y sin ella pone el 📦', () => {
+  // El <img> es el mismo de ProductCard (compartido con Cuadrícula): alt lleva
+  // el nombre del producto, no "" — igual que ya pasa hoy en Cuadrícula.
+  it('con imagen la muestra y sin ella pone el 📦 (mismo <img>/placeholder que la tarjeta)', () => {
     const conFoto = makeProduct({ name: 'Con foto', image: '/uploads/products/x.png' })
     const [foto, sinFoto] = items(mountPicker({ view: 'list', products: [conFoto, pan] }))
     expect(foto.get('img').attributes('src')).toBe('/uploads/products/x.png')
-    expect(foto.get('img').attributes('alt')).toBe('')
+    expect(foto.get('img').attributes('alt')).toBe('Con foto')
     expect(sinFoto.find('img').exists()).toBe(false)
     expect(sinFoto.text()).toContain('📦')
   })
