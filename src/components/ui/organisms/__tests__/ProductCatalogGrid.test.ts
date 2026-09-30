@@ -226,5 +226,21 @@ describe('ProductCatalogGrid', () => {
       expect(wrapper.find('button[data-view="grid"]').exists()).toBe(false)
       expect(wrapper.find('button[data-view="list"]').exists()).toBe(false)
     })
+
+    // Vista de Lista (Gestión): fila compacta "explorador de archivos", nunca la
+    // tarjeta cuadrada de la cuadrícula reutilizada a lo ancho.
+    it('en vista de lista las tarjetas usan la variante compacta de fila', () => {
+      const wrapper = mount(ProductCatalogGrid, {
+        props: { products: [product({ id: 'p-1' }), product({ id: 'p-2' })], page: 1, totalPages: 1, view: 'list' },
+      })
+      expect(wrapper.findAll('.product-card--list')).toHaveLength(2)
+      expect(wrapper.find('.product-card--default').exists()).toBe(false)
+    })
+
+    it('en cuadrícula (por defecto) las tarjetas siguen siendo la variante normal', () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [product()], page: 1, totalPages: 1 } })
+      expect(wrapper.find('.product-card--default').exists()).toBe(true)
+      expect(wrapper.find('.product-card--list').exists()).toBe(false)
+    })
   })
 })

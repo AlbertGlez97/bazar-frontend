@@ -11,6 +11,7 @@ import SaleView from '../SaleView.vue'
 import SyncStatusIndicator from '@/components/ui/organisms/SyncStatusIndicator.vue'
 import { useCartStore } from '@/stores/cart.store'
 import { useSaleCatalogStore } from '@/stores/sale-catalog.store'
+import { useSaleCatalogViewStore } from '@/stores/saleCatalogView.store'
 import { useSalesQueueStore } from '@/stores/sales-queue.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
@@ -173,6 +174,24 @@ describe('SaleView — catálogo y carrito a la vez', () => {
     expect(cards(wrapper)).toHaveLength(4)
     expect(wrapper.find('.sale-cart').exists()).toBe(true)
     expect(wrapper.find('.sale-picker').exists()).toBe(true)
+  })
+
+  // "Tu venta" debe conservar su columna propia del layout de dos columnas
+  // (nunca encogerse por el contenido del catálogo), tanto en cuadrícula como
+  // en lista — el layout (`.sale-view__layout`) no depende de la vista del
+  // catálogo, así que sus clases no cambian al alternar entre ambas.
+  it('"Tu venta" conserva su columna del layout en cuadrícula y en lista', async () => {
+    const { wrapper } = await mountSale()
+    const layoutClasses = () => wrapper.get('.sale-view__layout').classes()
+    const withGrid = [...layoutClasses()]
+    expect(wrapper.find('.sale-view__cart').exists()).toBe(true)
+
+    useSaleCatalogViewStore().setView('list')
+    await flushPromises()
+
+    expect(layoutClasses()).toEqual(withGrid)
+    expect(wrapper.find('.sale-view__cart').exists()).toBe(true)
+    expect(wrapper.find('.sale-cart').exists()).toBe(true)
   })
 
   it('tocar un producto lo agrega; tocarlo otra vez suma una pieza', async () => {

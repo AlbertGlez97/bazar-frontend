@@ -114,8 +114,11 @@ const props = withDefaults(defineProps<{
    * `large` es la presentación de Modo Venta: imagen y tipografía grandes y
    * disponibilidad simplificada (Disponible / Agotado), pensada para tocarse
    * y leerse de un vistazo en el mostrador.
+   * `list` es la Vista de Lista de Gestión: fila compacta estilo "explorador
+   * de archivos" (miniatura fija, nombre truncado, precio alineado). Solo
+   * cambia la presentación (CSS); el contenido y las acciones son los mismos.
    */
-  size?: 'default' | 'large'
+  size?: 'default' | 'large' | 'list'
   /** Modo selección (imprimir códigos QR): muestra la casilla. */
   selectable?: boolean
   selected?: boolean
@@ -147,7 +150,7 @@ const stockBadgeColor = computed(() => (props.product.stock > 0 ? 'green' : 'red
 </script>
 
 <style scoped>
-.product-card { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.product-card { display: flex; flex-direction: column; min-width: 0; padding: 0; overflow: hidden; }
 .product-card--inactive { opacity: 0.7; }
 .product-card--selected { outline: 3px solid var(--color-primary); outline-offset: -3px; }
 
@@ -182,7 +185,7 @@ const stockBadgeColor = computed(() => (props.product.stock > 0 ? 'green' : 'red
   flex-direction: column;
   gap: var(--spacing-xs, 4px);
 }
-.product-card__name { font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text); margin: 0; }
+.product-card__name { font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text); margin: 0; overflow-wrap: anywhere; }
 .product-card__price { font-size: 1.1rem; font-weight: 700; color: var(--color-primary); margin: 0; }
 .product-card__footer {
   display: flex;
@@ -201,4 +204,51 @@ const stockBadgeColor = computed(() => (props.product.stock > 0 ? 'green' : 'red
 .product-card--large .product-card__name { font-size: var(--font-size-lg); line-height: 1.25; }
 .product-card--large .product-card__price { font-family: var(--font-display); font-size: var(--font-size-xl); line-height: 1.1; }
 .product-card--large :deep(.app-badge) { align-self: flex-start; font-size: var(--font-size-sm); padding: 0.25rem 0.75rem; }
+
+/* Tamaño lista (Vista de Lista, Gestión): fila compacta estilo "explorador de
+   archivos" — miniatura de tamaño FIJO, nombre y precio en columnas alineadas
+   horizontalmente, con el nombre truncado con elipsis si no cabe, y alto de
+   fila consistente entre tarjetas. Nunca la imagen ni un nombre largo deciden
+   el ancho: solo cambia la presentación (CSS), el contenido es el mismo. */
+.product-card--list {
+  flex-direction: row;
+  align-items: center;
+  min-height: 3.5rem;
+  gap: var(--spacing-sm);
+}
+.product-card--list .product-card__select {
+  min-height: 0;
+  padding: 0 0 0 var(--spacing-sm);
+  border-bottom: 0;
+}
+.product-card--list .product-card__media {
+  flex: 0 0 auto;
+  width: 2.75rem;
+  height: 2.75rem;
+  aspect-ratio: 1 / 1;
+}
+.product-card--list .product-card__placeholder { font-size: 1.5rem; }
+.product-card--list .product-card__body {
+  flex: 1 1 auto;
+  flex-direction: row;
+  align-items: center;
+  min-width: 0;
+  padding: var(--spacing-sm) 0;
+  gap: var(--spacing-md);
+}
+.product-card--list .product-card__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.product-card--list .product-card__price { flex: 0 0 auto; white-space: nowrap; }
+.product-card--list :deep(.app-badge) { flex: 0 0 auto; }
+.product-card--list .product-card__footer {
+  flex: 0 0 auto;
+  padding: 0 var(--spacing-sm) 0 0;
+  border-top: 0;
+  flex-wrap: nowrap;
+}
 </style>

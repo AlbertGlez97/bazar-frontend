@@ -77,7 +77,7 @@
         v-for="product in products"
         :key="product.id"
         :product="product"
-        :size="isVenta ? 'large' : 'default'"
+        :size="isVenta ? 'large' : (view === 'list' ? 'list' : 'default')"
         :show-actions="showActions && !isVenta"
         :selectable="selectable"
         :selected="selectedSet.has(product.id)"
@@ -209,6 +209,7 @@ defineExpose({ handleSearchInput })
    acciones de siempre, solo cambia cuántas caben sin desplazarse de lado. */
 .product-catalog-grid__grid--list {
   grid-template-columns: 1fr;
+  gap: var(--spacing-xs, 4px);
 }
 
 /* ── Selector de vista (cuadrícula / lista) — mismo patrón que el de Venta ── */

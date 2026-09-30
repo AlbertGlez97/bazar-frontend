@@ -109,11 +109,35 @@ describe('ProductCard', () => {
 
     it('no expone costo ni proveedor en ningún tamaño', () => {
       const withPrivate = { ...baseProduct, purchaseCostMinor: 500000, supplier: 'Proveedor Secreto' }
-      for (const size of ['default', 'large'] as const) {
+      for (const size of ['default', 'large', 'list'] as const) {
         const text = mount(ProductCard, { props: { product: withPrivate, size } }).text()
         expect(text).not.toContain('Proveedor Secreto')
         expect(text).not.toContain('5000.00')
       }
+    })
+
+    // Vista de Lista (Gestión), patrón "explorador de archivos": fila compacta,
+    // miniatura fija y nombre truncado — nunca la tarjeta cuadrada de la cuadrícula.
+    it('size="list" aplica la variante de fila y conserva nombre y precio', () => {
+      const wrapper = mount(ProductCard, { props: { product: baseProduct, size: 'list' } })
+      expect(wrapper.get('.product-card').classes()).toContain('product-card--list')
+      expect(wrapper.get('.product-card').classes()).not.toContain('product-card--default')
+      expect(wrapper.get('.product-card__name').text()).toBe('Consola PS5 usada')
+      expect(wrapper.get('.product-card__price').text()).toBe('$8500.00')
+    })
+
+    it('size="list" conserva imagen, acciones y casilla de selección en la fila', () => {
+      const wrapper = mount(ProductCard, {
+        props: {
+          product: { ...baseProduct, image: '/uploads/products/a.png' },
+          size: 'list',
+          showActions: true,
+          selectable: true,
+        },
+      })
+      expect(wrapper.get('.product-card__media img').attributes('src')).toBe('/uploads/products/a.png')
+      expect(wrapper.find('input[type="checkbox"]').exists()).toBe(true)
+      expect(wrapper.text()).toContain('Editar')
     })
   })
 
