@@ -33,6 +33,14 @@ describe('friendlyDeudaErrorMessage', () => {
     expect(friendlyDeudaErrorMessage(httpError(400, ['deudor.nombre should not be empty']))).toBe(VOICE.deuda.createError)
   })
 
+  // BE-15: abonoInicialMinor ahora va DENTRO de POST /deudas (transacción atómica) —
+  // si por sí solo excede el total, la creación entera falla con este mensaje
+  // (el mismo que un abono normal excesivo).
+  it('BE-15: abonoInicialMinor que excede el saldo tiene su propio mensaje', () => {
+    expect(friendlyDeudaErrorMessage(httpError(400, 'Abono of 20000 exceeds the remaining balance of 15000')))
+      .toBe(VOICE.deuda.abonoInicialExceedsBalance)
+  })
+
   it('403 (colaborador, no socio) también cae en el genérico de deuda', () => {
     expect(friendlyDeudaErrorMessage(httpError(403))).toBe(VOICE.deuda.createError)
   })

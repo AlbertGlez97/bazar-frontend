@@ -40,5 +40,9 @@ export function friendlyDeudaErrorMessage(error: unknown): string {
   if (/insufficient stock/i.test(text)) return VOICE.deuda.insufficientStock
   if (/is deactivated/i.test(text)) return VOICE.deuda.productDeactivated
   if (/does not exist/i.test(text)) return VOICE.deuda.productMissing
+  // BE-15: abonoInicialMinor va dentro de POST /deudas; si por sí solo excede
+  // el total, el mismo mensaje que un abono normal excesivo ("exceeds the
+  // remaining balance") — aquí significa que nada se creó, ni la deuda.
+  if (/exceeds the remaining balance/i.test(text)) return VOICE.deuda.abonoInicialExceedsBalance
   return VOICE.deuda.createError
 }
