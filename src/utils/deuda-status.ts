@@ -3,6 +3,7 @@
 // frontend.md §10) — se calculan aquí con la MISMA fórmula que documenta el
 // contrato, sobre datos que sí vienen del servidor (`abonos`/`cuotasPlaneadas`).
 import { sumMinor, subtractMinor } from './money'
+import { VOICE } from '@/config/voice'
 import type { Deuda } from '@/types/deuda.types'
 
 /** Saldo pendiente: `totalMinor - suma(abonos[].montoMinor)`. Nunca lo manda el backend. */
@@ -24,4 +25,14 @@ export function isDeudaAtrasada(deuda: Deuda, now: Date = new Date()): boolean {
   const vencidoMinor = sumMinor(vencidas.map((cuota) => cuota.montoEsperadoMinor))
   const abonadoMinor = sumMinor(deuda.abonos.map((abono) => abono.montoMinor))
   return vencidoMinor > abonadoMinor
+}
+
+/** Color del badge de estado: `amber` mientras hay saldo, `green` cuando ya se saldó. */
+export function deudaStatusColor(deuda: Deuda): 'amber' | 'green' {
+  return deuda.status === 'pendiente' ? 'amber' : 'green'
+}
+
+/** Etiqueta del estado, misma fuente (VOICE.deudasView) usada en las dos vistas de Deudas. */
+export function deudaStatusLabel(deuda: Deuda): string {
+  return deuda.status === 'pendiente' ? VOICE.deudasView.statusPendiente : VOICE.deudasView.statusSaldada
 }

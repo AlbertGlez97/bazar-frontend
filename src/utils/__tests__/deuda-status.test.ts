@@ -6,7 +6,8 @@
 // él); el backend no manda un campo `atrasado` por deuda, solo el filtro
 // `?atrasado=` para el listado.
 import { describe, expect, it } from 'vitest'
-import { pendienteMinorOf, isDeudaAtrasada } from '../deuda-status'
+import { pendienteMinorOf, isDeudaAtrasada, deudaStatusColor, deudaStatusLabel } from '../deuda-status'
+import { VOICE } from '@/config/voice'
 import type { Deuda } from '@/types/deuda.types'
 
 const NOW = new Date('2026-09-30T12:00:00.000Z')
@@ -69,6 +70,26 @@ describe('isDeudaAtrasada', () => {
       abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 10000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null }],
     })
     expect(isDeudaAtrasada(deuda, NOW)).toBe(false)
+  })
+})
+
+describe('deudaStatusColor', () => {
+  it('pendiente es "amber"', () => {
+    expect(deudaStatusColor(deudaFor({ status: 'pendiente' }))).toBe('amber')
+  })
+
+  it('saldada es "green"', () => {
+    expect(deudaStatusColor(deudaFor({ status: 'saldada' }))).toBe('green')
+  })
+})
+
+describe('deudaStatusLabel', () => {
+  it('pendiente usa VOICE.deudasView.statusPendiente', () => {
+    expect(deudaStatusLabel(deudaFor({ status: 'pendiente' }))).toBe(VOICE.deudasView.statusPendiente)
+  })
+
+  it('saldada usa VOICE.deudasView.statusSaldada', () => {
+    expect(deudaStatusLabel(deudaFor({ status: 'saldada' }))).toBe(VOICE.deudasView.statusSaldada)
   })
 })
 

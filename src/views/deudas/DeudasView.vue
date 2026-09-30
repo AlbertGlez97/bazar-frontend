@@ -132,8 +132,8 @@
       >
         <div class="deudas-view__row-main">
           <span class="deudas-view__row-name">{{ row.deuda.deudor?.nombre ?? '—' }}</span>
-          <AppBadge :color="row.deuda.status === 'pendiente' ? 'amber' : 'green'">
-            {{ row.deuda.status === 'pendiente' ? VOICE.deudasView.statusPendiente : VOICE.deudasView.statusSaldada }}
+          <AppBadge :color="deudaStatusColor(row.deuda)">
+            {{ deudaStatusLabel(row.deuda) }}
           </AppBadge>
           <AppBadge
             v-if="row.atrasada"
@@ -172,7 +172,7 @@ import { VOICE, reportLoadErrorMessage } from '@/config/voice'
 import DashboardService from '@/services/dashboard.service'
 import DeudasService from '@/services/deudas.service'
 import { formatMinorMoney } from '@/utils/money'
-import { isDeudaAtrasada, pendienteMinorOf } from '@/utils/deuda-status'
+import { isDeudaAtrasada, pendienteMinorOf, deudaStatusColor, deudaStatusLabel } from '@/utils/deuda-status'
 import type { Deuda, DeudaOrderBy, DeudaSortOrder } from '@/types/deuda.types'
 
 const atrasado = ref(false)

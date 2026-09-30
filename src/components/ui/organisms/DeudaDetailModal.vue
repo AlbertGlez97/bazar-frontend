@@ -44,8 +44,8 @@
       class="deuda-detail-modal__body"
     >
       <section class="deuda-detail-modal__section deuda-detail-modal__header">
-        <AppBadge :color="deuda.status === 'pendiente' ? 'amber' : 'green'">
-          {{ deuda.status === 'pendiente' ? VOICE.deudasView.statusPendiente : VOICE.deudasView.statusSaldada }}
+        <AppBadge :color="deudaStatusColor(deuda)">
+          {{ deudaStatusLabel(deuda) }}
         </AppBadge>
         <AppBadge :color="deuda.type === 'fiado' ? 'blue' : 'gray'">
           {{ deuda.type === 'fiado' ? VOICE.deuda.typeFiado : VOICE.deuda.typeApartado }}
@@ -175,7 +175,7 @@ import { friendlyDeudaErrorMessage } from '@/services/deuda-errors'
 import DeudasService from '@/services/deudas.service'
 import ProductsService from '@/services/products.service'
 import { formatMinorMoney, parseMoneyText } from '@/utils/money'
-import { isDeudaAtrasada, pendienteMinorOf } from '@/utils/deuda-status'
+import { isDeudaAtrasada, pendienteMinorOf, deudaStatusColor, deudaStatusLabel } from '@/utils/deuda-status'
 import type { Deuda } from '@/types/deuda.types'
 import type { Product } from '@/types/product.types'
 
