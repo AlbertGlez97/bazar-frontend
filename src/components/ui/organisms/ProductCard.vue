@@ -101,6 +101,7 @@
 import { computed } from 'vue'
 import { VOICE } from '@/config/voice'
 import { minorToDisplay } from '@/utils/money'
+import { isProductAvailable } from '@/utils/product-status'
 import type { Product } from '@/types/product.types'
 import AppBadge from '../atoms/AppBadge.vue'
 import AppButton from '../atoms/AppButton.vue'
@@ -141,12 +142,12 @@ defineEmits<{
 // saber si se puede vender: Disponible / Agotado.
 const stockLabel = computed(() => {
   if (props.product.tipo === 'unica' || props.size === 'large') {
-    return props.product.stock > 0 ? 'Disponible' : 'Agotado'
+    return isProductAvailable(props.product) ? 'Disponible' : 'Agotado'
   }
   return `${props.product.stock} en existencia`
 })
 
-const stockBadgeColor = computed(() => (props.product.stock > 0 ? 'green' : 'red'))
+const stockBadgeColor = computed(() => (isProductAvailable(props.product) ? 'green' : 'red'))
 </script>
 
 <style scoped>

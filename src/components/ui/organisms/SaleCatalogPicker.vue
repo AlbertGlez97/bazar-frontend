@@ -192,6 +192,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { minorToDisplay } from '@/utils/money'
+import { isProductAvailable } from '@/utils/product-status'
 import { catalogSnapshotMessage } from '@/config/voice'
 import type { Product } from '@/types/product.types'
 import type { SaleCatalogView } from '@/types/sale-catalog-view.types'
@@ -245,7 +246,7 @@ const snapshotText = computed(() =>
     : 'Estás viendo el catálogo guardado en este dispositivo.',
 )
 
-const isSoldOut = (product: Product) => product.stock <= 0
+const isSoldOut = (product: Product) => !isProductAvailable(product)
 
 function itemLabel(product: Product): string {
   if (isSoldOut(product)) return `${product.name}, agotado`
