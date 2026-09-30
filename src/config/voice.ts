@@ -431,6 +431,11 @@ export const VOICE = {
     cuotasHint: 'Elige una o varias fechas; te sugerimos un monto parejo para cada una, pero puedes cambiarlo.',
     cuotasDatesLabel: 'Fechas de pago',
     cuotasRowLabel: (date: string) => `Cuota del ${date}`,
+    /** Fila recién agregada, todavía sin fecha elegida en su calendario. */
+    cuotasRowLabelPending: 'Monto de la cuota',
+    /** D2 (rediseño de filas repetibles): un calendario + un monto por fila. */
+    cuotasAddRowLabel: '+ Agregar fecha de pago',
+    cuotasRemoveRowLabel: (date: string | null) => (date ? `Quitar la cuota del ${date}` : 'Quitar esta cuota'),
   },
   /**
    * Vista `/app/deudas` (solo socios, Modo Gestión): fiados/apartados

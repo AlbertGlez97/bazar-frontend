@@ -135,16 +135,31 @@ describe('RegistrarDeudaModal — validación', () => {
 })
 
 // D2: sección opcional de cuotas planeadas. Colapsada por defecto (no
-// obligatoria); al activarla aparece el calendario multi-fecha.
+// obligatoria); al activarla aparece el editor de filas repetibles
+// (CuotasPlaneadasEditor): sin filas hasta que se agrega una, y cada fila es
+// un datepicker de fecha única + un monto.
 describe('RegistrarDeudaModal — cuotas planeadas (D2)', () => {
-  it('el calendario está oculto hasta activar el toggle', () => {
+  const addCuotaBtn = (w: Wrapper) => w.get('[data-action="add-cuota"]')
+
+  it('el editor de cuotas está oculto hasta activar el toggle', () => {
     const wrapper = mountModal()
+    expect(wrapper.find('[data-action="add-cuota"]').exists()).toBe(false)
     expect(wrapper.findComponent(VueDatePicker).exists()).toBe(false)
   })
 
-  it('activar el toggle revela el calendario', async () => {
+  it('activar el toggle revela el editor de cuotas, pero sin ningún calendario hasta agregar una fila', async () => {
     const wrapper = mountModal()
     await wrapper.get('input[type="checkbox"]').setValue(true)
+
+    expect(wrapper.find('[data-action="add-cuota"]').exists()).toBe(true)
+    expect(wrapper.findComponent(VueDatePicker).exists()).toBe(false)
+  })
+
+  it('agregar una fila revela su calendario de fecha única', async () => {
+    const wrapper = mountModal()
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await addCuotaBtn(wrapper).trigger('click')
+
     expect(wrapper.findComponent(VueDatePicker).exists()).toBe(true)
   })
 
@@ -153,7 +168,11 @@ describe('RegistrarDeudaModal — cuotas planeadas (D2)', () => {
     await fillNombre(wrapper)
     await abonoInput(wrapper).setValue('20.00') // abonoInicialMinor: 2000 -> resto 8000
     await wrapper.get('input[type="checkbox"]').setValue(true)
-    await wrapper.findComponent(VueDatePicker).vm.$emit('update:model-value', [new Date(2026, 9, 15), new Date(2026, 10, 15)])
+    await addCuotaBtn(wrapper).trigger('click')
+    await addCuotaBtn(wrapper).trigger('click')
+    const pickers = wrapper.findAllComponents(VueDatePicker)
+    await pickers[0].vm.$emit('update:model-value', new Date(2026, 9, 15))
+    await pickers[1].vm.$emit('update:model-value', new Date(2026, 10, 15))
     await wrapper.vm.$nextTick()
 
     await submitBtn(wrapper).trigger('click')
@@ -166,7 +185,11 @@ describe('RegistrarDeudaModal — cuotas planeadas (D2)', () => {
     const wrapper = mountModal({ totalMinor: 10000 })
     await fillNombre(wrapper)
     await wrapper.get('input[type="checkbox"]').setValue(true)
-    await wrapper.findComponent(VueDatePicker).vm.$emit('update:model-value', [new Date(2026, 9, 15), new Date(2026, 10, 15)])
+    await addCuotaBtn(wrapper).trigger('click')
+    await addCuotaBtn(wrapper).trigger('click')
+    const pickers = wrapper.findAllComponents(VueDatePicker)
+    await pickers[0].vm.$emit('update:model-value', new Date(2026, 9, 15))
+    await pickers[1].vm.$emit('update:model-value', new Date(2026, 10, 15))
     await wrapper.vm.$nextTick()
 
     const cuotaInputs = wrapper.findAll('input[inputmode="decimal"]').slice(1) // [0] es el abono inicial
@@ -180,11 +203,22 @@ describe('RegistrarDeudaModal — cuotas planeadas (D2)', () => {
     expect(payload.cuotasPlaneadas[1].montoEsperadoMinor).toBe(5000) // sin editar: sugerencia pareja de 10000/2
   })
 
-  it('apagar el toggle después de elegir fechas manda cuotasPlaneadas vacío', async () => {
+  it('con una sola fila no hay botón Quitar; con dos, cada una tiene el suyo', async () => {
+    const wrapper = mountModal()
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    await addCuotaBtn(wrapper).trigger('click')
+    expect(wrapper.findAll('[data-action="remove-cuota"]')).toHaveLength(0)
+
+    await addCuotaBtn(wrapper).trigger('click')
+    expect(wrapper.findAll('[data-action="remove-cuota"]')).toHaveLength(2)
+  })
+
+  it('apagar el toggle después de agregar filas manda cuotasPlaneadas vacío', async () => {
     const wrapper = mountModal({ totalMinor: 10000 })
     await fillNombre(wrapper)
     await wrapper.get('input[type="checkbox"]').setValue(true)
-    await wrapper.findComponent(VueDatePicker).vm.$emit('update:model-value', [new Date(2026, 9, 15)])
+    await addCuotaBtn(wrapper).trigger('click')
+    await wrapper.findComponent(VueDatePicker).vm.$emit('update:model-value', new Date(2026, 9, 15))
     await wrapper.vm.$nextTick()
     await wrapper.get('input[type="checkbox"]').setValue(false)
 
