@@ -86,7 +86,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
-import AppInput from '@/components/ui/atoms/AppInput.vue'
+import AppInput from '@/components/ui/molecules/AppInput.vue'
 import AppButton from '@/components/ui/atoms/AppButton.vue'
 import AppAlert from '@/components/ui/molecules/AppAlert.vue'
 import { VOICE } from '@/config/voice'

@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
-import AppInput from '@/components/ui/atoms/AppInput.vue'
+import AppInput from '@/components/ui/molecules/AppInput.vue'
 
 describe('AppInput', () => {
   it('renderiza el input nativo sin label cuando no se recibe la prop', () => {

@@ -10,7 +10,7 @@
  * ║     → Componentes mínimos, indivisibles, sin lógica de negocio.      ║
  * ║     → Solo reciben props y emiten eventos básicos.                   ║
  * ║     → No importan otros componentes del sistema.                     ║
- * ║     → Ejemplos: AppButton, AppInput, AppBadge, AppSelect             ║
+ * ║     → Ejemplos: AppButton, AppBadge, AppCheckbox             ║
  * ║                                                                      ║
  * ║  2. MOLÉCULAS  (ui/molecules/)                                       ║
  * ║     → Combinación simple de átomos con una única responsabilidad.    ║
@@ -40,22 +40,22 @@
 
 // ── ÁTOMOS — indivisibles, sin lógica de negocio ─────────────────────
 export { default as AppButton   } from './ui/atoms/AppButton.vue'
-export { default as AppInput    } from './ui/atoms/AppInput.vue'
 export { default as AppBadge    } from './ui/atoms/AppBadge.vue'
-export { default as AppSelect   } from './ui/atoms/AppSelect.vue'
 export { default as AppCheckbox } from './ui/atoms/AppCheckbox.vue'
 export { default as AppSwitch   } from './ui/atoms/AppSwitch.vue'
 export { default as AppProgress } from './ui/atoms/AppProgress.vue'
 export { default as AppAvatar   } from './ui/atoms/AppAvatar.vue'
 export { default as AppSkeleton } from './ui/atoms/AppSkeleton.vue'
 export { default as AppTooltip  } from './ui/atoms/AppTooltip.vue'
-export { default as AppTextarea } from './ui/atoms/AppTextarea.vue'
-export { default as AppImageUpload } from './ui/atoms/AppImageUpload.vue'
 export { default as BrandLogo   } from './ui/atoms/BrandLogo.vue'
-export { default as QuantityStepper } from './ui/atoms/QuantityStepper.vue'
-export { default as AppStatCard } from './ui/atoms/AppStatCard.vue'
 
 // ── MOLÉCULAS — combinación de átomos, responsabilidad única ─────────
+export { default as AppInput    } from './ui/molecules/AppInput.vue'
+export { default as AppSelect   } from './ui/molecules/AppSelect.vue'
+export { default as AppTextarea } from './ui/molecules/AppTextarea.vue'
+export { default as AppImageUpload } from './ui/molecules/AppImageUpload.vue'
+export { default as QuantityStepper } from './ui/molecules/QuantityStepper.vue'
+export { default as AppStatCard } from './ui/molecules/AppStatCard.vue'
 export { default as AppAlert            } from './ui/molecules/AppAlert.vue'
 export { default as AppToast            } from './ui/molecules/AppToast.vue'
 export { default as AppPagination       } from './ui/molecules/AppPagination.vue'

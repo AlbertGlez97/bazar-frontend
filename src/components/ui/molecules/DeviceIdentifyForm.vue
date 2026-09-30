@@ -58,7 +58,7 @@
 
 <script setup lang="ts">
 import { reactive } from 'vue'
-import AppInput from '@/components/ui/atoms/AppInput.vue'
+import AppInput from '@/components/ui/molecules/AppInput.vue'
 import AppButton from '@/components/ui/atoms/AppButton.vue'
 import AppAlert from '@/components/ui/molecules/AppAlert.vue'
 import type { DeviceIdentifyPayload } from '@/types/device.types'

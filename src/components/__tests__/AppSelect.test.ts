@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
-import AppSelect from '@/components/ui/atoms/AppSelect.vue'
+import AppSelect from '@/components/ui/molecules/AppSelect.vue'
 
 // Slot con un par de <option> para que el select tenga contenido real
 const options = () => [

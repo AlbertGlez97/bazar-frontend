@@ -197,7 +197,7 @@ import type { Product } from '@/types/product.types'
 import type { SaleCatalogView } from '@/types/sale-catalog-view.types'
 import AppBadge from '../atoms/AppBadge.vue'
 import AppButton from '../atoms/AppButton.vue'
-import AppInput from '../atoms/AppInput.vue'
+import AppInput from '../molecules/AppInput.vue'
 import CategoryQuickFilter from '../molecules/CategoryQuickFilter.vue'
 import ProductCard from '../molecules/ProductCard.vue'
 

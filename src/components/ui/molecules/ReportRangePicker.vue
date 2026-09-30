@@ -73,7 +73,7 @@
 import { VOICE } from '@/config/voice'
 import type { RangePreset } from '@/utils/business-time'
 import AppButton from '../atoms/AppButton.vue'
-import AppInput from '../atoms/AppInput.vue'
+import AppInput from '../molecules/AppInput.vue'
 
 const PRESET_KEYS: RangePreset[] = ['hoy', 'ayer', 'semana', 'mes']
 

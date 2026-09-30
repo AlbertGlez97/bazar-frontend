@@ -1,5 +1,5 @@
 <template>
-  <!-- Átomo: selector de cantidad "− 3 +". No sabe de productos ni de stock real:
+  <!-- Molécula: selector de cantidad "− 3 +". No sabe de productos ni de stock real:
        recibe la cantidad y los topes, y emite lo que la persona quiere hacer.
        En un tope los botones se ven apagados pero NO usan `disabled`: siguen
        enfocables y un toque emite `limit` con el motivo, para que quien lo usa

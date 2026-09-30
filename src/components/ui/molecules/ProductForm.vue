@@ -139,11 +139,11 @@ import type {
   ProductFormSubmitPayload,
   ProductType,
 } from '@/types/product.types'
-import AppInput from '../atoms/AppInput.vue'
-import AppSelect from '../atoms/AppSelect.vue'
-import AppTextarea from '../atoms/AppTextarea.vue'
+import AppInput from '../molecules/AppInput.vue'
+import AppSelect from '../molecules/AppSelect.vue'
+import AppTextarea from '../molecules/AppTextarea.vue'
 import AppButton from '../atoms/AppButton.vue'
-import AppImageUpload from '../atoms/AppImageUpload.vue'
+import AppImageUpload from '../molecules/AppImageUpload.vue'
 import AppAlert from './AppAlert.vue'
 
 const props = defineProps<{

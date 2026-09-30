@@ -1,5 +1,5 @@
 <template>
-  <!-- Átomo: input de archivo con preview y validación de tipo/tamaño en
+  <!-- Molécula: input de archivo con preview y validación de tipo/tamaño en
        cliente. Solo valida y emite `update:modelValue` con el File elegido
        (o null); NO sube nada — eso es responsabilidad de quien la use. -->
   <div class="app-image-upload">

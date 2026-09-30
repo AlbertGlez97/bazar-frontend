@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
-import AppTextarea from '@/components/ui/atoms/AppTextarea.vue'
+import AppTextarea from '@/components/ui/molecules/AppTextarea.vue'
 
 describe('AppTextarea', () => {
   it('renderiza el label cuando se recibe la prop', () => {

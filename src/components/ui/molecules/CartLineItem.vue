@@ -84,7 +84,7 @@
 import { computed } from 'vue'
 import { minorToDisplay, multiplyMinor } from '@/utils/money'
 import type { CartLineView } from '@/types/cart.types'
-import QuantityStepper from '../atoms/QuantityStepper.vue'
+import QuantityStepper from '../molecules/QuantityStepper.vue'
 
 const props = defineProps<{
   line: CartLineView

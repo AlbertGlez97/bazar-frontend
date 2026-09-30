@@ -1,5 +1,5 @@
 <template>
-  <!-- Átomo: campo de texto con soporte de label, error, íconos y tamaños -->
+  <!-- Molécula: campo de texto con soporte de label, error, íconos y tamaños -->
   <div
     class="app-input-wrap"
     :class="{ 'app-input-wrap--error': !!error, 'app-input-wrap--disabled': disabled }"

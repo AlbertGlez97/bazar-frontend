@@ -1,5 +1,5 @@
 <template>
-  <!-- Átomo: tarjeta de estadística — número grande + etiqueta, con
+  <!-- Molécula: tarjeta de estadística — número grande + etiqueta, con
        sublabel/comparación y link opcionales. Inspirado en el hero de
        SalesReportSummary.vue, como pieza reutilizable independiente. Sin
        "to" es tan informativa como con él, pero no es clickeable (no hay

@@ -108,7 +108,7 @@ import {
 } from '@/utils/label-sheet-plan'
 import AppAlert from '../molecules/AppAlert.vue'
 import AppButton from '../atoms/AppButton.vue'
-import AppInput from '../atoms/AppInput.vue'
+import AppInput from '../molecules/AppInput.vue'
 import AppModal from './AppModal.vue'
 
 const props = defineProps<{

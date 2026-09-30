@@ -1,5 +1,5 @@
 <template>
-  <!-- Átomo: área de texto multilínea — mismo look&feel que AppInput -->
+  <!-- Molécula: área de texto multilínea — mismo look&feel que AppInput -->
   <div
     class="app-textarea-wrap"
     :class="{ 'app-textarea-wrap--error': !!error, 'app-textarea-wrap--disabled': disabled }"

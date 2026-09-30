@@ -64,7 +64,7 @@ import { computed } from 'vue'
 import { VOICE } from '@/config/voice'
 import { sheetCount } from '@/utils/label-sheet-plan'
 import AppButton from '../atoms/AppButton.vue'
-import QuantityStepper from '../atoms/QuantityStepper.vue'
+import QuantityStepper from '../molecules/QuantityStepper.vue'
 
 export interface PrintListRow {
   id: string

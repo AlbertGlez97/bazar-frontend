@@ -78,7 +78,7 @@ import { minorToDisplay } from '@/utils/money'
 import type { Product } from '@/types/product.types'
 import AppAlert from '../molecules/AppAlert.vue'
 import AppButton from '../atoms/AppButton.vue'
-import AppInput from '../atoms/AppInput.vue'
+import AppInput from '../molecules/AppInput.vue'
 
 const props = withDefaults(defineProps<{
   results: Product[]

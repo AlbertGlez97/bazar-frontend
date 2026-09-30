@@ -1,5 +1,5 @@
 <template>
-  <!-- Átomo: select nativo estilizado — idéntico en apariencia al AppInput -->
+  <!-- Molécula: select nativo estilizado — idéntico en apariencia al AppInput -->
   <div
     class="app-select-wrap"
     :class="{ 'app-select-wrap--error': !!error, 'app-select-wrap--disabled': disabled }"

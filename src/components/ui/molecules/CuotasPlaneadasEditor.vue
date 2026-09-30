@@ -49,7 +49,7 @@ import { VueDatePicker } from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 import { VOICE } from '@/config/voice'
 import { minorToDisplay, parseMoneyText, splitEvenMinor } from '@/utils/money'
-import AppInput from '../atoms/AppInput.vue'
+import AppInput from '../molecules/AppInput.vue'
 
 export interface CuotaDraft {
   fechaEsperada: string

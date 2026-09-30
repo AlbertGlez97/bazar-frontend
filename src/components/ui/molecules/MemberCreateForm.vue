@@ -111,8 +111,8 @@
 
 <script setup lang="ts">
 import { reactive, watch } from 'vue'
-import AppInput from '@/components/ui/atoms/AppInput.vue'
-import AppSelect from '@/components/ui/atoms/AppSelect.vue'
+import AppInput from '@/components/ui/molecules/AppInput.vue'
+import AppSelect from '@/components/ui/molecules/AppSelect.vue'
 import AppButton from '@/components/ui/atoms/AppButton.vue'
 import AppAlert from '@/components/ui/molecules/AppAlert.vue'
 import { VOICE, type CreateMemberField } from '@/config/voice'

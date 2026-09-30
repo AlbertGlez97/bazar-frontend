@@ -111,7 +111,7 @@
 import { nextTick, ref, watch } from 'vue'
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
-import AppInput from '@/components/ui/atoms/AppInput.vue'
+import AppInput from '@/components/ui/molecules/AppInput.vue'
 import AppButton from '@/components/ui/atoms/AppButton.vue'
 import { businessRegistrationSchema } from '@/validation/business-registration.schema'
 import type { BusinessRegistrationPayload } from '@/types/business-registration.types'
