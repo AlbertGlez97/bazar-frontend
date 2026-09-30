@@ -109,7 +109,8 @@ describe('getNavItems — Códigos QR (solo socios, solo Modo Gestión, D2)', ()
   })
 
   it('no altera el orden de los demás ítems', () => {
-    expect(tos(getNavItems('gestion', { isSocio: true }))).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias'])
+    expect(tos(getNavItems('gestion', { isSocio: true })))
+      .toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias', '/app/deudas'])
     expect(tos(getNavItems('gestion', { isSocio: false }))).toEqual(['/app', '/app/productos'])
   })
 })
@@ -118,9 +119,8 @@ describe('getNavItems — Incidencias (solo socios, solo Modo Gestión, P2)', ()
   const incidencias = (mode: 'venta' | 'gestion', isSocio?: boolean) =>
     getNavItems(mode, { isSocio }).find((item) => item.to === '/app/incidencias')
 
-  it('un socio en Modo Gestión ve "Incidencias" con su ícono, al final del menú', () => {
+  it('un socio en Modo Gestión ve "Incidencias" con su ícono', () => {
     expect(incidencias('gestion', true)).toMatchObject({ label: 'Incidencias', exact: false })
-    expect(tos(getNavItems('gestion', { isSocio: true })).at(-1)).toBe('/app/incidencias')
   })
 
   it('un socio en Modo Venta no lo ve', () => {
@@ -136,5 +136,30 @@ describe('getNavItems — Incidencias (solo socios, solo Modo Gestión, P2)', ()
   it('va después de Códigos QR', () => {
     const items = tos(getNavItems('gestion', { isSocio: true }))
     expect(items.indexOf('/app/codigos-qr')).toBeLessThan(items.indexOf('/app/incidencias'))
+  })
+})
+
+describe('getNavItems — Deudas (solo socios, solo Modo Gestión)', () => {
+  const deudas = (mode: 'venta' | 'gestion', isSocio?: boolean) =>
+    getNavItems(mode, { isSocio }).find((item) => item.to === '/app/deudas')
+
+  it('un socio en Modo Gestión ve "Deudas" con su ícono, al final del menú', () => {
+    expect(deudas('gestion', true)).toMatchObject({ label: 'Deudas', exact: false })
+    expect(tos(getNavItems('gestion', { isSocio: true })).at(-1)).toBe('/app/deudas')
+  })
+
+  it('un socio en Modo Venta no lo ve', () => {
+    expect(deudas('venta', true)).toBeUndefined()
+  })
+
+  it('un colaborador no lo ve en ningún modo', () => {
+    expect(deudas('gestion', false)).toBeUndefined()
+    expect(deudas('venta', false)).toBeUndefined()
+    expect(deudas('gestion')).toBeUndefined()
+  })
+
+  it('va después de Incidencias', () => {
+    const items = tos(getNavItems('gestion', { isSocio: true }))
+    expect(items.indexOf('/app/incidencias')).toBeLessThan(items.indexOf('/app/deudas'))
   })
 })

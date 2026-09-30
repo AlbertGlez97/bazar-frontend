@@ -44,6 +44,8 @@ async function mountView(options: { role?: 'socio' | 'colaborador'; mode?: 'gest
       { path: '/app', name: 'AppHome', component: AppHomeView },
       { path: '/app/productos', name: 'ProductCatalog', component: { template: '<div>productos</div>' } },
       { path: '/app/reportes', name: 'Reports', component: { template: '<div>reportes</div>' } },
+      { path: '/app/incidencias', name: 'Incidencias', component: { template: '<div>incidencias</div>' } },
+      { path: '/app/deudas', name: 'Deudas', component: { template: '<div>deudas</div>' } },
     ],
   })
   router.push('/app')
@@ -103,16 +105,18 @@ describe('AppHomeView — "Incidencias pendientes" lleva a la lista filtrada (P2
     const { wrapper } = await mountView()
     const hrefs = wrapper.findAll('a').map((a) => a.attributes('href'))
     // "ventas hoy" (→ Reportes), "incidencias pendientes" (→ Incidencias,
-    // filtrado) y "poca existencia" (→ Productos, con el filtro preactivado).
-    expect(hrefs).toEqual(['/app/reportes', '/app/incidencias?resolutionStatus=pendiente', '/app/productos?pocaExistencia=1'])
+    // filtrado), "deudas por cobrar" (→ Deudas) y "poca existencia" (→
+    // Productos, con el filtro preactivado).
+    expect(hrefs).toEqual(['/app/reportes', '/app/incidencias?resolutionStatus=pendiente', '/app/deudas', '/app/productos?pocaExistencia=1'])
   })
 })
 
-describe('AppHomeView — deudas no lleva a ningún lado (aún)', () => {
-  it('se ve pero no es clickeable (sin <a>/<router-link>)', async () => {
+describe('AppHomeView — "Deudas por cobrar" lleva a la vista de Deudas', () => {
+  it('es clickeable y navega a /app/deudas', async () => {
     const { wrapper } = await mountView()
     const debtsCard = wrapper.findAll('.app-home__cards > *').find((el) => el.text().includes('Deudas por cobrar'))!
-    expect(debtsCard.element.tagName).not.toBe('A')
+    expect(debtsCard.element.tagName).toBe('A')
+    expect(debtsCard.attributes('href')).toBe('/app/deudas')
   })
 })
 

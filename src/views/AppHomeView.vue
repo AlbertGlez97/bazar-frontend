@@ -95,6 +95,7 @@
           :label="VOICE.dashboard.debts"
           :value="formatMinorMoney(summary.deudasPendientes.totalMinor)"
           :sublabel="VOICE.dashboard.debtsPeople(summary.deudasPendientes.personas)"
+          to="/app/deudas"
         />
 
         <AppStatCard

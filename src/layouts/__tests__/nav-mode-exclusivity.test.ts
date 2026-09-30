@@ -104,8 +104,8 @@ describe('getNavItems, por modo y por rol', () => {
     expect(getNavItems('venta', { isSocio }).map((i) => i.to)).toEqual([SELL])
   })
 
-  it('Modo Gestión: un socio ve Inicio, Productos, Reportes, Códigos QR e Incidencias, en ese orden', () => {
-    expect(getNavItems('gestion', { isSocio: true }).map((i) => i.to)).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias'])
+  it('Modo Gestión: un socio ve Inicio, Productos, Reportes, Códigos QR, Incidencias y Deudas, en ese orden', () => {
+    expect(getNavItems('gestion', { isSocio: true }).map((i) => i.to)).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias', '/app/deudas'])
   })
 
   it('Modo Gestión: un colaborador ve Inicio y Productos', () => {
@@ -129,9 +129,9 @@ describe('AppLayout (todo lo que dibuja: menú lateral, enlaces del pie y de la 
     expect(wrapper.find('.sidebar__nav').text()).not.toMatch(/Inicio|Productos|Reportes/)
   })
 
-  it('Modo Gestión (socio): Inicio, Productos, Reportes, Códigos QR e Incidencias', async () => {
+  it('Modo Gestión (socio): Inicio, Productos, Reportes, Códigos QR, Incidencias y Deudas', async () => {
     const wrapper = await mountLayout('gestion', 'socio')
-    expect(navLabels(wrapper)).toEqual(['Inicio', 'Productos', 'Reportes', 'Códigos QR', 'Incidencias'])
+    expect(navLabels(wrapper)).toEqual(['Inicio', 'Productos', 'Reportes', 'Códigos QR', 'Incidencias', 'Deudas'])
   })
 
   it('Modo Gestión (colaborador): Inicio y Productos, sin Reportes', async () => {

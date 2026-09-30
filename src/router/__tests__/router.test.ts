@@ -201,6 +201,48 @@ describe('incidencias route /app/incidencias', () => {
   })
 })
 
+// Deudas: mismo guard que Reportes/Códigos QR/Incidencias (guard por meta, no solo por ocultar el menú).
+describe('deudas route /app/deudas', () => {
+  function fullSession(role: 'socio' | 'colaborador', mode: 'gestion' | 'venta') {
+    restoreAuthSession()
+    const session = useSessionStore()
+    session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    useUiModeStore().setMode(mode)
+  }
+
+  it('lets a socio in Modo Gestión reach it', async () => {
+    fullSession('socio', 'gestion')
+    await router.push('/app/deudas'); expect(router.currentRoute.value.name).toBe('Deudas')
+    expect(router.currentRoute.value.path).toBe('/app/deudas')
+  })
+  it('sends a colaborador (even in Modo Gestión) to the app home', async () => {
+    fullSession('colaborador', 'gestion')
+    await router.push('/app/deudas'); expect(router.currentRoute.value.name).toBe('AppHome')
+  })
+  it('sends a socio in Modo Venta to the sale screen (the home of that mode)', async () => {
+    fullSession('socio', 'venta')
+    await router.push('/app/deudas'); expect(router.currentRoute.value.name).toBe('Sale')
+  })
+  it('sends a colaborador in Modo Venta to the sale screen (the home of that mode)', async () => {
+    fullSession('colaborador', 'venta')
+    await router.push('/app/deudas'); expect(router.currentRoute.value.name).toBe('Sale')
+  })
+  it('sends a logged-out visitor to login', async () => {
+    await router.push('/app/deudas'); expect(router.currentRoute.value.name).toBe('Login')
+  })
+  it('sends an authenticated visitor without device/member to /seleccionar-contexto', async () => {
+    restoreAuthSession()
+    await router.push('/app/deudas'); expect(router.currentRoute.value.name).toBe('SelectContext')
+  })
+  it('is a lazy child of the /app layout that declares its restrictions in meta', () => {
+    const resolved = router.resolve('/app/deudas')
+    expect(resolved.meta).toMatchObject({ requiresAuth: true, requiresContext: true, requiresSocio: true, requiresGestion: true })
+    expect(resolved.matched.map((r) => r.path)).toEqual(['/app', '/app/deudas'])
+    expect(router.getRoutes().find((r) => r.name === 'Deudas')!.components?.default).toBeTypeOf('function')
+  })
+})
+
 // Ajustes: el menú y "Cambiar mi contraseña" son de cualquier persona con contexto
 // listo (en cualquier modo); las pantallas de socios declaran `requiresSocio`.
 describe('settings routes /app/ajustes', () => {

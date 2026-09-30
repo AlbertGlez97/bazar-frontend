@@ -122,6 +122,18 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        // Deudas: fiado/apartado activos, calendario de cuotas y abonos. Solo
+        // socios y solo en Modo Gestión: mismo guard que Reportes/Códigos QR/
+        // Incidencias (no basta con ocultar el ítem del menú) y la vista lo
+        // vuelve a comprobar si el modo o el rol cambian. El detalle es un
+        // modal sobre la lista (mismo patrón que Incidencias): no hay
+        // ninguna ruta `:id` dinámica en este proyecto.
+        path: 'deudas',
+        name: 'Deudas',
+        component: () => import('@/views/deudas/DeudasView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         // Ajustes (engrane del pie de la barra lateral). Para cualquier persona
         // con el contexto listo, en cualquier modo; las entradas de socios
         // (equipo, dispositivos) declaran `requiresSocio` en su propia ruta.
