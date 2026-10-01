@@ -29,7 +29,7 @@
       :result="resultView"
       @new-sale="startNewSale"
       @back="checkout.dismissResult()"
-      @retry="charge"
+      @retry="checkout.retryLastCheckout()"
       @login="goToLogin"
     />
 

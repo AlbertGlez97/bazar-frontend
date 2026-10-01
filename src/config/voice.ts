@@ -196,6 +196,7 @@ export const VOICE = {
      * — no hubo venta de contado, el producto se descontó del inventario al
      * crear la Deuda (independiente de /sales) y el saldo queda pendiente.
      */
+    debtSavedBody: 'Tu fiado/apartado está guardado en este dispositivo y se manda solo cuando haya internet. El saldo es estimado hasta sincronizar.',
     debtTitle: 'Fiado/apartado registrado',
     debtTypeFiado: 'Fiado',
     debtTypeApartado: 'Apartado',
@@ -398,6 +399,7 @@ export const VOICE = {
    * servidor descuenta el stock al crear la Deuda, sin pasar por /sales.
    */
   deuda: {
+    failedToSave: 'No pudimos guardar este fiado/apartado en el dispositivo. Conserva el carrito e intenta de nuevo.',
     offerTitle: 'Registrar como fiado/apartado',
     typeLabel: 'Tipo',
     typeFiado: 'Fiado (ya se entregó)',

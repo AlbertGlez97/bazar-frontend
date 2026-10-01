@@ -12,7 +12,9 @@ import { VOICE, saleConflictMessage } from '@/config/voice'
 import { buildSalePayload, newSaleId } from '@/utils/sale'
 import { subtractMinor, sumMinor } from '@/utils/money'
 import type { CreateSalePayload, Sale } from '@/types/sale.types'
-import type { DeudaType } from '@/types/deuda.types'
+import { currentQueueOrigin, canSendDebt } from '@/services/queue-origin'
+import type { QueueOrigin } from '@/services/queue-origin'
+import type { CreateDeudaPayload, DeudaType } from '@/types/deuda.types'
 
 /**
  * Orquestación del cobro (decisión: store de Pinia, no composable, porque el
@@ -51,7 +53,7 @@ export type CheckoutResult =
   /** 401/403 en línea: la venta está a salvo en la cola; hay que volver a iniciar sesión. */
   | { kind: 'auth-needed'; pendingId: string; totalMinor: number; changeMinor: number; message: string }
   /** Ni siquiera se pudo guardar en el dispositivo (IndexedDB no disponible): conservar el carrito. */
-  | { kind: 'failed-to-save'; message: string }
+  | { kind: 'failed-to-save'; message: string; operation?: 'debt' }
   /** No se intentó: falta algo para poder cobrar. */
   | { kind: 'blocked'; reason: CheckoutBlockedReason }
   /**
@@ -64,8 +66,9 @@ export type CheckoutResult =
    * creada pero el abono falló" (antes D4, con una segunda llamada aparte).
    */
   | {
-      kind: 'debt-registered'
+      kind: 'debt-registered' | 'debt-saved-offline'
       deudaId: string
+      authNeeded?: boolean
       debtType: DeudaType
       totalMinor: number
       pendingMinor: number
@@ -101,6 +104,15 @@ export const useCheckoutStore = defineStore('checkout', () => {
   let attempt: Attempt | null = null
   let inFlight: Promise<CheckoutResult> | null = null
   let debtInFlight: Promise<CheckoutResult> | null = null
+  let debtAttempt: {
+    payload: CreateDeudaPayload & { id: string }
+    origin: QueueOrigin
+    signature: string
+    totalMinor: number
+    createdAt: string
+    sellerName: string
+    stockApplied: boolean
+  } | null = null
 
   const isOnline = () => typeof navigator === 'undefined' || navigator.onLine !== false
 
@@ -281,34 +293,58 @@ export const useCheckoutStore = defineStore('checkout', () => {
     },
   ): Promise<CheckoutResult> {
     if (cart.lines.length !== 1) return { kind: 'blocked', reason: 'debt-invalid-cart' }
-    const [line] = cart.lines
-
+    const origin = currentQueueOrigin()
+    if (!origin) return { kind: 'blocked', reason: 'missing-context' }
+    const line = cart.lines[0]!
+    const body = {
+      type: input.type, productId: line.productId, cantidad: line.quantity,
+      deudor: input.deudor, abonoInicialMinor: input.abonoInicialMinor,
+      ...(input.cuotasPlaneadas?.length ? { cuotasPlaneadas: input.cuotasPlaneadas } : {}),
+    }
+    const signature = JSON.stringify({ body, price: line.unitPriceMinor, origin })
+    if (!debtAttempt || debtAttempt.signature !== signature) {
+      debtAttempt = {
+        payload: JSON.parse(JSON.stringify({ id: newSaleId(), ...body })),
+        origin, signature, totalMinor: cart.totalMinor, createdAt: new Date().toISOString(),
+        sellerName: session.member?.name ?? '', stockApplied: false,
+      }
+    }
+    const current = debtAttempt
+    const applyStock = async () => {
+      if (current.stockApplied || !canSendDebt(current.origin)) return
+      current.stockApplied = true
+      await catalog.applySoldItems([{ productId: current.payload.productId, quantity: current.payload.cantidad }])
+    }
+    const save = async (authNeeded = false): Promise<CheckoutResult> => {
+      const saved = await salesQueue.enqueueDebt({
+        payload: current.payload, origin: current.origin, createdAt: current.createdAt,
+        sellerName: current.sellerName, totalMinorEstimate: current.totalMinor,
+        pendingMinorEstimate: subtractMinor(current.totalMinor, current.payload.abonoInicialMinor),
+      })
+      if (!saved.ok) return { kind: 'failed-to-save', operation: 'debt', message: VOICE.deuda.failedToSave }
+      if (saved.record.state === 'needs_review') return { kind: 'rejected', reasonMessage: saved.record.lastError ?? VOICE.deuda.createError, canFix: true }
+      await applyStock()
+      return { kind: 'debt-saved-offline', deudaId: current.payload.id, debtType: current.payload.type,
+        totalMinor: current.totalMinor, pendingMinor: subtractMinor(current.totalMinor, current.payload.abonoInicialMinor),
+        initialAbonoMinor: current.payload.abonoInicialMinor, ...(authNeeded ? { authNeeded: true } : {}) }
+    }
+    if (!isOnline()) return save()
     let deuda
     try {
-      deuda = await DeudasService.createDeuda({
-        type: input.type,
-        productId: line.productId,
-        cantidad: line.quantity,
-        deudor: input.deudor,
-        abonoInicialMinor: input.abonoInicialMinor,
-        ...(input.cuotasPlaneadas?.length ? { cuotasPlaneadas: input.cuotasPlaneadas } : {}),
-      })
+      deuda = await DeudasService.createDeuda(current.payload, { origin: current.origin, handleAuthLocally: true })
     } catch (error) {
+      const kind = classifySaleError(error)
+      if (kind !== 'business' && kind !== 'conflict-payload') return save(kind === 'auth')
+      // A previously saved operation is never silently deleted after rejection.
+      try { await salesQueue.markNeedsReview(current.payload.id, friendlyDeudaErrorMessage(error)) } catch { /* Durable copy remains for sync. */ }
       return { kind: 'rejected', reasonMessage: friendlyDeudaErrorMessage(error), canFix: true }
     }
-
-    // El servidor ya descontó el stock al crear la Deuda: el catálogo local se
-    // actualiza igual que tras una venta, para no ofrecer piezas que ya no hay.
-    await catalog.applySoldItems([{ productId: line.productId, quantity: line.quantity }])
-
+    try { await salesQueue.remove(current.payload.id) } catch { /* Replay safely cleans the durable copy later. */ }
+    await applyStock()
     const abonadoMinor = sumMinor(deuda.abonos.map((abono) => abono.montoMinor))
     return {
-      kind: 'debt-registered',
-      deudaId: deuda.id,
-      debtType: deuda.type,
-      totalMinor: deuda.totalMinor,
-      pendingMinor: subtractMinor(deuda.totalMinor, abonadoMinor),
-      initialAbonoMinor: abonadoMinor,
+      kind: 'debt-registered', deudaId: deuda.id, debtType: deuda.type, totalMinor: deuda.totalMinor,
+      pendingMinor: subtractMinor(deuda.totalMinor, abonadoMinor), initialAbonoMinor: abonadoMinor,
     }
   }
 
@@ -326,10 +362,11 @@ export const useCheckoutStore = defineStore('checkout', () => {
   ): Promise<CheckoutResult> {
     if (debtInFlight) return debtInFlight
     registeringDebt.value = true
+    const requestedOrigin = currentQueueOrigin()
     const current = runRegisterDebt(input)
       .catch((): CheckoutResult => ({ kind: 'rejected', reasonMessage: VOICE.genericError, canFix: true }))
       .then((result) => {
-        lastResult.value = result
+        if (!requestedOrigin || canSendDebt(requestedOrigin)) lastResult.value = result
         return result
       })
       .finally(() => {
@@ -340,10 +377,22 @@ export const useCheckoutStore = defineStore('checkout', () => {
     return current
   }
 
+  /** Retry the transaction that actually failed, not an accidental cash charge. */
+  function retryLastCheckout(): Promise<CheckoutResult> {
+    if (lastResult.value?.kind !== 'failed-to-save' || lastResult.value.operation !== 'debt' || !debtAttempt) return charge()
+    if (!canSendDebt(debtAttempt.origin)) return Promise.resolve({ kind: 'blocked', reason: 'missing-context' })
+    const payload = debtAttempt.payload
+    return registerDebt({
+      type: payload.type, deudor: payload.deudor!, abonoInicialMinor: payload.abonoInicialMinor,
+      cuotasPlaneadas: payload.cuotasPlaneadas,
+    })
+  }
+
   /** Venta nueva: vacía carrito y efectivo y olvida el intento congelado. */
   function startNewSale(): void {
     cart.clear()
     attempt = null
+    debtAttempt = null
     lastResult.value = null
   }
 
@@ -356,5 +405,5 @@ export const useCheckoutStore = defineStore('checkout', () => {
     lastResult.value = null
   }
 
-  return { loading, registeringDebt, lastResult, charge, registerDebt, startNewSale, dismissResult }
+  return { loading, registeringDebt, lastResult, charge, registerDebt, retryLastCheckout, startNewSale, dismissResult }
 })

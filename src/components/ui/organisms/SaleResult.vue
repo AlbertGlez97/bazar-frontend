@@ -41,7 +41,7 @@
 
     <!-- Fiado/apartado: total + SALDO PENDIENTE (nunca "cambio"; no hubo cobro) -->
     <div
-      v-if="result.kind === 'debt-registered'"
+      v-if="(result.kind === 'debt-registered' || result.kind === 'debt-saved-offline')"
       class="sale-result__amounts"
     >
       <p class="sale-result__total">
@@ -73,10 +73,10 @@
       {{ result.summary }}
     </p>
     <p
-      v-if="result.kind === 'debt-registered' && result.initialAbonoMinor > 0"
+      v-if="(result.kind === 'debt-registered' || result.kind === 'debt-saved-offline') && result.initialAbonoMinor > 0"
       class="sale-result__summary"
     >
-      {{ VOICE.saleResult.initialAbonoLabel }}: ${{ minorToDisplay(result.initialAbonoMinor) }}.
+      {{ result.kind === 'debt-saved-offline' ? 'Abono inicial guardado' : VOICE.saleResult.initialAbonoLabel }}: ${{ minorToDisplay(result.initialAbonoMinor) }}.
     </p>
 
     <!-- El motivo técnico del servidor es solo un detalle para el socio -->
@@ -145,7 +145,7 @@ onMounted(() => headingEl.value?.focus())
 // Se siente como éxito (success/saved-offline) o como un hecho completado sin
 // error (debt-registered: no falló nada, solo no fue un cobro de contado).
 const isAlert = computed(() =>
-  props.result.kind !== 'success' && props.result.kind !== 'saved-offline' && props.result.kind !== 'debt-registered',
+  props.result.kind !== 'success' && props.result.kind !== 'saved-offline' && props.result.kind !== 'debt-registered' && props.result.kind !== 'debt-saved-offline',
 )
 
 const ICONS: Record<SaleResultView['kind'], string> = {
@@ -156,6 +156,7 @@ const ICONS: Record<SaleResultView['kind'], string> = {
   'auth-needed': '🔒',
   'failed-to-save': '💾',
   blocked: '!',
+  'debt-saved-offline': '✓ ☁',
   'debt-registered': '🤝',
 }
 // La venta guardada sin señal lleva una nube junto a la palomita: se siente
@@ -170,6 +171,7 @@ const TITLES: Record<SaleResultView['kind'], string> = {
   'auth-needed': VOICE.saleResult.authNeededTitle,
   'failed-to-save': VOICE.saleResult.failedToSaveTitle,
   blocked: VOICE.saleResult.blockedTitle,
+  'debt-saved-offline': VOICE.saleResult.savedTitle,
   'debt-registered': VOICE.saleResult.debtTitle,
 }
 const title = computed(() => TITLES[props.result.kind])
@@ -178,11 +180,12 @@ const body = computed(() => {
   const result = props.result
   if (result.kind === 'saved-offline') return VOICE.saleResult.savedBody
   if (result.kind === 'success') return ''
+  if (result.kind === 'debt-saved-offline') return VOICE.saleResult.debtSavedBody + (result.authNeeded ? ' ' + VOICE.sale.authNeeded : '')
   if (result.kind === 'debt-registered') {
     const typeLabel = result.debtType === 'fiado' ? VOICE.saleResult.debtTypeFiado : VOICE.saleResult.debtTypeApartado
     return `${typeLabel}. ${VOICE.saleResult.debtNotASale}`
   }
-  return result.message
+  return 'message' in result ? result.message : ''
 })
 
 const showsAmounts = computed(() =>
@@ -200,6 +203,7 @@ const primaryLabel = computed(() => {
   switch (props.result.kind) {
     case 'success':
     case 'saved-offline':
+    case 'debt-saved-offline':
     case 'debt-registered': return VOICE.saleResult.newSale
     case 'conflict': return VOICE.saleResult.newSaleAfterConflict
     case 'auth-needed': return VOICE.saleResult.login
@@ -213,6 +217,7 @@ function onPrimary() {
     case 'success':
     case 'saved-offline':
     case 'conflict':
+    case 'debt-saved-offline':
     case 'debt-registered':
       emit('new-sale')
       break
@@ -263,6 +268,7 @@ const secondary = computed<{ label: string; event: 'new-sale' | 'back' } | null>
 .sale-result--rejected,
 .sale-result--failed-to-save { --result-color: var(--color-danger); --result-soft: var(--color-danger-soft); }
 .sale-result--auth-needed,
+.sale-result--debt-saved-offline,
 .sale-result--debt-registered { --result-color: var(--color-info); --result-soft: var(--color-info-soft); }
 
 .sale-result__icon {

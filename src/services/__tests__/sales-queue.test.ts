@@ -82,9 +82,9 @@ describe('enqueue', () => {
     await enqueue(input('a'))
     const second = await enqueue(input('a', '2026-09-25T13:00:00.000Z', { cashReceivedMinor: 99999 }))
 
-    expect(second.ok && second.record.payload.cashReceivedMinor).toBe(10000)
+    expect(second.ok && second.record.kind !== 'debt' && second.record.payload.cashReceivedMinor).toBe(10000)
     const [stored] = await list()
-    expect(stored.payload.cashReceivedMinor).toBe(10000)
+    expect(stored.kind !== 'debt' && stored.payload.cashReceivedMinor).toBe(10000)
     expect(stored.createdAt).toBe('2026-09-25T12:00:00.000Z')
   })
 
@@ -93,7 +93,8 @@ describe('enqueue', () => {
     await enqueue(original)
     original.payload.items[0].quantity = 99
 
-    expect((await list())[0].payload.items[0].quantity).toBe(2)
+    const record = (await list())[0]
+    expect(record.kind !== 'debt' && record.payload.items[0].quantity).toBe(2)
   })
 
   it('sobrevive a un "reload": cerrar y reabrir la base conserva el registro', async () => {

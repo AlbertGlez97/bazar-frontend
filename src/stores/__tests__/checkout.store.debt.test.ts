@@ -10,7 +10,8 @@ import { useCheckoutStore } from '../checkout.store'
 import { useCartStore } from '../cart.store'
 import { useSaleCatalogStore } from '../sale-catalog.store'
 import { useSessionStore } from '../session.store'
-import { closeLocalDb } from '@/services/local-db'
+import * as queue from '@/services/sales-queue'
+import { closeLocalDb, loadCatalogSnapshot } from '@/services/local-db'
 import DeudasService from '@/services/deudas.service'
 import ProductsService from '@/services/products.service'
 import { VOICE } from '@/config/voice'
@@ -66,6 +67,7 @@ const DEUDOR_INPUT = { type: 'apartado' as const, deudor: { nombre: 'Lucía', te
 
 /** Sesión lista + catálogo cargado + carrito con 3 tazas. */
 async function ready() {
+  localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z')
   const session = useSessionStore()
   session.setDevice(DEVICE)
   session.setMember(MEMBER)
@@ -86,7 +88,7 @@ beforeEach(() => {
   globalThis.indexedDB = new IDBFactory()
   setActivePinia(createPinia())
   createDeuda.mockReset()
-  createDeuda.mockImplementation(async () => deudaFor())
+  createDeuda.mockImplementation(async (payload) => deudaFor({ id: payload.id! }))
   createAbono.mockReset()
 })
 afterEach(() => {
@@ -126,13 +128,13 @@ describe('checkout.store.registerDebt — POST /deudas (D1: abonoInicialMinor ex
 
     await checkout.registerDebt({ ...DEUDOR_INPUT, abonoInicialMinor: 1500 })
 
-    expect(createDeuda).toHaveBeenCalledExactlyOnceWith({
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       type: 'apartado',
       productId: TAZA.id,
       cantidad: 3,
       deudor: { nombre: 'Lucía', telefono: '555-0001' },
       abonoInicialMinor: 1500,
-    })
+    }), expect.objectContaining({ handleAuthLocally: true }))
   })
 
   it('sin cuotasPlaneadas (arreglo vacío) NO manda ese campo al backend (opcional)', async () => {
@@ -150,7 +152,7 @@ describe('checkout.store.registerDebt — POST /deudas (D1: abonoInicialMinor ex
 
     await checkout.registerDebt({ ...DEUDOR_INPUT, cuotasPlaneadas: cuotas })
 
-    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ cuotasPlaneadas: cuotas }))
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ cuotasPlaneadas: cuotas }), expect.any(Object))
   })
 
   it('el abonoInicialMinor 0 explícito no llama a createAbono por separado: nunca hay una segunda llamada', async () => {
@@ -193,7 +195,7 @@ describe('checkout.store.registerDebt — POST /deudas (D1: abonoInicialMinor ex
 
     const result = await checkout.registerDebt(DEUDOR_INPUT)
 
-    expect(result).toEqual({ kind: 'rejected', reasonMessage: VOICE.networkError, canFix: true })
+    expect(result).toMatchObject({ kind: 'debt-saved-offline', pendingMinor: 5997 })
   })
 })
 
@@ -205,7 +207,7 @@ describe('checkout.store.registerDebt — resultado con el abono inicial ya incl
 
     expect(result).toEqual({
       kind: 'debt-registered',
-      deudaId: deudaFor().id,
+      deudaId: createDeuda.mock.calls[0]![0].id,
       debtType: 'apartado',
       totalMinor: 5997,
       pendingMinor: 5997,
@@ -217,8 +219,9 @@ describe('checkout.store.registerDebt — resultado con el abono inicial ya incl
   it('con abono inicial, el servidor ya devuelve la deuda con el abono incluido en abonos[] — el resultado lo refleja', async () => {
     const { checkout } = await ready()
     createDeuda.mockImplementation(async (payload) => deudaFor({
+      id: payload.id!,
       abonos: payload.abonoInicialMinor > 0
-        ? [{ id: 'a-1', deudaId: deudaFor().id, contextId: 'bazar-local', montoMinor: payload.abonoInicialMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }]
+        ? [{ id: 'a-1', deudaId: payload.id!, contextId: 'bazar-local', montoMinor: payload.abonoInicialMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }]
         : [],
     }))
 
@@ -226,7 +229,7 @@ describe('checkout.store.registerDebt — resultado con el abono inicial ya incl
 
     expect(result).toEqual({
       kind: 'debt-registered',
-      deudaId: deudaFor().id,
+      deudaId: createDeuda.mock.calls[0]![0].id,
       debtType: 'apartado',
       totalMinor: 5997,
       pendingMinor: 3997,
@@ -277,5 +280,59 @@ describe('checkout.store.registerDebt — doble toque', () => {
     await checkout.registerDebt(DEUDOR_INPUT)
 
     expect(checkout.loading).toBe(false)
+  })
+})
+
+describe('offline debt checkout', () => {
+  it.each(['fiado', 'apartado'] as const)('saves %s with initial payment and decrements stock only once', async (type) => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    const { checkout, catalog } = await ready()
+    const input = { ...DEUDOR_INPUT, deudor: { ...DEUDOR_INPUT.deudor }, type, abonoInicialMinor: 2000, cuotasPlaneadas: [{ fechaEsperada: '2026-10-15', montoEsperadoMinor: 3997 }] }
+    const first = await checkout.registerDebt(input)
+    input.deudor.nombre = 'Changed after save'
+    input.cuotasPlaneadas[0]!.montoEsperadoMinor = 1
+    expect(first).toMatchObject({ kind: 'debt-saved-offline', debtType: type, totalMinor: 5997, pendingMinor: 3997, initialAbonoMinor: 2000 })
+    expect(createDeuda).not.toHaveBeenCalled()
+    const record = (await queue.list())[0]!
+    expect(record.payload.id).toMatch(/^[0-9a-f-]{14}7/)
+    expect(record).toMatchObject({ kind: 'debt', payload: { abonoInicialMinor: 2000, cuotasPlaneadas: [{ montoEsperadoMinor: 3997 }] }, origin: { accountId: 'account-a', memberId: MEMBER.id, deviceId: DEVICE.deviceId } })
+    await checkout.registerDebt({ ...DEUDOR_INPUT, type, abonoInicialMinor: 2000, cuotasPlaneadas: [{ fechaEsperada: '2026-10-15', montoEsperadoMinor: 3997 }] })
+    expect(await queue.count()).toBe(1)
+    expect(catalog.getById(TAZA.id)?.stock).toBe(7)
+    closeLocalDb()
+    expect(await queue.count()).toBe(1)
+    expect((await loadCatalogSnapshot())?.items.find((item) => item.id === TAZA.id)?.stock).toBe(7)
+  })
+  it('does not report success or decrement inventory when storage is unavailable', async () => {
+    const { checkout, catalog, cart } = await ready()
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    closeLocalDb()
+    vi.stubGlobal('indexedDB', undefined)
+    const result = await checkout.registerDebt(DEUDOR_INPUT)
+    expect(result.kind).toBe('failed-to-save')
+    expect(catalog.getById(TAZA.id)?.stock).toBe(10)
+    expect(cart.lines).toHaveLength(1)
+    vi.unstubAllGlobals()
+  })
+  it('reuses id after ambiguous request, queued replay and repeated successful retry', async () => {
+    const { checkout, catalog } = await ready()
+    createDeuda.mockRejectedValueOnce({ code: 'ERR_NETWORK' }).mockImplementation(async (payload) => deudaFor({ id: payload.id! }))
+    const first = await checkout.registerDebt(DEUDOR_INPUT)
+    const second = await checkout.registerDebt(DEUDOR_INPUT)
+    await checkout.registerDebt(DEUDOR_INPUT)
+    expect(first.kind).toBe('debt-saved-offline')
+    expect(second.kind).toBe('debt-registered')
+    expect(new Set(createDeuda.mock.calls.map(([body]) => body.id)).size).toBe(1)
+    expect(catalog.getById(TAZA.id)?.stock).toBe(7)
+    expect(await queue.count()).toBe(0)
+  })
+  it('cannot apply an awaited result to another account catalog', async () => {
+    const { checkout, catalog } = await ready()
+    createDeuda.mockImplementation(async (payload) => {
+      localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-b' })) + '.z')
+      return deudaFor({ id: payload.id! })
+    })
+    await checkout.registerDebt(DEUDOR_INPUT)
+    expect(catalog.getById(TAZA.id)?.stock).toBe(10)
   })
 })

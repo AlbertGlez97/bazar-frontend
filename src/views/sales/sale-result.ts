@@ -29,9 +29,11 @@ export function describeCheckoutResult(result: CheckoutResult, sellerName?: stri
       return { kind: 'failed-to-save', message: result.message }
     case 'blocked':
       return { kind: 'blocked', message: BLOCKED_MESSAGES[result.reason] }
+    case 'debt-saved-offline':
     case 'debt-registered':
       return {
-        kind: 'debt-registered',
+        kind: result.kind,
+        ...(result.authNeeded ? { authNeeded: true } : {}),
         debtType: result.debtType,
         totalMinor: result.totalMinor,
         pendingMinor: result.pendingMinor,

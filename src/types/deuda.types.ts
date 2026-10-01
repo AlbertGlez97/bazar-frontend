@@ -93,6 +93,8 @@ export interface Deuda {
  * saldo/`status`.
  */
 export interface CreateDeudaPayload {
+  /** Client-generated retry identity; legacy callers may omit it. */
+  id?: string
   type: DeudaType
   productId: string
   /** Entero, `Min(1)`. */

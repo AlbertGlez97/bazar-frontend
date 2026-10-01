@@ -255,3 +255,14 @@ describe('api — interceptores Axios', () => {
     expect(localStorage.getItem('access_token')).toBe('jwt-xxx')
   })
 })
+
+it('does not dispatch queued debt with a different account credential', () => {
+  setActivePinia(createPinia())
+  localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-b' })) + '.z')
+  const session = useSessionStore()
+  session.setDevice({ deviceId: 'device-a', name: 'Tablet' })
+  session.setMember({ id: 'member-a', name: 'Ana', role: 'socio', active: true })
+  const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]!
+  const config = { headers: {}, debtOrigin: { accountId: 'account-a', memberId: 'member-a', deviceId: 'device-a', apiBase: api.defaults.baseURL } } as unknown as InternalAxiosRequestConfig
+  expect(() => handler.fulfilled(config)).toThrow()
+})

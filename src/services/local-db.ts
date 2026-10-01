@@ -15,6 +15,8 @@
 import { openDB } from 'idb'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import type { CreateSalePayload } from '@/types/sale.types'
+import type { CreateDeudaPayload } from '@/types/deuda.types'
+import type { QueueOrigin } from './queue-origin'
 import type { Product } from '@/types/product.types'
 
 export const DB_NAME = 'la-marchanta'
@@ -28,6 +30,7 @@ export type PendingSaleState = 'pending' | 'needs_review'
 
 /** Registro de la cola offline. El `payload` se congela al encolar y no cambia. */
 export interface PendingSale {
+  kind?: 'cash'
   id: string
   /** Cuerpo exacto de POST /sales (mismo `id`, `occurredAt`, partidas y efectivo en cada reintento). */
   payload: CreateSalePayload
@@ -45,6 +48,15 @@ export interface PendingSale {
   changeMinorEstimate: number
 }
 
+/** Debt creation uses the existing queue, ordering and retry infrastructure. */
+export interface PendingDebt extends Omit<PendingSale, 'kind' | 'payload' | 'changeMinorEstimate'> {
+  kind: 'debt'
+  payload: CreateDeudaPayload & { id: string }
+  origin: QueueOrigin
+  pendingMinorEstimate: number
+}
+export type PendingOperation = PendingSale | PendingDebt
+
 /** Copia local del catálogo activo. */
 export interface CatalogSnapshot {
   /** ISO 8601 del momento en que se guardó. */
@@ -57,7 +69,7 @@ interface CatalogSnapshotRecord extends CatalogSnapshot {
 }
 
 interface LaMarchantaDB extends DBSchema {
-  'pending-sales': { key: string; value: PendingSale }
+  'pending-sales': { key: string; value: PendingOperation }
   'catalog-snapshot': { key: string; value: CatalogSnapshotRecord }
 }
 

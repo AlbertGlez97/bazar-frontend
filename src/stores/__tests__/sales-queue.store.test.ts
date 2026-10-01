@@ -178,3 +178,27 @@ describe('sales-queue.store — sincronización', () => {
     expect(await salesQueue.list()).toHaveLength(1)
   })
 })
+
+it('counts debts with cash and hides incompatible debt details without discarding them', async () => {
+  localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z')
+  const { useSessionStore } = await import('../session.store')
+  const session = useSessionStore()
+  session.setDevice({ deviceId: 'device-a', name: 'Tablet' })
+  session.setMember({ id: 'member-a', name: 'Ana', role: 'socio', active: true })
+  const origin = { accountId: 'account-a', memberId: 'member-a', deviceId: 'device-a', apiBase: '/api/v1' }
+  const payload = { id: 'debt-a', type: 'fiado' as const, productId: 'p', cantidad: 1, deudor: { nombre: 'Ana' }, abonoInicialMinor: 1000 }
+  await queueSale('cash-a', '2026-10-01')
+  await salesQueue.enqueueDebt({ payload, origin, totalMinorEstimate: 5000, pendingMinorEstimate: 4000 })
+  const store = useSalesQueueStore()
+  await store.refreshCounts()
+  expect(store.pendingCount).toBe(2)
+  await salesQueue.markNeedsReview('debt-a', 'Stock conflict')
+  await store.refreshCounts()
+  expect(store.pendingCount).toBe(1)
+  expect(store.needsReviewCount).toBe(1)
+  localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-b' })) + '.z')
+  await store.refreshCounts()
+  expect(store.needsReviewRecords).toEqual([])
+  expect(store.incompatibleCount).toBe(1)
+  expect(await salesQueue.countNeedsReview()).toBe(1)
+})

@@ -132,6 +132,12 @@
             {{ uiMode.isVenta ? 'Modo Venta' : 'Modo Gestión' }}
           </AppBadge>
           <!-- Cola de ventas offline: calmada, y sin nada que mostrar cuando no hay pendientes -->
+          <p
+            v-if="salesQueue.incompatibleCount > 0"
+            role="status"
+          >
+            Hay fiados/apartados guardados de otra sesión. Vuelve a la cuenta y dispositivo originales para sincronizarlos.
+          </p>
           <SyncStatusIndicator
             :pending-count="salesQueue.pendingCount"
             :needs-review-count="salesQueue.needsReviewCount"

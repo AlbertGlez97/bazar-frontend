@@ -87,3 +87,17 @@ describe('SaleResult — fiado/apartado registrado', () => {
     wrapper.unmount()
   })
 })
+
+it.each(['fiado', 'apartado'] as const)('shows saved %s balance and initial payment, never cash change', async (debtType) => {
+  const wrapper = mountResult({ ...apartado, kind: 'debt-saved-offline', debtType })
+  expect(wrapper.get('h2').text()).toBe('Listo, ya quedó')
+  expect(wrapper.text()).toContain('se manda solo cuando haya internet')
+  expect(wrapper.text()).toContain('Saldo pendiente')
+  expect(wrapper.text()).toContain('$39.97')
+  expect(wrapper.text()).toContain('$20.00')
+  expect(wrapper.text()).not.toMatch(/Cambio|Sin cambio/)
+  expect(wrapper.get('.sale-result').attributes('role')).toBe('status')
+  await wrapper.get('.sale-result__primary').trigger('click')
+  expect(wrapper.emitted('new-sale')).toHaveLength(1)
+  wrapper.unmount()
+})

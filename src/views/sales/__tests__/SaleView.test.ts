@@ -144,6 +144,8 @@ async function sellCafe(w: Wrapper, cash = '100') {
 
 beforeEach(() => {
   localStorage.clear()
+  localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z')
+  localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
   sessionStorage.clear()
   closeLocalDb()
   globalThis.indexedDB = new IDBFactory()
@@ -755,7 +757,7 @@ describe('SaleView — otros resultados', () => {
   })
 
   it('sesión vencida (401): la venta queda guardada, se explica y "Iniciar sesión" lleva al login', async () => {
-    localStorage.setItem('access_token', 'jwt')
+    localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z')
     localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
     const { wrapper, router } = await mountSale()
     createSale.mockRejectedValueOnce(httpError(401))
@@ -1401,13 +1403,13 @@ describe('SaleView — fiado/apartado', () => {
     await confirmDebtBtn(wrapper).trigger('click')
     await flushPromises()
 
-    expect(createDeuda).toHaveBeenCalledExactlyOnceWith({
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
       type: 'fiado',
       productId: CAFE.id,
       cantidad: 2,
       deudor: { nombre: 'Lucía' },
       abonoInicialMinor: 0,
-    })
+    }), expect.any(Object))
   })
 
   // D1 (BE-15): el abono inicial del modal es EXPLÍCITO — lo que ya esté
@@ -1423,7 +1425,7 @@ describe('SaleView — fiado/apartado', () => {
     await confirmDebtBtn(wrapper).trigger('click')
     await flushPromises()
 
-    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ abonoInicialMinor: 0 }))
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ abonoInicialMinor: 0 }), expect.any(Object))
     expect(createAbono).not.toHaveBeenCalled()
   })
 
@@ -1441,7 +1443,7 @@ describe('SaleView — fiado/apartado', () => {
     await confirmDebtBtn(wrapper).trigger('click')
     await flushPromises()
 
-    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ abonoInicialMinor: 1000 }))
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ abonoInicialMinor: 1000 }), expect.any(Object))
     expect(createAbono).not.toHaveBeenCalled()
   })
 
@@ -1515,4 +1517,46 @@ describe('SaleView — fiado/apartado', () => {
     expect(wrapper.get('h2').text()).toBe('Venta registrada')
     expect(createDeuda).not.toHaveBeenCalled()
   })
+})
+
+it('offline debt creation goes through the real modal and retains initial payment', async () => {
+  const { wrapper } = await mountSale()
+  await tap(wrapper, 'Caf\u00e9 de olla')
+  setOnline(false)
+  await wrapper.get('button[data-action="open-debt-modal"]').trigger('click')
+  await wrapper.get('.registrar-deuda-modal__body').findAll('input')[0]!.setValue('Ana')
+  await wrapper.get('.registrar-deuda-modal__body input[inputmode="decimal"]').setValue('10.00')
+  await wrapper.get('button[data-action="confirm-debt"]').trigger('click')
+  await vi.waitFor(() => expect(wrapper.find('.sale-result').exists()).toBe(true))
+  expect(wrapper.text()).toContain('se manda solo cuando haya internet')
+  expect(wrapper.text()).toContain('Saldo pendiente')
+  expect(wrapper.text()).toContain('$9.99')
+  expect(wrapper.text()).toContain('Abono inicial guardado')
+  expect(createDeuda).not.toHaveBeenCalled()
+  const store = useSalesQueueStore()
+  await store.refreshCounts()
+  expect(store.pendingCount).toBe(1)
+  expect((await salesQueue.list())[0]).toMatchObject({ kind: 'debt', payload: { abonoInicialMinor: 1000 } })
+  wrapper.unmount()
+  store.$dispose()
+})
+
+it('retry after debt storage failure remains a debt, never a cash charge', async () => {
+  const { wrapper } = await mountSale()
+  await tap(wrapper, 'Caf\u00e9 de olla')
+  setOnline(false)
+  await wrapper.get('button[data-action="open-debt-modal"]').trigger('click')
+  await wrapper.get('.registrar-deuda-modal__body').findAll('input')[0]!.setValue('Ana')
+  closeLocalDb()
+  const available = globalThis.indexedDB
+  // @ts-expect-error simulate unavailable local persistence
+  globalThis.indexedDB = undefined
+  await wrapper.get('button[data-action="confirm-debt"]').trigger('click')
+  await vi.waitFor(() => expect(wrapper.find('.sale-result--failed-to-save').exists()).toBe(true))
+  globalThis.indexedDB = available
+  await wrapper.get('.sale-result__primary').trigger('click')
+  await vi.waitFor(() => expect(wrapper.find('.sale-result--debt-saved-offline').exists()).toBe(true))
+  expect((await salesQueue.list())[0]).toMatchObject({ kind: 'debt', payload: { deudor: { nombre: 'Ana' } } })
+  expect(createSale).not.toHaveBeenCalled()
+  wrapper.unmount()
 })

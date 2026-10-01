@@ -24,7 +24,8 @@ export type SaleResultView =
    * deuda se crea completa (con el abono ya aplicado) o no se crea nada.
    */
   | {
-      kind: 'debt-registered'
+      kind: 'debt-registered' | 'debt-saved-offline'
+      authNeeded?: boolean
       debtType: 'fiado' | 'apartado'
       totalMinor: number
       pendingMinor: number

@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
-import { onScopeDispose, ref } from 'vue'
+import { onScopeDispose, ref, watch } from 'vue'
+import { useSessionStore } from './session.store'
+import DeudasService from '@/services/deudas.service'
+import { canSendDebt } from '@/services/queue-origin'
 import SalesService from '@/services/sales.service'
 import * as salesQueue from '@/services/sales-queue'
-import type { PendingSale } from '@/services/sales-queue'
+import type { PendingOperation } from '@/services/sales-queue'
 import { createSalesSync } from '@/services/sales-sync'
 import type { SyncSummary } from '@/services/sales-sync'
 import { createSyncScheduler } from '@/services/sales-sync-scheduler'
@@ -17,10 +20,12 @@ import { createSyncScheduler } from '@/services/sales-sync-scheduler'
  * enviar, revisar, descartar) y tras cada corrida.
  */
 export const useSalesQueueStore = defineStore('sales-queue', () => {
+  const session = useSessionStore()
   const pendingCount = ref(0)
   const needsReviewCount = ref(0)
+  const incompatibleCount = ref(0)
   /** Ventas que el servidor no aceptó; `lastError` trae el motivo amable. */
-  const needsReviewRecords = ref<PendingSale[]>([])
+  const needsReviewRecords = ref<PendingOperation[]>([])
   const isSyncing = ref(false)
   const lastSummary = ref<SyncSummary | null>(null)
   /** `false` si IndexedDB no respondió en la última lectura (los contadores pueden estar desactualizados). */
@@ -29,6 +34,8 @@ export const useSalesQueueStore = defineStore('sales-queue', () => {
   const isOnline = () => typeof navigator === 'undefined' || navigator.onLine !== false
 
   const engine = createSalesSync({
+    createDebt: (payload, origin) => DeudasService.createDeuda(payload, { origin }),
+    canSyncRecord: (record) => record.kind !== 'debt' || canSendDebt(record.origin),
     createSale: (payload) => SalesService.createSale(payload),
     queue: salesQueue,
     isOnline,
@@ -40,7 +47,9 @@ export const useSalesQueueStore = defineStore('sales-queue', () => {
 
   async function refreshCounts(): Promise<void> {
     try {
-      const records = await salesQueue.list()
+      const all = await salesQueue.list()
+      const records = all.filter((record) => record.kind !== 'debt' || canSendDebt(record.origin))
+      incompatibleCount.value = all.length - records.length
       pendingCount.value = records.filter((record) => record.state === 'pending').length
       const review = records.filter((record) => record.state === 'needs_review')
       needsReviewCount.value = review.length
@@ -69,7 +78,11 @@ export const useSalesQueueStore = defineStore('sales-queue', () => {
     void refreshCounts()
     void scheduler.notifyChange()
   })
+  watch([() => session.memberId, () => session.deviceId], () => { void refreshCounts() })
+  const refreshForStorage = () => { void refreshCounts() }
+  if (typeof window !== 'undefined') window.addEventListener('storage', refreshForStorage)
   onScopeDispose(() => {
+    if (typeof window !== 'undefined') window.removeEventListener('storage', refreshForStorage)
     stopListening()
     scheduler.stop()
   })
@@ -93,13 +106,15 @@ export const useSalesQueueStore = defineStore('sales-queue', () => {
 
   /** La persona ya leyó una venta en revisión y la descarta. `false` si no era `needs_review`. */
   async function dismissReview(id: string): Promise<boolean> {
+    const record = (await salesQueue.list()).find((entry) => entry.id === id)
+    if (!record || (record.kind === 'debt' && !canSendDebt(record.origin))) return false
     const dismissed = await salesQueue.dismissReview(id)
     await refreshCounts()
     return dismissed
   }
 
   return {
-    pendingCount, needsReviewCount, needsReviewRecords, isSyncing, lastSummary, storageAvailable,
+    pendingCount, needsReviewCount, incompatibleCount, needsReviewRecords, isSyncing, lastSummary, storageAvailable,
     refreshCounts, start, stop, syncNow, dismissReview,
   }
 })

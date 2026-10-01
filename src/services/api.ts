@@ -1,10 +1,12 @@
 // Instancia central de Axios con interceptor JWT
 import axios from 'axios'
+import { API_BASE_URL, canSendDebt } from './queue-origin'
+import type { QueueOrigin } from './queue-origin'
 import { useSessionStore } from '@/stores/session.store'
 
 // Base URL tomada de la variable de entorno Vite
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '/api/v1',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -15,6 +17,8 @@ const api = axios.create({
 // simplemente no se agregan los headers: el backend responde 403 para las
 // rutas que los exigen (ContextGuard/SocioGuard), no hace falta anticiparlo aquí.
 api.interceptors.request.use((config) => {
+  const origin = (config as typeof config & { debtOrigin?: QueueOrigin }).debtOrigin
+  if (origin && !canSendDebt(origin)) throw new Error('Debt origin no longer matches the active session')
   const token = localStorage.getItem('access_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`

@@ -1,4 +1,6 @@
 import api from './api'
+import type { QueueOrigin } from './queue-origin'
+import { UnexpectedSaleResponseError } from './sale-errors'
 import type {
   CreateAbonoPayload,
   CreateDeudaPayload,
@@ -19,8 +21,21 @@ const DeudasService = {
    * stock de inmediato en el servidor. Responde 201 con la deuda, `abonos`
    * (vacío o con el abono inicial) y `cuotasPlaneadas`, SIN `deudor` anidado.
    */
-  async createDeuda(payload: CreateDeudaPayload): Promise<Deuda> {
-    const { data } = await api.post<Deuda>('/deudas', payload)
+  async createDeuda(payload: CreateDeudaPayload, options: { origin?: QueueOrigin; handleAuthLocally?: boolean } = {}): Promise<Deuda> {
+    const config = {
+      ...(options.origin ? { debtOrigin: options.origin } : {}),
+      ...(options.origin ? { headers: { 'x-member-id': options.origin.memberId, 'x-device-id': options.origin.deviceId } } : {}),
+      ...(options.handleAuthLocally ? { skipAuthRedirect: true } : {}),
+    }
+    const response = options.origin || options.handleAuthLocally
+      ? await api.post<Deuda>('/deudas', payload, config)
+      : await api.post<Deuda>('/deudas', payload)
+    const data = response.data
+    if (payload.id && (!data || data.id !== payload.id || !Array.isArray(data.abonos)
+        || !Array.isArray(data.cuotasPlaneadas) || !Number.isInteger(data.totalMinor)
+        || (data.status !== 'pendiente' && data.status !== 'saldada'))) {
+      throw new UnexpectedSaleResponseError(response.status)
+    }
     return data
   },
 

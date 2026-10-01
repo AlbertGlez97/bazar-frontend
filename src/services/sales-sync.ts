@@ -17,11 +17,13 @@
  */
 import { VOICE } from '@/config/voice'
 import { classifySaleError, friendlySaleErrorMessage } from './sale-errors'
-import type { PendingSale } from './local-db'
+import { friendlyDeudaErrorMessage } from './deuda-errors'
+import type { PendingOperation, PendingDebt } from './local-db'
 import type { CreateSalePayload, CreateSaleResult } from '@/types/sale.types'
 
 /** Por qué terminó antes de vaciar la cola (`null` = procesó todo lo que había). */
 export type SyncStopReason =
+  | 'context'            // debt belongs to a different account/device/API origin
   | 'offline'            // el navegador no tiene conexión
   | 'network'            // la petición no obtuvo respuesta
   | 'server'             // 5xx / respuesta inesperada
@@ -41,9 +43,11 @@ export interface SyncSummary {
 }
 
 export interface SalesSyncDeps {
+  createDebt?: (payload: PendingDebt['payload'], origin: PendingDebt['origin']) => Promise<unknown>
+  canSyncRecord?: (record: PendingOperation) => boolean
   createSale: (payload: CreateSalePayload) => Promise<CreateSaleResult>
   queue: {
-    list: () => Promise<PendingSale[]>
+    list: () => Promise<PendingOperation[]>
     remove: (id: string) => Promise<boolean>
     markNeedsReview: (id: string, reason: string) => Promise<boolean>
     recordAttempt: (id: string, reason: string, at?: string) => Promise<boolean>
@@ -91,7 +95,7 @@ export function createSalesSync(deps: SalesSyncDeps): SalesSync {
       return emptySummary('not-authenticated', await countPending(0))
     }
 
-    let records: PendingSale[]
+    let records: PendingOperation[]
     try {
       records = await deps.queue.list()
     } catch {
@@ -109,19 +113,26 @@ export function createSalesSync(deps: SalesSyncDeps): SalesSync {
         break
       }
 
-      let result: CreateSaleResult
+      if (!deps.canSync()) { stoppedBecause = 'not-authenticated'; break }
+      if (deps.canSyncRecord && !deps.canSyncRecord(record)) { stoppedBecause = 'context'; continue }
+      let result: CreateSaleResult | null = null
       try {
-        result = await deps.createSale(record.payload)
+        if (record.kind === 'debt') {
+          if (!deps.createDebt) { stoppedBecause = 'context'; break }
+          await deps.createDebt(record.payload, record.origin)
+        } else {
+          result = await deps.createSale(record.payload)
+        }
       } catch (error) {
         const kind = classifySaleError(error)
         try {
           if (kind === 'business' || kind === 'conflict-payload') {
             // Respuesta definitiva: reintentar no cambiaría nada.
-            await deps.queue.markNeedsReview(record.id, friendlySaleErrorMessage(error, 'sync'))
+            await deps.queue.markNeedsReview(record.id, record.kind === 'debt' ? friendlyDeudaErrorMessage(error) : friendlySaleErrorMessage(error, 'sync'))
             needsReview++
             continue
           }
-          await deps.queue.recordAttempt(record.id, friendlySaleErrorMessage(error, 'sync'), deps.now())
+          await deps.queue.recordAttempt(record.id, record.kind === 'debt' ? friendlyDeudaErrorMessage(error) : friendlySaleErrorMessage(error, 'sync'), deps.now())
         } catch {
           stoppedBecause = 'storage'
           break
@@ -131,7 +142,7 @@ export function createSalesSync(deps: SalesSyncDeps): SalesSync {
       }
 
       try {
-        if (result.outcome === 'completed') {
+        if (result === null || result.outcome === 'completed') {
           await deps.queue.remove(record.id)
           synced++
         } else {
