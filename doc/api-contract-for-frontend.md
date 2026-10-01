@@ -2038,7 +2038,7 @@ Forma de una deuda (registro crudo; `deudor`, `abonos` y `cuotasPlaneadas` segú
 | `deudor.notas` | string | opcional; 0..2000 |
 | `abonoInicialMinor` | integer | **requerido (BE-15)**, 0..2147483647. `0` = sin abono inicial. `> 0` crea el primer `Abono` (fecha de hoy) en la misma transacción; si por sí solo cubre `totalMinor`, la deuda nace `saldada` |
 | `cuotasPlaneadas` | array | opcional (BE-15); calendario informativo, creado en la misma transacción. **Nunca** afecta el saldo/`status` |
-| `cuotasPlaneadas[].fechaEsperada` | string (ISO 8601) | requerida dentro de cada cuota |
+| `cuotasPlaneadas[].fechaEsperada` | string (YYYY-MM-DD, fecha real) | requerida dentro de cada cuota |
 | `cuotasPlaneadas[].montoEsperadoMinor` | integer | requerido dentro de cada cuota; 1..2147483647 |
 
 **Errores**
@@ -2066,8 +2066,8 @@ Todo ocurre en una transacción: si falla algo (incluido un `abonoInicialMinor` 
   "abonoInicialMinor": 0,
   "deudor": { "nombre": "Lucía (example customer)", "telefono": "EXAMPLE-PHONE", "notas": "Collect Gran Turismo 7 on Saturday." },
   "cuotasPlaneadas": [
-    { "fechaEsperada": "2026-10-15T00:00:00.000Z", "montoEsperadoMinor": 32500 },
-    { "fechaEsperada": "2026-11-15T00:00:00.000Z", "montoEsperadoMinor": 32500 }
+    { "fechaEsperada": "2026-10-15", "montoEsperadoMinor": 32500 },
+    { "fechaEsperada": "2026-11-15", "montoEsperadoMinor": 32500 }
   ]
 }
 ```
@@ -2092,7 +2092,7 @@ Todo ocurre en una transacción: si falla algo (incluido un `abonoInicialMinor` 
       "id": "90000000-0000-4000-8000-000000000001",
       "deudaId": "70000000-0000-4000-8000-000000000001",
       "contextId": "bazar-local",
-      "fechaEsperada": "2026-10-15T00:00:00.000Z",
+      "fechaEsperada": "2026-10-15",
       "montoEsperadoMinor": 32500,
       "createdAt": "2026-09-23T12:00:00.000Z"
     },
@@ -2100,7 +2100,7 @@ Todo ocurre en una transacción: si falla algo (incluido un `abonoInicialMinor` 
       "id": "90000000-0000-4000-8000-000000000002",
       "deudaId": "70000000-0000-4000-8000-000000000001",
       "contextId": "bazar-local",
-      "fechaEsperada": "2026-11-15T00:00:00.000Z",
+      "fechaEsperada": "2026-11-15",
       "montoEsperadoMinor": 32500,
       "createdAt": "2026-09-23T12:00:00.000Z"
     }
@@ -2271,7 +2271,7 @@ Calendario de pagos **puramente informativo** — nunca afecta el saldo ni `stat
 
 **`POST /api/v1/deudas/:id/cuotas`** — agrega una cuota.
 
-- **Body**: `{ fechaEsperada: string (ISO 8601), montoEsperadoMinor: integer (1..2147483647) }`. Desconocidos = 400.
+- **Body**: `{ fechaEsperada: string (YYYY-MM-DD, fecha real), montoEsperadoMinor: integer (1..2147483647) }`. Desconocidos = 400.
 - **Éxito**: **201**, la cuota creada: `{ id, deudaId, contextId, fechaEsperada, montoEsperadoMinor, createdAt }`.
 - **Errores**: 400 (validación, `:id` no UUID), 401/403 (ver [1.3](#f-auth); un colaborador recibe 403), 404 (deuda inexistente o de otro negocio).
 
@@ -2293,7 +2293,7 @@ POST /api/v1/deudas/70000000-0000-4000-8000-000000000001/cuotas HTTP/1.1
 ```
 
 ```json
-{ "fechaEsperada": "2026-10-15T00:00:00.000Z", "montoEsperadoMinor": 32500 }
+{ "fechaEsperada": "2026-10-15", "montoEsperadoMinor": 32500 }
 ```
 
 ```json
@@ -2301,7 +2301,7 @@ POST /api/v1/deudas/70000000-0000-4000-8000-000000000001/cuotas HTTP/1.1
   "id": "90000000-0000-4000-8000-000000000001",
   "deudaId": "70000000-0000-4000-8000-000000000001",
   "contextId": "bazar-local",
-  "fechaEsperada": "2026-10-15T00:00:00.000Z",
+  "fechaEsperada": "2026-10-15",
   "montoEsperadoMinor": 32500,
   "createdAt": "2026-09-29T12:00:00.000Z"
 }
@@ -2578,3 +2578,7 @@ Antes figuraban en B.4 y ya no aplican:
 
 - **Un negocio aprobado no podía iniciar sesión** (commit `3399370`): la aprobación ahora crea, además del Member fundador, la cuenta del socio y un dispositivo autorizado, y envía las credenciales por correo; ver [Business Registration](#mod-business-registration). Consecuencia en el frontend: el primer login usa el usuario y la contraseña temporal del correo, y el dispositivo se identifica con el `identifier` del correo.
 - **HTML sin escapar en las páginas de aprobar/rechazar** (commit `73c7411`): `renderStatusPage` no escapaba ningún valor, lo que permitía un XSS almacenado vía `nombreNegocio`. Ahora escapa título y mensaje con un `escapeHtml` común (`src/common/escape-html.ts`), el mismo que usa el correo.
+
+### Planned installment calendar days (date/time correction)
+
+Installments use YYYY-MM-DD in requests/responses and PostgreSQL DATE. Only calendar days strictly before today in the established UTC-06:00 business timezone are overdue. The v14 picker uses timeConfig.enableTimePicker=false and formats.input/preview. Render calendar keys without converting to device-zone instants; Abono dates remain instants. Update API and frontend together; older datetime payloads are rejected.

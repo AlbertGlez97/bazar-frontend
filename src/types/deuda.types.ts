@@ -41,6 +41,7 @@ export interface CuotaPlaneada {
   deudaId: string
   /** Interno, ignorable. */
   contextId: string
+  /** Calendar day (YYYY-MM-DD), never a datetime or device-zone instant. */
   fechaEsperada: string
   montoEsperadoMinor: number
   createdAt: string
@@ -48,6 +49,7 @@ export interface CuotaPlaneada {
 
 /** Una cuota planeada a crear (input de `POST /deudas` o `POST .../cuotas`). */
 export interface CuotaPlaneadaInput {
+  /** Real calendar day (YYYY-MM-DD). */
   fechaEsperada: string
   /** Entero en centavos, 1..2147483647. */
   montoEsperadoMinor: number

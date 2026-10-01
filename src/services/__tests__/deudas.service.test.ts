@@ -31,7 +31,7 @@ const cuota = {
   id: CUOTA_ID,
   deudaId: DEUDA_ID,
   contextId: 'bazar-local',
-  fechaEsperada: '2026-10-15T00:00:00.000Z',
+  fechaEsperada: '2026-10-15',
   montoEsperadoMinor: 32500,
   createdAt: '2026-09-23T12:00:00.000Z',
 }
@@ -61,7 +61,7 @@ describe('DeudasService.createDeuda', () => {
       cantidad: 2,
       deudorId: deuda.deudorId,
       abonoInicialMinor: 20000,
-      cuotasPlaneadas: [{ fechaEsperada: '2026-10-15T00:00:00.000Z', montoEsperadoMinor: 32500 }],
+      cuotasPlaneadas: [{ fechaEsperada: '2026-10-15', montoEsperadoMinor: 32500 }],
     }
 
     await DeudasService.createDeuda(payload)

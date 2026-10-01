@@ -5,7 +5,7 @@
 // la persona no tocó a mano; lo editado se manda tal cual, nunca la
 // sugerencia.
 import { describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import CuotasPlaneadasEditor from '../CuotasPlaneadasEditor.vue'
 
@@ -53,6 +53,20 @@ describe('CuotasPlaneadasEditor — sin filas (estado inicial, intacto)', () => 
 })
 
 describe('CuotasPlaneadasEditor — agregar filas', () => {
+  it('renders the real picker without time controls and emits only the chosen day', async () => {
+    const wrapper = mountEditor()
+    await addRow(wrapper)
+    const picker = pickers(wrapper)[0]
+    await picker.get('.dp--input-icon').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    expect(wrapper.find('[data-test-id="open-time-picker-btn"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test-id="hours-time-inc-btn-0"]').exists()).toBe(false)
+    await pickDate(wrapper, 0, new Date(2026, 9, 15, 13, 45))
+    expect(lastEmitted(wrapper)[0].fechaEsperada).toBe('2026-10-15')
+    expect(picker.get('input').element.value).toBe('15/10/2026')
+    wrapper.unmount()
+  })
   it('"+ Agregar fecha de pago" agrega una fila con un datepicker de fecha única + un input de monto', async () => {
     const wrapper = mountEditor({ totalMinor: 10000 })
     await addRow(wrapper)

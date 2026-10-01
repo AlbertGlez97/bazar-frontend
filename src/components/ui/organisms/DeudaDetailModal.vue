@@ -113,7 +113,7 @@
             v-for="cuota in deuda.cuotasPlaneadas"
             :key="cuota.id"
           >
-            {{ formatDate(cuota.fechaEsperada) }} · {{ formatMinorMoney(cuota.montoEsperadoMinor) }}
+            {{ formatDateKey(cuota.fechaEsperada) }} · {{ formatMinorMoney(cuota.montoEsperadoMinor) }}
           </li>
         </ul>
       </section>
@@ -175,6 +175,7 @@ import { friendlyDeudaErrorMessage } from '@/services/deuda-errors'
 import DeudasService from '@/services/deudas.service'
 import ProductsService from '@/services/products.service'
 import { formatMinorMoney, parseMoneyText } from '@/utils/money'
+import { formatDateKey } from '@/utils/business-time'
 import { isDeudaAtrasada, pendienteMinorOf, deudaStatusColor, deudaStatusLabel } from '@/utils/deuda-status'
 import type { Deuda } from '@/types/deuda.types'
 import type { Product } from '@/types/product.types'

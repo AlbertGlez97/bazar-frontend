@@ -146,7 +146,7 @@ describe('checkout.store.registerDebt — POST /deudas (D1: abonoInicialMinor ex
 
   it('con cuotasPlaneadas, las manda tal cual dentro del mismo POST /deudas', async () => {
     const { checkout } = await ready()
-    const cuotas = [{ fechaEsperada: '2026-10-15T00:00:00.000Z', montoEsperadoMinor: 2000 }]
+    const cuotas = [{ fechaEsperada: '2026-10-15', montoEsperadoMinor: 2000 }]
 
     await checkout.registerDebt({ ...DEUDOR_INPUT, cuotasPlaneadas: cuotas })
 

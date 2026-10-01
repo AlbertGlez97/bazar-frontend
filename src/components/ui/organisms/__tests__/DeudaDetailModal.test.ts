@@ -125,12 +125,13 @@ describe('DeudaDetailModal — historial de abonos y cuotas', () => {
 
   it('con cuotas planeadas, las lista', async () => {
     getDeuda.mockResolvedValue(deuda({
-      cuotasPlaneadas: [{ id: 'c-1', deudaId: 'd-1', contextId: 'ctx', fechaEsperada: '2026-10-15T00:00:00.000Z', montoEsperadoMinor: 32500, createdAt: '2026-09-23T12:00:00.000Z' }],
+      cuotasPlaneadas: [{ id: 'c-1', deudaId: 'd-1', contextId: 'ctx', fechaEsperada: '2026-10-15', montoEsperadoMinor: 32500, createdAt: '2026-09-23T12:00:00.000Z' }],
     }))
     const wrapper = mountModal()
     await flushPromises()
 
     expect(wrapper.text()).toContain('$325.00')
+    expect(wrapper.text()).toContain('15/10/2026')
   })
 })
 

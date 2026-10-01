@@ -21,13 +21,13 @@
         <div class="cuotas-planeadas-editor__picker">
           <VueDatePicker
             :model-value="row.date"
-            :enable-time-picker="false"
+            :time-config="{ enableTimePicker: false }"
             :min-date="minDate"
             :disabled="disabled"
             auto-apply
             :clearable="true"
             :placeholder="VOICE.deuda.cuotasDatesLabel"
-            format="dd/MM/yyyy"
+            :formats="{ input: 'dd/MM/yyyy', preview: 'dd/MM/yyyy' }"
             @update:model-value="(date: Date | null) => onDateChange(row.key, date)"
           />
         </div>
@@ -118,9 +118,9 @@ const minDate = new Date()
 const rows = ref<Row[]>([])
 let nextRowId = 0
 
-/** El día elegido, como medianoche UTC (mismo formato que los ejemplos del contrato). */
-function toIsoDate(date: Date): string {
-  return new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString()
+/** The picker uses local wall-clock fields; the API receives a calendar day. */
+function toCalendarDate(date: Date): string {
+  return `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 function formatRowDate(date: Date): string {
@@ -133,7 +133,7 @@ function emitRows() {
   emit('update:cuotas', rows.value
     .filter((row): row is Row & { date: Date } => row.date !== null)
     .map((row) => ({
-      fechaEsperada: toIsoDate(row.date),
+      fechaEsperada: toCalendarDate(row.date),
       montoEsperadoMinor: parseMoneyText(row.text) ?? 0,
     })))
 }

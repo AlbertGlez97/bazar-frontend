@@ -162,7 +162,7 @@ describe('DeudasView — búsqueda por nombre', () => {
 describe('DeudasView — indicador de atrasado (según lo que devuelve el backend)', () => {
   it('una deuda con cuota vencida y sin abonos suficientes muestra "Atrasada"', async () => {
     listDeudas.mockResolvedValue(page([deuda({
-      cuotasPlaneadas: [{ id: 'c-1', deudaId: '70000000-0000-4000-8000-000000000001', contextId: 'ctx', fechaEsperada: '2020-01-01T00:00:00.000Z', montoEsperadoMinor: 5000, createdAt: '2019-01-01T00:00:00.000Z' }],
+      cuotasPlaneadas: [{ id: 'c-1', deudaId: '70000000-0000-4000-8000-000000000001', contextId: 'ctx', fechaEsperada: '2020-01-01', montoEsperadoMinor: 5000, createdAt: '2019-01-01T00:00:00.000Z' }],
     })]))
     const { wrapper } = await mountView()
     expect(wrapper.text()).toContain('Atrasada')

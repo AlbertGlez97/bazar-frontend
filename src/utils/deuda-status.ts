@@ -4,6 +4,7 @@
 // contrato, sobre datos que sí vienen del servidor (`abonos`/`cuotasPlaneadas`).
 import { sumMinor, subtractMinor } from './money'
 import { VOICE } from '@/config/voice'
+import { businessToday } from './business-time'
 import type { Deuda } from '@/types/deuda.types'
 
 /** Saldo pendiente: `totalMinor - suma(abonos[].montoMinor)`. Nunca lo manda el backend. */
@@ -20,7 +21,9 @@ export function pendienteMinorOf(deuda: Deuda): number {
  * client-side para poder mostrar el indicador en cada fila.
  */
 export function isDeudaAtrasada(deuda: Deuda, now: Date = new Date()): boolean {
-  const vencidas = deuda.cuotasPlaneadas.filter((cuota) => new Date(cuota.fechaEsperada).getTime() < now.getTime())
+  // Calendar days: today's installments remain current for the entire business day.
+  const today = businessToday(now)
+  const vencidas = deuda.cuotasPlaneadas.filter((cuota) => cuota.fechaEsperada < today)
   if (vencidas.length === 0) return false
   const vencidoMinor = sumMinor(vencidas.map((cuota) => cuota.montoEsperadoMinor))
   const abonadoMinor = sumMinor(deuda.abonos.map((abono) => abono.montoMinor))
