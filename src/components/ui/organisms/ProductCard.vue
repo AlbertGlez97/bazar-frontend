@@ -180,13 +180,16 @@ const stockBadgeColor = computed(() => (isProductAvailable(props.product) ? 'gre
 .product-card__media {
   position: relative;
   width: 100%;
+  max-width: 100%;
+  min-height: 0;
   aspect-ratio: 1 / 1;
+  overflow: hidden;
   background: var(--color-bg);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.product-card__img { width: 100%; height: 100%; object-fit: cover; }
+.product-card__img { width: 100%; max-width: 100%; height: 100%; object-fit: cover; }
 .product-card__placeholder { font-size: 2.5rem; opacity: 0.4; }
 .product-card__inactive-badge { position: absolute; top: var(--spacing-sm); right: var(--spacing-sm); }
 

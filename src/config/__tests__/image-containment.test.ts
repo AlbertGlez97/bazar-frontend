@@ -36,6 +36,15 @@ function propOf(body: string, property: string): string | undefined {
 }
 
 describe('miniatura de producto: contención de imagen (contrato de CSS)', () => {
+  it('ProductCard: default and large grids share a clipped, shrinkable media box', () => {
+    const source = sourceOf('ProductCard.vue')
+    const media = ruleBody(source, '.product-card__media')
+    expect(propOf(media, 'max-width')).toBe('100%')
+    expect(propOf(media, 'min-height')).toBe('0')
+    expect(propOf(media, 'overflow')).toBe('hidden')
+    expect(propOf(ruleBody(source, '.product-card__img'), 'max-width')).toBe('100%')
+  })
+
   it('ProductCard: la media fija aspect-ratio y la imagen usa object-fit cover, en cuadrícula y grande', () => {
     const source = sourceOf('ProductCard.vue')
     expect(propOf(ruleBody(source, '.product-card__media'), 'aspect-ratio')).toBe('1 / 1')
