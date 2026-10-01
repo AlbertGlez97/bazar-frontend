@@ -271,6 +271,7 @@ function onSelect(product: Product) {
 
 .sale-picker__grid {
   display: grid;
+  align-items: stretch;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
   gap: var(--spacing-md);
   margin: 0;
@@ -278,6 +279,10 @@ function onSelect(product: Product) {
   list-style: none;
 }
 .sale-picker__cell { min-width: 0; }
+/* Stretch through the interactive wrappers, without affecting list rows. */
+.sale-picker__grid .sale-picker__cell { display: flex; }
+.sale-picker__grid .sale-picker__item { display: flex; }
+.sale-picker__grid .sale-picker__item :deep(.product-card) { flex: 1; }
 
 /* ── Selector de vista (cuadrícula / lista) ───────────────────────────── */
 .sale-picker__options { display: flex; justify-content: flex-end; }

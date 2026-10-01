@@ -201,6 +201,16 @@ const stockBadgeColor = computed(() => (isProductAvailable(props.product) ? 'gre
 }
 .product-card__name { font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text); margin: 0; overflow-wrap: anywhere; }
 .product-card__price { font-size: 1.1rem; font-weight: 700; color: var(--color-primary); margin: 0; }
+/* Grid rows share height; the body absorbs spare space above the price. */
+.product-card:not(.product-card--list) .product-card__body { flex: 1; }
+.product-card:not(.product-card--list) .product-card__price { margin-top: auto; }
+.product-card:not(.product-card--list) .product-card__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .product-card__footer {
   display: flex;
   align-items: center;

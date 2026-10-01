@@ -202,6 +202,7 @@ defineExpose({ handleSearchInput })
 }
 .product-catalog-grid__grid {
   display: grid;
+  align-items: stretch;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: var(--spacing-md);
 }
