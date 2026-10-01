@@ -40,7 +40,10 @@ async function mountLayout() {
     routes: [{
       path: '/app',
       component: { render: () => h(RouterView) },
-      children: [{ path: '', name: 'AppHome', component: stub }],
+      children: [
+        { path: '', name: 'AppHome', component: stub },
+        { path: 'venta', name: 'Sale', component: stub },
+      ],
     }],
   })
   router.push('/app')

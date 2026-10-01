@@ -198,19 +198,12 @@ const navItems = computed(() =>
   getNavItems(uiMode.currentMode, { isSocio: session.member?.role === 'socio' }),
 )
 
-// Cambiar de modo desde el selector lleva a la página de inicio del modo nuevo:
-// - a Modo Venta, si la pantalla actual solo existe en Gestión (Inicio, Reportes),
-//   se pasa a Vender;
-// - a Modo Gestión, quien estaba en Vender aterriza en Inicio.
-// Cualquier otra pantalla (Productos, Ajustes...) no se mueve: no hay motivo.
-// Se usa `replace`: no deja una entrada de historial hacia una pantalla que ya no
-// se ofrece en el modo. Solo reacciona al CAMBIO de modo, no al arranque.
+// Every actual mode change lands at its default route, regardless of the
+// current screen. Non-immediate watch preserves startup URLs; replace avoids
+// a history entry pointing back to the previous mode's screen.
+// Keep Vender in the sidebar as orientation and a return link from Settings.
 watch(() => uiMode.currentMode, (mode) => {
-  const leavesManagementOnlyScreen = mode === 'venta' && route.meta.requiresGestion === true
-  const leavesSaleForManagement = mode === 'gestion' && route.name === 'Sale'
-  if (leavesManagementOnlyScreen || leavesSaleForManagement) {
-    void router.replace(landingFor(mode))
-  }
+  void router.replace(landingFor(mode))
 })
 
 // La cola de ventas offline se sincroniza mientras el shell autenticado está
@@ -239,6 +232,9 @@ const routeTitles: Record<string, string> = {
   ProductCatalog: 'Productos',
   Sale: 'Vender',
   Reports: 'Reportes',
+  CodigosQr: 'Códigos QR',
+  Incidencias: 'Incidencias',
+  Deudas: 'Deudas',
   Settings: 'Ajustes',
   ChangePassword: 'Cambiar mi contraseña',
   Team: 'Mi equipo',

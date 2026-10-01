@@ -40,6 +40,9 @@ async function mountAt(path: string, mode: UiMode, role: 'socio' | 'colaborador'
         { path: 'productos', name: 'ProductCatalog', component: stub },
         { path: 'venta', name: 'Sale', component: stub },
         { path: 'reportes', name: 'Reports', component: stub, meta: { requiresGestion: true, requiresSocio: true } },
+        { path: 'codigos-qr', name: 'CodigosQr', component: stub },
+        { path: 'incidencias', name: 'Incidencias', component: stub },
+        { path: 'deudas', name: 'Deudas', component: stub },
         { path: 'ajustes', name: 'Settings', component: stub },
       ],
     }],
@@ -100,43 +103,53 @@ describe('AppLayout — el menú depende del modo', () => {
   })
 })
 
-describe('AppLayout — al cambiar de modo se aterriza en la página de inicio del modo nuevo', () => {
-  it('de Gestión a Venta estando en Inicio: pasa a Vender (Inicio ya no existe ahí)', async () => {
-    const { wrapper, router } = await mountAt('/app', 'gestion')
-    expect(router.currentRoute.value.name).toBe('AppHome')
+describe('AppLayout mode-change navigation', () => {
+  it.each([
+    ['/app', 'Inicio'], ['/app/productos', 'Productos'], ['/app/reportes', 'Reportes'],
+    ['/app/codigos-qr', 'Códigos QR'], ['/app/incidencias', 'Incidencias'], ['/app/deudas', 'Deudas'],
+  ])('switching from %s immediately lands in Sale with consistent shell state', async (path, title) => {
+    const { wrapper, router } = await mountAt(path, 'gestion')
+    expect(wrapper.get('.app-header__title').text()).toBe(title)
+    expect(wrapper.get('.app-header__mode').text()).toBe('Modo Gestión')
+    expect(wrapper.get('.sidebar__nav [aria-current="page"]').attributes('href')).toBe(path)
     await switchTo(wrapper, 'Modo Venta')
-    expect(router.currentRoute.value.name).toBe('Sale')
-  })
-
-  it('de Gestión a Venta estando en Reportes: pasa a Vender', async () => {
-    const { wrapper, router } = await mountAt('/app/reportes', 'gestion')
-    await switchTo(wrapper, 'Modo Venta')
-    expect(router.currentRoute.value.name).toBe('Sale')
-  })
-
-  it('de Venta a Gestión estando en Vender: aterriza en Inicio', async () => {
-    const { wrapper, router } = await mountAt('/app/venta', 'venta')
+    expect(router.currentRoute.value.fullPath).toBe('/app/venta')
+    expect(wrapper.get('.app-header__title').text()).toBe('Vender')
+    expect(wrapper.get('.app-header__mode').text()).toBe('Modo Venta')
+    expect(wrapper.get('button[aria-label="Modo Venta"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.sidebar__nav [aria-current="page"]').attributes('href')).toBe('/app/venta')
     await switchTo(wrapper, 'Modo Gestión')
-    expect(router.currentRoute.value.name).toBe('AppHome')
+    expect(router.currentRoute.value.fullPath).toBe('/app')
+    expect(wrapper.get('.app-header__title').text()).toBe('Inicio')
+    expect(wrapper.get('.app-header__mode').text()).toBe('Modo Gestión')
+    expect(wrapper.get('button[aria-label="Modo Gestión"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.sidebar__nav [aria-current="page"]').attributes('href')).toBe('/app')
   })
 
-  it('de Gestión a Venta estando en Productos: no hay razón para moverlo, pero Inicio ya no es alcanzable', async () => {
-    const { wrapper, router } = await mountAt('/app/productos', 'gestion')
-    await switchTo(wrapper, 'Modo Venta')
-    // Productos no exige Modo Gestión (solo se quitó del menú): se queda donde estaba.
-    expect(router.currentRoute.value.name).toBe('ProductCatalog')
-  })
-
-  it.each(['venta', 'gestion'] as const)('en Ajustes no se le saca de la pantalla al cambiar de modo (desde %s)', async (from) => {
-    const to = from === 'venta' ? 'Modo Gestión' : 'Modo Venta'
+  it.each(['venta', 'gestion'] as const)('switching from Settings in %s lands at the new mode default', async (from) => {
     const { wrapper, router } = await mountAt('/app/ajustes', from)
-    await switchTo(wrapper, to)
-    expect(router.currentRoute.value.name).toBe('Settings')
+    await switchTo(wrapper, from === 'venta' ? 'Modo Gestión' : 'Modo Venta')
+    expect(router.currentRoute.value.fullPath).toBe(from === 'venta' ? '/app' : '/app/venta')
   })
 
-  it('tocar el modo que ya está activo no navega a ningún lado', async () => {
+  it('Vender remains a usable return destination from Settings in Sale mode', async () => {
+    const { wrapper, router } = await mountAt('/app/ajustes', 'venta')
+    await wrapper.get('.sidebar__nav a[href="/app/venta"]').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/app/venta')
+    expect(wrapper.get('.sidebar__nav [aria-current="page"]').text()).toContain('Vender')
+  })
+
+  it.each(['venta', 'gestion'] as const)('mounting in %s preserves the current URL', async (mode) => {
+    const { router } = await mountAt('/app/productos', mode)
+    await flushPromises()
+    expect(router.currentRoute.value.fullPath).toBe('/app/productos')
+  })
+
+
+  it('clicking the active mode does not navigate', async () => {
     const { wrapper, router } = await mountAt('/app/productos', 'gestion')
     await switchTo(wrapper, 'Modo Gestión')
-    expect(router.currentRoute.value.name).toBe('ProductCatalog')
+    expect(router.currentRoute.value.fullPath).toBe('/app/productos')
   })
 })
