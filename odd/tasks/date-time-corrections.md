@@ -23,4 +23,6 @@ Runtime harness: functional service/component tests. Rollback boundary: each beh
 T3 verified. RED: overdue and calendar display failed; real picker rendered open-time-picker-btn before fix. GREEN: 37 focused tests passed; repeated under Asia/Tokyo and UTC (37 passed each). Full build and lint passed; 167 test files / 3096 tests passed. Sandbox build/tests failed at esbuild directory permissions and were rerun successfully with approval. Existing build warnings: toast mixed import, large chunks. T3 commit: 9599372f2834996950afddd798961af6577bba7e. Engram mirror saved; readback synchronization pending.
 
 ## Next step
-Independent verification. Backend migration/e2e execution remains pending an available local test database; no push or remote deployment.
+Await explicit user authorization naming the database recreation destination, operation, and credential/session before any recreation or remote access. Backend migration and database-backed e2e remain pending; no push or deployment.
+
+Independent verification complete: real datepicker, quota display, and overdue regression tests, 37 passed (exit 0); clean worktree confirmed. Native assessment: medium, 110 authored lines; RDD unknown; no review started. Engram full mirror updated; readback remains pending because the parent workspace has ambiguous project identity.
