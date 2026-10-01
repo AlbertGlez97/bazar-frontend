@@ -21,6 +21,13 @@ async function mountCard(props: Partial<InstanceType<typeof AppStatCard>['$props
 }
 
 describe('AppStatCard — contenido', () => {
+  it('wraps its optional metric icon in an aria-hidden decorative badge', async () => {
+    const wrapper = await mountCard({}, { icon: '<svg data-metric-icon="sales" />' })
+    expect(wrapper.get('.app-stat-card__icon').attributes('aria-hidden')).toBe('true')
+    expect(wrapper.find('[data-metric-icon="sales"]').exists()).toBe(true)
+    expect((await mountCard()).find('.app-stat-card__icon').exists()).toBe(false)
+  })
+
   it('muestra el número grande y la etiqueta', async () => {
     const wrapper = await mountCard()
     expect(wrapper.get('.app-stat-card__label').text()).toBe('Ventas de hoy')

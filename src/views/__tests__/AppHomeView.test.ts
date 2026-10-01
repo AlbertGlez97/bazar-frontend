@@ -63,6 +63,14 @@ beforeEach(() => {
 })
 
 describe('AppHomeView — carga y presentación', () => {
+  it('gives all five metrics distinct decorative icons without changing their values', async () => {
+    const { wrapper } = await mountView()
+    const icons = wrapper.findAll('.app-stat-card__icon svg')
+    expect(icons).toHaveLength(5)
+    expect(new Set(icons.map((icon) => icon.html())).size).toBe(5)
+    expect(wrapper.findAll('.app-stat-card__icon').every((icon) => icon.attributes('aria-hidden') === 'true')).toBe(true)
+  })
+
   it('muestra un esqueleto mientras carga y lo quita cuando responde', async () => {
     let resolve!: (value: DashboardSummary) => void
     getSummary.mockReturnValue(new Promise((r) => { resolve = r }))

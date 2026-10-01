@@ -71,12 +71,20 @@
           :value="formatMinorMoney(summary.ventasHoy.totalMinor)"
           :sublabel="`${plural(summary.ventasHoy.count, 'venta', 'ventas')} · ${vsYesterday}`"
           to="/app/reportes"
-        />
+        >
+          <template #icon>
+            <ShoppingBag />
+          </template>
+        </AppStatCard>
 
         <AppStatCard
           :label="VOICE.dashboard.profitToday"
           :value="formatMinorMoney(summary.gananciaHoyMinor)"
+          tone="success"
         >
+          <template #icon>
+            <Coins />
+          </template>
           <p
             v-if="partialProfitNote"
             class="app-home__profit-note"
@@ -89,20 +97,34 @@
           :label="VOICE.dashboard.incidents"
           :value="String(summary.incidenciasPendientes)"
           to="/app/incidencias?resolutionStatus=pendiente"
-        />
+          tone="warning"
+        >
+          <template #icon>
+            <ClipboardList />
+          </template>
+        </AppStatCard>
 
         <AppStatCard
           :label="VOICE.dashboard.debts"
           :value="formatMinorMoney(summary.deudasPendientes.totalMinor)"
           :sublabel="VOICE.dashboard.debtsPeople(summary.deudasPendientes.personas)"
           to="/app/deudas"
-        />
+          tone="info"
+        >
+          <template #icon>
+            <Wallet />
+          </template>
+        </AppStatCard>
 
         <AppStatCard
           :label="VOICE.dashboard.lowStock"
           :value="String(summary.productosPocaExistencia.total)"
           to="/app/productos?pocaExistencia=1"
+          tone="warning"
         >
+          <template #icon>
+            <PackageSearch />
+          </template>
           <ul
             v-if="summary.productosPocaExistencia.items.length"
             class="app-home__low-stock"
@@ -128,6 +150,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { ClipboardList, Coins, PackageSearch, ShoppingBag, Wallet } from '@lucide/vue'
 import { AppAlert, AppButton, AppSkeleton, AppStatCard } from '@/components'
 import { VOICE, dashboardLoadErrorMessage, dashboardPartialProfitMessage, dashboardVsYesterdayMessage } from '@/config/voice'
 import DashboardService from '@/services/dashboard.service'
@@ -197,7 +220,7 @@ const partialProfitNote = computed(() =>
   display: flex;
   flex-direction: column;
   gap: var(--spacing-md);
-  max-width: 60rem;
+  width: 100%;
   min-width: 0;
 }
 
@@ -207,14 +230,15 @@ const partialProfitNote = computed(() =>
 
 .app-home__not-socio { margin: 0; color: var(--color-text-muted); }
 
-.app-home__skeleton { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.app-home__skeleton { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--spacing-md); }
+.app-home__loading { grid-column: 1 / -1; }
 .app-home__loading { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 
 .app-home__error { display: flex; flex-direction: column; align-items: flex-start; gap: var(--spacing-sm); }
 
 .app-home__cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
   gap: var(--spacing-md);
 }
 
