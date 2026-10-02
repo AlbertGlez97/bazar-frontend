@@ -3,6 +3,17 @@ import { existsSync } from 'node:fs'
 import { HELP_ARTICLES, HELP_EVIDENCE, CASH_HELP } from '../help-content'
 
 describe('audited help content', () => {
+  it('opens debt detail before checking product/type and names audited administrative controls', () => {
+    const steps = (id: string) => HELP_ARTICLES.find((article) => article.id === id)!.steps.join(' ')
+    const debt = steps('abonos')
+    expect(debt).toMatch(/abre su detalle[^.]*\. Verifica el nombre del deudor, producto y tipo/)
+    expect(debt).not.toContain('antes de abrir su detalle')
+    expect(debt).toContain('Monto del abono')
+    expect(debt).toContain('Registrar abono')
+    expect(steps('equipo')).toContain('Agregar persona')
+    expect(steps('dispositivos')).toContain('Registrar dispositivo')
+    expect(steps('dispositivos')).toContain('Reemitir código')
+  })
   it('does not invent report filters, retry buttons or optional creation cost', () => {
     const article = (id: string) => HELP_ARTICLES.find((item) => item.id === id)!
     expect(article('crear-producto').steps.join(' ')).toContain('Costo de compra')

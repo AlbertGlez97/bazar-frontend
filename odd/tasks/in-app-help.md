@@ -125,3 +125,14 @@ Build one help view using semantic headings, nav and native details. Mobile inde
 - H3 final identity is recorded in the full mirror/delivery report after commit, avoiding a self-referential hash. Rollback cash guidance/state tests and scoped manual presentation changes only. All six proposed slices remain local; committed authored counts before H3: 286 + 208 + 65 + 316 + 128 = 1,003 (including recovery updates), each slice below 400. No PRs/child branches, merge, push or deployment performed.
 
 - Final corrected Chrome responsive viewport proof: 320/390/768/1024/1440 all scrollWidth equals clientWidth (305/375/753/1009/1425); article widths 224.8/295.2/603.75/603.75/603.75px. Ayuda height44px and decimal step markers at every width. Native index and contextual cash disclosure toggle via keyboard Enter; index text contrast 4.9187:1. After ignored placeholder render-function fix, reloaded fixture has no console errors. Viewport reset. This is not physical-touch-device or authenticated-production E2E proof.
+
+## Independent content correction
+
+- Independent verifier found that the debt list does not show product/type; those fields are in the detail modal. Guidance now opens the detail before verifying them and before recording payment. Exact audited controls: Monto del abono, Registrar abono, Agregar persona, Registrar dispositivo and Reemitir código. Source labels verified in voice.ts/DevicesView; list/detail fields verified in DeudasView/DeudaDetailModal.
+- Content regression RED: exact focused content command 1/5 failed on obsolete order. GREEN: `npm run test:run -- src/config/__tests__/help-content.test.ts` 5/5 PASS. UTF-8 accent readback corrected a PowerShell stdin encoding artifact before final proof.
+- Runtime N/A for this static wording-only correction; previously observed browser behavior unchanged. Rollback only these audited wording changes and their content regression assertion.
+- Engram mirror pending: runtime attribution identity unavailable; agent-attributed memory mutations prohibited for this follow-up. Local recovery document retains evidence. Parent independent verification/native risk remains parent-owned.
+
+- Prior H3 commit: `05aa521f6f658d2ebb66ef7f9babc1f91ebffa3a`, 132 authored changes; cumulative six-unit total 1,135. This follow-up is a seventh coherent static-content correction slice; no other files or operational behavior changed. Final correction hash is reported after commit to avoid self-reference.
+
+- Final correction checks on final UTF-8 source: `npm run lint` PASS; `npx vue-tsc -b` PASS; `npm run build` PASS (existing toast import/large-chunk warnings); `npm run test:run` PASS 175 files / 3,162 tests, 110.38s; focused help-content 5/5 PASS. Own isolated fixture server stopped after browser/check completion; no unrelated process stopped. Engram mirror remains pending under runtime-attribution restriction.
