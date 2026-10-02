@@ -3,6 +3,16 @@ import { existsSync } from 'node:fs'
 import { HELP_ARTICLES, HELP_EVIDENCE, CASH_HELP } from '../help-content'
 
 describe('audited help content', () => {
+  it('covers administrative workflows with socio boundaries and current limitations', () => {
+    const expected = ['crear-producto', 'editar-producto', 'fotos', 'imprimir-qr', 'crear-deuda', 'abonos', 'calendario', 'incidencias', 'reportes', 'equipo', 'dispositivos', 'contrasena', 'instalar', 'preguntas']
+    expect(HELP_ARTICLES.map((article) => article.id)).toEqual(expect.arrayContaining(expected))
+    const debt = HELP_ARTICLES.find((article) => article.id === 'crear-deuda')!
+    expect(debt.audience).toBe('socio')
+    expect(debt.steps.join(' ')).toContain('0')
+    expect(debt.tips.join(' ')).toContain('efectivo')
+    expect(HELP_ARTICLES.find((article) => article.id === 'editar-producto')?.tips.join(' ')).toContain('existencia')
+    expect(HELP_ARTICLES.find((article) => article.id === 'reportes')?.tips.join(' ')).toContain('contado')
+  })
   it('provides stable unique articles with useful steps and evidence kept outside reader copy', () => {
     const ids = HELP_ARTICLES.map((article) => article.id)
     expect(new Set(ids).size).toBe(ids.length)

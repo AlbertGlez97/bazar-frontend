@@ -46,7 +46,7 @@ Build one help view using semantic headings, nav and native details. Mobile inde
 
 ## Work units and acceptance
 
-- [ ] **H1 — Define audited help content and local search**
+- [x] **H1 — Define audited help content and local search**
   - New planned module: `src/config/help-content.ts`; colocated `src/config/__tests__/help-content.test.ts src/utils/__tests__/help-search.test.ts`.
   - Supporting planned files: `src/types/help.types.ts`, `src/utils/help-search.ts`. Typed sections contain stable IDs, Spanish titles, keywords, steps and explicit cautions/role boundaries; keep cash subsection reusable.
   - Search is deterministic, trims input, ignores accents/case, covers titles/keywords/steps and returns all sections for empty input.
@@ -96,5 +96,7 @@ Build one help view using semantic headings, nav and native details. Mobile inde
 
 ## Observed work-unit evidence
 
-- H1a: RED both new suites fail on missing content/search modules; GREEN exact H1 command 2 files / 5 tests PASS. Seven detailed access/sale/cash/offline articles and accent-insensitive token search. Rollback only new modules/tests. Runtime N/A (pure static content/search). Commit: this slice; hash in next update/mirror.
+- H1a: RED both new suites fail on missing content/search modules; GREEN exact H1 command 2 files / 5 tests PASS. Seven detailed access/sale/cash/offline articles and accent-insensitive token search. Rollback only new modules/tests. Runtime N/A (pure static content/search). Commit: 89f60966ea63306e8b5f56838c43be7a18ffbc1f; slice 1 count 286 authored additions.
 - Proposed chain: tracker feat/in-app-help; slice 1 H1a, slice 2 H1b admin content, slice 3 H2 help page/route/header, slice 4 H3 cash guidance and final proof. Each later slice depends on the previous; no PRs or child branches created.
+
+- H1b: RED missing administrative coverage (1/6 failed); GREEN exact H1 command 2 files / 6 tests PASS. Added 14 detailed administrative/FAQ articles with verified evidence locators. Total 21 articles; all source paths exist. No runtime boundary beyond static content/search. Commit: this slice; hash in next update/mirror.
