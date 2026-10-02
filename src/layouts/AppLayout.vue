@@ -146,6 +146,17 @@
             @dismiss="dismissReview"
           />
         </div>
+        <RouterLink
+          :to="helpTarget"
+          class="app-header__help"
+          aria-label="Ayuda"
+        >
+          <CircleHelp
+            :size="20"
+            aria-hidden="true"
+          />
+          <span>Ayuda</span>
+        </RouterLink>
         <span class="app-header__date">{{ formattedDate }}</span>
       </header>
 
@@ -169,6 +180,7 @@ import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 import { APP_NAME } from '@/config/app'
 import { landingFor } from '@/router/landing'
 import { getNavItems } from './nav-items'
+import { CircleHelp } from '@lucide/vue'
 
 const authStore = useAuthStore()
 // El modo se inicializa al crearse el store (antes de que la vista hija
@@ -178,6 +190,9 @@ const session   = useSessionStore()
 const salesQueue = useSalesQueueStore()
 const router    = useRouter()
 const route     = useRoute()
+const helpTarget = computed(() => route.name === 'Help'
+  ? { path: '/app/ayuda', query: route.query }
+  : { path: '/app/ayuda', query: { from: route.fullPath } })
 
 // Colapso del sidebar. En un celular (menos de 768 px) arranca colapsado: la
 // barra de 240 px se comería el contenido; se puede expandir cuando se necesite
@@ -229,6 +244,7 @@ async function dismissReview(id: string) {
 // Título dinámico según la ruta actual
 const routeTitles: Record<string, string> = {
   AppHome: 'Inicio',
+  Help: 'Ayuda',
   ProductCatalog: 'Productos',
   Sale: 'Vender',
   Reports: 'Reportes',
@@ -269,6 +285,8 @@ function handleLogout() {
 </script>
 
 <style scoped>
+.app-header__help { display: inline-flex; align-items: center; justify-content: center; gap: var(--spacing-xs); min-height: 44px; padding: 0 var(--spacing-sm); color: var(--color-primary); flex-shrink: 0; border-radius: var(--radius-sm); }
+.app-header__help:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 /* ── Grid principal ──────────────────────────────────────────── */
 .app-layout {
   display: grid;

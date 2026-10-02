@@ -83,6 +83,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/products/ProductCatalogView.vue'),
       },
       {
+        // Help inherits authentication/context, never a role or UI-mode gate.
+        path: 'ayuda',
+        name: 'Help',
+        component: () => import('@/views/help/HelpView.vue'),
+      },
+      {
         // Pantalla de venta (catálogo + carrito + cobro, con cola offline).
         // Alcanzable en CUALQUIER modo de interfaz: quien vende no debe toparse
         // con redirecciones ni callejones sin salida por estar en Modo Gestión.
@@ -177,7 +183,8 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
   const router = createRouter({
     history,
     routes,
-    scrollBehavior: () => ({ top: 0 }),
+    // Help owns accessible article focus/scroll after rendering the target.
+    scrollBehavior: (to) => to.name === 'Help' && to.hash ? false : { top: 0 },
   })
 
   router.beforeEach(async (to) => {

@@ -56,7 +56,7 @@ Build one help view using semantic headings, nav and native details. Mobile inde
   - Runtime boundary: N/A for static pure content/search; browser rendering belongs to H2/H3.
   - Forecast: 280–360 authored lines. Evidence/commit/count: pending.
 
-- [ ] **H2 — Expose searchable accessible help in both modes**
+- [x] **H2 — Expose searchable accessible help in both modes**
   - New planned view/tests: `src/views/help/HelpView.vue`, `src/views/help/__tests__/HelpView.test.ts`.
   - Update `src/router/index.ts`, `src/layouts/AppLayout.vue`; planned focused route and header tests in `src/router/__tests__/router.help.test.ts` and `src/layouts/__tests__/AppLayout.help.test.ts`.
   - Route `/app/ayuda`, name `Help`, inherits auth/context only; no socio or Management requirement.
@@ -105,3 +105,6 @@ Build one help view using semantic headings, nav and native details. Mobile inde
 - H2 implementation RED completed: missing view/route/header; cold first router import timeout disclosed. Header fixture PWA-only stub fixed, clean missing-header RED observed. Functional GREEN 43 tests; final formatted view proof pending FAQ rendering. Proposed H2 split: standalone view+view tests, then shared route/header and guard/integration tests.
 
 - H2a: RED missing HelpView; FAQ-specific RED 1/14 after structured content. GREEN view 14/14 and expanded H2 44/44; normalized Vue markup before checks. Initial vue-tsc found a get().exists() test-type error, corrected to attributes; subsequent type check passes. Standalone semantic view/search/index/hash focus/safe return with tests, no operational links or external history-back. Browser runtime pending local fixture. Commit: this slice; hash in next update/mirror.
+
+- H2b: expanded focused command GREEN 4 files / 44 tests PASS; new route inherits authentication/context without role/mode gates, common header Ayuda entry persists when sidebar collapses, sidebar exclusivity intact. Real help hash scroll bypasses generic router top reset; no change to existing mode watcher. Browser proof pending.
+- Recorded slice identities: H1c a8f6b20ed26f4a08136e4c439d05eb79db1cad84 (65 authored lines); H2a b3f0d8e23e523dc6838cfd209e6bd61054761a76 (316 authored lines). H2b commit identity in next update/mirror.
