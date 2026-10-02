@@ -1,5 +1,6 @@
 import { useSessionStore } from '@/stores/session.store'
-export const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api/v1'
+import { currentSessionOwner } from './session-owner'
+export { API_BASE_URL } from './session-owner'
 
 /** Non-secret immutable routing identity; credentials are read only at send time. */
 export interface QueueOrigin {
@@ -12,15 +13,10 @@ export interface QueueOrigin {
 export function currentQueueOrigin(): QueueOrigin | null {
   const session = useSessionStore()
   if (!session.memberId || !session.deviceId) return null
-  try {
-    const token = localStorage.getItem('access_token')
-    const segment = token?.split('.')[1]
-    if (!segment) return null
-    const claims: unknown = JSON.parse(atob(segment.replace(/-/g, '+').replace(/_/g, '/')))
-    const sub = (claims as { sub?: unknown } | null)?.sub
-    if (typeof sub !== 'string' || !sub) return null
-    return { accountId: sub, memberId: session.memberId, deviceId: session.deviceId, apiBase: API_BASE_URL }
-  } catch { return null }
+  session.reconcileOwnership()
+  const owner = currentSessionOwner()
+  return owner && session.memberId && session.deviceId
+    ? { ...owner, memberId: session.memberId, deviceId: session.deviceId } : null
 }
 
 /** Member changes on a shared account preserve original attribution headers. */

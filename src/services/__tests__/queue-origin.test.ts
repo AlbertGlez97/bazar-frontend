@@ -9,6 +9,7 @@ beforeEach(() => {
   sessionStorage.clear()
   setActivePinia(createPinia())
   localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z')
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
   const session = useSessionStore()
   session.setDevice({ deviceId: 'device-a', name: 'Tablet', deviceToken: 'secret-device-token' })
   session.setMember({ id: 'member-a', name: 'Ana', role: 'socio', active: true })

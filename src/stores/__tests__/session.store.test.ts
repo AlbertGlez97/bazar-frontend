@@ -10,6 +10,11 @@ const storedDevice = () => JSON.parse(localStorage.getItem('device_context') ?? 
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z')
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  const owner = JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' })
+  localStorage.setItem('device_context_owner', owner)
+  sessionStorage.setItem('member_context_owner', owner)
   setActivePinia(createPinia())
 })
 
