@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
@@ -81,5 +82,16 @@ describe('HelpView', () => {
     expect(router.currentRoute.value.hash).toBe('#efectivo')
     expect(router.currentRoute.value.query.from).toBe('/app/productos')
     expect(document.activeElement?.id).toBe('efectivo')
+  })
+})
+
+describe('help presentation under the global reset', () => {
+  it('ordered steps', () => {
+    const source = readFileSync('src/views/help/HelpView.vue', 'utf8')
+    expect(source).toMatch(/\.help-view ol\s*\{[^}]*list-style:\s*decimal/)
+  })
+  it('readable article width', () => {
+    const source = readFileSync('src/views/help/HelpView.vue', 'utf8')
+    expect(source).toMatch(/\.help-view__article\s*\{[^}]*max-width:\s*70ch/)
   })
 })

@@ -216,12 +216,12 @@ watch(() => route.hash, (hash) => { void focusArticle(hash.slice(1)) }, { immedi
 .help-view__index a { display: flex; align-items: center; min-height: 44px; padding: var(--spacing-sm); color: var(--color-primary); overflow-wrap: anywhere; }
 .help-view__index a:focus-visible, .help-view__index summary:focus-visible, .help-view__article:focus { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; }
 .help-view__articles { display: flex; flex-direction: column; gap: var(--spacing-lg); min-width: 0; }
-.help-view__article { scroll-margin-top: calc(var(--header-height) + var(--spacing-lg)); border-radius: var(--radius-md); }
+.help-view__article { max-width: 70ch; width: 100%; scroll-margin-top: calc(var(--header-height) + var(--spacing-lg)); border-radius: var(--radius-md); }
 .help-view__category { color: var(--color-text-muted); margin: 0 0 var(--spacing-xs); }
 .help-view__tips { background: var(--color-bg); padding: var(--spacing-md); border-radius: var(--radius-sm); }
 .help-view__tips h3 { margin-top: 0; }
-.help-view__tips ul { margin-bottom: 0; padding-left: var(--spacing-lg); }
-.help-view ol { padding-left: var(--spacing-lg); }
+.help-view__tips ul { list-style: disc; margin-bottom: 0; padding-left: var(--spacing-lg); }
+.help-view ol { list-style: decimal; padding-left: var(--spacing-lg); }
 @media (min-width: 1100px) {
   .help-view__layout { grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr); }
   .help-view__index { position: sticky; top: calc(var(--header-height) + var(--spacing-md)); max-height: calc(100dvh - var(--header-height) - 2 * var(--spacing-md)); overflow-y: auto; }

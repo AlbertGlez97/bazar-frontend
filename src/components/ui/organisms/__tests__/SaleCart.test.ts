@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SaleCart from '../SaleCart.vue'
+import CashInput from '../../molecules/CashInput.vue'
 
 const line = (productId: string, name: string, extra: Partial<{ quantity: number; unitPriceMinor: number; tipo: 'unica' | 'cantidad'; stockAvailable: number }> = {}) => ({
   productId,
@@ -37,6 +39,37 @@ const chargeBtn = (w: ReturnType<typeof mountCart>) => w.get('button[data-action
 const clearBtn = (w: ReturnType<typeof mountCart>) => w.find('button[data-action="clear"]')
 const hint = (w: ReturnType<typeof mountCart>) => w.find('.sale-cart__hint')
 const modalButton = (w: ReturnType<typeof mountCart>, text: string) => w.findAll('button').find((b) => b.text() === text)!
+
+describe('SaleCart contextual cash help', () => {
+  it('keeps the mounted cash input, pad counts and cart intact while opening and closing guidance', async () => {
+    const wrapper: ReturnType<typeof mountCart> = mountCart({ 'onUpdate:cashText': (cashText: string) => { void wrapper.setProps({ cashText }) } })
+    const cash = wrapper.getComponent(CashInput).vm.$
+    await wrapper.get('.cash-input input').setValue('300')
+    await wrapper.get('button[aria-label^="Billete de $100"]').trigger('click')
+    await wrapper.get('button[aria-label^="Billete de $100"]').trigger('click')
+    expect(wrapper.props('cashText')).toBe('200.00')
+    const help = wrapper.get('details.sale-cart__cash-help')
+    expect(help.get('summary').text()).toBe('¿Cómo capturo el efectivo?')
+    ;(help.element as HTMLDetailsElement).open = true
+    await help.trigger('toggle')
+    expect(help.text()).toContain('su propia selección')
+    expect(wrapper.getComponent(CashInput).vm.$).toBe(cash)
+    ;(help.element as HTMLDetailsElement).open = false
+    await help.trigger('toggle')
+    await wrapper.get('button[aria-label^="Billete de $50"]').trigger('click')
+    expect(wrapper.props('cashText')).toBe('250.00')
+    expect(wrapper.get('button[aria-label^="Billete de $100"]').text()).toContain('×2')
+    expect(wrapper.findAll('.cart-line')).toHaveLength(2)
+    expect(wrapper.emitted('clear')).toBeUndefined()
+    await wrapper.get('button[aria-label="Limpiar selección de billetes"]').trigger('click')
+    expect(wrapper.props('cashText')).toBe('')
+    expect(wrapper.findAll('.cart-line')).toHaveLength(2)
+    expect(wrapper.getComponent(CashInput).vm.$).toBe(cash)
+  })
+  it('does not offer cash guidance on an empty cart', () => {
+    expect(mountCart({ lines: [], itemCount: 0, totalMinor: 0 }).find('.sale-cart__cash-help').exists()).toBe(false)
+  })
+})
 
 describe('SaleCart — contenido', () => {
   it('lista cada producto, el resumen con el total y el campo de efectivo', () => {
@@ -277,5 +310,12 @@ describe('SaleCart — lista de productos colapsable', () => {
   it('vacío: no hay <details> (la rama vacía no cambia)', () => {
     const wrapper = mountCart({ lines: [], itemCount: 0, totalMinor: 0, missingMinor: 0 })
     expect(wrapper.find('details.sale-cart__lines-wrap').exists()).toBe(false)
+  })
+})
+
+describe('help presentation under the global reset', () => {
+  it('ordered cash steps', () => {
+    const source = readFileSync('src/components/ui/organisms/SaleCart.vue', 'utf8')
+    expect(source).toMatch(/\.sale-cart__cash-help ol\s*\{[^}]*list-style:\s*decimal/)
   })
 })

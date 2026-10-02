@@ -78,6 +78,29 @@
         @update:model-value="emit('update:cashText', $event)"
       />
 
+      <!-- Inline disclosure never navigates or remounts the locally stateful input. -->
+      <details
+        v-if="lines.length > 0"
+        class="sale-cart__cash-help"
+      >
+        <summary>¿Cómo capturo el efectivo?</summary>
+        <p>{{ CASH_HELP.intro }}</p>
+        <ol>
+          <li
+            v-for="step in CASH_HELP.steps"
+            :key="step"
+          >
+            {{ step }}
+          </li>
+        </ol>
+        <p
+          v-for="tip in CASH_HELP.tips"
+          :key="tip"
+        >
+          {{ tip }}
+        </p>
+      </details>
+
       <AppButton
         variant="primary"
         size="xl"
@@ -162,6 +185,7 @@ import CartLineItem from '../molecules/CartLineItem.vue'
 import CartSummary from '../molecules/CartSummary.vue'
 import CashInput from '../molecules/CashInput.vue'
 import AppModal from './AppModal.vue'
+import { CASH_HELP } from '@/config/help-content'
 
 const props = defineProps<{
   lines: CartLineView[]
@@ -232,6 +256,12 @@ function confirmClear() {
 
 <style scoped>
 .sale-cart { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.sale-cart__cash-help { padding: var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.sale-cart__cash-help summary { display: list-item; min-height: 44px; padding: var(--spacing-sm); cursor: pointer; font-weight: 600; }
+.sale-cart__cash-help summary:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.sale-cart__cash-help p, .sale-cart__cash-help li { line-height: 1.6; overflow-wrap: anywhere; }
+.sale-cart__cash-help li + li { margin-top: var(--spacing-sm); }
+.sale-cart__cash-help ol { list-style: decimal; padding-left: var(--spacing-lg); }
 
 .sale-cart__header { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); }
 .sale-cart__title { margin: 0; font-size: var(--font-size-xl); font-weight: 800; color: var(--color-text); }
@@ -341,6 +371,7 @@ function confirmClear() {
 .sale-cart--checkout :deep(.cart-summary__status) { font-size: var(--font-size-xl); }
 .sale-cart--checkout :deep(.cart-summary__change) { font-size: 3rem; }
 .sale-cart--checkout :deep(.cash-input) { order: 2; }
+.sale-cart--checkout .sale-cart__cash-help { order: 2; }
 .sale-cart--checkout :deep(.cash-input__control) { min-height: 5rem; font-size: 2.5rem; }
 .sale-cart--checkout :deep(.cash-input__prefix) { font-size: 2rem; }
 .sale-cart--checkout :deep(.cash-input__chip) { min-height: 3.5rem; font-size: var(--font-size-lg); }

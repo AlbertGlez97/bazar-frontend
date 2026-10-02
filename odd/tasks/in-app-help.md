@@ -54,7 +54,7 @@ Build one help view using semantic headings, nav and native details. Mobile inde
   - RED → GREEN → refactor. Commit: `feat(help): define audited manual content and local search`.
   - Rollback boundary: static content/search module and its tests; no existing operational behavior changes.
   - Runtime boundary: N/A for static pure content/search; browser rendering belongs to H2/H3.
-  - Forecast: 280–360 authored lines. Evidence/commit/count: pending.
+  - Forecast: 280–360 authored lines. Evidence, identities and counts: see observed work-unit evidence below.
 
 - [x] **H2 — Expose searchable accessible help in both modes**
   - New planned view/tests: `src/views/help/HelpView.vue`, `src/views/help/__tests__/HelpView.test.ts`.
@@ -65,9 +65,9 @@ Build one help view using semantic headings, nav and native details. Mobile inde
   - Tests both roles/modes, logged-out/incomplete/inactive context guard behavior, search visibility, direct section links, back/fallback and accessible controls.
   - RED → GREEN → refactor. Commit: `feat(help): add accessible searchable in-app manual`.
   - Rollback boundary: help view, route and header entry point with integration tests; retain H1 as standalone content.
-  - Forecast: 300–420 authored lines. Evidence/commit/count: pending.
+  - Forecast: 300–420 authored lines. Evidence, identities and counts: see observed work-unit evidence below.
 
-- [ ] **H3 — Reuse cash guidance without losing sale state and close verification**
+- [x] **H3 — Reuse cash guidance without losing sale state and close verification**
   - Update `src/components/ui/organisms/SaleCart.vue` and `src/components/ui/organisms/__tests__/SaleCart.test.ts`; extend `src/components/ui/molecules/__tests__/CashInput.test.ts` only if required to prove the nested interaction.
   - Inline native details beside cash entry reuses the H1 cash guidance. Opening/closing does not navigate, change cash/cart state, unmount CashInput or reset denomination counts.
   - Test type/manual cash, multiple denomination taps, open/close, subsequent tap accumulation, unchanged cart and clear-selection semantics.
@@ -75,36 +75,53 @@ Build one help view using semantic headings, nav and native details. Mobile inde
   - Exact final commands: `npm run build`; `npm run lint`; `npm run test:run`. Record all failed, skipped/unavailable and pending checks honestly.
   - RED → GREEN → refactor. Commit: `feat(help): explain cash entry without interrupting checkout`.
   - Rollback boundary: cash disclosure and associated state-preservation tests; H1/H2 remain usable.
-  - Forecast: 70–120 authored lines plus final evidence updates. Evidence/commit/count: pending.
+  - Forecast: 70–120 authored lines plus final evidence updates. Evidence, identities and counts: see observed work-unit evidence below.
 
-## Focused checks (planned paths, not yet created)
+## Focused checks
 
 - H1: `npm run test:run -- src/config/__tests__/help-content.test.ts src/utils/__tests__/help-search.test.ts`.
 - H2: `npm run test:run -- src/views/help/__tests__/HelpView.test.ts src/router/__tests__/router.help.test.ts src/layouts/__tests__/AppLayout.help.test.ts src/layouts/__tests__/nav-mode-exclusivity.test.ts`.
 - H3: `npm run test:run -- src/components/ui/organisms/__tests__/SaleCart.test.ts src/components/ui/molecules/__tests__/CashInput.test.ts src/views/help/__tests__/HelpView.test.ts`.
-- Final: `npm run build`, `npm run lint`, `npm run test:run`.
+- Final: `npx vue-tsc -b`, `npm run build`, `npm run lint`, `npm run test:run`.
 - Native risk/review and independent verification remain parent-owned; functional checks do not manufacture review approval.
 
 ## Progress and next step
 
 - Existing source and supplied audit evidence reviewed; branch and recovery document created.
-- No source/test writes, implementation commits or PR operations yet.
+- H1 content/search and H2 view/shared navigation are implemented and committed in coherent slices. H3 cash guidance is implemented with focused proof and parent runtime proof; post-correction whole-suite check passes. No PR/push/main integration operations.
 - Parent read file and full mirror, user selected feature-branch-chain, and parent authorized complete local implementation.
-- Next: H1 RED tests and content/search implementation. One coherent slicing pass: H1a selling/access/cash content and search, H1b administrative manual extension, H2 page/router/header, H3 inline cash guidance. Keep all local commits on the feature branch; report any cohesive slice that exceeds 400 without compressing code or omitting proof.
+- Next: finalize H3 work-unit identity/mirror, then parent independent verification and human delivery decision. Coherent slices: H1a selling/access/search, H1b administrative extension, H1c audit correction, H2a standalone view, H2b common navigation, H3 inline cash and presentation proof. Keep all local commits on the feature branch; report any cohesive slice that exceeds 400 without compressing code or omitting proof.
 - Preserve the same feature identity and merge observed evidence into this document/mirror after each completed work unit.
 
 
 ## Observed work-unit evidence
 
 - H1a: RED both new suites fail on missing content/search modules; GREEN exact H1 command 2 files / 5 tests PASS. Seven detailed access/sale/cash/offline articles and accent-insensitive token search. Rollback only new modules/tests. Runtime N/A (pure static content/search). Commit: 89f60966ea63306e8b5f56838c43be7a18ffbc1f; slice 1 count 286 authored additions.
-- Proposed chain: tracker feat/in-app-help; slice 1 H1a, slice 2 H1b admin content, slice 3 H2 help page/route/header, slice 4 H3 cash guidance and final proof. Each later slice depends on the previous; no PRs or child branches created.
+- Proposed chain: tracker feat/in-app-help; slice 1 H1a, slice 2 H1b admin content, slice 3 H1c content correction, slice 4 H2a standalone view, slice 5 H2b common navigation, slice 6 H3 cash guidance and final presentation proof. Each later slice depends on the previous; no PRs or child branches created.
 
 - H1b: RED missing administrative coverage (1/6 failed); GREEN exact H1 command 2 files / 6 tests PASS. Added 14 detailed administrative/FAQ articles with verified evidence locators. Total 21 articles; all source paths exist. No runtime boundary beyond static content/search. Commit: 398893f1004dcccb19429901a244287e079aedfa; slice 2 count 208 authored additions plus deletions.
 
 - H1c audit correction: RED 1/7 missing required-cost/report-table/queue-guidance/cash-example/FAQ constraints; GREEN exact H1 command 7 tests PASS. Verified ProductForm required new cost, Reports tables, SyncStatusIndicator Ver/Entendido, print/calibration labels, separate photo-upload failure and optional creation-only quota controls. Added structured FAQ (not numbered unrelated tasks). Keep correction as its own content slice.
-- H2 implementation RED completed: missing view/route/header; cold first router import timeout disclosed. Header fixture PWA-only stub fixed, clean missing-header RED observed. Functional GREEN 43 tests; final formatted view proof pending FAQ rendering. Proposed H2 split: standalone view+view tests, then shared route/header and guard/integration tests.
+- H2 implementation RED completed: missing view/route/header; cold first router import timeout disclosed. Header fixture PWA-only stub fixed, clean missing-header RED observed. Functional GREEN 43 tests; final formatted FAQ rendering passes in the expanded 44-test proof. Proposed H2 split: standalone view+view tests, then shared route/header and guard/integration tests.
 
-- H2a: RED missing HelpView; FAQ-specific RED 1/14 after structured content. GREEN view 14/14 and expanded H2 44/44; normalized Vue markup before checks. Initial vue-tsc found a get().exists() test-type error, corrected to attributes; subsequent type check passes. Standalone semantic view/search/index/hash focus/safe return with tests, no operational links or external history-back. Browser runtime pending local fixture. Commit: this slice; hash in next update/mirror.
+- H2a: RED missing HelpView; FAQ-specific RED 1/14 after structured content. GREEN view 14/14 and expanded H2 44/44; normalized Vue markup before checks. Initial vue-tsc found a get().exists() test-type error, corrected to attributes; subsequent type check passes. Standalone semantic view/search/index/hash focus/safe return with tests, no operational links or external history-back. Parent local-browser proof passes; see final verification below. Commit: b3f0d8e23e523dc6838cfd209e6bd61054761a76.
 
-- H2b: expanded focused command GREEN 4 files / 44 tests PASS; new route inherits authentication/context without role/mode gates, common header Ayuda entry persists when sidebar collapses, sidebar exclusivity intact. Real help hash scroll bypasses generic router top reset; no change to existing mode watcher. Browser proof pending.
-- Recorded slice identities: H1c a8f6b20ed26f4a08136e4c439d05eb79db1cad84 (65 authored lines); H2a b3f0d8e23e523dc6838cfd209e6bd61054761a76 (316 authored lines). H2b commit identity in next update/mirror.
+- H2b: expanded focused command GREEN 4 files / 44 tests PASS; new route inherits authentication/context without role/mode gates, common header Ayuda entry persists when sidebar collapses, sidebar exclusivity intact. Real help hash scroll bypasses generic router top reset; no change to existing mode watcher. Parent local-browser proof passes; see final verification below.
+- Recorded slice identities: H1c a8f6b20ed26f4a08136e4c439d05eb79db1cad84 (65 authored lines); H2a b3f0d8e23e523dc6838cfd209e6bd61054761a76 (316 authored lines). H2b identity is recorded below.
+
+- H3 interim evidence: RED 1/97 missing inline disclosure; GREEN exact focused command 3 files / 97 tests PASS. Preserved actual CashInput internal instance (VTU wrapper proxy comparison was corrected to internal instance identity), manual amount 300 then pad100x2 ->200, disclosure open/close then +50 ->250, clear-selection retains cart. Typecheck PASS. First final lint found prefer-const in test, corrected; exact lint rerun PASS. Build PASS with existing chunk/dynamic-import warnings. Initial full suite PASS 175 files / 3,158 tests; parent browser exposed scoped presentation issues, corrected with RED 3/51 and focused GREEN 100. Post-correction full suite PASS 175 files / 3,161 tests.
+- H2b identity: 14c1d6634f9cb43d656e09fd0d57d8d59a04816e, 128 authored additions plus deletions.
+- Ignored local browser fixture: `node_modules/.cache/help-proof/index.html`, `http://127.0.0.1:5198/node_modules/.cache/help-proof/index.html`; real shell/manual/cash components and synthetic data, memory-router route indicator and role selector, queue disabled, process-local API override to unused loopback destination. Not production E2E.
+
+## Final verification (post browser correction)
+
+- Scoped correction: global reset hid ordered markers; set manual/cash steps to decimal and manual cautions to disc. Limit manual articles to 70ch, without changing business-component styling. RED 3/51 missing scoped rules (after correcting the source-path test harness); GREEN exact H3 command 3 files / 100 tests.
+- `npx vue-tsc -b`: PASS; `npm run build`: PASS (existing toast import and large-chunk warnings); `npm run lint`: PASS after normalization. Exact `npm run test:run`: PASS 175 files / 3,161 tests, 92.46s. `git diff --check`: PASS.
+- Parent Chrome, isolated synthetic fixture: all 21 index targets focus correctly; search counts, accent matching, clear/empty guidance and safe return pass. Both roles in both modes can read all topics; Ayuda/Volver leave mode unchanged. Keyboard Enter/Tab reaches visible focus and opens/closes native index.
+- Parent measured no horizontal overflow at 320/390/768/1024/1440; mobile input 51px and Ayuda 44px. Corrected article at desktop is 603.75px with 554px ordered-list body, visible decimal markers. Hash target settles below the fixed header.
+- Parent cash proof: manual 300 then 100 twice produces pad selection 200; opening/closing guidance then +50 retains count and produces 250, with same cart. Fixture-only runtime-template warning on placeholder route replaced by ignored render-function stub; no production component issue.
+- Runtime limitation: real components/CSS with synthetic Pinia and memory router, no production authentication/business API/offline acceptance E2E. Native review/risk and independent verification remain parent-owned and are not represented as approval.
+
+- H3 final identity is recorded in the full mirror/delivery report after commit, avoiding a self-referential hash. Rollback cash guidance/state tests and scoped manual presentation changes only. All six proposed slices remain local; committed authored counts before H3: 286 + 208 + 65 + 316 + 128 = 1,003 (including recovery updates), each slice below 400. No PRs/child branches, merge, push or deployment performed.
+
+- Final corrected Chrome responsive viewport proof: 320/390/768/1024/1440 all scrollWidth equals clientWidth (305/375/753/1009/1425); article widths 224.8/295.2/603.75/603.75/603.75px. Ayuda height44px and decimal step markers at every width. Native index and contextual cash disclosure toggle via keyboard Enter; index text contrast 4.9187:1. After ignored placeholder render-function fix, reloaded fixture has no console errors. Viewport reset. This is not physical-touch-device or authenticated-production E2E proof.
