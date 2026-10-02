@@ -3,6 +3,18 @@ import { existsSync } from 'node:fs'
 import { HELP_ARTICLES, HELP_EVIDENCE, CASH_HELP } from '../help-content'
 
 describe('audited help content', () => {
+  it('does not invent report filters, retry buttons or optional creation cost', () => {
+    const article = (id: string) => HELP_ARTICLES.find((item) => item.id === id)!
+    expect(article('crear-producto').steps.join(' ')).toContain('Costo de compra')
+    expect(article('crear-producto').steps.join(' ')).toContain('obligatorio')
+    expect(article('reportes').steps.join(' ')).toContain('Por persona')
+    expect(article('reportes').steps.join(' ')).not.toContain('filtros disponibles de personas')
+    expect(article('sin-conexion').steps.join(' ')).not.toContain('Reintentar')
+    expect(article('sin-conexion').steps.join(' ')).toContain('Entendido')
+    expect(CASH_HELP.tips.join(' ')).toContain('$430')
+    expect(CASH_HELP.tips.join(' ')).toContain('$70')
+    expect(article('preguntas').questions?.length).toBeGreaterThan(2)
+  })
   it('covers administrative workflows with socio boundaries and current limitations', () => {
     const expected = ['crear-producto', 'editar-producto', 'fotos', 'imprimir-qr', 'crear-deuda', 'abonos', 'calendario', 'incidencias', 'reportes', 'equipo', 'dispositivos', 'contrasena', 'instalar', 'preguntas']
     expect(HELP_ARTICLES.map((article) => article.id)).toEqual(expect.arrayContaining(expected))
@@ -17,7 +29,7 @@ describe('audited help content', () => {
     const ids = HELP_ARTICLES.map((article) => article.id)
     expect(new Set(ids).size).toBe(ids.length)
     for (const article of HELP_ARTICLES) {
-      expect(article.steps.length).toBeGreaterThanOrEqual(3)
+      expect(article.questions?.length ?? article.steps.length).toBeGreaterThanOrEqual(3)
       expect(article.title).toBeTruthy()
       expect(article.intro).toBeTruthy()
       expect(article).not.toHaveProperty('evidence')

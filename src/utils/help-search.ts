@@ -9,7 +9,8 @@ function normalize(text: string): string {
 export function searchHelp(query: string, articles: readonly HelpArticle[] = HELP_ARTICLES): readonly HelpArticle[] {
   const tokens = normalize(query).split(/\s+/).filter(Boolean)
   return articles.filter((article) => {
-    const text = normalize([article.title, article.category, article.intro, ...article.keywords, ...article.steps, ...article.tips].join(' '))
+    const answers = article.questions?.flatMap((item) => [item.question, item.answer]) ?? []
+    const text = normalize([article.title, article.category, article.intro, ...article.keywords, ...article.steps, ...article.tips, ...answers].join(' '))
     return tokens.every((token) => text.includes(token))
   })
 }
