@@ -1,3 +1,4 @@
+const TEST_TOKEN = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // Security regression: an account bound to a member (a colaborador or socio
 // created through POST /members) must never be able to act as anybody else. The
 // server refuses another x-member-id, and the frontend must not even offer the
@@ -16,7 +17,7 @@ import type { Member } from '@/types/member.types'
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn(), me: vi.fn() } }))
 
 const CACHE_KEY = 'account_binding'
-const loginResponse = { accessToken: 'jwt-token', tokenType: 'Bearer', expiresIn: 3600 }
+const loginResponse = { accessToken: TEST_TOKEN, tokenType: 'Bearer', expiresIn: 3600 }
 
 const colaborador: Member = { id: 'm-col', name: 'Carla', role: 'colaborador', active: true }
 const socio: Member = { id: 'm-soc', name: 'Alberto', role: 'socio', active: true }
@@ -28,9 +29,10 @@ function forgeSocioInSession() {
   sessionStorage.setItem('member_context', JSON.stringify(socio))
 }
 function seedSession(username = 'carla@correo.com') {
-  localStorage.setItem('access_token', 'jwt-token')
+  localStorage.setItem('access_token', TEST_TOKEN)
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
   localStorage.setItem('auth_username', username)
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
 }
 const networkError = () => Object.assign(new Error('Network Error'), { response: undefined })
 const httpError = (status: number) => ({ response: { status } })
@@ -82,7 +84,7 @@ describe('login of an account bound to a member', () => {
     expect(JSON.parse(sessionStorage.getItem('member_context') ?? 'null').id).toBe('m-col')
   })
 
-  it('the shared business login ("member": null) stays "shared" and keeps whatever the person picked', async () => {
+  it('the shared business login ("member": null) stays "shared" and rejects an unowned previous selection', async () => {
     sessionStorage.setItem('member_context', JSON.stringify(colaborador))
     vi.mocked(AuthService.login).mockResolvedValue(loginResponse)
     vi.mocked(AuthService.me).mockResolvedValue(shared)
@@ -92,7 +94,7 @@ describe('login of an account bound to a member', () => {
 
     expect(auth.bindingStatus).toBe('shared')
     expect(auth.boundMember).toBeNull()
-    expect(useSessionStore().member).toEqual(colaborador)
+    expect(useSessionStore().member).toBeNull()
   })
 
   it('the login still succeeds when /auth/me cannot be reached: status stays "unknown" (the previous selector flow)', async () => {
@@ -150,13 +152,13 @@ describe('the binding cache (offline support)', () => {
     await useAuthStore().ensureBinding()
 
     const cached = JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null')
-    expect(cached).toEqual({ username: 'carla@correo.com', member: colaborador })
-    expect(localStorage.getItem(CACHE_KEY)).not.toContain('jwt-token')
+    expect(cached).toEqual({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'carla@correo.com', member: colaborador })
+    expect(localStorage.getItem(CACHE_KEY)).not.toContain(TEST_TOKEN)
   })
 
   it('offline WITH a cache for the same username: uses it and still overwrites a forged member', async () => {
     seedSession()
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ username: 'carla@correo.com', member: colaborador }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'carla@correo.com', member: colaborador }))
     forgeSocioInSession()
     vi.mocked(AuthService.me).mockRejectedValue(networkError())
 
@@ -169,7 +171,7 @@ describe('the binding cache (offline support)', () => {
 
   it('a 5xx from the server counts as unreachable and also falls back to the cache', async () => {
     seedSession()
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ username: 'carla@correo.com', member: colaborador }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'carla@correo.com', member: colaborador }))
     vi.mocked(AuthService.me).mockRejectedValue(httpError(503))
 
     const auth = useAuthStore()
@@ -192,7 +194,7 @@ describe('the binding cache (offline support)', () => {
 
   it('a cache that belongs to ANOTHER username is never used', async () => {
     seedSession('otra.persona@correo.com')
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ username: 'carla@correo.com', member: colaborador }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'carla@correo.com', member: colaborador }))
     vi.mocked(AuthService.me).mockRejectedValue(networkError())
 
     const auth = useAuthStore()
@@ -206,7 +208,7 @@ describe('the binding cache (offline support)', () => {
     ['not JSON', '{oops'],
     ['an array', '[]'],
     ['no username', JSON.stringify({ member: colaborador })],
-    ['a member without a valid role', JSON.stringify({ username: 'carla@correo.com', member: { id: 'x', name: 'X', role: 'admin', active: true } })],
+    ['a member without a valid role', JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'carla@correo.com', member: { id: 'x', name: 'X', role: 'admin', active: true } })],
   ])('a malformed cache (%s) is ignored', async (_label, raw) => {
     seedSession()
     localStorage.setItem(CACHE_KEY, raw)
@@ -220,7 +222,7 @@ describe('the binding cache (offline support)', () => {
 
   it('a 404 (a backend without /auth/me) is NOT unreachable: the cache is not used', async () => {
     seedSession()
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ username: 'carla@correo.com', member: colaborador }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'carla@correo.com', member: colaborador }))
     vi.mocked(AuthService.me).mockRejectedValue(httpError(404))
 
     const auth = useAuthStore()
@@ -231,14 +233,14 @@ describe('the binding cache (offline support)', () => {
 
   it('an online answer always wins over a stale cache (the account became shared/bound elsewhere)', async () => {
     seedSession('alberto')
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ username: 'alberto', member: colaborador }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'alberto', member: colaborador }))
     vi.mocked(AuthService.me).mockResolvedValue(shared)
 
     const auth = useAuthStore()
     await auth.ensureBinding()
 
     expect(auth.bindingStatus).toBe('shared')
-    expect(JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null')).toEqual({ username: 'alberto', member: null })
+    expect(JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null')).toEqual({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'alberto', member: null })
   })
 
   it('logout clears the cache, the binding and the member', async () => {
@@ -257,7 +259,7 @@ describe('the binding cache (offline support)', () => {
 
   it('a 401 from /auth/me logs out and clears the cache', async () => {
     seedSession()
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ username: 'carla@correo.com', member: colaborador }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'carla@correo.com', member: colaborador }))
     vi.mocked(AuthService.me).mockRejectedValue(httpError(401))
 
     const auth = useAuthStore()

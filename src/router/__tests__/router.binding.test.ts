@@ -1,3 +1,4 @@
+const TEST_TOKEN = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // Security regression at the route guard: the role the guards read comes from
 // the session member, and for an account bound to a member that member is the
 // SERVER's (GET /auth/me), fetched BEFORE any role or context check runs.
@@ -28,7 +29,7 @@ beforeEach(() => {
 })
 
 function restoreAuth() {
-  localStorage.setItem('access_token', 'token')
+  localStorage.setItem('access_token', TEST_TOKEN)
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
   localStorage.setItem('auth_username', 'x')
 }

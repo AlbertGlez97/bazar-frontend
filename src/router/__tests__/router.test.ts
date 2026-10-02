@@ -1,3 +1,4 @@
+const TEST_TOKEN = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
@@ -21,7 +22,7 @@ beforeEach(() => {
 // Helper: deja la sesión de auth "lista" (token válido) sin tocar el contexto
 // (deviceId/memberId), para probar el guard de /app por separado del de /login.
 function restoreAuthSession() {
-  localStorage.setItem('access_token', 'token')
+  localStorage.setItem('access_token', TEST_TOKEN)
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
 }
 // Helper: deja también el contexto (dispositivo + persona) listo, como si el
@@ -49,7 +50,7 @@ describe('session routing', () => {
     await router.push(path); expect(router.currentRoute.value.name).toBe('AppHome')
   })
   it('sends an expired-session visitor to login instead of the shell', async () => {
-    localStorage.setItem('access_token', 'token')
+    localStorage.setItem('access_token', TEST_TOKEN)
     localStorage.setItem('token_expires_at', String(Date.now() - 1_000))
     await router.push('/app'); expect(router.currentRoute.value.name).toBe('Login')
   })

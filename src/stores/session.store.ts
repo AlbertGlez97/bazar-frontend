@@ -169,6 +169,8 @@ export const useSessionStore = defineStore('session', () => {
    */
   function clearOnLogout() {
     clearMember()
+    owner.value = null
+    hideDevice()
   }
 
   return {

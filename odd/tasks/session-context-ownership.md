@@ -54,7 +54,7 @@ Capture account/token generation for binding responses/cache writes. Bound accou
   - Runtime: store/header integration tests; browser confirmation deferred until full recovery integration.
   - Forecast: 200-300 authored additions/deletions; identity/evidence/count pending.
 
-- [ ] **S2 - Reconcile authentication and guard asynchronous binding**
+- [x] **S2 - Reconcile authentication and guard asynchronous binding**
   - Ownership reconciliation before binding fetch; owner-matched binding cache; generation-safe fetch/cache/error application; active bound/shared/inactive behavior.
   - RED account switch/race/offline-cache tests before implementation, then GREEN auth/router integration tests. Minimal existing fixture updates documented.
   - Rollback: auth lifecycle/cache changes and tests, retaining S1 standalone boundary.
@@ -91,3 +91,10 @@ Capture account/token generation for binding responses/cache writes. Bound accou
 - RED: new ownership suite 4/5 failed (unowned/foreign selection and no-identity exposure). GREEN: session/store/ownership/origin 3 files / 34 tests PASS after refactor. Existing session fixtures now declare synthetic account/expiry and separate device/member owner markers, preserving existing payload contracts and owned legacy-shape normalization.
 - Owner sidecars preserve raw device/member shapes while independently rejecting bad selections. No-token/expired identity hides device in memory but retains owned localStorage. Logout hides device; matching next identity restores it. API base trims whitespace/trailing slashes without inferring origin equivalence. Queue-origin reuses the same non-secret identity parser.
 - Intermediate focused checks found misplaced normalization write and unused eager reads; corrected before GREEN. Scoped ESLint normalized sources. No IndexedDB/backend/business changes. Runtime boundary: actual store integration tests; browser deferred S3. Engram mirror pending. S1 commit identity recorded by next unit update/report.
+
+## S2 observed evidence
+
+- S1 committed `cd167351ea5dafc82b36a5f7e5dc5245a334bbfd`, 243 authored additions/deletions.
+- RED: binding ownership/race suite 3/4 failed (unowned same-username cache, delayed old success, delayed old401). GREEN: expanded auth/session/router command 6 files / 149 tests PASS. Typecheck PASS.
+- Binding cache requires account/API owner as well as display username; successful coherent responses include non-secret owner. Captured token/generation prevents stale binding success/error/cache writes from changing a newer login. Login reconciles owner before binding fetch. Logout hides retained owned device in memory; fixed and tested the old logout memory-exposure assumption.
+- Existing auth/router fixtures use synthetic JWT subjects; matching cache assertions include owner; unowned shared selection is intentionally discarded rather than adopted. Intermediate fixture/type errors were corrected, not suppressed. Runtime: actual independent memory routers and auth/session stores with synthetic service responses; physical/production proof not claimed. Mirror pending. S2 identity follows in next update/report.

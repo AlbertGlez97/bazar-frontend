@@ -157,9 +157,10 @@ describe('session.store', () => {
     expect(store.memberId).toBeNull()
     expect(store.member).toBeNull()
     expect(sessionStorage.getItem('member_context')).toBeNull()
-    expect(store.deviceId).toBe('d-1')
-    expect(store.deviceToken).toBe('tok')
-    expect(store.isDeviceIdentified).toBe(true)
+    expect(store.deviceId).toBeNull()
+    expect(store.deviceToken).toBeNull()
+    expect(storedDevice().deviceToken).toBe('tok')
+    expect(store.isDeviceIdentified).toBe(false)
   })
 
   it('clearDevice borra el dispositivo Y su token (para forzar re-identificación manual)', () => {

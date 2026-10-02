@@ -1,3 +1,4 @@
+const TEST_TOKEN = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from '../auth.store'
@@ -8,7 +9,7 @@ import AuthService from '@/services/auth.service'
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn() } }))
 
 const payload = { username: 'ana', password: 'secret123' }
-const validResponse = { accessToken: 'jwt-token', tokenType: 'Bearer', expiresIn: 3600 }
+const validResponse = { accessToken: TEST_TOKEN, tokenType: 'Bearer', expiresIn: 3600 }
 
 beforeEach(() => {
   localStorage.clear()
@@ -22,7 +23,7 @@ describe('auth session (contrato real bazar-api)', () => {
   })
 
   it('restores a valid, non-expired local session without a request', () => {
-    localStorage.setItem('access_token', 'jwt-token')
+    localStorage.setItem('access_token', TEST_TOKEN)
     localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
 
     const auth = useAuthStore()
@@ -31,7 +32,7 @@ describe('auth session (contrato real bazar-api)', () => {
   })
 
   it('treats an expired token as logged out and clears storage', () => {
-    localStorage.setItem('access_token', 'jwt-token')
+    localStorage.setItem('access_token', TEST_TOKEN)
     localStorage.setItem('token_expires_at', String(Date.now() - 1_000))
 
     const auth = useAuthStore()
@@ -57,8 +58,8 @@ describe('auth session (contrato real bazar-api)', () => {
 
     expect(auth.loading).toBe(false)
     expect(auth.isAuthenticated).toBe(true)
-    expect(auth.token).toBe('jwt-token')
-    expect(localStorage.getItem('access_token')).toBe('jwt-token')
+    expect(auth.token).toBe(TEST_TOKEN)
+    expect(localStorage.getItem('access_token')).toBe(TEST_TOKEN)
 
     const storedExpiry = Number(localStorage.getItem('token_expires_at'))
     // expiresIn=3600s ⇒ el timestamp guardado debe caer ~3600000ms adelante
@@ -136,6 +137,8 @@ describe('auth session (contrato real bazar-api)', () => {
   })
 
   it('logout limpia la persona seleccionada pero conserva el dispositivo identificado', async () => {
+    localStorage.setItem('access_token', TEST_TOKEN)
+    localStorage.setItem('token_expires_at', String(Date.now() + 60000))
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
     session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
@@ -147,6 +150,7 @@ describe('auth session (contrato real bazar-api)', () => {
     auth.logout()
 
     expect(session.memberId).toBeNull()
-    expect(session.deviceId).toBe('d-1')
+    expect(session.deviceId).toBeNull()
+    expect(JSON.parse(localStorage.getItem('device_context')!).deviceId).toBe('d-1')
   })
 })

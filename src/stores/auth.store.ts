@@ -6,6 +6,8 @@ import { useSessionStore } from '@/stores/session.store'
 import type { AccountBinding, LoginPayload } from '@/types/auth.types'
 import type { Member } from '@/types/member.types'
 import { isMember } from '@/utils/member'
+import { currentSessionOwner, sameOwner } from '@/services/session-owner'
+import type { SessionOwner } from '@/services/session-owner'
 
 const ACCESS_TOKEN_KEY = 'access_token'
 const EXPIRES_AT_KEY   = 'token_expires_at'
@@ -35,6 +37,7 @@ function clearStorage() {
 }
 
 interface BindingCache {
+  owner: SessionOwner
   username: string
   member:   Member | null
 }
@@ -44,10 +47,10 @@ function readBindingCache(): BindingCache | null {
     const raw = localStorage.getItem(BINDING_CACHE_KEY)
     const parsed: unknown = raw ? JSON.parse(raw) : null
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      const { username, member } = parsed as Record<string, unknown>
-      if (typeof username === 'string' && username !== '') {
-        if (member === null) return { username, member: null }
-        if (isMember(member)) return { username, member }
+      const { username, member, owner } = parsed as Record<string, unknown>
+      if (typeof username === 'string' && username !== '' && sameOwner(owner, currentSessionOwner())) {
+        if (member === null) return { username, member: null, owner: owner as SessionOwner }
+        if (isMember(member)) return { username, member, owner: owner as SessionOwner }
       }
     }
   } catch {
@@ -105,6 +108,8 @@ export const useAuthStore = defineStore('auth', () => {
   // Una sola consulta por carga de página (o por login): el guard del router la
   // espera en cada navegación protegida sin repetirla.
   let bindingPromise: Promise<void> | null = null
+  let bindingGeneration = 0
+  let loginGeneration = 0
 
   // Sesión válida = hay token Y aún no venció. Permite detectar sesión
   // expirada sin depender de una llamada al servidor.
@@ -113,10 +118,12 @@ export const useAuthStore = defineStore('auth', () => {
   )
 
   async function login(payload: LoginPayload) {
+    const attempt = ++loginGeneration
     loading.value = true
     error.value = null
     try {
       const data = await AuthService.login(payload)
+      if (attempt !== loginGeneration) return
       if (!data.accessToken?.trim() || !Number.isFinite(data.expiresIn)) {
         throw new Error('Invalid login response')
       }
@@ -134,9 +141,11 @@ export const useAuthStore = defineStore('auth', () => {
       // Si sí, esa persona queda fijada en la sesión (pisando lo que hubiera
       // guardado) y no habrá selector. Nunca lanza: sin respuesta se sigue como
       // antes (selector) y el servidor igual hace cumplir el vínculo.
+      useSessionStore().reconcileOwnership()
       resetBinding()
       await ensureBinding()
     } catch (cause) {
+      if (attempt !== loginGeneration) throw cause
       logout()
       const status = (cause as { response?: { status?: number } } | null)?.response?.status
       const serverMessage = (cause as { response?: { data?: { message?: unknown } } } | null)
@@ -157,6 +166,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function resetBinding() {
+    bindingGeneration++
     bindingStatus.value = 'unknown'
     boundMember.value   = null
     bindingPromise      = null
@@ -189,8 +199,14 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchBinding() {
     if (!token.value) return
+    const requestToken = token.value
+    const requestOwner = currentSessionOwner()
+    const generation = bindingGeneration
+    const isCurrent = () => generation === bindingGeneration && token.value === requestToken
+      && localStorage.getItem(ACCESS_TOKEN_KEY) === requestToken
     try {
       const data: AccountBinding = await AuthService.me()
+      if (!isCurrent()) return
       const member = data.member ?? null
       applyBinding(member, data.memberId ?? null)
       // Solo se guarda una respuesta coherente: compartida (sin miembro ni
@@ -198,10 +214,11 @@ export const useAuthStore = defineStore('auth', () => {
       const coherent = member === null
         ? data.memberId == null
         : isMember(member) && data.memberId === member.id
-      if (username.value && coherent) {
-        writeBindingCache({ username: username.value, member })
+      if (username.value && coherent && requestOwner) {
+        writeBindingCache({ username: username.value, member, owner: requestOwner })
       }
     } catch (cause) {
+      if (!isCurrent()) return
       const status = (cause as { response?: { status?: number } } | null)?.response?.status
       if (status === 401) {
         // Sesión vencida o token inválido: se cierra por completo (esto también
@@ -219,7 +236,7 @@ export const useAuthStore = defineStore('auth', () => {
       // si es del mismo usuario. Sin caché, se sigue como antes (selector); el
       // servidor igual rechaza cualquier persona que no sea la de la cuenta.
       const cached = readBindingCache()
-      if (cached && cached.username === username.value) {
+      if (cached && cached.username === username.value && sameOwner(cached.owner, requestOwner)) {
         applyBinding(cached.member, cached.member?.id ?? null)
       } else {
         bindingStatus.value = 'unknown'
@@ -233,11 +250,13 @@ export const useAuthStore = defineStore('auth', () => {
    */
   function ensureBinding(): Promise<void> {
     if (!token.value) return Promise.resolve()
+    useSessionStore().reconcileOwnership()
     bindingPromise ??= fetchBinding()
     return bindingPromise
   }
 
   function logout() {
+    loginGeneration++
     token.value     = null
     expiresAt.value = null
     username.value  = null
