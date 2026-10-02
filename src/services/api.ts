@@ -3,6 +3,18 @@ import axios from 'axios'
 import { API_BASE_URL, canSendDebt } from './queue-origin'
 import type { QueueOrigin } from './queue-origin'
 import { useSessionStore } from '@/stores/session.store'
+import { currentSessionOwner, sameOwner } from './session-owner'
+import type { SessionOwner } from './session-owner'
+interface RequestContext {
+  token: string | null
+  owner: SessionOwner | null
+  memberId: string | null
+  deviceId: string | null
+  deviceToken: string | null
+}
+function jwtOnly(url: string): boolean {
+  return /^\/?(?:auth\/(?:login|register|me|change-password)|devices\/identify)(?:[?#]|$)/.test(url)
+}
 
 // Base URL tomada de la variable de entorno Vite
 const api = axios.create({
@@ -17,6 +29,8 @@ const api = axios.create({
 // simplemente no se agregan los headers: el backend responde 403 para las
 // rutas que los exigen (ContextGuard/SocioGuard), no hace falta anticiparlo aquí.
 api.interceptors.request.use((config) => {
+  const session = useSessionStore()
+  session.reconcileOwnership()
   const origin = (config as typeof config & { debtOrigin?: QueueOrigin }).debtOrigin
   if (origin && !canSendDebt(origin)) throw new Error('Debt origin no longer matches the active session')
   const token = localStorage.getItem('access_token')
@@ -27,7 +41,20 @@ api.interceptors.request.use((config) => {
   // Un header ya presente en la petición manda sobre la sesión: la cola de
   // ventas offline reenvía cada venta con SU memberId/deviceId (el contrato
   // exige que coincidan con el cuerpo) aunque ahora atienda otra persona.
-  const session = useSessionStore()
+  const snapshot: RequestContext = {
+    token,
+    owner: currentSessionOwner(),
+    memberId: session.memberId,
+    deviceId: session.deviceId,
+    deviceToken: session.deviceToken,
+  }
+  ;(config as typeof config & { requestContext: RequestContext }).requestContext = snapshot
+  if (jwtOnly(config.url ?? '')) {
+    delete config.headers['x-member-id']
+    delete config.headers['x-device-id']
+    delete config.headers['x-device-token']
+    return config
+  }
   if (session.memberId && !config.headers['x-member-id']) {
     config.headers['x-member-id'] = session.memberId
   }
@@ -62,7 +89,24 @@ api.interceptors.response.use(
     const isAuthEndpoint =
       url.includes('/auth/login') || url.includes('/auth/register')
 
-    if (status === 401 && !isAuthEndpoint && !error.config?.skipAuthRedirect) {
+    const snapshot = error.config?.requestContext as RequestContext | undefined
+    const currentToken = localStorage.getItem('access_token')
+    const sameRequest = !!snapshot && snapshot.token === currentToken
+    if (status === 403 && error.response?.data?.message === 'Selection is not authorized for this context'
+        && sameRequest && !jwtOnly(url)) {
+      const session = useSessionStore()
+      const headers = error.config?.headers
+      if (sameOwner(snapshot.owner, currentSessionOwner()) && snapshot.memberId && snapshot.deviceId
+          && snapshot.memberId === session.memberId && snapshot.deviceId === session.deviceId
+          && snapshot.deviceToken === session.deviceToken
+          && headers?.['x-member-id'] === session.memberId && headers?.['x-device-id'] === session.deviceId
+          && (headers?.['x-device-token'] ?? null) === session.deviceToken) {
+        session.clearMember()
+        session.clearDevice()
+        session.recoveryReason = 'rejected'
+      }
+    }
+    if (status === 401 && sameRequest && !isAuthEndpoint && !error.config?.skipAuthRedirect) {
       // Token expirado en ruta autenticada: limpiamos credenciales.
       // (Antes esto borraba una clave 'user' que ya no existe desde que se
       // adaptó el store al contrato real del backend — se corrige aquí.)
@@ -73,7 +117,7 @@ api.interceptors.response.use(
       localStorage.removeItem('account_binding')
       // La persona seleccionada debe reconfirmarse al volver a iniciar
       // sesión; el dispositivo (físico, fijo) NO se limpia aquí.
-      useSessionStore().clearMember()
+      useSessionStore().clearOnLogout()
       // Solo redirigimos si aún no estamos en /login (evita recargas innecesarias)
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login'

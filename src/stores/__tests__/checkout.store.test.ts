@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // Orquestación del cobro: carrito + sesión -> resultado que la UI pinta.
 // Usa los stores REALES (cart, session, catálogo) y la cola REAL sobre
 // fake-indexeddb; solo se simulan la red (SalesService, ProductsService).
@@ -85,6 +86,10 @@ function setOnline(online: boolean) {
 beforeEach(() => {
   closeLocalDb()
   globalThis.indexedDB = new IDBFactory()
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   createSale.mockReset()
   createSale.mockImplementation(async (payload) => completed(payload))

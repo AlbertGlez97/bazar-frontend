@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // registerDebt: fiado/apartado desde el cobro (D3: solo con una línea en el
 // carrito). D1 (BE-15): el abono inicial es un campo EXPLÍCITO del input —
 // va DENTRO de POST /deudas (transacción atómica del servidor), nunca una
@@ -86,6 +87,10 @@ async function ready() {
 beforeEach(() => {
   closeLocalDb()
   globalThis.indexedDB = new IDBFactory()
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   createDeuda.mockReset()
   createDeuda.mockImplementation(async (payload) => deudaFor({ id: payload.id! }))

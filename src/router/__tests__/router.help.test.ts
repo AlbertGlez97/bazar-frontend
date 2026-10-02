@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
@@ -13,7 +14,7 @@ beforeEach(() => {
   vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
 })
 function auth() {
-  localStorage.setItem('access_token', 'fixture')
+  localStorage.setItem('access_token', TEST_IDENTITY)
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
 }
 describe('help route access', () => {

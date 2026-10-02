@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // Security regression: for an account bound to a member the person selector
 // must not exist at all. Only the shared business login (no bound member) picks
 // who is attending.
@@ -24,12 +25,16 @@ const colaborador: Member = { id: 'm-col', name: 'Carla', role: 'colaborador', a
 const everyone = [socio, colaborador]
 
 async function signInAs(member: Member | null, opts: { deviceIdentified?: boolean } = {}) {
-  localStorage.setItem('access_token', 'jwt')
+  localStorage.setItem('access_token', TEST_IDENTITY)
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
   localStorage.setItem('auth_username', 'x')
   if (opts.deviceIdentified) {
     localStorage.setItem('device_context', JSON.stringify({ deviceId: 'd-1', name: 'Shared tablet' }))
   }
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   vi.mocked(AuthService.me).mockResolvedValue(
     member ? { username: 'x', memberId: member.id, member } : { username: 'x', memberId: null, member: null },
@@ -40,6 +45,10 @@ async function signInAs(member: Member | null, opts: { deviceIdentified?: boolea
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   vi.clearAllMocks()
   vi.mocked(MembersService.list).mockResolvedValue(everyone)
@@ -136,10 +145,14 @@ describe('SelectContextView with the shared business login', () => {
   })
 
   it('an unknown binding (server unreachable at startup) behaves as before: the selector is shown', async () => {
-    localStorage.setItem('access_token', 'jwt')
+    localStorage.setItem('access_token', TEST_IDENTITY)
     localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
     localStorage.setItem('device_context', JSON.stringify({ deviceId: 'd-1', name: 'Shared tablet' }))
-    setActivePinia(createPinia())
+    localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  setActivePinia(createPinia())
 
     const wrapper = mount(SelectContextView)
     await flushPromises()

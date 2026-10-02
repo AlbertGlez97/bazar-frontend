@@ -11,7 +11,7 @@ Prevent an authenticated account from inheriting another account/environment's d
 - TDD: **true**, explicit current user instruction; runner `npm run test:run`. Observe RED before each implementation behavior, then GREEN/refactor; never invent proof.
 - English technical artifacts; existing user-facing Spanish extended in neutral Spanish.
 - Engram mirror **pending**: authoritative attribution identity unavailable and agent-attributed mutations restricted. Retain the full local document; do not claim synchronized recovery.
-- Parent reads this actual file before source/test writes. Current authorization stage creates branch/document only.
+- Parent read the complete actual file and authorized S1-S3 local implementation before source/test writes.
 
 ## Verified cause and minimal design
 
@@ -52,7 +52,7 @@ Capture account/token generation for binding responses/cache writes. Bound accou
   - RED owner-match/mismatch, no-identity, legacy/corrupt records, same-owner reload/logout and API change; GREEN targeted session/identity/origin tests.
   - Keep tests and necessary fixture adaptations with behavior. Rollback: owner helper and session persistence boundary; no queued/database records touched.
   - Runtime: store/header integration tests; browser confirmation deferred until full recovery integration.
-  - Forecast: 200-300 authored additions/deletions; identity/evidence/count pending.
+  - Initial forecast: 200-300 authored additions/deletions; observed evidence and commit boundary below.
 
 - [x] **S2 - Reconcile authentication and guard asynchronous binding**
   - Ownership reconciliation before binding fetch; owner-matched binding cache; generation-safe fetch/cache/error application; active bound/shared/inactive behavior.
@@ -61,7 +61,7 @@ Capture account/token generation for binding responses/cache writes. Bound accou
   - Runtime: real router/auth synthetic tests; no real account/network credentials.
   - Forecast: 200-300 authored additions/deletions; identity/evidence/count pending.
 
-- [ ] **S3 - Recover exact context rejection without stale headers or loops**
+- [x] **S3 - Recover exact context rejection without stale headers or loops**
   - JWT-only header exclusion, captured selection/owner matching, exact-body 403 recovery, controlled bound refresh, necessary router/SelectContext/voice changes.
   - Three Spanish guidance cases: changed account/environment, legacy/unowned selection and server-rejected current selection. Do not claim a proven different business or revoked device.
   - RED exact/unrelated/stale/foreign-queue 403 and header regressions, then GREEN; preserve explicit queued attribution and local records.
@@ -71,9 +71,9 @@ Capture account/token generation for binding responses/cache writes. Bound accou
 
 ## Verification
 
-- S1: `npm run test:run -- src/stores/__tests__/session.store.test.ts src/services/__tests__/queue-origin.test.ts` plus new helper test path once created and recorded.
-- S2: `npm run test:run -- src/stores/__tests__/auth.store.test.ts src/stores/__tests__/auth.store.binding.test.ts src/router/__tests__/router.binding.test.ts src/router/__tests__/router.test.ts`.
-- S3: `npm run test:run -- src/services/__tests__/api.test.ts src/views/__tests__/SelectContextView.test.ts src/stores/__tests__/auth.store.binding.test.ts src/router/__tests__/router.binding.test.ts`.
+- S1: `npm run test:run -- src/stores/__tests__/session.store.test.ts src/stores/__tests__/session.ownership.test.ts src/services/__tests__/queue-origin.test.ts`.
+- S2: `npm run test:run -- src/stores/__tests__/auth.ownership.test.ts src/stores/__tests__/auth.store.test.ts src/stores/__tests__/auth.store.binding.test.ts src/router/__tests__/router.binding.test.ts src/router/__tests__/router.test.ts`.
+- S3: `npm run test:run -- src/services/__tests__/api.context.test.ts src/router/__tests__/router.context-recovery.test.ts src/services/__tests__/api.test.ts src/views/__tests__/SelectContextView.test.ts src/stores/__tests__/auth.store.binding.test.ts src/router/__tests__/router.binding.test.ts`.
 - Offline preservation: `npm run test:run -- src/stores/__tests__/sales-queue.store.test.ts src/services/__tests__/sales-sync.test.ts src/services/__tests__/local-db.test.ts`.
 - Final source normalization precedes checks: `npx vue-tsc -b`; `npm run build`; `npm run lint`; `npm run test:run`; `git diff --check`.
 - Run required commands in foreground, bounded polling; report actual failures/warnings/timeouts, not suppressed success. Full suite/build takes a few minutes locally.
@@ -84,17 +84,35 @@ Capture account/token generation for binding responses/cache writes. Bound accou
 - Forecast: **600-900 authored additions plus deletions**, excluding generated files; keep actual running work-unit counts.
 - Initial coherent proposed slices: S1 persistence ownership -> S2 auth lifecycle -> S3 exact recovery. Each includes tests/docs and depends on the previous. If fixture breadth makes a coherent slice larger, report the honest count rather than compressing code/prose or omitting tests. The roughly 400-line task heuristic is advisory, not a hard acceptance cap.
 - All work-unit commits stay on this feature branch; no external PRs or child branches created. Record focused/runtime proof, rollback boundary and commit identity after each unit.
-- Current stage: read-only diagnosis approved; branch and local recovery document created only. **Await parent actual-file readback and authorization before any source/test write or commit.** Mirror pending under identity restriction.
+- Current stage: S1-S3 complete with final checks and parent synthetic browser proof PASS. Parent independent verification follows handoff; no merge/push authorization. Mirror pending under identity restriction.
 
 ## S1 observed evidence
 
 - RED: new ownership suite 4/5 failed (unowned/foreign selection and no-identity exposure). GREEN: session/store/ownership/origin 3 files / 34 tests PASS after refactor. Existing session fixtures now declare synthetic account/expiry and separate device/member owner markers, preserving existing payload contracts and owned legacy-shape normalization.
 - Owner sidecars preserve raw device/member shapes while independently rejecting bad selections. No-token/expired identity hides device in memory but retains owned localStorage. Logout hides device; matching next identity restores it. API base trims whitespace/trailing slashes without inferring origin equivalence. Queue-origin reuses the same non-secret identity parser.
-- Intermediate focused checks found misplaced normalization write and unused eager reads; corrected before GREEN. Scoped ESLint normalized sources. No IndexedDB/backend/business changes. Runtime boundary: actual store integration tests; browser deferred S3. Engram mirror pending. S1 commit identity recorded by next unit update/report.
+- Intermediate focused checks found misplaced normalization write and unused eager reads; corrected before GREEN. Scoped ESLint normalized sources. No IndexedDB/backend/business changes. Runtime boundary: actual store integration tests; browser deferred S3. Engram mirror pending. S1 final identity/count recorded in S2 evidence below.
 
 ## S2 observed evidence
 
 - S1 committed `cd167351ea5dafc82b36a5f7e5dc5245a334bbfd`, 243 authored additions/deletions.
 - RED: binding ownership/race suite 3/4 failed (unowned same-username cache, delayed old success, delayed old401). GREEN: expanded auth/session/router command 6 files / 149 tests PASS. Typecheck PASS.
 - Binding cache requires account/API owner as well as display username; successful coherent responses include non-secret owner. Captured token/generation prevents stale binding success/error/cache writes from changing a newer login. Login reconciles owner before binding fetch. Logout hides retained owned device in memory; fixed and tested the old logout memory-exposure assumption.
-- Existing auth/router fixtures use synthetic JWT subjects; matching cache assertions include owner; unowned shared selection is intentionally discarded rather than adopted. Intermediate fixture/type errors were corrected, not suppressed. Runtime: actual independent memory routers and auth/session stores with synthetic service responses; physical/production proof not claimed. Mirror pending. S2 identity follows in next update/report.
+- Existing auth/router fixtures use synthetic JWT subjects; matching cache assertions include owner; unowned shared selection is intentionally discarded rather than adopted. Intermediate fixture/type errors were corrected, not suppressed. Runtime: actual independent memory routers and auth/session stores with synthetic service responses; physical/production proof not claimed. Mirror pending. S2 final identity/count recorded in S3 evidence below.
+
+## S3 observed evidence
+
+- S2 committed `5c16241be799d13bde19d7f4b1f85015568cd235`, 150 authored additions/deletions; accumulated S1/S2: 393.
+- RED: API context suite 5/8 failed, router recovery 1/1 failed, and all three new guidance cases failed before implementation. GREEN: expanded API/auth/router/selection command 6 files / 90 tests PASS. Router cold lazy-import settling requires bounded wait for the actual route, not only microtask flushing.
+- JWT-only authentication/binding/identification calls remove selection headers. Operational requests capture owner/token/selection; exact current ContextGuard rejection clears only selections, refreshes binding once and navigates to confirmation without replaying a mutation. Unrelated/stale/foreign queued responses do not invalidate current context; old401 cannot clear newer credentials. Explicit queued headers retain their attribution and foreign-device requests never inherit the active device secret.
+- Full regression initially failed 112/3186 tests across 12 files because old fixtures used opaque/missing identities or unowned selection. Updated only necessary synthetic JWT/expiry/owner fixtures. A later full run passed3185/3186 with one remaining old literal-token assertion; corrected it rather than suppressing the failure. Final exact-source rerun PASS below.
+- Offline preservation and new API/router check: 5 files / 59 tests PASS (`api.context`, `router.context-recovery`, `sales-queue.store`, `sales-sync`, `local-db`). Remaining navigation/device fixture checks: 4 files / 111 tests PASS. IndexedDB records/schema, backend and business rules unchanged.
+- Parent Chrome local proof PASS: A login/identify -> logout hides device and retains owned storage -> B login removes A selection, shows confirmation with memberB and no device; auth calls carry no selection headers -> B identify/logout/login restores deviceB and bound memberB without another identify. Actual auth/session/API interceptor/router/PublicLayout/SelectContext with synthetic Axios responses; ready destination is a fixture placeholder. No production authentication, real credentials, physical hardware or operational E2E claimed.
+- Ignored fixture: `node_modules/.cache/session-proof`, local port5199, own server31423. No fixture files in commits. Own server31423 stopped after final checks. Engram mirror remains pending under explicit identity restriction.
+
+## Final verification and local delivery
+
+- Final source-mutating ESLint/readability/comment correction completed before checks. `npx vue-tsc -b`: PASS; `npm run build`: PASS (existing large-chunk/dynamic-import warnings); `npm run lint`: PASS; `npm run test:run`: 179 files / 3186 tests PASS, 96.05s; `git diff --check`: PASS. No failure suppression or source mutation after those checks.
+- Local proposed PR slices: S1 `96e2986..cd16735` persistence243 -> S2 `cd16735..5c16241` auth150 -> S3 `5c16241..HEAD` recovery with fixtures/tests/doc (363 authored additions/deletions before this documentation-only identity recording). Each includes behavior/tests/recovery documentation. No PR, push or merge created; feature-branch-chain preserves final integration decision.
+- Native review/risk assessment is parent-owned and not activated by this worker; no approval claim. Mirror pending under explicit attribution restriction. Next: parent independent verification/readback and authorized local integration decision.
+
+- S3 first committed identity `b77ab34e7e0ba70c0022d822a4409288e6ed5fd2` (363 authored additions/deletions). A documentation-only amend records this boundary; the final amended identity/count is returned in the worker handoff and available via `git log -1`. No source/test bytes changed in that amend.

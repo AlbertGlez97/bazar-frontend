@@ -22,11 +22,21 @@ const members: Member[] = [
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  localStorage.setItem('access_token', 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z')
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   vi.clearAllMocks()
 })
 
 describe('SelectContextView', () => {
+  it.each(['changed', 'legacy', 'rejected'] as const)('explains %s recovery without exposing secrets', (reason) => {
+    useSessionStore().recoveryReason = reason
+    const wrapper = mount(SelectContextView)
+    expect(wrapper.find('[role="status"]').exists()).toBe(true)
+    expect(wrapper.find('[role="status"]').text()).toContain('Confirma')
+    expect(wrapper.text()).not.toContain('Selection is not authorized')
+  })
   it('sin dispositivo identificado, muestra el formulario de identificación', () => {
     const wrapper = mount(SelectContextView)
     expect(wrapper.find('form').exists()).toBe(true)

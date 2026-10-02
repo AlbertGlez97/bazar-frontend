@@ -32,6 +32,14 @@
           {{ heading.subtitle }}
         </p>
 
+        <p
+          v-if="sessionStore.recoveryReason"
+          role="status"
+          class="select-context__subtitle"
+        >
+          {{ VOICE.contextRecovery[sessionStore.recoveryReason] }}
+        </p>
+
         <!-- Paso 1: identificar el dispositivo (solo si aún no está guardado
              en localStorage — el dispositivo es físico/fijo, no se repite en
              cada apertura de la app). -->

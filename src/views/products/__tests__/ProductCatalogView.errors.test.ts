@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -72,6 +73,10 @@ async function openCreateFormAndSubmit(wrapper: ReturnType<typeof mount>) {
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   // reset (no solo clear): un `mockResolvedValueOnce` que no se consumió no debe filtrarse al test siguiente.
   vi.resetAllMocks()

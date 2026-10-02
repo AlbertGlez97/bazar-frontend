@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -35,8 +36,12 @@ async function queueSale(id: string, createdAt: string) {
 beforeEach(() => {
   closeLocalDb()
   globalThis.indexedDB = new IDBFactory()
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
-  localStorage.setItem('access_token', 'jwt')
+  localStorage.setItem('access_token', TEST_IDENTITY)
   vi.mocked(SalesService.createSale).mockReset()
   vi.mocked(SalesService.createSale).mockImplementation(async (payload) => completed(payload))
 })

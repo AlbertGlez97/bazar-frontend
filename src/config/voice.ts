@@ -5,6 +5,11 @@
 import { minorToDisplay } from '@/utils/money'
 
 export const VOICE = {
+  contextRecovery: {
+    changed: 'Este acceso cambió. Confirma el dispositivo o la persona que falta para continuar.',
+    legacy: 'La selección guardada necesita confirmación. Confirma el dispositivo o la persona que falta para continuar.',
+    rejected: 'No pudimos validar la selección actual. Confirma el dispositivo y la persona para continuar.',
+  },
   /** Fallo genérico del servidor o desconocido */
   genericError: 'Algo salió mal de nuestro lado. Intenta de nuevo en un momento.',
   /** La petición no llegó al servidor (sin internet, servidor caído) */
@@ -32,12 +37,8 @@ export const VOICE = {
     session: 'Tu sesión venció. Inicia sesión de nuevo para continuar.',
     /** 403 "Only socios…": la persona elegida no es socio. */
     notSocio: 'Solo los socios pueden crear o cambiar productos. Cambia de persona o pide a un socio que lo haga.',
-    /**
-     * 403 "Selection is not authorized…": el dispositivo o la persona guardados
-     * ya no existen o ya no valen (se reinició la base, se revocó el acceso, el
-     * token no coincide). Se arregla identificando el dispositivo otra vez.
-     */
-    contextLost: 'Este dispositivo o esta persona ya no está reconocida por el sistema (pasa si se reinició la base de datos o si alguien revocó el acceso). Vuelve a identificar el dispositivo para seguir.',
+    /** Exact ContextGuard rejection; its cause is not distinguishable here. */
+    contextLost: 'No pudimos validar el dispositivo o la persona seleccionada. Confirma tu acceso para continuar.',
     /** Cualquier otro 403. */
     forbidden: 'No tienes permiso para hacer esto.',
     /** 400 sin un mensaje que se pueda mostrar. */

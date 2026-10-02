@@ -4,6 +4,7 @@ import {
   type RouteRecordRaw,
   type RouterHistory,
 } from 'vue-router'
+import { watch } from 'vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
@@ -187,8 +188,24 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
     scrollBehavior: (to) => to.name === 'Help' && to.hash ? false : { top: 0 },
   })
 
+  let watchingRecovery = false
+  let recovering = false
   router.beforeEach(async (to) => {
     const auth = useAuthStore()
+    if (!watchingRecovery && to.meta.requiresAuth) {
+      watchingRecovery = true
+      const session = useSessionStore()
+      watch(() => session.recoveryReason, async (reason) => {
+        if (reason !== 'rejected' || recovering || !auth.isAuthenticated) return
+        recovering = true
+        try {
+          await auth.refreshBindingForRecovery()
+          if (session.recoveryReason === 'rejected') await router.replace({ name: auth.isAuthenticated ? 'SelectContext' : 'Login' })
+        } finally {
+          recovering = false
+        }
+      })
+    }
     if (to.meta.requiresAuth && !auth.isAuthenticated) return { name: 'Login' }
     if (to.meta.redirectIfAuth && auth.isAuthenticated) return landing()
 

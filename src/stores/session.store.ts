@@ -96,26 +96,34 @@ export const useSessionStore = defineStore('session', () => {
   function storedOwner(storage: Storage, key: string): unknown {
     try { return JSON.parse(storage.getItem(key + '_owner') ?? 'null') } catch { return null }
   }
-  function hideDevice() { deviceId.value = null; deviceName.value = null; deviceToken.value = null }
+  function hideDevice() {
+    deviceId.value = null
+    deviceName.value = null
+    deviceToken.value = null
+  }
   function reconcileOwnership() {
     const current = currentSessionOwner()
     if (sameOwner(owner.value, current)) return
     owner.value = current
     hideDevice()
-    member.value = null; memberId.value = null
+    member.value = null
+    memberId.value = null
     if (!current) return
     const deviceOwner = storedOwner(localStorage, DEVICE_KEY)
     const memberOwner = storedOwner(sessionStorage, MEMBER_KEY)
     if (sameOwner(deviceOwner, current)) {
       const device = readDevice()
-      deviceId.value = device?.deviceId ?? null; deviceName.value = device?.name ?? null; deviceToken.value = device?.deviceToken ?? null
+      deviceId.value = device?.deviceId ?? null
+      deviceName.value = device?.name ?? null
+      deviceToken.value = device?.deviceToken ?? null
     } else if (localStorage.getItem(DEVICE_KEY)) {
       recoveryReason.value = deviceOwner ? 'changed' : 'legacy'
       clearDevice()
     }
     if (sameOwner(memberOwner, current)) {
       const selected = readMember()
-      member.value = selected; memberId.value = selected?.id ?? null
+      member.value = selected
+      memberId.value = selected?.id ?? null
     } else if (sessionStorage.getItem(MEMBER_KEY)) {
       recoveryReason.value = memberOwner ? 'changed' : 'legacy'
       clearMember()
@@ -130,6 +138,7 @@ export const useSessionStore = defineStore('session', () => {
     const device: StoredDevice = payload.deviceToken
       ? { deviceId: payload.deviceId, name: payload.name, deviceToken: payload.deviceToken }
       : { deviceId: payload.deviceId, name: payload.name }
+    recoveryReason.value = null
     deviceId.value    = device.deviceId
     deviceName.value  = device.name
     deviceToken.value = device.deviceToken ?? null
@@ -160,13 +169,7 @@ export const useSessionStore = defineStore('session', () => {
     localStorage.removeItem(DEVICE_KEY + '_owner')
   }
 
-  /**
-   * Se llama desde auth.store.logout(). Decisión de diseño: solo limpia la
-   * persona seleccionada, NO el dispositivo. El dispositivo es una propiedad
-   * física de la tablet (independiente de qué cuenta/persona esté usándola),
-   * mientras que "quién vende" debe reconfirmarse cada vez que alguien nuevo
-   * inicia sesión, por seguridad operativa.
-   */
+  /** Retain owned device storage, but expose no selection after logout. */
   function clearOnLogout() {
     clearMember()
     owner.value = null

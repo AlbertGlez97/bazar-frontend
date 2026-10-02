@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // Dispositivos (contenedor): componentes y stores REALES; solo se simula la red
 // (DevicesAdminService) y el portapapeles. Los cuadros usan el Teleport REAL, así
 // que se consulta el DOM completo en `document.body`.
@@ -87,6 +88,10 @@ async function confirmAction(correo?: string) {
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   list.mockReset().mockResolvedValue(DEVICES)
   create.mockReset().mockResolvedValue(CREATED)
   revoke.mockReset().mockResolvedValue({ ...DEVICES[0], status: 'revocado' })

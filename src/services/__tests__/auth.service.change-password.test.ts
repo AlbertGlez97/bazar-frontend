@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // AuthService.changePassword + interceptor REALES (solo el adaptador HTTP es
 // falso). El backend responde 403 (no 401) cuando la contraseña actual es
 // incorrecta justamente para que el interceptor NO lo confunda con un token
@@ -30,9 +31,13 @@ function respondWith(status: number, data: unknown = '') {
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   sent = null
-  localStorage.setItem('access_token', 'jwt-vigente')
+  localStorage.setItem('access_token', TEST_IDENTITY)
   useSessionStore().setMember({ id: 'm-1', name: 'Ana', role: 'socio', active: true })
 })
 
@@ -48,19 +53,19 @@ describe('AuthService.changePassword — petición real', () => {
     await AuthService.changePassword(payload)
     expect(sent?.url).toBe('/auth/change-password')
     expect(sent?.method).toBe('post')
-    expect(sent?.headers.get('Authorization')).toBe('Bearer jwt-vigente')
+    expect(sent?.headers.get('Authorization')).toBe('Bearer ' + TEST_IDENTITY)
   })
 
   it('un 403 (contraseña actual incorrecta) NO borra la sesión ni a la persona elegida', async () => {
     respondWith(403, { message: 'Current password is incorrect' })
     await expect(AuthService.changePassword(payload)).rejects.toMatchObject({ response: { status: 403 } })
-    expect(localStorage.getItem('access_token')).toBe('jwt-vigente')
+    expect(localStorage.getItem('access_token')).toBe(TEST_IDENTITY)
     expect(useSessionStore().member?.id).toBe('m-1')
   })
 
   it('un 400 de validación tampoco cierra la sesión', async () => {
     respondWith(400, { message: ['newPassword is too short'] })
     await expect(AuthService.changePassword(payload)).rejects.toMatchObject({ response: { status: 400 } })
-    expect(localStorage.getItem('access_token')).toBe('jwt-vigente')
+    expect(localStorage.getItem('access_token')).toBe(TEST_IDENTITY)
   })
 })

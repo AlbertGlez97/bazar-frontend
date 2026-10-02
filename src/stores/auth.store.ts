@@ -255,6 +255,11 @@ export const useAuthStore = defineStore('auth', () => {
     return bindingPromise
   }
 
+  function refreshBindingForRecovery(): Promise<void> {
+    resetBinding()
+    return ensureBinding()
+  }
+
   function logout() {
     loginGeneration++
     token.value     = null
@@ -273,6 +278,6 @@ export const useAuthStore = defineStore('auth', () => {
   return {
     token, expiresAt, username, loading, error, isAuthenticated,
     bindingStatus, boundMember,
-    login, logout, ensureBinding,
+    login, logout, ensureBinding, refreshBindingForRecovery,
   }
 })

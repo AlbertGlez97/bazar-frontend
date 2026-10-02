@@ -1,3 +1,4 @@
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // SalesService + interceptor REALES (solo el adaptador HTTP es falso): comprueba
 // qué cabeceras de dispositivo viajan de verdad en POST /sales. La venta manda
 // SU deviceId (la cola offline la reenvía después, quizá con otra persona), y
@@ -28,6 +29,10 @@ const originalAdapter = api.defaults.adapter
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   sent = null
   const fake: AxiosAdapter = async (config) => {

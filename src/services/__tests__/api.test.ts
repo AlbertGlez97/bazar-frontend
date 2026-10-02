@@ -1,3 +1,4 @@
+const TEST_TOKEN = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -22,6 +23,8 @@ describe('api — interceptores Axios', () => {
     localStorage.clear()
     sessionStorage.clear()
     setActivePinia(createPinia())
+    localStorage.setItem('access_token', TEST_TOKEN)
+    localStorage.setItem('token_expires_at', String(Date.now() + 60000))
     vi.clearAllMocks()
   })
 
@@ -33,7 +36,7 @@ describe('api — interceptores Axios', () => {
   // ── Interceptor de solicitud ──────────────────────────────────────────────
 
   it('agrega Authorization header si hay access_token en localStorage', () => {
-    localStorage.setItem('access_token', 'jwt-test-token')
+    localStorage.setItem('access_token', TEST_TOKEN)
 
     // Simular la config que pasaría el interceptor de solicitud
     const config = { headers: {} as Record<string, string> } as InternalAxiosRequestConfig
@@ -41,10 +44,11 @@ describe('api — interceptores Axios', () => {
     const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
     const result = handler.fulfilled(config)
 
-    expect(result.headers.Authorization).toBe('Bearer jwt-test-token')
+    expect(result.headers.Authorization).toBe('Bearer ' + TEST_TOKEN)
   })
 
   it('NO agrega Authorization header si no hay token', () => {
+    localStorage.removeItem('access_token')
     const config = { headers: {} as Record<string, string> } as InternalAxiosRequestConfig
     const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
     const result = handler.fulfilled(config)
@@ -171,7 +175,7 @@ describe('api — interceptores Axios', () => {
   })
 
   it('en un 401 de endpoint autenticado: limpia localStorage y la persona seleccionada', async () => {
-    localStorage.setItem('access_token', 'jwt-xxx')
+    localStorage.setItem('access_token', TEST_TOKEN)
     localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
     localStorage.setItem('auth_username', 'ana')
     // La caché del vínculo cuenta-persona pertenece a la sesión que acaba de morir.
@@ -190,8 +194,8 @@ describe('api — interceptores Axios', () => {
 
     const error = {
       response: { status: 401 },
-      config:   { url: '/dashboard/data' },
-    } as AxiosError
+      config:   { requestContext: { token: TEST_TOKEN }, url: '/dashboard/data' },
+    } as unknown as AxiosError
 
     const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
     await expect(handler.rejected(error)).rejects.toBeDefined()
@@ -203,11 +207,12 @@ describe('api — interceptores Axios', () => {
     // La persona debe reconfirmarse al volver a entrar, pero el dispositivo
     // (físico, fijo) sobrevive a un token expirado.
     expect(session.memberId).toBeNull()
-    expect(session.deviceId).toBe('d-1')
+    expect(session.deviceId).toBeNull()
+    expect(JSON.parse(localStorage.getItem('device_context')!).deviceId).toBe('d-1')
   })
 
   it('en un 401 de una petición con skipAuthRedirect: NO limpia credenciales ni redirige (la venta lo maneja ella)', async () => {
-    localStorage.setItem('access_token', 'jwt-xxx')
+    localStorage.setItem('access_token', TEST_TOKEN)
     const session = useSessionStore()
     session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
     const location = { pathname: '/app/venta', href: '/app/venta' }
@@ -215,44 +220,44 @@ describe('api — interceptores Axios', () => {
 
     const error = {
       response: { status: 401 },
-      config:   { url: '/sales', skipAuthRedirect: true },
+      config:   { requestContext: { token: TEST_TOKEN }, url: '/sales', skipAuthRedirect: true },
     } as unknown as AxiosError
 
     const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
     await expect(handler.rejected(error)).rejects.toBe(error)
 
-    expect(localStorage.getItem('access_token')).toBe('jwt-xxx')
+    expect(localStorage.getItem('access_token')).toBe(TEST_TOKEN)
     expect(session.memberId).toBe('m-1')
     expect(location.href).toBe('/app/venta')
   })
 
   it('en un 401 de /auth/login: NO limpia localStorage', async () => {
-    localStorage.setItem('access_token', 'jwt-xxx')
+    localStorage.setItem('access_token', TEST_TOKEN)
 
     const error = {
       response: { status: 401 },
-      config:   { url: '/auth/login' },
-    } as AxiosError
+      config:   { requestContext: { token: TEST_TOKEN }, url: '/auth/login' },
+    } as unknown as AxiosError
 
     const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
     await expect(handler.rejected(error)).rejects.toBeDefined()
 
     // El token NO se debe borrar cuando el 401 viene de /auth/login
-    expect(localStorage.getItem('access_token')).toBe('jwt-xxx')
+    expect(localStorage.getItem('access_token')).toBe(TEST_TOKEN)
   })
 
   it('en un error distinto de 401: rechaza la promesa sin modificar localStorage', async () => {
-    localStorage.setItem('access_token', 'jwt-xxx')
+    localStorage.setItem('access_token', TEST_TOKEN)
 
     const error = {
       response: { status: 500 },
-      config:   { url: '/budgets' },
-    } as AxiosError
+      config:   { requestContext: { token: TEST_TOKEN }, url: '/budgets' },
+    } as unknown as AxiosError
 
     const handler = (api.interceptors.response as unknown as ResponseHandlers).handlers[0]
     await expect(handler.rejected(error)).rejects.toBeDefined()
 
-    expect(localStorage.getItem('access_token')).toBe('jwt-xxx')
+    expect(localStorage.getItem('access_token')).toBe(TEST_TOKEN)
   })
 })
 
