@@ -174,6 +174,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
+import { useContributionsStore } from '@/stores/contributions.store'
 import { useSalesQueueStore } from '@/stores/sales-queue.store'
 import { AppBadge, AppButton, AppAvatar, InstallAppButton, UiModeSwitch, SyncStatusIndicator } from '@/components'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
@@ -188,6 +189,7 @@ const authStore = useAuthStore()
 const uiMode    = useUiModeStore()
 const session   = useSessionStore()
 const salesQueue = useSalesQueueStore()
+const contributions = useContributionsStore()
 const router    = useRouter()
 const route     = useRoute()
 const helpTarget = computed(() => route.name === 'Help'
@@ -231,7 +233,9 @@ onMounted(async () => {
     // Sin cola local (por ejemplo IndexedDB no disponible) las ventas siguen en línea.
   }
 })
-onUnmounted(() => salesQueue.stop())
+onMounted(async () => { try { await contributions.start() } catch { /* Durable storage errors are shown by Finance; the shell remains available. */ } })
+onUnmounted(() => { salesQueue.stop(); contributions.stop() })
+watch(() => [authStore.isAuthenticated, session.memberId, session.deviceId, session.member?.role], () => { void contributions.sessionChanged() })
 
 async function dismissReview(id: string) {
   try {
@@ -248,6 +252,7 @@ const routeTitles: Record<string, string> = {
   ProductCatalog: 'Productos',
   Sale: 'Vender',
   Reports: 'Reportes',
+  Contributions: 'Finanzas',
   CodigosQr: 'Códigos QR',
   Incidencias: 'Incidencias',
   Deudas: 'Deudas',

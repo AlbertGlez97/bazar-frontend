@@ -13,6 +13,7 @@
  * - Nada aquí finge éxito: quien guarda una venta debe enterarse si no se pudo.
  */
 import { openDB } from 'idb'
+import type { PendingContribution, ContributionHistory, FinanceReferences } from './contributions-records'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import type { CreateSalePayload } from '@/types/sale.types'
 import type { CreateDeudaPayload } from '@/types/deuda.types'
@@ -20,7 +21,7 @@ import type { QueueOrigin } from './queue-origin'
 import type { Product } from '@/types/product.types'
 
 export const DB_NAME = 'la-marchanta'
-export const DB_VERSION = 1
+export const DB_VERSION = 2
 export const PENDING_SALES_STORE = 'pending-sales'
 export const CATALOG_SNAPSHOT_STORE = 'catalog-snapshot'
 const SNAPSHOT_KEY = 'current'
@@ -69,6 +70,9 @@ interface CatalogSnapshotRecord extends CatalogSnapshot {
 }
 
 interface LaMarchantaDB extends DBSchema {
+  'pending-contributions': { key: string; value: PendingContribution }
+  'contribution-history': { key: string; value: ContributionHistory }
+  'finance-references': { key: string; value: FinanceReferences }
   'pending-sales': { key: string; value: PendingOperation }
   'catalog-snapshot': { key: string; value: CatalogSnapshotRecord }
 }
@@ -99,6 +103,10 @@ export function openLocalDb(): Promise<LocalDb> {
     try {
       const db = await openDB<LaMarchantaDB>(DB_NAME, DB_VERSION, {
         upgrade(database) {
+          for (const store of ['pending-contributions', 'contribution-history'] as const) {
+            if (!database.objectStoreNames.contains(store)) database.createObjectStore(store, { keyPath: 'key' })
+          }
+          if (!database.objectStoreNames.contains('finance-references')) database.createObjectStore('finance-references', { keyPath: 'scope' })
           if (!database.objectStoreNames.contains(PENDING_SALES_STORE)) {
             database.createObjectStore(PENDING_SALES_STORE, { keyPath: 'id' })
           }

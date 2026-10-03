@@ -31,6 +31,8 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const session = useSessionStore()
   session.reconcileOwnership()
+  const financialOrigin = (config as typeof config & { financialOrigin?: QueueOrigin }).financialOrigin
+  if (financialOrigin && !canSendDebt(financialOrigin)) throw new Error('Financial origin no longer matches the active session')
   const origin = (config as typeof config & { debtOrigin?: QueueOrigin }).debtOrigin
   if (origin && !canSendDebt(origin)) throw new Error('Debt origin no longer matches the active session')
   const token = localStorage.getItem('access_token')
