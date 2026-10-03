@@ -110,7 +110,7 @@ describe('getNavItems — Códigos QR (solo socios, solo Modo Gestión, D2)', ()
 
   it('no altera el orden de los demás ítems', () => {
     expect(tos(getNavItems('gestion', { isSocio: true })))
-      .toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias', '/app/deudas'])
+      .toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias', '/app/deudas', '/app/finanzas'])
     expect(tos(getNavItems('gestion', { isSocio: false }))).toEqual(['/app', '/app/productos'])
   })
 })
@@ -143,9 +143,9 @@ describe('getNavItems — Deudas (solo socios, solo Modo Gestión)', () => {
   const deudas = (mode: 'venta' | 'gestion', isSocio?: boolean) =>
     getNavItems(mode, { isSocio }).find((item) => item.to === '/app/deudas')
 
-  it('un socio en Modo Gestión ve "Deudas" con su ícono, al final del menú', () => {
+  it('un socio en Modo Gestión ve "Deudas" con su ícono, antes de Finanzas', () => {
     expect(deudas('gestion', true)).toMatchObject({ label: 'Deudas', exact: false })
-    expect(tos(getNavItems('gestion', { isSocio: true })).at(-1)).toBe('/app/deudas')
+    expect(tos(getNavItems('gestion', { isSocio: true })).at(-1)).toBe('/app/finanzas')
   })
 
   it('un socio en Modo Venta no lo ve', () => {

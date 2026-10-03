@@ -101,6 +101,12 @@ const routes: RouteRecordRaw[] = [
         // Reportes de ventas con descarga en PDF y Excel. Solo socios y solo en
         // Modo Gestión: lo hace cumplir el guard de abajo (no basta con ocultar el
         // ítem del menú) y la vista lo vuelve a comprobar si el modo o el rol cambian.
+        path: 'finanzas',
+        name: 'Contributions',
+        component: () => import('@/views/finance/ContributionsView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         path: 'reportes',
         name: 'Reports',
         component: () => import('@/views/reports/ReportsView.vue'),

@@ -80,7 +80,8 @@ export default defineConfig({
               request.method === 'GET' &&
               // No cachear endpoints de auth — siempre deben ser fresh
               !url.pathname.startsWith('/api/v1/auth/') &&
-              !url.pathname.startsWith('/api/v1/finance/'),
+              !url.pathname.startsWith('/api/v1/finance/') &&
+              !(url.pathname === '/api/v1/members' && url.searchParams.get('includeInactive') === 'true'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'marchanta-api-cache',

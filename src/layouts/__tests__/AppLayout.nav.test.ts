@@ -120,8 +120,8 @@ describe('AppLayout navegación', () => {
     sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
     localStorage.setItem('la-marchanta-ui-mode', 'gestion')
     const wrapper = await mountAt('/app')
-    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '📊 Reportes', '🏷️ Códigos QR', '⚠️ Incidencias', '💰 Deudas'])
-    expect(wrapper.findAll('a.sidebar__link').at(-1)?.attributes('href')).toBe('/app/deudas')
+    expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '📊 Reportes', '🏷️ Códigos QR', '⚠️ Incidencias', '💰 Deudas', '💼 Finanzas'])
+    expect(wrapper.findAll('a.sidebar__link').at(-1)?.attributes('href')).toBe('/app/finanzas')
   })
 
   it('Reportes no aparece para un socio en Modo Venta', async () => {

@@ -36,6 +36,7 @@ export interface NavContext {
 }
 
 export const NAV_ITEMS: NavItemDef[] = [
+  { to: '/app/finanzas', label: 'Finanzas', icon: '💼', exact: false, modes: ['gestion'], socioOnly: true, order: { venta: 0, gestion: 7 } },
   // Cada ítem DECLARA sus modos (un test falla si falta): omitir `modes` lo dejaba
   // en los dos, y así "Vender" se coló en Modo Gestión.
   // "Vender": solo Modo Venta, y es lo único que ese modo muestra.

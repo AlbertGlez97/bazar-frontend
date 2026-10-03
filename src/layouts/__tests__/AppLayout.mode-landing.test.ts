@@ -43,6 +43,7 @@ async function mountAt(path: string, mode: UiMode, role: 'socio' | 'colaborador'
         { path: 'codigos-qr', name: 'CodigosQr', component: stub },
         { path: 'incidencias', name: 'Incidencias', component: stub },
         { path: 'deudas', name: 'Deudas', component: stub },
+        { path: 'finanzas', name: 'Contributions', component: stub },
         { path: 'ajustes', name: 'Settings', component: stub },
       ],
     }],
@@ -80,7 +81,7 @@ describe('AppLayout — el menú depende del modo', () => {
 
   it('Modo Gestión: Inicio, Productos y (socio) Reportes, Códigos QR, Incidencias y Deudas, sin Vender', async () => {
     const { wrapper } = await mountAt('/app/productos', 'gestion')
-    expect(links(wrapper)).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias', '/app/deudas'])
+    expect(links(wrapper)).toEqual(['/app', '/app/productos', '/app/reportes', '/app/codigos-qr', '/app/incidencias', '/app/deudas', '/app/finanzas'])
   })
 
   it('Modo Gestión: un colaborador no ve Reportes', async () => {

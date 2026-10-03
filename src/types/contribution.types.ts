@@ -15,7 +15,10 @@ export interface ReversalPayload {
   deviceId: string
   replacement?: ContributionPayload
 }
-export interface ContributionReversal extends Omit<ReversalPayload, 'replacement'> {
+export interface ContributionReversal extends Omit<
+  ReversalPayload,
+  'replacement'
+> {
   contributionId: string
   replacementContributionId: string | null
   receivedAt: string
@@ -35,5 +38,14 @@ export interface ReversalReceipt extends ContributionReversal {
   original: Contribution
   replacement: Contribution | null
 }
-export interface ContributionPage { items: Contribution[]; nextCursor: string | null }
-export interface ContributionFilter { from?: string; to?: string; memberId?: string; cursor?: string; limit?: number }
+export interface ContributionPage {
+  items: Contribution[]
+  nextCursor: string | null
+}
+export interface ContributionFilter {
+  from?: string
+  to?: string
+  memberId?: string
+  cursor?: string
+  limit?: number
+}
