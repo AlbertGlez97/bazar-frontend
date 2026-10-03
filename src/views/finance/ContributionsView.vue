@@ -202,7 +202,7 @@
               Reintentar con el origen original
             </AppButton>
             <AppButton
-              v-if="row.correction && row.correction.state === 'paused'"
+              v-if="row.correction && row.correction.state !== 'pending'"
               variant="ghost"
               :disabled="saving"
               @click="retry(row.correction)"

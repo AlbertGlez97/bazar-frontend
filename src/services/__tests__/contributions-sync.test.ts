@@ -7,6 +7,7 @@ import {
   enqueueContribution,
   financeSnapshot,
   confirmContribution,
+  retryContribution,
 } from '../contributions-db'
 import { syncContributions } from '../contributions-sync'
 import type {
@@ -308,4 +309,71 @@ describe('durable finance synchronization', () => {
     )
     expect(late.pending).toEqual([])
   })
+  it.each([false, true])(
+    'manually recovers reviewed dependent correction without automatic conflict loops: conflict=%s',
+    async (conflict) => {
+      const p = payload()
+      const original = await enqueueContribution(origin, {
+        kind: 'create',
+        payload: p,
+      })
+      const reversal = {
+        id: v7(),
+        createdByMemberId: origin.memberId,
+        deviceId: origin.deviceId,
+        occurredAt: '2026-10-03T12:00:00Z',
+        reason: 'Wrong amount',
+      }
+      const correction = await enqueueContribution(origin, {
+        kind: 'reverse',
+        contributionId: p.id,
+        payload: reversal,
+      })
+      const denied = vi.fn().mockRejectedValue({ response: { status: 401 } })
+      await syncContributions(origin, denied)
+      await syncContributions(origin, denied)
+      let snapshot = await financeSnapshot(origin)
+      expect(snapshot.pending.find((r) => r.id === p.id)?.state).toBe('paused')
+      expect(snapshot.pending.find((r) => r.id === reversal.id)?.state).toBe(
+        'needs_review',
+      )
+      await retryContribution(original)
+      const accepted = {
+        ...reversal,
+        contextId: 'business',
+        createdByAccountId: origin.accountId,
+        contributionId: p.id,
+        replacementContributionId: null,
+        receivedAt: reversal.occurredAt,
+        original: receipt(p),
+        replacement: null,
+      }
+      const send = vi.fn(async (r: PendingContribution) => {
+        if (r.kind === 'create') return receipt(p)
+        if (conflict) throw { response: { status: 409 } }
+        return accepted
+      })
+      expect(await syncContributions(origin, send)).toBe(1)
+      snapshot = await financeSnapshot(origin)
+      expect(snapshot.pending[0]?.state).toBe('needs_review')
+      expect(snapshot.history).toHaveLength(1)
+      expect(send).toHaveBeenCalledOnce()
+      // Auth recovery does not silently replay a reviewed operation. The user explicitly retries it.
+      await retryContribution(correction)
+      expect(await syncContributions(origin, send)).toBe(conflict ? 0 : 1)
+      snapshot = await financeSnapshot(origin)
+      if (conflict) {
+        expect(snapshot.pending[0]?.state).toBe('needs_review')
+        expect(snapshot.pending[0]?.payload).toEqual(reversal)
+        expect(snapshot.pending[0]?.origin).toEqual(origin)
+        await syncContributions(origin, send)
+        expect(send).toHaveBeenCalledTimes(2)
+        expect(snapshot.history[0]?.reversal).toBeFalsy()
+      } else {
+        expect(snapshot.pending).toEqual([])
+        expect(snapshot.history).toHaveLength(1)
+        expect(snapshot.history[0]?.reversal?.id).toBe(reversal.id)
+      }
+    },
+  )
 })

@@ -1,5 +1,5 @@
 /**
- * Base de datos local (IndexedDB) de La Marchanta: `la-marchanta` v1.
+ * Base de datos local (IndexedDB) de La Marchanta: `la-marchanta` v2.
  *
  * - `pending-sales`   (keyPath `id`): la cola de ventas offline (ver sales-queue.ts).
  * - `catalog-snapshot` (clave fija `current`): la última copia del catálogo activo,

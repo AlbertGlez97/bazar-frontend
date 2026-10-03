@@ -185,4 +185,66 @@ describe('contribution management', () => {
       expect.objectContaining({ amountMinor: 600000, memberId: 'socio' }),
     )
   })
+  it.each(['paused', 'needs_review', 'pending'] as const)(
+    'requires explicit correction retry for %s state',
+    async (state) => {
+      const payload = {
+        id: 'original',
+        memberId: 'socio',
+        amountMinor: 800000,
+        occurredAt: '2026-10-03T06:00:00Z',
+        note: null,
+        createdByMemberId: 'socio',
+        deviceId: 'device',
+      }
+      mocks.store.history = [
+        {
+          ...payload,
+          contextId: 'business',
+          currency: 'MXN',
+          createdByAccountId: 'account',
+          receivedAt: payload.occurredAt,
+        },
+      ]
+      const correction: PendingContribution = {
+        kind: 'reverse',
+        contributionId: payload.id,
+        payload: {
+          id: 'reversal',
+          createdByMemberId: 'socio',
+          deviceId: 'device',
+          occurredAt: payload.occurredAt,
+          reason: 'Correction',
+        },
+        origin: {
+          accountId: 'account',
+          apiBase: '/api/v1',
+          memberId: 'socio',
+          deviceId: 'device',
+        },
+        id: 'reversal',
+        key: 'key',
+        scope: 'scope',
+        createdAt: payload.occurredAt,
+        state,
+        attempts: 1,
+        nextAttemptAt: 0,
+      }
+      mocks.store.pending = [correction]
+      const w = mountView()
+      await flushPromises()
+      await w.find('#finance-from').setValue('2026-10-01')
+      await w.find('#finance-to').setValue('2026-10-31')
+      const button = w
+        .findAll('button')
+        .find((b) => b.text() === 'Reintentar correcci\u00f3n')
+      expect(!!button).toBe(state !== 'pending')
+      expect(mocks.store.retry).not.toHaveBeenCalled()
+      if (button) {
+        await button.trigger('click')
+        await flushPromises()
+        expect(mocks.store.retry).toHaveBeenCalledWith(correction)
+      }
+    },
+  )
 })

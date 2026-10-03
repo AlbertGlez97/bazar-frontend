@@ -25,3 +25,7 @@ Gestion > Finanzas > Aportaciones is restricted to socios. It supports member an
 Active socio references are fetched using /members?includeInactive=true and cached by account/API origin. That exact member request and financial requests are excluded from generic Workbox caching, so a successful financial refresh never treats a shared stale HTTP cache as canonical. Inactive historical names remain available; no offline reference cache means registration must wait for a genuine member snapshot.
 
 Pending, synced, paused/review, annulled and corrected states are visible. Known local rows merge with fetched pages, not a claim of complete history. A durable committed write remains successful if subsequent list readback fails, with a visible warning; a failed initial write never reports success. No totals are added to income or profit. Responsive grids cover mobile/tablet/desktop; automated component tests are not a substitute for visual browser verification.
+
+## Recover a blocked correction
+
+If authorization recovery pauses the original registration, its dependent correction can require review. Retry the original with its unchanged origin first; once it confirms, explicitly retry the correction. Both paused and review corrections expose this action. Genuine conflicts remain in review and are never automatically retried or silently removed. Retry preserves operation UUID, payload, member and device.
