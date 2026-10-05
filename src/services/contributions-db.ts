@@ -1,5 +1,6 @@
 ﻿import { openLocalDb } from './local-db'
 import { financeScope } from './contributions-records'
+import { nextAttemptAt, plain, scopedKey } from './finance-shared'
 import type {
   FinancialOperation,
   FinanceOrigin,
@@ -7,8 +8,7 @@ import type {
   FinanceReferences,
 } from './contributions-records'
 import type { Contribution, ReversalReceipt } from '@/types/contribution.types'
-const plain = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
-const key = (scope: string, id: string) => JSON.stringify([scope, id])
+const key = scopedKey
 export async function financeSnapshot(origin: FinanceOrigin) {
   const scope = financeScope(origin),
     db = await openLocalDb()
@@ -133,8 +133,7 @@ export async function updateContributionAttempt(
       state,
       lastError,
       attempts: current.attempts + 1,
-      nextAttemptAt:
-        now + Math.min(300000, 30000 * 2 ** Math.min(current.attempts, 4)),
+      nextAttemptAt: nextAttemptAt(current.attempts, now),
     })
   await tx.done
 }

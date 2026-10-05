@@ -175,6 +175,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useContributionsStore } from '@/stores/contributions.store'
+import { useExpensesStore } from '@/stores/expenses.store'
 import { useSalesQueueStore } from '@/stores/sales-queue.store'
 import { AppBadge, AppButton, AppAvatar, InstallAppButton, UiModeSwitch, SyncStatusIndicator } from '@/components'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
@@ -190,6 +191,7 @@ const uiMode    = useUiModeStore()
 const session   = useSessionStore()
 const salesQueue = useSalesQueueStore()
 const contributions = useContributionsStore()
+const expenses = useExpensesStore()
 const router    = useRouter()
 const route     = useRoute()
 const helpTarget = computed(() => route.name === 'Help'
@@ -234,8 +236,9 @@ onMounted(async () => {
   }
 })
 onMounted(async () => { try { await contributions.start() } catch { /* Durable storage errors are shown by Finance; the shell remains available. */ } })
-onUnmounted(() => { salesQueue.stop(); contributions.stop() })
-watch(() => [authStore.isAuthenticated, session.memberId, session.deviceId, session.member?.role], () => { void contributions.sessionChanged() })
+onMounted(async () => { try { await expenses.start() } catch { /* Durable storage errors are shown by Finance; the shell remains available. */ } })
+onUnmounted(() => { salesQueue.stop(); contributions.stop(); expenses.stop() })
+watch(() => [authStore.isAuthenticated, session.memberId, session.deviceId, session.member?.role], () => { void contributions.sessionChanged(); void expenses.sessionChanged() })
 
 async function dismissReview(id: string) {
   try {
@@ -253,6 +256,7 @@ const routeTitles: Record<string, string> = {
   Sale: 'Vender',
   Reports: 'Reportes',
   Contributions: 'Finanzas',
+  Expenses: 'Finanzas',
   CodigosQr: 'Códigos QR',
   Incidencias: 'Incidencias',
   Deudas: 'Deudas',

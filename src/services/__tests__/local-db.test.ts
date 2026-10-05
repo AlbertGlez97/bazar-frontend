@@ -38,10 +38,10 @@ describe('openLocalDb', () => {
     const db = await openLocalDb()
 
     expect(DB_NAME).toBe('la-marchanta')
-    expect(DB_VERSION).toBe(2)
+    expect(DB_VERSION).toBe(3)
     expect(db.name).toBe('la-marchanta')
-    expect(db.version).toBe(2)
-    expect([...db.objectStoreNames].sort()).toEqual([CATALOG_SNAPSHOT_STORE, PENDING_SALES_STORE, 'pending-contributions', 'contribution-history', 'finance-references'].sort())
+    expect(db.version).toBe(3)
+    expect([...db.objectStoreNames].sort()).toEqual([CATALOG_SNAPSHOT_STORE, PENDING_SALES_STORE, 'pending-contributions', 'contribution-history', 'finance-references', 'pending-expenses', 'expense-history'].sort())
     expect(db.transaction(PENDING_SALES_STORE).store.keyPath).toBe('id')
   })
 

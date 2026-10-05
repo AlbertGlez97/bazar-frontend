@@ -10,24 +10,15 @@ import type {
   PendingContribution,
 } from './contributions-records'
 import { financeScope } from './contributions-records'
+import { asObject, classifyFinanceFailure, isInstant, isUuid } from './finance-shared'
 import {
   confirmContribution,
   financeSnapshot,
   updateContributionAttempt,
 } from './contributions-db'
-const instant = (v: unknown): v is string =>
-  typeof v === 'string' &&
-  /T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(v) &&
-  Number.isFinite(Date.parse(v))
-const uuid = (v: unknown): v is string =>
-  typeof v === 'string' &&
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    v,
-  )
-const object = (v: unknown): Record<string, unknown> | null =>
-  !!v && typeof v === 'object' && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : null
+const instant = isInstant
+const uuid = isUuid
+const object = asObject
 export function isReversal(v: unknown): v is ContributionReversal {
   const r = object(v)
   return (
@@ -218,24 +209,7 @@ export async function syncContributions(
         await confirmContribution(record, receipt)
         synced++
       } catch (error) {
-        const status = (error as { response?: { status?: number } })?.response
-          ?.status
-        const state =
-          status === 401 || status === 403
-            ? 'paused'
-            : status &&
-                status >= 400 &&
-                status < 500 &&
-                status !== 408 &&
-                status !== 429
-              ? 'needs_review'
-              : 'pending'
-        const message =
-          state === 'paused'
-            ? 'La sesión o el dispositivo no están autorizados. Confirma el origen y reintenta.'
-            : state === 'needs_review'
-              ? 'El servidor rechazó el registro. Revisa los datos; no se modificó el movimiento.'
-              : 'No se pudo confirmar la sincronización. El registro sigue guardado y se reenviará con el mismo ID.'
+        const { state, message } = classifyFinanceFailure(error)
         await updateContributionAttempt(
           record,
           state,
