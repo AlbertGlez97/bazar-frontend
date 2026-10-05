@@ -165,6 +165,29 @@ describe('durable expense store', () => {
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
   })
 
+  it('re-reads the shown server summary after a sync so confirmed expenses are counted', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    const empty = { operatingMinor: 0, inventoryMinor: 0, personalMinor: 0, businessMinor: 0 }
+    const counted = { ...empty, operatingMinor: 25000 }
+    const range = { from: 'a', to: 'b' }
+    mocks.snapshot.mockResolvedValue({ pending: [], history: [], references: undefined })
+    mocks.summary.mockResolvedValueOnce(empty).mockResolvedValueOnce(counted)
+    const store = useExpensesStore()
+    await store.load() // the view loads the scope before asking for the summary
+    await store.refreshSummary(range)
+    await store.sync()
+    expect(mocks.summary).toHaveBeenCalledTimes(2)
+    expect(store.summary).toMatchObject({ ...range, value: counted })
+  })
+
+  it('does not fetch a summary after a sync when none was being shown', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    mocks.snapshot.mockResolvedValue({ pending: [], history: [], references: undefined })
+    const store = useExpensesStore()
+    await store.sync()
+    expect(mocks.summary).not.toHaveBeenCalled()
+  })
+
   it('refresh merges the page and member references into durable storage', async () => {
     mocks.list.mockResolvedValue({ items: [], nextCursor: 'next' })
     mocks.members.mockResolvedValue([

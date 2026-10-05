@@ -195,6 +195,9 @@ export const useExpensesStore = defineStore('expenses', () => {
       })
       await load()
       error.value = ''
+      // Confirmed expenses change the server totals, so re-read the ones on screen.
+      const shown = summary.value
+      if (shown) await refreshSummary({ from: shown.from, to: shown.to })
     } catch {
       error.value =
         'No se pudo acceder a los registros locales. No cierres ni borres los datos del navegador.'
