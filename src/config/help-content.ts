@@ -195,6 +195,39 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['La exportación se habilita cuando hay ventas de contado en la consulta. Un periodo con solo abonos puede mostrar información y aun así no permitir descargar el reporte.'],
   },
   {
+    id: 'gastos', title: 'Registrar un gasto o una compra de inventario', category: 'Finanzas', audience: 'socio',
+    keywords: ['gasto', 'gastos', 'compra', 'inventario', 'origen', 'dinero personal', 'aportación', 'pagado por', 'finanzas'],
+    intro: 'Un gasto es dinero que salió para que el negocio funcione, como el transporte, la renta del bazar o la publicidad. Se registra en Finanzas, pestaña Gastos, y sirve para dejar constancia de qué se pagó, quién lo pagó y de dónde salió el dinero.',
+    steps: [
+      'En Gestión abre Finanzas y elige la pestaña Gastos.',
+      'En Tipo elige Gasto operativo para los gastos del día a día (elige además su categoría) o Compra de inventario cuando compraste mercancía para vender; esta última siempre queda en la categoría Inventario.',
+      'Escribe el Importe, la Fecha, quién lo pagó en Pagado por y una Descripción corta.',
+      'En Origen del dinero elige Negocio si salió de los fondos del negocio, o Personal si lo pagó alguien con su propio dinero.',
+      'Pulsa Registrar gasto. Se guarda primero en este dispositivo y se sincroniza cuando haya conexión; hasta entonces aparece como Pendiente.',
+      'Usa el periodo y los filtros de Tipo, Categoría y Pagado por para revisar la lista. El resumen suma los gastos operativos, las compras de inventario y lo pagado con dinero personal o con fondos del negocio.',
+    ],
+    tips: [
+      'Pagar con dinero personal no convierte el gasto en una aportación automáticamente: son registros distintos y ninguno crea al otro.',
+      'Registrar una compra de inventario no cambia tus productos, su costo de compra ni sus existencias; para eso usa Productos.',
+      'Los gastos no se restan de las ventas ni calculan utilidad: Finanzas solo deja constancia de lo que se registró.',
+    ],
+  },
+  {
+    id: 'corregir-gasto', title: 'Anular o corregir un gasto registrado', category: 'Finanzas', audience: 'socio',
+    keywords: ['anular', 'corregir', 'gasto', 'error', 'motivo', 'reemplazo'],
+    intro: 'Un gasto registrado no se edita ni se borra. Si hubo un error, se anula o se corrige: el registro original se conserva y queda marcado, para que el historial siga siendo confiable.',
+    steps: [
+      'En la lista de Gastos registrados busca el gasto y pulsa Anular si fue un error y no debe contar, o Corregir si debe quedar con otros datos.',
+      'Escribe el Motivo de la anulación o corrección.',
+      'Si estás corrigiendo, captura los datos correctos (tipo, categoría, importe, fecha, quién pagó, origen del dinero y descripción).',
+      'Pulsa Guardar corrección. El gasto original aparece como Anulado o Corregido, y el corregido se registra como un gasto nuevo vinculado.',
+    ],
+    tips: [
+      'Anular o corregir solo arregla el registro: no mueve dinero ni inventario, y un gasto anulado deja de sumarse en el resumen.',
+      'Un gasto ya anulado o con una corrección en proceso no se puede volver a corregir. Si una corrección queda en revisión, usa Reintentar corrección cuando recuperes la cuenta y el dispositivo originales.',
+    ],
+  },
+  {
     id: 'equipo', title: 'Consultar Mi equipo y agregar una persona', category: 'Ajustes', audience: 'socio',
     keywords: ['miembro', 'colaborador', 'socio', 'comisión', 'persona'],
     intro: 'Mi equipo identifica a las personas que trabajan en el negocio. Es una pantalla de socios, disponible desde Ajustes en ambos modos.',
@@ -296,6 +329,8 @@ export const HELP_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
   calendario: ['src/components/ui/molecules/CuotasPlaneadasEditor.vue', 'src/views/deudas/DeudasView.vue'],
   incidencias: ['src/views/incidencias/IncidenciasView.vue'],
   reportes: ['src/views/reports/ReportsView.vue'],
+  gastos: ['src/views/finance/ExpensesView.vue', 'src/components/ui/organisms/ExpenseFormFields.vue'],
+  'corregir-gasto': ['src/views/finance/ExpensesView.vue'],
   equipo: ['src/views/settings/TeamView.vue'],
   dispositivos: ['src/views/settings/DevicesView.vue'],
   contrasena: ['src/views/settings/ChangePasswordView.vue'],

@@ -32,4 +32,30 @@ describe('finance route and navigation authority', () => {
       ),
     ).toBe(false)
   })
+  it('serves Gastos at /app/finanzas/gastos with the same socio and gestion guard', () => {
+    const router = createAppRouter(createMemoryHistory())
+    const route = router.resolve('/app/finanzas/gastos')
+    expect(route.name).toBe('Expenses')
+    expect(route.meta).toMatchObject({
+      requiresAuth: true,
+      requiresContext: true,
+      requiresSocio: true,
+      requiresGestion: true,
+    })
+    // Contributions keeps its own address.
+    expect(router.resolve('/app/finanzas').name).toBe('Contributions')
+  })
+  it('loads the expenses view lazily', () => {
+    const record = createAppRouter(createMemoryHistory())
+      .resolve('/app/finanzas/gastos')
+      .matched.at(-1)!
+    expect(typeof record.components?.default).toBe('function')
+  })
+  it('keeps the single Finanzas menu item active on both tabs', () => {
+    const items = getNavItems('gestion', { isSocio: true }).filter((r) =>
+      r.to.startsWith('/app/finanzas'),
+    )
+    expect(items.map((r) => r.to)).toEqual(['/app/finanzas'])
+    expect(items[0]?.exact).toBe(false)
+  })
 })

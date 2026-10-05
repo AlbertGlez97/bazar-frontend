@@ -7,7 +7,7 @@
     <label
       class="cash-input__label"
       :for="inputId"
-    >Efectivo recibido</label>
+    >{{ label }}</label>
 
     <div class="cash-input__field">
       <span
@@ -70,6 +70,7 @@
     </div>
 
     <CashDenominationPad
+      v-if="showPad"
       :counts="denominationCounts"
       :disabled="disabled"
       @tap="onPadTap"
@@ -90,17 +91,27 @@ const props = withDefaults(defineProps<{
   /** Total actual en centavos, para el atajo "Justo" */
   totalMinor?: number
   disabled?: boolean
+  /** Etiqueta del campo (por defecto la del cobro en efectivo). */
+  label?: string
+  /** Selector de billetes; los formularios de un importe simple lo apagan. */
+  showPad?: boolean
+  /** id del <input> (si no, se genera uno). */
+  id?: string
 }>(), {
   totalMinor: 0,
   disabled: false,
+  label: 'Efectivo recibido',
+  showPad: true,
+  id: undefined,
 })
 
 const emit = defineEmits<{
   'update:modelValue': [text: string]
 }>()
 
-const inputId = useId()
-const errorId = `${inputId}-error`
+const generatedId = useId()
+const inputId = computed(() => props.id ?? generatedId)
+const errorId = computed(() => `${inputId.value}-error`)
 
 /** Texto capturado que no se puede leer con certeza (mismo criterio que el store). */
 const isUnclear = computed(() => parseCashInput(props.modelValue) === null)

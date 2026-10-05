@@ -303,3 +303,21 @@ describe('CashInput — selector de billetes combinable', () => {
     expect(lastEmitted(wrapper)).toBe('420.00')
   })
 })
+
+describe('CashInput as a plain amount field', () => {
+  it('keeps the cash label and the bill pad by default', () => {
+    const w = mountCash()
+    expect(w.get('label').text()).toBe('Efectivo recibido')
+    expect(padButtons(w).length).toBeGreaterThan(0)
+  })
+
+  it('accepts a custom label and id and can hide the bill pad', () => {
+    const w = mount(CashInput, {
+      props: { modelValue: '', label: 'Importe', id: 'amount', showPad: false },
+    })
+    expect(w.get('label').text()).toBe('Importe')
+    expect(w.get('label').attributes('for')).toBe('amount')
+    expect(w.get('input').attributes('id')).toBe('amount')
+    expect(padButtons(w)).toHaveLength(0)
+  })
+})

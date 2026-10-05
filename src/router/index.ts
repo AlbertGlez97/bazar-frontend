@@ -107,6 +107,13 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        // Gastos y compras de inventario (Finanzas > Gastos): mismo guard que Aportaciones.
+        path: 'finanzas/gastos',
+        name: 'Expenses',
+        component: () => import('@/views/finance/ExpensesView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         path: 'reportes',
         name: 'Reports',
         component: () => import('@/views/reports/ReportsView.vue'),

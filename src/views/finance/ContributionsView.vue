@@ -3,6 +3,11 @@
     v-if="allowed"
     class="finance-page"
   >
+    <TabNav
+      label="Secciones de Finanzas"
+      :tabs="FINANCE_TABS"
+      active="/app/finanzas"
+    />
     <header>
       <p>Finanzas</p>
       <h1>Aportaciones</h1>
@@ -337,7 +342,9 @@ import {
   AppModal,
   AppCard,
   AppBadge,
+  TabNav,
 } from '@/components'
+import { FINANCE_TABS } from './finance-tabs'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useContributionsStore } from '@/stores/contributions.store'

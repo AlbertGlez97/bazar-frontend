@@ -1,4 +1,4 @@
-﻿import { mount, flushPromises } from '@vue/test-utils'
+﻿import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Contribution } from '@/types/contribution.types'
 import type {
@@ -45,13 +45,28 @@ const mountView = () =>
   mount(ContributionsView, {
     global: {
       stubs: {
+        RouterLink: RouterLinkStub,
         AppModal: { template: '<div><slot/><slot name="footer"/></div>' },
       },
     },
   })
 describe('contribution management', () => {
+  it('offers the Aportaciones | Gastos tab navigation with Aportaciones active', async () => {
+    const w = mountView()
+    await flushPromises()
+    const tabs = w.findAllComponents(RouterLinkStub)
+    expect(tabs.map((t) => t.text())).toEqual(['Aportaciones', 'Gastos'])
+    expect(tabs.map((t) => t.props('to'))).toEqual([
+      '/app/finanzas',
+      '/app/finanzas/gastos',
+    ])
+    expect(tabs[0]!.attributes('aria-current')).toBe('page')
+    expect(tabs[1]!.attributes('aria-current')).toBeUndefined()
+  })
   it('opts its correction modal into keyboard focus management', async () => {
-    const wrapper = mount(ContributionsView)
+    const wrapper = mount(ContributionsView, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
     await flushPromises()
     expect(wrapper.getComponent(AppModal).props('manageFocus')).toBe(true)
     wrapper.unmount()

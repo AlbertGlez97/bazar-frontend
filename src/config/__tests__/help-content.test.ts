@@ -57,4 +57,21 @@ describe('audited help content', () => {
     expect(CASH_HELP.tips.join(' ')).toContain('1,250.50')
     expect(HELP_ARTICLES.find((article) => article.id === 'sin-conexion')?.tips.join(' ')).toContain('no confirma')
   })
+
+  it('explains expenses in plain language, limited to what the Gastos screen does', () => {
+    const gastos = HELP_ARTICLES.find((article) => article.id === 'gastos')!
+    const fix = HELP_ARTICLES.find((article) => article.id === 'corregir-gasto')!
+    for (const article of [gastos, fix]) {
+      expect(article.category).toBe('Finanzas')
+      expect(article.audience).toBe('socio')
+    }
+    const text = [gastos.intro, ...gastos.steps, ...gastos.tips].join(' ')
+    expect(text).toContain('Gasto operativo')
+    expect(text).toContain('Compra de inventario')
+    expect(text).toContain('Origen del dinero')
+    expect(gastos.tips.join(' ')).toContain('no convierte el gasto en una aportación automáticamente')
+    expect(gastos.tips.join(' ')).toContain('no cambia tus productos')
+    expect([fix.intro, ...fix.steps, ...fix.tips].join(' ')).toMatch(/Anular[\s\S]*Corregir/)
+    expect(fix.tips.join(' ')).toContain('no mueve dinero ni inventario')
+  })
 })

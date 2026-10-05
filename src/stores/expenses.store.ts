@@ -41,7 +41,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     error = ref(''),
     lastFetchedAt = ref<string | null>(null),
     nextCursor = ref<string | null>(null),
-    summary = ref<{ key: string; value: ExpenseSummary } | null>(null)
+    summary = ref<{ from: string; to: string; value: ExpenseSummary } | null>(null)
   let timer: ReturnType<typeof setTimeout> | undefined,
     started = false,
     activeScope: string | null = null
@@ -122,11 +122,10 @@ export const useExpensesStore = defineStore('expenses', () => {
       summary.value = null
       return null
     }
-    const key = JSON.stringify([financeScope(o), range.from, range.to])
     try {
       const value = await ExpensesService.summary(o, range)
       if (!visible(o)) return null
-      summary.value = { key, value }
+      summary.value = { ...range, value }
       return summary.value
     } catch {
       summary.value = null
