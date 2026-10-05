@@ -26,12 +26,12 @@ async function registerServiceWorkerWithUpdatePrompt() {
   try {
     const { registerSW } = await import('virtual:pwa-register')
     const { useToastStore } = await import('@/stores/toast.store')
+    const { usePwaUpdateStore } = await import('@/stores/pwaUpdate.store')
 
-    registerSW({
+    const updateServiceWorker = registerSW({
       // onNeedRefresh se dispara cuando hay una versión nueva del SW esperando
       onNeedRefresh() {
-        const toast = useToastStore()
-        toast.info('Hay una versión nueva. Recarga la página para verla.')
+        usePwaUpdateStore().notifyUpdate(updateServiceWorker)
       },
       onOfflineReady() {
         const toast = useToastStore()
