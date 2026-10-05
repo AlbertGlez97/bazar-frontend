@@ -6,6 +6,7 @@ import type {
   FinanceReferences,
 } from '@/services/contributions-records'
 import ContributionsView from '../ContributionsView.vue'
+import AppModal from '@/components/ui/organisms/AppModal.vue'
 const mocks = vi.hoisted(() => ({
   store: {
     history: [] as Contribution[],
@@ -49,6 +50,12 @@ const mountView = () =>
     },
   })
 describe('contribution management', () => {
+  it('opts its correction modal into keyboard focus management', async () => {
+    const wrapper = mount(ContributionsView)
+    await flushPromises()
+    expect(wrapper.getComponent(AppModal).props('manageFocus')).toBe(true)
+    wrapper.unmount()
+  })
   it('shows a simple capital-only form and meaning disclaimer', async () => {
     const w = mountView()
     await flushPromises()

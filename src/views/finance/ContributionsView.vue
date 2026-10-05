@@ -244,6 +244,7 @@
     </AppCard>
     <AppModal
       v-model="correctionOpen"
+      manage-focus
       :title="replace ? 'Corregir aportación' : 'Anular aportación'"
       subtitle="Solo corrige el registro. No devuelve capital."
       :hide-close="saving"

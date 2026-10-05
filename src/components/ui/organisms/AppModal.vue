@@ -11,8 +11,10 @@
         @click.self="onBackdropClick"
       >
         <div
+          ref="modalElement"
           class="app-modal"
           :class="`app-modal--${size}`"
+          :tabindex="manageFocus ? -1 : undefined"
         >
           <!-- Header -->
           <div class="app-modal__header">
@@ -92,7 +94,7 @@
 </template>
 
 <script setup lang="ts">
-import { useId, onMounted, onUnmounted, watch } from 'vue'
+import { useId, onMounted, onUnmounted, watch, ref, nextTick } from 'vue'
 
 const props = withDefaults(defineProps<{
   modelValue:    boolean
@@ -103,6 +105,7 @@ const props = withDefaults(defineProps<{
   hideFooter?:   boolean
   confirmLabel?: string
   closeOnBackdrop?: boolean
+  manageFocus?: boolean
 }>(), {
   subtitle:         undefined,
   size:             'md',
@@ -110,6 +113,7 @@ const props = withDefaults(defineProps<{
   hideFooter:       false,
   confirmLabel:     'Confirmar',
   closeOnBackdrop:  true,
+  manageFocus:      false,
 })
 
 const emit = defineEmits<{
@@ -118,6 +122,27 @@ const emit = defineEmits<{
 }>()
 
 const titleId = useId()
+const modalElement = ref<HTMLElement | null>(null)
+let returnFocus: HTMLElement | null = null
+const focusSelector = 'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+function focusable() {
+  return [...(modalElement.value?.querySelectorAll<HTMLElement>(focusSelector) ?? [])]
+    .filter(el => !el.closest('[hidden], [inert]') && el.tabIndex >= 0 && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden')
+}
+function restoreFocus() {
+  if (returnFocus?.isConnected) returnFocus.focus()
+  returnFocus = null
+}
+watch(() => props.modelValue, async open => {
+  if (!props.manageFocus) return
+  if (!open) { restoreFocus(); return }
+  returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  await nextTick()
+  if (!props.modelValue) return
+  const targets = focusable()
+  const firstField = targets.find(el => el.matches('input, select, textarea'))
+  ;(firstField ?? targets[0] ?? modalElement.value)?.focus()
+}, { immediate: true })
 
 function close()  { emit('update:modelValue', false) }
 function onBackdropClick() { if (props.closeOnBackdrop) close() }
@@ -129,9 +154,20 @@ function unlockScroll() { document.body.style.overflow = '' }
 watch(() => props.modelValue, v => { if (v) lockScroll(); else unlockScroll() }, { immediate: true })
 
 // Cerrar con Escape
-function onKeydown(e: KeyboardEvent) { if (e.key === 'Escape') close() }
+function onKeydown(e: KeyboardEvent) {
+  if (!props.modelValue) return
+  if (e.key === 'Escape') close()
+  if (!props.manageFocus || e.key !== 'Tab') return
+  const targets = focusable(), first = targets[0], last = targets.at(-1)
+  if (!first || !last) { e.preventDefault(); modalElement.value?.focus(); return }
+  const active = document.activeElement
+  if (active === modalElement.value || !modalElement.value?.contains(active) || (e.shiftKey ? active === first : active === last)) {
+    e.preventDefault()
+    ;(e.shiftKey ? last : first).focus()
+  }
+}
 onMounted(()   => document.addEventListener('keydown', onKeydown))
-onUnmounted(() => { document.removeEventListener('keydown', onKeydown); unlockScroll() })
+onUnmounted(() => { document.removeEventListener('keydown', onKeydown); unlockScroll(); restoreFocus() })
 </script>
 
 <style scoped>
