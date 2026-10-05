@@ -186,7 +186,7 @@ export async function confirmExpense(
         expense: {
           ...existing,
           ...expense,
-          paidBy: expense.paidBy ?? existing?.paidBy,
+          paidByMember: expense.paidByMember ?? existing?.paidByMember,
           reversal: expense.reversal ?? existing?.reversal ?? null,
         },
       }),

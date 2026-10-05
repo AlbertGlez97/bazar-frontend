@@ -15,7 +15,7 @@ import type {
   FundsSource,
 } from '@/types/expense.types'
 
-export const EXPENSE_DESCRIPTION_MAX = 1000
+export const EXPENSE_DESCRIPTION_MAX = 280
 
 /** Raw form state: texts as typed; `''` means "not chosen yet". */
 export interface ExpenseFormState {

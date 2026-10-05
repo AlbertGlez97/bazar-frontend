@@ -47,8 +47,8 @@ export function isExpenseReversal(v: unknown): v is ExpenseReversal {
 }
 
 function validPaidBy(r: Record<string, unknown>): boolean {
-  if (r.paidBy === undefined || r.paidBy === null) return true
-  const p = asObject(r.paidBy)
+  if (r.paidByMember === undefined || r.paidByMember === null) return true
+  const p = asObject(r.paidByMember)
   return (
     !!p &&
     p.id === r.paidByMemberId &&

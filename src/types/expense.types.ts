@@ -57,7 +57,7 @@ export interface Expense extends ExpensePayload {
   currency: 'MXN'
   createdByAccountId: string
   receivedAt: string
-  paidBy?: { id: string; name: string; active: boolean }
+  paidByMember?: { id: string; name: string; active: boolean }
   reversal?: ExpenseReversal | null
 }
 

@@ -85,7 +85,7 @@ describe('expense form conversion', () => {
     expect(() => expenseFieldsFromForm(valid({ fundsSource: '' }), payers)).toThrow('origen')
     expect(() => expenseFieldsFromForm(valid({ date: '2026-02-30' }), payers)).toThrow('fecha')
     expect(() => expenseFieldsFromForm(valid({ description: '  ' }), payers)).toThrow('Describe')
-    expect(() => expenseFieldsFromForm(valid({ description: 'x'.repeat(1001) }), payers)).toThrow('caracteres')
+    expect(() => expenseFieldsFromForm(valid({ description: 'x'.repeat(281) }), payers)).toThrow('caracteres')
   })
 
   it('changing the type keeps the category consistent', () => {

@@ -422,7 +422,7 @@ function onTo(value: string) {
 // ── Rows: confirmed history merged with what is still pending ─────────────
 type Row = ExpensePayload & {
   reversal?: Expense['reversal']
-  paidBy?: Expense['paidBy']
+  paidByMember?: Expense['paidByMember']
   pending?: PendingExpense
   correction?: Extract<PendingExpense, { kind: 'reverse' }>
 }
@@ -515,7 +515,7 @@ function rangeIso() {
 function payerName(row: Row) {
   return (
     finance.allMembers.find((m) => m.id === row.paidByMemberId)?.name ??
-    row.paidBy?.name ??
+    row.paidByMember?.name ??
     'Miembro (referencia histórica)'
   )
 }

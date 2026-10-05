@@ -10,7 +10,7 @@ import {
   mergeExpenseHistory,
   retryExpense,
 } from '../expense-db'
-import { syncExpenses } from '../expense-sync'
+import { syncExpenses, validExpensePage, validExpenseSummary } from '../expense-sync'
 import type { FinanceOrigin } from '../contributions-records'
 import type { PendingExpense } from '../expense-records'
 import type { ExpensePayload } from '@/types/expense.types'
@@ -162,7 +162,7 @@ describe('expense synchronization', () => {
     await enqueueExpense(origin, { kind: 'create', payload: p })
     const send = vi.fn().mockResolvedValue({
       ...receipt(p),
-      paidBy: { id: p.paidByMemberId, name: 'Ana', active: true },
+      paidByMember: { id: p.paidByMemberId, name: 'Ana', active: true },
     })
     expect(await syncExpenses(origin, send)).toBe(1)
     expect(send).toHaveBeenCalledOnce()
@@ -171,7 +171,7 @@ describe('expense synchronization', () => {
     expect(snapshot.history).toHaveLength(1)
     expect(snapshot.history[0]).toMatchObject({
       id: p.id,
-      paidBy: { name: 'Ana' },
+      paidByMember: { name: 'Ana' },
     })
     expect(await syncExpenses(origin, send)).toBe(0) // nothing left to send
   })
@@ -358,6 +358,35 @@ describe('expense synchronization', () => {
     } finally {
       Reflect.deleteProperty(navigator, 'locks')
     }
+  })
+})
+
+describe('expense list validation', () => {
+  it('accepts server list items with paidByMember and rejects inconsistent ones', () => {
+    const p = payload()
+    const item = {
+      ...receipt(p),
+      paidByMember: { id: p.paidByMemberId, name: 'Ana', active: false },
+      reversal: null,
+    }
+    expect(validExpensePage({ items: [item], nextCursor: null }, origin)).toBe(true)
+    for (const bad of [
+      { ...item, paidByMember: { id: v7(), name: 'Ana', active: true } },
+      { ...item, nature: 'INVENTORY_PURCHASE' },
+      { ...item, amountMinor: 1.5 },
+      { ...item, contextId: 'other' },
+    ])
+      expect(
+        validExpensePage({ items: [bad], nextCursor: null }, { ...origin, contextId: 'business' }),
+      ).toBe(false)
+    expect(validExpensePage({ items: [], nextCursor: 5 }, origin)).toBe(false)
+  })
+  it('validates the summary as non-negative integers', () => {
+    const ok = { operatingMinor: 1, inventoryMinor: 0, personalMinor: 1, businessMinor: 0 }
+    expect(validExpenseSummary(ok)).toBe(true)
+    expect(validExpenseSummary({ ...ok, personalMinor: 1.5 })).toBe(false)
+    expect(validExpenseSummary({ ...ok, businessMinor: -1 })).toBe(false)
+    expect(validExpenseSummary({ operatingMinor: 1 })).toBe(false)
   })
 })
 
