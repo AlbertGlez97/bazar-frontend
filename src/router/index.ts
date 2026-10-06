@@ -114,6 +114,13 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        // Jornadas (Finanzas > Jornadas): trabajo real por persona y día; mismo guard que Gastos.
+        path: 'finanzas/jornadas',
+        name: 'WorkShifts',
+        component: () => import('@/views/finance/WorkShiftsView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         path: 'reportes',
         name: 'Reports',
         component: () => import('@/views/reports/ReportsView.vue'),

@@ -65,6 +65,16 @@ describe('workShiftFieldsFromForm', () => {
     expect(() => workShiftFieldsFromForm(valid(change), workers)).toThrow(text)
   })
 
+  it('refuses a future date only when today is given, and accepts today itself', () => {
+    expect(() =>
+      workShiftFieldsFromForm(valid({ workDate: '2026-10-04' }), workers, '2026-10-03'),
+    ).toThrow('futura')
+    expect(
+      workShiftFieldsFromForm(valid({ workDate: '2026-10-03' }), workers, '2026-10-03').workDate,
+    ).toBe('2026-10-03')
+    expect(workShiftFieldsFromForm(valid({ workDate: '2026-10-04' }), workers).workDate).toBe('2026-10-04')
+  })
+
   it('accepts a note of exactly the limit', () => {
     const note = 'x'.repeat(WORK_SHIFT_NOTE_MAX)
     expect(workShiftFieldsFromForm(valid({ note }), workers).note).toBe(note)

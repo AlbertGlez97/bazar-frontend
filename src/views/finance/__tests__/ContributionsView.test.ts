@@ -51,14 +51,15 @@ const mountView = () =>
     },
   })
 describe('contribution management', () => {
-  it('offers the Aportaciones | Gastos tab navigation with Aportaciones active', async () => {
+  it('offers the Aportaciones | Gastos | Jornadas tab navigation with Aportaciones active', async () => {
     const w = mountView()
     await flushPromises()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Aportaciones', 'Gastos'])
+    expect(tabs.map((t) => t.text())).toEqual(['Aportaciones', 'Gastos', 'Jornadas'])
     expect(tabs.map((t) => t.props('to'))).toEqual([
       '/app/finanzas',
       '/app/finanzas/gastos',
+      '/app/finanzas/jornadas',
     ])
     expect(tabs[0]!.attributes('aria-current')).toBe('page')
     expect(tabs[1]!.attributes('aria-current')).toBeUndefined()

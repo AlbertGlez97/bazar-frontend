@@ -2,6 +2,7 @@
 import { createAppRouter } from '@/router'
 import { createMemoryHistory } from 'vue-router'
 import { getNavItems } from '@/layouts/nav-items'
+import { FINANCE_TABS } from '../finance-tabs'
 describe('finance route and navigation authority', () => {
   it('inherits auth/context and explicitly requires socio and gestion', () => {
     const route = createAppRouter(createMemoryHistory()).resolve(
@@ -51,7 +52,34 @@ describe('finance route and navigation authority', () => {
       .matched.at(-1)!
     expect(typeof record.components?.default).toBe('function')
   })
-  it('keeps the single Finanzas menu item active on both tabs', () => {
+  it('serves Jornadas at /app/finanzas/jornadas with the same socio and gestion guard', () => {
+    const router = createAppRouter(createMemoryHistory())
+    const route = router.resolve('/app/finanzas/jornadas')
+    expect(route.name).toBe('WorkShifts')
+    expect(route.meta).toMatchObject({
+      requiresAuth: true,
+      requiresContext: true,
+      requiresSocio: true,
+      requiresGestion: true,
+    })
+    // The sibling tabs keep their own addresses.
+    expect(router.resolve('/app/finanzas').name).toBe('Contributions')
+    expect(router.resolve('/app/finanzas/gastos').name).toBe('Expenses')
+  })
+  it('loads the work shifts view lazily', () => {
+    const record = createAppRouter(createMemoryHistory())
+      .resolve('/app/finanzas/jornadas')
+      .matched.at(-1)!
+    expect(typeof record.components?.default).toBe('function')
+  })
+  it('lists Jornadas as the third Finanzas tab', () => {
+    expect(FINANCE_TABS.map((t) => [t.to, t.label])).toEqual([
+      ['/app/finanzas', 'Aportaciones'],
+      ['/app/finanzas/gastos', 'Gastos'],
+      ['/app/finanzas/jornadas', 'Jornadas'],
+    ])
+  })
+  it('keeps the single Finanzas menu item active on every tab', () => {
     const items = getNavItems('gestion', { isSocio: true }).filter((r) =>
       r.to.startsWith('/app/finanzas'),
     )
