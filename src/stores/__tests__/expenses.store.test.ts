@@ -180,6 +180,22 @@ describe('durable expense store', () => {
     expect(store.summary).toMatchObject({ ...range, value: counted })
   })
 
+  it('re-reads the summary after a sync even when the earlier refresh failed', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    const counted = { operatingMinor: 12300, inventoryMinor: 0, personalMinor: 0, businessMinor: 12300 }
+    const range = { from: 'a', to: 'b' }
+    mocks.snapshot.mockResolvedValue({ pending: [], history: [], references: undefined })
+    mocks.summary
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(counted)
+    const store = useExpensesStore()
+    await store.load()
+    await store.refreshSummary(range)
+    expect(store.summary).toBeNull() // the failed refresh dropped the server totals
+    await store.sync()
+    expect(store.summary).toMatchObject({ ...range, value: counted })
+  })
+
   it('does not fetch a summary after a sync when none was being shown', async () => {
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
     mocks.snapshot.mockResolvedValue({ pending: [], history: [], references: undefined })

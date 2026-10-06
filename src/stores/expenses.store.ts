@@ -44,7 +44,9 @@ export const useExpensesStore = defineStore('expenses', () => {
     summary = ref<{ from: string; to: string; value: ExpenseSummary } | null>(null)
   let timer: ReturnType<typeof setTimeout> | undefined,
     started = false,
-    activeScope: string | null = null
+    activeScope: string | null = null,
+    // Period last asked for, kept even if its fetch failed, so a later sync can retry it.
+    summaryRange: { from: string; to: string } | null = null
 
   function origin(): FinanceOrigin | null {
     if (session.member?.role !== 'socio') return null
@@ -63,6 +65,7 @@ export const useExpensesStore = defineStore('expenses', () => {
     pending.value = []
     references.value = null
     summary.value = null
+    summaryRange = null
     lastFetchedAt.value = null
     nextCursor.value = null
     activeScope = null
@@ -117,6 +120,7 @@ export const useExpensesStore = defineStore('expenses', () => {
   }
   /** Online summary for a period; `null` result means "use the local figures". */
   async function refreshSummary(range: { from: string; to: string }) {
+    summaryRange = range
     const o = origin()
     if (!o || !navigator.onLine) {
       summary.value = null
@@ -195,9 +199,8 @@ export const useExpensesStore = defineStore('expenses', () => {
       })
       await load()
       error.value = ''
-      // Confirmed expenses change the server totals, so re-read the ones on screen.
-      const shown = summary.value
-      if (shown) await refreshSummary({ from: shown.from, to: shown.to })
+      // Confirmed expenses change the server totals, so re-read the period on screen.
+      if (summaryRange) await refreshSummary(summaryRange)
     } catch {
       error.value =
         'No se pudo acceder a los registros locales. No cierres ni borres los datos del navegador.'
