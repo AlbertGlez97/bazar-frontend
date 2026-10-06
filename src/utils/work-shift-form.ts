@@ -29,15 +29,11 @@ export function emptyWorkShiftForm(day: string): WorkShiftFormState {
 export function workShiftFieldsFromForm(
   form: WorkShiftFormState,
   workers: readonly { id: string }[],
-  /** Business day (UTC-6); when given, a future date is refused so the shift stays visible in the list. */
-  today?: string,
 ): WorkShiftFields {
   if (!workers.some((m) => m.id === form.memberId))
     throw new WorkShiftFormError('Elige quién trabajó.')
   if (!isValidDateKey(form.workDate))
     throw new WorkShiftFormError('Elige una fecha válida.')
-  if (today && form.workDate > today)
-    throw new WorkShiftFormError('La fecha de la jornada no puede ser futura.')
   const minutes = minutesFromDuration(form.hours, form.minutes)
   const note = form.note.trim()
   if (note.length > WORK_SHIFT_NOTE_MAX)

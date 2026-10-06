@@ -19,7 +19,7 @@ The Expenses rules apply unchanged:
 
 ## Data rules
 
-- `workDate` is a calendar date `YYYY-MM-DD` with no time zone. It is never converted from or to an instant; list and summary use `from` inclusive and `to` exclusive (`to` = the day after the last day shown). The form refuses a future date (UI guard only; the API does not).
+- `workDate` is a calendar date `YYYY-MM-DD` with no time zone. It is never converted from or to an instant; list and summary use `from` inclusive and `to` exclusive (`to` = the day after the last day shown). The form accepts any valid calendar date, including a future one (the API imposes no such rule).
 - `minutes` is a positive integer or `null` (unknown). Hours and Minutes are two whole-number inputs; both empty means unknown (`null`, never 0). Minutes are `hours * 60 + minutes` with integers only; the minutes field is 0 to 59, the total is at least 1 and at most 2147483647. Decimals, negatives and non-numeric text are rejected.
 - `note` is optional, trimmed, at most 1000 characters; empty is `null`.
 - The `MULTIPLE_SHIFTS_SAME_DAY` warning is shown only when it comes from the stored creation receipt. List items never carry it, so merging a list never drops or recomputes it.

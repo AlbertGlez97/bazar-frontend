@@ -207,6 +207,17 @@ describe('work shifts screen: create', () => {
     })
   })
 
+  it('accepts tomorrow and sends it as-is, with no max on the date input', async () => {
+    const w = mountView()
+    await flushPromises()
+    await w.find('#work-shift-member').setValue('beto')
+    const tomorrow = addDaysToKey(today, 1)
+    await w.find('#work-shift-date').setValue(tomorrow)
+    await submit(w)
+    expect(w.find('#work-shift-date').attributes('max')).toBeUndefined()
+    expect(mocks.store.create).toHaveBeenCalledWith(expect.objectContaining({ workDate: tomorrow }))
+  })
+
   it('submits only minutes, converting them with no hours', async () => {
     const w = mountView()
     await flushPromises()
@@ -223,7 +234,6 @@ describe('work shifts screen: create', () => {
     ['negative minutes', { '#work-shift-duration-minutes': '-5' }, 'entero'],
     ['minutes above 59', { '#work-shift-duration-minutes': '75' }, '0 a 59'],
     ['a zero duration', { '#work-shift-duration-hours': '0', '#work-shift-duration-minutes': '0' }, 'al menos 1 minuto'],
-    ['a future date', { '#work-shift-date': addDaysToKey(today, 3) }, 'futura'],
   ])('does not save %s and says what is wrong', async (_name, change, text) => {
     const w = mountView()
     await flushPromises()

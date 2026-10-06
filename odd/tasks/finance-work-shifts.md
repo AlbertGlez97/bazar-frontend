@@ -30,6 +30,7 @@ No backend changes, no push, no merge, no deploy, no distribution/payment calcul
 - [x] WS-F4 View (list, filters, summary, statuses), route, Finance tab + tests (801036d)
 - [x] WS-F5 Help articles + evidence + tests; regression Contributions/Expenses (84d1e72)
 - [ ] WS-F6 Corrections (BLOCKED until backend reversal contract exists)
+- [ ] WS-F7 Real browser validation + future-date guard removal
 
 ## Route
 

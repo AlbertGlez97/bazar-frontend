@@ -57,7 +57,6 @@
           v-model="form.workDate"
           label="Fecha"
           type="date"
-          :max="today"
           :disabled="saving"
           required
         />
@@ -461,7 +460,7 @@ async function submitCreate() {
   saving.value = true
   try {
     await finance.create(
-      workShiftFieldsFromForm(form.value, finance.workers, today.value),
+      workShiftFieldsFromForm(form.value, finance.workers),
     )
     // Keep the date for the next entry: several people are usually registered for one day.
     form.value = emptyWorkShiftForm(form.value.workDate)
