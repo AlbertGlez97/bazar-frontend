@@ -74,4 +74,32 @@ describe('audited help content', () => {
     expect([fix.intro, ...fix.steps, ...fix.tips].join(' ')).toMatch(/Anular[\s\S]*Corregir/)
     expect(fix.tips.join(' ')).toContain('no mueve dinero ni inventario')
   })
+
+  it('explains work shifts in plain language without money, and states that correcting is not available', () => {
+    const guide = HELP_ARTICLES.find((article) => article.id === 'jornadas')!
+    const faq = HELP_ARTICLES.find((article) => article.id === 'jornadas-preguntas')!
+    for (const article of [guide, faq]) {
+      expect(article.category).toBe('Finanzas')
+      expect(article.audience).toBe('socio')
+    }
+    const steps = guide.steps.join(' ')
+    for (const label of ['Jornadas', 'Quién trabajó', 'Fecha', 'Horas', 'Minutos', 'Nota', 'Registrar jornada'])
+      expect(steps).toContain(label)
+    expect(steps).toContain('deja los dos campos vacíos')
+    expect(guide.intro).toContain('no es una venta ni un pago')
+    expect(guide.tips.join(' ')).toContain('todavía no está disponible')
+    const answers = Object.fromEntries((faq.questions ?? []).map((q) => [q.question, q.answer]))
+    expect(Object.keys(answers)).toEqual(expect.arrayContaining([
+      '¿Por qué puedo registrar una jornada sin horas?',
+      '¿Una jornada es lo mismo que una venta?',
+      '¿Registrar una jornada genera un pago?',
+    ]))
+    expect(answers['¿Por qué puedo registrar una jornada sin horas?']).toContain('Duración no registrada')
+    expect(answers['¿Por qué puedo registrar una jornada sin horas?']).toContain('no se guarda como cero horas')
+    expect(answers['¿Registrar una jornada genera un pago?']).toMatch(/^No\./)
+    expect(answers['¿Puedo corregir o anular una jornada?']).toMatch(/^Todavía no/)
+    // Not a payment feature: no amounts, percentages or distribution wording as capabilities.
+    const text = JSON.stringify([guide, faq])
+    expect(text).not.toMatch(/\$\d|%|comisi[oó]n|reparto|sueldo|salario|lo que te toca/i)
+  })
 })
