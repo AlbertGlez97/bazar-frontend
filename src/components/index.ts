@@ -70,6 +70,7 @@ export { default as ProductSelectionBar } from './ui/molecules/ProductSelectionB
 export { default as CartLineItem        } from './ui/molecules/CartLineItem.vue'
 export { default as CartSummary         } from './ui/molecules/CartSummary.vue'
 export { default as CashInput          } from './ui/molecules/CashInput.vue'
+export { default as DurationInput      } from './ui/molecules/DurationInput.vue'
 export { default as CategoryQuickFilter } from './ui/molecules/CategoryQuickFilter.vue'
 export { default as TabNav } from './ui/molecules/TabNav.vue'
 export { default as ReportRangePicker } from './ui/molecules/ReportRangePicker.vue'

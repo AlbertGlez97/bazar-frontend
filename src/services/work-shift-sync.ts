@@ -4,7 +4,6 @@ import {
   classifyFinanceFailure,
   isInstant,
   isUuid,
-  MAX_MONEY_MINOR,
 } from './finance-shared'
 import {
   confirmWorkShift,
@@ -12,6 +11,8 @@ import {
   workShiftSnapshot,
 } from './work-shift-db'
 import { isValidDateKey } from '@/utils/business-time'
+import { MAX_WORK_SHIFT_MINUTES } from '@/utils/work-shift-duration'
+import { WORK_SHIFT_NOTE_MAX } from '@/utils/work-shift-form'
 import type { FinanceSyncOptions } from './contributions-sync'
 import type { FinanceOrigin } from './contributions-records'
 import type { PendingWorkShift } from './work-shift-records'
@@ -23,9 +24,6 @@ import type {
   WorkShiftSummary,
 } from '@/types/work-shift.types'
 
-/** PostgreSQL INTEGER bound accepted by the API for `minutes`. */
-export const MAX_WORK_SHIFT_MINUTES = MAX_MONEY_MINOR
-export const WORK_SHIFT_NOTE_MAX = 1000
 
 const isCount = (v: unknown): v is number =>
   typeof v === 'number' && Number.isSafeInteger(v) && v >= 0
