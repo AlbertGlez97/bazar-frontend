@@ -22,11 +22,11 @@ const OLD_STORES = [
   'finance-references',
 ]
 
-describe('IndexedDB upgrade v2 -> v3 (expenses)', () => {
+describe('IndexedDB upgrade v2 -> current (expenses)', () => {
   it('creates the expense stores on a fresh database', async () => {
     const db = await openLocalDb()
-    expect(DB_VERSION).toBe(3)
-    expect(db.version).toBe(3)
+    expect(DB_VERSION).toBe(4)
+    expect(db.version).toBe(DB_VERSION)
     expect([...db.objectStoreNames]).toEqual(
       expect.arrayContaining([...OLD_STORES, 'pending-expenses', 'expense-history']),
     )
@@ -55,9 +55,15 @@ describe('IndexedDB upgrade v2 -> v3 (expenses)', () => {
     old.close()
 
     const db = await openLocalDb()
-    expect(db.version).toBe(3)
+    expect(db.version).toBe(DB_VERSION)
     expect([...db.objectStoreNames].sort()).toEqual(
-      [...OLD_STORES, 'pending-expenses', 'expense-history'].sort(),
+      [
+        ...OLD_STORES,
+        'pending-expenses',
+        'expense-history',
+        'pending-work-shifts',
+        'work-shift-history',
+      ].sort(),
     )
     for (const [store, row] of Object.entries(rows))
       expect(await db.getAll(store as 'pending-sales')).toEqual([row])
@@ -84,7 +90,7 @@ describe('IndexedDB upgrade v2 -> v3 (expenses)', () => {
     await db.put('pending-expenses', { key: 'x', id: 'x' } as never)
     closeLocalDb()
     const again = await openLocalDb()
-    expect(again.version).toBe(3)
+    expect(again.version).toBe(DB_VERSION)
     expect(await again.get('pending-expenses', 'x')).toEqual({ key: 'x', id: 'x' })
   })
 })

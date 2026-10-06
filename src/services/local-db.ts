@@ -1,5 +1,5 @@
 /**
- * Base de datos local (IndexedDB) de La Marchanta: `la-marchanta` v3.
+ * Base de datos local (IndexedDB) de La Marchanta: `la-marchanta` v4.
  *
  * - `pending-sales`   (keyPath `id`): la cola de ventas offline (ver sales-queue.ts).
  * - `catalog-snapshot` (clave fija `current`): la última copia del catálogo activo,
@@ -15,6 +15,7 @@
 import { openDB } from 'idb'
 import type { PendingContribution, ContributionHistory, FinanceReferences } from './contributions-records'
 import type { PendingExpense, ExpenseHistory } from './expense-records'
+import type { PendingWorkShift, WorkShiftHistory } from './work-shift-records'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import type { CreateSalePayload } from '@/types/sale.types'
 import type { CreateDeudaPayload } from '@/types/deuda.types'
@@ -22,7 +23,7 @@ import type { QueueOrigin } from './queue-origin'
 import type { Product } from '@/types/product.types'
 
 export const DB_NAME = 'la-marchanta'
-export const DB_VERSION = 3
+export const DB_VERSION = 4
 export const PENDING_SALES_STORE = 'pending-sales'
 export const CATALOG_SNAPSHOT_STORE = 'catalog-snapshot'
 const SNAPSHOT_KEY = 'current'
@@ -76,6 +77,8 @@ interface LaMarchantaDB extends DBSchema {
   'finance-references': { key: string; value: FinanceReferences }
   'pending-expenses': { key: string; value: PendingExpense }
   'expense-history': { key: string; value: ExpenseHistory }
+  'pending-work-shifts': { key: string; value: PendingWorkShift }
+  'work-shift-history': { key: string; value: WorkShiftHistory }
   'pending-sales': { key: string; value: PendingOperation }
   'catalog-snapshot': { key: string; value: CatalogSnapshotRecord }
 }
@@ -106,8 +109,8 @@ export function openLocalDb(): Promise<LocalDb> {
     try {
       const db = await openDB<LaMarchantaDB>(DB_NAME, DB_VERSION, {
         upgrade(database) {
-          // Idempotent (contains-checks): every upgrade path (v0/v1/v2 -> v3) keeps existing stores and data.
-          for (const store of ['pending-contributions', 'contribution-history', 'pending-expenses', 'expense-history'] as const) {
+          // Idempotent (contains-checks): every upgrade path (v0/v1/v2/v3 -> v4) keeps existing stores and data.
+          for (const store of ['pending-contributions', 'contribution-history', 'pending-expenses', 'expense-history', 'pending-work-shifts', 'work-shift-history'] as const) {
             if (!database.objectStoreNames.contains(store)) database.createObjectStore(store, { keyPath: 'key' })
           }
           if (!database.objectStoreNames.contains('finance-references')) database.createObjectStore('finance-references', { keyPath: 'scope' })

@@ -2,7 +2,7 @@
 import { IDBFactory } from 'fake-indexeddb'
 import { openDB } from 'idb'
 import { beforeEach, afterEach, describe, it, expect } from 'vitest'
-import { DB_NAME, closeLocalDb, openLocalDb } from '../local-db'
+import { DB_NAME, DB_VERSION, closeLocalDb, openLocalDb } from '../local-db'
 const real = globalThis.indexedDB
 beforeEach(() => {
   closeLocalDb()
@@ -15,7 +15,7 @@ afterEach(() => {
 describe('finance database upgrade', () => {
   it('adds separate finance stores', async () => {
     const db = await openLocalDb()
-    expect(db.version).toBe(3)
+    expect(db.version).toBe(DB_VERSION)
     expect([...db.objectStoreNames]).toContain('pending-contributions')
     expect([...db.objectStoreNames]).toContain('contribution-history')
     expect([...db.objectStoreNames]).toContain('finance-references')
@@ -43,7 +43,7 @@ describe('finance database upgrade', () => {
     await old.put('catalog-snapshot', { key: 'current', items: [{ id: 'p' }] })
     old.close()
     const db = await openLocalDb()
-    expect(db.version).toBe(3)
+    expect(db.version).toBe(DB_VERSION)
     expect(await db.getAll('pending-sales')).toEqual([cash, debt])
     expect(await db.get('catalog-snapshot', 'current')).toEqual({
       key: 'current',
