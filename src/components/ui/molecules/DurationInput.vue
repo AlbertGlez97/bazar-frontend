@@ -18,6 +18,7 @@
         inputmode="numeric"
         autocomplete="off"
         placeholder="0"
+        :aria-describedby="`${idPrefix}-hint`"
         :disabled="disabled"
         @update:model-value="emit('update:hours', String($event))"
       />
@@ -29,11 +30,15 @@
         inputmode="numeric"
         autocomplete="off"
         placeholder="0"
+        :aria-describedby="`${idPrefix}-hint`"
         :disabled="disabled"
         @update:model-value="emit('update:minutes', String($event))"
       />
     </div>
-    <p class="duration-input__hint">
+    <p
+      :id="`${idPrefix}-hint`"
+      class="duration-input__hint"
+    >
       Déjalos vacíos si no sabes cuánto duró.
     </p>
   </fieldset>

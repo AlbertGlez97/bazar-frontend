@@ -25,6 +25,13 @@ describe('DurationInput', () => {
     expect(w.find('label[for="shift-hours"]').text()).toBe('Horas')
   })
 
+  it('links both fields to the hint so a screen reader announces it', () => {
+    const w = mountInput({ idPrefix: 'shift' })
+    expect(w.find('#shift-hint').text()).toContain('vacíos si no sabes')
+    expect(w.find('#shift-hours').attributes('aria-describedby')).toContain('shift-hint')
+    expect(w.find('#shift-minutes').attributes('aria-describedby')).toContain('shift-hint')
+  })
+
   it('emits each field separately and never converts or validates', async () => {
     const w = mountInput()
     await w.find('#duration-hours').setValue('8')
