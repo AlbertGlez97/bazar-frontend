@@ -24,7 +24,7 @@ function wholeNumber(text: string, label: string): number | null {
   // Rejects decimals, signs, exponents, separators and any non-digit text.
   if (!DIGITS.test(value))
     throw new WorkShiftFormError(
-      `${label} debe ser un número entero, sin decimales ni signos.`,
+      `${label} deben ser números enteros, sin decimales ni signos.`,
     )
   // Too many digits cannot fit the limit; avoids unsafe integers.
   if (value.length > 10)

@@ -67,6 +67,8 @@ describe('minutesFromDuration', () => {
   })
 
   it('names the offending field in the message', () => {
+    expect(() => minutesFromDuration('x', '')).toThrow('Las horas deben ser números enteros')
+    expect(() => minutesFromDuration('', '-5')).toThrow('Los minutos deben ser números enteros')
     expect(() => minutesFromDuration('x', '')).toThrow('horas')
     expect(() => minutesFromDuration('', 'x')).toThrow('minutos')
   })
