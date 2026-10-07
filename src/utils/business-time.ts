@@ -98,11 +98,23 @@ export function isValidRange(from: string, to: string): boolean {
  * El servidor responde 200 con ceros a un rango invertido, así que la UI debe
  * impedirlo. Una fecha final futura tampoco tiene ventas que mostrar.
  */
-export function validateRange(from: string, to: string, today: string): RangeProblem | null {
+export function validateRange(
+  from: string,
+  to: string,
+  today: string,
+  options: { allowFuture?: boolean } = {},
+): RangeProblem | null {
   if (!isValidDateKey(from) || !isValidDateKey(to)) return 'incomplete'
   if (from > to) return 'inverted'
-  if (to > today) return 'future'
+  // Planning screens (reserves, overview) may look at a period that has not ended yet.
+  if (to > today && !options.allowFuture) return 'future'
   return null
+}
+
+/** Último día del mes de una clave `YYYY-MM-DD` válida. */
+export function endOfMonthKey(key: string): string {
+  const day = dateOfKey(key)
+  return keyOf(new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth() + 1, 0)))
 }
 
 /** `dd/mm/yyyy` de una clave `YYYY-MM-DD`. */

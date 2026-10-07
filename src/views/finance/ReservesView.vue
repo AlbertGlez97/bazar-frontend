@@ -25,7 +25,6 @@
         :from="range.from"
         :to="range.to"
         :preset="preset"
-        :max="today"
         :error="rangeError"
         :disabled="finance.loading || finance.saving"
         @select-preset="selectPreset"
@@ -96,6 +95,7 @@
           <div
             class="reserves-period"
             data-test="form-period"
+            :aria-describedby="showPeriodHint ? PERIOD_HINT_ID : undefined"
           >
             <p class="reserves-period__label">
               Período de la reserva
@@ -105,6 +105,16 @@
             </p>
             <p class="reserves-muted">
               Se toma del período elegido arriba.
+            </p>
+            <p
+              v-if="showPeriodHint"
+              :id="PERIOD_HINT_ID"
+              class="reserves-muted"
+              role="status"
+              data-test="period-hint"
+            >
+              Esta reserva solo cuenta cuando consultas exactamente este período.
+              Si quieres reservar para todo el mes, elige un fin de mes en el selector.
             </p>
             <p
               v-if="periodPending"
@@ -317,6 +327,7 @@ import { useSessionStore } from '@/stores/session.store'
 import { useFinanceReservesStore } from '@/stores/finance-reserves.store'
 import {
   businessToday,
+  endOfMonthKey,
   isValidDateKey,
   presetRange,
   validateRange,
@@ -347,6 +358,8 @@ const allowed = computed(
 )
 
 const today = ref(businessToday())
+/** The period end may be in the future (e.g. a full month) so reserves can match it. */
+const FUTURE_END_OK = { allowFuture: true } as const
 
 /** The overview can link here with the period it was showing (`?from=&to=`). */
 function linkedRange(): ReservePeriod | null {
@@ -354,21 +367,19 @@ function linkedRange(): ReservePeriod | null {
   const to = route?.query?.to
   if (typeof from !== 'string' || typeof to !== 'string') return null
   if (!isValidDateKey(from) || !isValidDateKey(to)) return null
-  return validateRange(from, to, today.value) ? null : { from, to }
+  return validateRange(from, to, today.value, FUTURE_END_OK) ? null : { from, to }
 }
 const linked = linkedRange()
 const initial = linked ?? presetRange('mes')
 const range = reactive({ from: initial.from, to: initial.to })
 const preset = ref<RangePreset | null>(linked ? null : 'mes')
 const rangeError = computed(() => {
-  const problem = validateRange(range.from, range.to, today.value)
+  const problem = validateRange(range.from, range.to, today.value, FUTURE_END_OK)
   return problem === 'incomplete'
     ? 'Escribe las dos fechas para consultar las reservas.'
     : problem === 'inverted'
       ? 'La fecha inicial es posterior a la final. Cámbialas para consultar.'
-      : problem === 'future'
-        ? 'La fecha final no puede ser de mañana en adelante. Elige hasta hoy.'
-        : undefined
+      : undefined
 })
 
 /** Period the list shows and new reserves are created for (changes only when applied). */
@@ -377,6 +388,18 @@ const appliedText = computed(() => (applied.value ? formatPickedPeriod(applied.v
 const periodPending = computed(
   () => !!applied.value && (applied.value.from !== range.from || applied.value.to !== range.to),
 )
+
+const PERIOD_HINT_ID = 'reserve-period-hint'
+/**
+ * Calm hint when the applied period is open-ended (ends today or before its
+ * month's last day), because tomorrow's "Este mes" will no longer match it.
+ * A closed full month needs no hint. It never blocks saving.
+ */
+const showPeriodHint = computed(() => {
+  const to = applied.value?.to
+  if (!to) return false
+  return to === today.value || to < endOfMonthKey(to)
+})
 
 const scope = ref<'period' | 'all'>('period')
 const status = ref<ReserveStatus>('active')

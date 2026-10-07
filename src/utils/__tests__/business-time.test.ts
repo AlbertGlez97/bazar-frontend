@@ -10,6 +10,7 @@ import {
   isValidDateKey,
   isValidRange,
   presetRange,
+  endOfMonthKey,
   validateRange,
 } from '../business-time'
 
@@ -134,6 +135,25 @@ describe('isValidDateKey / isValidRange / validateRange', () => {
     expect(validateRange('', '2026-09-24', '2026-09-24')).toBe('incomplete')
     expect(validateRange('2026-09-25', '2026-09-24', '2026-09-24')).toBe('inverted')
     expect(validateRange('2026-09-01', '2026-09-25', '2026-09-24')).toBe('future')
+  })
+
+  it('allowFuture accepts a future end but still rejects incomplete and inverted ranges', () => {
+    const open = { allowFuture: true }
+    expect(validateRange('2026-09-01', '2026-09-30', '2026-09-24', open)).toBeNull()
+    expect(validateRange('2026-12-01', '2026-12-31', '2026-09-24', open)).toBeNull()
+    expect(validateRange('', '2026-09-30', '2026-09-24', open)).toBe('incomplete')
+    expect(validateRange('2026-09-30', '2026-09-01', '2026-09-24', open)).toBe('inverted')
+    // The default is unchanged for every other caller.
+    expect(validateRange('2026-09-01', '2026-09-30', '2026-09-24', {})).toBe('future')
+    expect(validateRange('2026-09-01', '2026-09-30', '2026-09-24', { allowFuture: false })).toBe('future')
+  })
+
+  it('endOfMonthKey gives the last day of the month, leap years and year end included', () => {
+    expect(endOfMonthKey('2026-10-07')).toBe('2026-10-31')
+    expect(endOfMonthKey('2026-09-30')).toBe('2026-09-30')
+    expect(endOfMonthKey('2028-02-10')).toBe('2028-02-29')
+    expect(endOfMonthKey('2027-02-01')).toBe('2027-02-28')
+    expect(endOfMonthKey('2026-12-15')).toBe('2026-12-31')
   })
 })
 

@@ -97,10 +97,16 @@ describe('reserves screen: access, tabs and request', () => {
     expect(q(w, 'form-period').text()).toContain('al')
   })
 
-  it('ignores a malformed or future linked period', async () => {
+  it('ignores a malformed linked period', async () => {
     mocks.route.query = { from: 'x', to: tomorrow }
     await mounted()
     expect(mocks.list.mock.calls[0]![1]).toMatchObject({ from: monthStart, to: tomorrow })
+  })
+
+  it('accepts a linked period that ends in the future', async () => {
+    mocks.route.query = { from: '2099-12-01', to: '2099-12-31' }
+    await mounted()
+    expect(mocks.list.mock.calls[0]![1]).toMatchObject({ from: '2099-12-01', to: '2100-01-01' })
   })
 
   it('does not render nor load for a collaborator or in sales mode', async () => {
@@ -384,6 +390,68 @@ describe('reserves screen: cancel', () => {
     expect(q(w, 'cancel-panel').exists()).toBe(false)
     expect(document.activeElement).toBe(q(w, 'cancel-open').element)
     w.unmount()
+  })
+})
+
+describe('reserves screen: period hint and future period end', () => {
+  async function apply(w: Wrapper, from: string, to: string) {
+    const inputs = w.findAll('input[type="date"]')
+    await inputs[0]!.setValue(from)
+    await inputs[1]!.setValue(to)
+    await w.find('form.report-range-picker').trigger('submit')
+    await flushPromises()
+  }
+
+  it('shows a calm hint for the month-to-date default, linked to the period text', async () => {
+    const w = await mounted()
+    const hint = q(w, 'period-hint')
+    expect(hint.exists()).toBe(true)
+    expect(hint.text()).toContain('solo cuenta cuando consultas exactamente este período')
+    expect(hint.attributes('role')).toBe('status')
+    expect(hint.attributes('id')).toBeTruthy()
+    expect(q(w, 'form-period').attributes('aria-describedby')).toBe(hint.attributes('id'))
+  })
+
+  it('hides the hint for a closed full-month period (even a past one) and shows it again for a partial one', async () => {
+    const w = await mounted()
+    await apply(w, '2026-09-01', '2026-09-30')
+    expect(q(w, 'period-hint').exists()).toBe(false)
+    expect(q(w, 'form-period').attributes('aria-describedby')).toBeUndefined()
+    await apply(w, '2026-09-01', '2026-09-15')
+    expect(q(w, 'period-hint').exists()).toBe(true)
+  })
+
+  it('accepts a future month end and sends the exclusive end across a month boundary', async () => {
+    const w = await mounted()
+    mocks.list.mockClear()
+    await apply(w, '2099-04-01', '2099-04-30')
+    expect(w.find('.report-range-picker__error').exists()).toBe(false)
+    expect(mocks.list).toHaveBeenCalledTimes(1)
+    expect(mocks.list.mock.calls[0]![1]).toMatchObject({ from: '2099-04-01', to: '2099-05-01' })
+    expect(q(w, 'period-hint').exists()).toBe(false)
+  })
+
+  it('creates a reserve for a future full month with the exclusive end across a year boundary', async () => {
+    mocks.create.mockResolvedValue(reserveReceiptFixture())
+    const w = await mounted()
+    await apply(w, '2099-12-01', '2099-12-31')
+    await fillForm(w, 'Aguinaldo', '1000')
+    await q(w, 'create-form').trigger('submit')
+    await flushPromises()
+    expect(mocks.create.mock.calls[0]![1]).toMatchObject({ periodFrom: '2099-12-01', periodTo: '2100-01-01' })
+  })
+
+  it('still rejects an inverted range', async () => {
+    const w = await mounted()
+    mocks.list.mockClear()
+    await apply(w, '2099-12-31', '2099-12-01')
+    expect(mocks.list).not.toHaveBeenCalled()
+    expect(w.text()).toContain('La fecha inicial es posterior a la final')
+  })
+
+  it('does not cap the date inputs at today', async () => {
+    const w = await mounted()
+    for (const input of w.findAll('input[type="date"]')) expect(input.attributes('max')).toBeUndefined()
   })
 })
 

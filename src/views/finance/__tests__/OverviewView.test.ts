@@ -437,6 +437,22 @@ describe('overview screen: period changes', () => {
     expect(mocks.summary.mock.calls[0]![1]).toEqual({ from: today, to: tomorrow })
   })
 
+  it('accepts a future month end and requests it with the exclusive end across a year boundary', async () => {
+    const w = await mounted()
+    mocks.get.mockClear()
+    mocks.summary.mockClear()
+    const inputs = w.findAll('input[type="date"]')
+    for (const input of inputs) expect(input.attributes('max')).toBeUndefined()
+    await inputs[0]!.setValue('2099-12-01')
+    await inputs[1]!.setValue('2099-12-31')
+    await w.find('form').trigger('submit')
+    await flushPromises()
+    expect(w.find('.report-range-picker__error').exists()).toBe(false)
+    expect(mocks.get).toHaveBeenCalledTimes(1)
+    expect(mocks.get).toHaveBeenCalledWith('2099-12-01', '2100-01-01')
+    expect(mocks.summary.mock.calls[0]![1]).toEqual({ from: '2099-12-01', to: '2100-01-01' })
+  })
+
   it('does not query an invalid range', async () => {
     const w = await mounted()
     mocks.get.mockClear()

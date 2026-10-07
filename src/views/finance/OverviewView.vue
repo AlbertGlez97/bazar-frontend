@@ -24,7 +24,6 @@
         :from="range.from"
         :to="range.to"
         :preset="preset"
-        :max="today"
         :error="rangeError"
         :disabled="finance.loading"
         @select-preset="selectPreset"
@@ -371,18 +370,18 @@ const allowed = computed(
 )
 
 const today = ref(businessToday())
+/** The period end may be in the future (e.g. a full month) so reserves can match it. */
+const FUTURE_END_OK = { allowFuture: true } as const
 const initial = presetRange('mes')
 const range = reactive({ from: initial.from, to: initial.to })
 const preset = ref<RangePreset | null>('mes')
 const rangeError = computed(() => {
-  const problem = validateRange(range.from, range.to, today.value)
+  const problem = validateRange(range.from, range.to, today.value, FUTURE_END_OK)
   return problem === 'incomplete'
     ? 'Escribe las dos fechas para consultar el resumen.'
     : problem === 'inverted'
       ? 'La fecha inicial es posterior a la final. Cámbialas para consultar.'
-      : problem === 'future'
-        ? 'La fecha final no puede ser de mañana en adelante. Elige hasta hoy.'
-        : undefined
+      : undefined
 })
 
 const data = computed(() => finance.overview)
