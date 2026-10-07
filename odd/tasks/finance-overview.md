@@ -21,8 +21,8 @@ Add a "Resumen" tab to Finanzas: an online, read-only overview of recorded opera
 
 ## Tasks
 
-- [ ] FO-F1 Types + service + util (coverage text, exclusive-to, labelling) + tests
-- [ ] FO-F2 Pinia store (stale-response guard, last confirmed data, per-partner summary) + tests
+- [x] FO-F1 Types + service + util (coverage text, exclusive-to, labelling) + tests (667b239)
+- [x] FO-F2 Pinia store (stale-response guard, last confirmed data, per-partner summary) + tests (see commit log: feat(finance): add overview store)
 - [ ] FO-F3 View + Resumen tab (first) + lazy route + tests
 - [ ] FO-F4 Help articles + tests
 - [ ] FO-F5 Verification (full vitest, lint, build)
@@ -35,3 +35,5 @@ Per task: delegated direct (single bounded writer; trigger: 2+ non-trivial files
 ## Progress / evidence
 
 Branch `feat/finance-overview-reserves` created from `feat/finance-work-shifts` @ 6e05a0a (clean tree). Backend contract re-read; it matches the brief (no diff).
+FO-F1 observed: service/util tests 22 passed, eslint clean, vue-tsc -b clean. Auth + member/device headers come from the shared axios interceptor, so the overview service needs no explicit origin. Fixture shared at `src/services/__tests__/finance-overview.fixture.ts` (sibling convention).
+FO-F2 observed: store tests 8 passed (stale-response guard for success and failure, last-confirmed data kept on error, partner degradation, reset).
