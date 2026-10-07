@@ -1,0 +1,37 @@
+# Finance overview (Resumen) — frontend, Phase 4
+
+## Objective
+
+Add a "Resumen" tab to Finanzas: an online, read-only overview of recorded operating inputs for a period (`GET /api/v1/finance/overview`). It is NOT a cash balance, withdrawable profit or distribution.
+
+## Scope
+
+- In: types, service, pure util, Pinia store, `OverviewView` at `/app/finanzas/resumen`, first Finanzas tab, help articles, tests.
+- Per-partner work (jornadas + hours, no money) reuses `GET /finance/work-shifts/summary` for the SAME period; if it fails the view shows overview totals only.
+- Reserves: shown only as the overview returns them (`reserves.activeCount/plannedMinor`, warning `RESERVES_PENDING`) with a calm "aún no configurables" note.
+- Out: reserves CRUD (the backend has NO reserves endpoints; no contract is invented), sharing/percentages/hourly value/capital recovery/advice, offline storage (online-only, no IndexedDB/outbox).
+
+## Constraints
+
+- Source of truth: `bazar-api/doc/finance-overview-reserves.md`, `src/finance/finance-overview.*.ts`. Query `[from,to)` with `to` exclusive: the picker's inclusive end is sent as `addDaysToKey(to, 1)`.
+- Money is integer MXN cents and may be negative. Never use the words "Ganancia para repartir".
+- Existing routes (`/app/finanzas`, `/gastos`, `/jornadas`) unchanged.
+- No push, merge or deploy. Conventional Commits only.
+- Advisory heuristic: ~400 authored changed lines per task.
+
+## Tasks
+
+- [ ] FO-F1 Types + service + util (coverage text, exclusive-to, labelling) + tests
+- [ ] FO-F2 Pinia store (stale-response guard, last confirmed data, per-partner summary) + tests
+- [ ] FO-F3 View + Resumen tab (first) + lazy route + tests
+- [ ] FO-F4 Help articles + tests
+- [ ] FO-F5 Verification (full vitest, lint, build)
+- [ ] FR1/FR2 Reserves CRUD — BLOCKED on backend (no endpoints exist)
+
+## Route
+
+Per task: delegated direct (single bounded writer; trigger: 2+ non-trivial files).
+
+## Progress / evidence
+
+Branch `feat/finance-overview-reserves` created from `feat/finance-work-shifts` @ 6e05a0a (clean tree). Backend contract re-read; it matches the brief (no diff).
