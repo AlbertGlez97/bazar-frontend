@@ -89,3 +89,19 @@ Deferred (out of scope):
 - [ ] Filters apply pending dates / controls diverge when the range is invalid
 - [ ] `savedPeriod` is captured after an await
 - [ ] Non-string dates in the receipt validator are untested
+
+## Browser findings
+
+Found in a real browser (Resumen and Reservas) and fixed, each with tests (RED observed before GREEN) and full vitest 210 files / 3706 tests, lint and build green:
+
+- [x] 1. Reservas two-column layout started at 768px, leaving ~120px columns next to the ~184px sidebar; it now starts at 1024px and stacks below (5e21c47)
+- [x] 2. Stray space before the colon in the Resumen reserves copy ("...07/10/2026) : una reserva..."); the colon now follows the parenthesis, asserted with a regex (65b9988, 635c584)
+- [x] 3. Amounts misaligned between cards with and without a note line; `OverviewFigure` grid now uses `align-content: start` so stretched rows do not push the amount down (65b9988)
+- [x] 4. HTTP 404 on `GET /finance/overview` and on reserves list/create showed "Algo salió mal"; it now says the function is not yet available on the server, with no retry button (a missing route cannot be fixed by retrying). Cancel keeps its own 404 meaning, "reserve not found" (e779c0d)
+
+Not browser-tested:
+
+- Create and cancel a reserve against the real backend: the running Docker image lacks the /finance/overview and /finance/reserves routes.
+- Keyboard and screen-reader focus order.
+- A real offline state (only simulated in jsdom).
+- Layout fixes 1 and 3 are asserted on the stylesheet only (jsdom has no layout engine); they were not re-measured after the change.
