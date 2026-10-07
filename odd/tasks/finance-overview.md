@@ -56,3 +56,18 @@ Pending (out of scope, deferred):
 - [ ] Store reset on logout / account switch
 - [ ] Percentage rounding can reach 101% (known + missing)
 - [ ] Overview blocked on slow partner summary (Promise.allSettled waits for both)
+
+## Phase 2: Reservas (backend create/list/cancel now exists)
+
+Source of truth re-read: `bazar-api/doc/finance-overview-reserves.md` (create/list/cancel) and `src/finance/finance-reserve.dto.ts`. It matches the brief; no contract diff. Online-only (no IndexedDB/outbox). Idempotency: the UUIDv7 of a create (and of a cancel) is generated once per form session / cancel dialog and reused on retry. Route `/app/finanzas/reservas` (name FinanceReserves), tab "Reservas" last.
+
+- [x] FO-R1 Types + service + utils (period display, form validation, totals) + tests
+- [ ] FO-R2 Pinia store (list, cursor pagination, stale guard, create/cancel with reused ids, overview refresh) + tests
+- [ ] FO-R3 ReservesView + tab + lazy route + tab-list test updates
+- [ ] FO-R4 Overview integration (real reserves block, link, no "próximamente") + help + tests
+- [ ] FO-R5 Verification (full vitest, lint, build)
+
+Route per task: delegated direct (single bounded writer; trigger: 2+ non-trivial files). Evidence and commit hashes are recorded below as each task closes.
+
+### Phase 2 evidence
+FO-R1 observed: service + utils tests 46 passed (create body/headers, replay, exact-period list params, cancel path, strict response validation, inclusive period display, form validation, totals separation, error mapping). RED not separately observed (types, service and utils were written together with their tests). Route: delegated direct.
