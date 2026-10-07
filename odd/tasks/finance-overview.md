@@ -42,3 +42,17 @@ FO-F4 observed: help articles `resumen-finanzas` (guide) and `resumen-preguntas`
 FO-F5 observed: `npx vitest run` 206 files / 3576 tests passed (includes Aportaciones, Gastos and Jornadas regression; their tab assertions were updated for the new first tab), `npm run lint` clean, `npm run build` (vue-tsc -b + vite build) OK.
 Commits: FO-F1 667b239, FO-F2 b7bbd9f, FO-F3 a3ac1b9, FO-F4 abfcaf7, evidence/closure commit below.
 Pending: Reserves (FR1/FR2) blocked on backend (no reserves endpoints; the view only shows what the overview returns: `reserves.activeCount/plannedMinor` and a "próximamente" note). Real browser/viewport validation not done (jsdom cannot measure layout). Per-partner names come from the summary's embedded `member`; there is no fallback to the finance-references cache.
+
+## Review follow-ups
+
+Fixed in d2a5fec (full vitest 206 files / 3584 tests, lint, build all green):
+
+- [x] Invalid response shape no longer shown as a network error: `FinanceOverviewContractError` maps to a dedicated message and the retry button is hidden for it (d2a5fec)
+- [x] Stale label kept during retry: store `refreshFailed` flag cleared only on success or reset, so "Ultimo resumen confirmado" stays while retrying (d2a5fec)
+- [x] Overview loads when access becomes allowed after mount (watcher refreshes, respecting range validity; reset on false kept) (d2a5fec)
+
+Pending (out of scope, deferred):
+
+- [ ] Store reset on logout / account switch
+- [ ] Percentage rounding can reach 101% (known + missing)
+- [ ] Overview blocked on slow partner summary (Promise.allSettled waits for both)
