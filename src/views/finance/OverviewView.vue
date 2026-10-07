@@ -262,7 +262,7 @@
         >
           Una reserva es un monto que planeas apartar; no es efectivo guardado
           ni un pago. Solo se restan las reservas creadas para exactamente este
-          período<template v-if="reservesPeriodText"> ({{ reservesPeriodText }})</template>: una reserva de otro período no cambia esta cifra.
+          período{{ reservesPeriodSuffix }}: una reserva de otro período no cambia esta cifra.
         </p>
         <p
           v-if="data.reserves.activeCount === 0"
@@ -394,6 +394,8 @@ const shownPeriodText = computed(() => {
 
 /** Reserves only count for the EXACT period on screen, so the link carries it. */
 const reservesPeriodText = computed(() => (finance.period ? formatPickedPeriod(finance.period) : ''))
+/** " (dd/mm/aaaa al dd/mm/aaaa)" with its leading space, or nothing: keeps the colon glued to the parenthesis. */
+const reservesPeriodSuffix = computed(() => (reservesPeriodText.value ? ` (${reservesPeriodText.value})` : ''))
 const reservesLink = computed(() => ({
   path: '/app/finanzas/reservas',
   query: finance.period ? { from: finance.period.from, to: finance.period.to } : {},
