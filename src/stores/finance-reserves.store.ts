@@ -67,7 +67,11 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
   /** Name of the reserve confirmed by the last successful create (for the status message). */
   const savedName = ref('')
   const cancelling = ref(false)
+  /** Id of the reserve whose cancellation request is in flight (empty when none). */
+  const cancellingId = ref('')
   const cancelError = ref('')
+  /** Id of the reserve `cancelError` belongs to (empty when there is no error). */
+  const cancelErrorId = ref('')
   /** Name of the reserve confirmed by the last successful cancellation. */
   const cancelledName = ref('')
   let latest = 0
@@ -176,15 +180,18 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
   async function cancel(reserve: Pick<ReserveListItem, 'id' | 'name'>, reason: string): Promise<boolean> {
     if (cancelling.value) return false
     cancelError.value = ''
+    cancelErrorId.value = ''
     cancelledName.value = ''
     const current = origin()
     if (!current) {
       cancelError.value = VOICE.apiErrors.contextLost
+      cancelErrorId.value = reserve.id
       return false
     }
     const attempt = cancelAttempts.get(reserve.id) ?? newAttempt()
     cancelAttempts.set(reserve.id, attempt)
     cancelling.value = true
+    cancellingId.value = reserve.id
     try {
       await FinanceReservesService.cancel(current, reserve.id, {
         id: attempt.id,
@@ -197,11 +204,13 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
       cancelledName.value = reserve.name
     } catch (e) {
       cancelError.value = reserveErrorMessage(e, 'cancel')
+      cancelErrorId.value = reserve.id
       if (!isUncertainFailure(e)) cancelAttempts.delete(reserve.id)
       if (isConflict(e) && lastQuery) void load(lastQuery)
       return false
     } finally {
       cancelling.value = false
+      cancellingId.value = ''
     }
     await refreshAfterWrite()
     return true
@@ -216,6 +225,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     saveError.value = ''
     savedName.value = ''
     cancelError.value = ''
+    cancelErrorId.value = ''
     cancelledName.value = ''
   }
 
@@ -234,7 +244,9 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     saveError.value = ''
     savedName.value = ''
     cancelling.value = false
+    cancellingId.value = ''
     cancelError.value = ''
+    cancelErrorId.value = ''
     cancelledName.value = ''
   }
 
@@ -249,7 +261,9 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     saveError,
     savedName,
     cancelling,
+    cancellingId,
     cancelError,
+    cancelErrorId,
     cancelledName,
     load,
     loadMore,

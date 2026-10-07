@@ -98,11 +98,20 @@
       >
         {{ error }}
       </p>
+      <p
+        v-if="blocked"
+        class="reserve-card__meta"
+        role="status"
+        data-test="cancel-blocked"
+      >
+        Espera a que termine la anulación en curso.
+      </p>
       <div class="reserve-card__actions">
         <AppButton
           type="submit"
           variant="danger"
           :loading="busy"
+          :disabled="blocked"
           data-test="cancel-confirm"
         >
           Confirmar anulación
@@ -143,8 +152,10 @@ const props = withDefaults(
     busy?: boolean
     /** Failure of the last cancellation request for THIS reserve. */
     error?: string
+    /** ANOTHER reserve's cancellation is in flight: this one cannot be confirmed yet. */
+    blocked?: boolean
   }>(),
-  { matching: true, busy: false, error: '' },
+  { matching: true, busy: false, error: '', blocked: false },
 )
 const emit = defineEmits<{ cancel: [reason: string] }>()
 
@@ -174,7 +185,7 @@ async function closePanel() {
   root.value?.querySelector<HTMLElement>('[data-test="cancel-open"]')?.focus()
 }
 function confirm() {
-  if (props.busy) return
+  if (props.busy || props.blocked) return
   try {
     emit('cancel', cancelReasonFromText(reason.value))
     problem.value = ''

@@ -387,6 +387,58 @@ describe('reserves screen: cancel', () => {
   })
 })
 
+describe('reserves screen: two open cancel panels', () => {
+  const second = () =>
+    reserveItemFixture({ id: '0199a600-0000-7000-8000-0000000000aa', name: 'Luz', periodFrom: monthStart, periodTo: tomorrow })
+  const confirmFor = (w: Wrapper, index: number) => w.findAll('[data-test="cancel-confirm"]')[index]!
+  async function openBoth(w: Wrapper) {
+    for (const button of w.findAll('[data-test="cancel-open"]').slice().reverse()) await button.trigger('click')
+    await flushPromises()
+    const reasons = w.findAll('[data-test="cancel-reason"] textarea')
+    expect(reasons).toHaveLength(2)
+    for (const r of reasons) await r.setValue('motivo')
+  }
+
+  it('blocks the second confirm while the first is in flight and keeps busy on the first card only', async () => {
+    mocks.list.mockResolvedValue(reservePageFixture([monthItem(), second()]))
+    let finish!: (v: unknown) => void
+    mocks.cancel.mockReturnValueOnce(new Promise((res) => (finish = res)))
+    const w = await mounted()
+    await openBoth(w)
+    await w.findAll('[data-test="cancel-panel"]')[0]!.trigger('submit')
+    await flushPromises()
+    expect(mocks.cancel).toHaveBeenCalledTimes(1)
+    expect(confirmFor(w, 1).attributes('disabled')).toBeDefined()
+    expect(w.findAll('[data-test="cancel-blocked"]')).toHaveLength(1)
+    expect(w.findAll('[data-test="cancel-blocked"]')[0]!.text()).toContain('Espera a que termine la anulación en curso.')
+    await w.findAll('[data-test="cancel-panel"]')[1]!.trigger('submit')
+    await flushPromises()
+    expect(mocks.cancel).toHaveBeenCalledTimes(1)
+    expect(w.findAll('[data-test="cancel-dismiss"]')[0]!.attributes('disabled')).toBeDefined()
+    expect(w.findAll('[data-test="cancel-dismiss"]')[1]!.attributes('disabled')).toBeUndefined()
+    finish(cancellationReceiptFixture())
+    await flushPromises()
+  })
+
+  it('shows the failure of the first only on the first card, then lets the second be confirmed', async () => {
+    mocks.list.mockResolvedValue(reservePageFixture([monthItem(), second()]))
+    mocks.cancel.mockRejectedValueOnce(failure()).mockResolvedValue(cancellationReceiptFixture())
+    const w = await mounted()
+    await openBoth(w)
+    await w.findAll('[data-test="cancel-panel"]')[0]!.trigger('submit')
+    await flushPromises()
+    const panels = w.findAll('[data-test="cancel-panel"]')
+    expect(panels[0]!.find('[data-test="cancel-error"]').exists()).toBe(true)
+    expect(panels[1]!.find('[data-test="cancel-error"]').exists()).toBe(false)
+    expect(confirmFor(w, 1).attributes('disabled')).toBeUndefined()
+    await panels[1]!.trigger('submit')
+    await flushPromises()
+    expect(mocks.cancel).toHaveBeenCalledTimes(2)
+    expect(mocks.cancel.mock.calls[1]![1]).toBe(second().id)
+    expect(q(w, 'cancelled').text()).toContain('Luz')
+  })
+})
+
 describe('reserves screen: structure and accessibility', () => {
   it('puts the form before the list in a two-column layout hook and labels every field', async () => {
     const w = await mounted()

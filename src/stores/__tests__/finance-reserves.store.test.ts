@@ -284,6 +284,28 @@ describe('reserves store: cancel', () => {
     expect(mocks.cancel.mock.calls[1]![2].id).not.toBe(mocks.cancel.mock.calls[0]![2].id)
   })
 
+  it('exposes the id in flight, refuses a second cancel and attributes the error to the failing reserve', async () => {
+    const first = deferred<ReturnType<typeof cancellationReceiptFixture>>()
+    mocks.cancel.mockReturnValueOnce(first.promise)
+    const store = useFinanceReservesStore()
+    const other = { id: 'other-id', name: 'Otra' }
+    const pending = store.cancel(reserve, 'motivo')
+    expect(store.cancellingId).toBe(RESERVE_ID)
+    expect(await store.cancel(other, 'motivo')).toBe(false)
+    expect(mocks.cancel).toHaveBeenCalledTimes(1)
+    expect(store.cancellingId).toBe(RESERVE_ID)
+    expect(store.cancelErrorId).toBe('')
+    first.reject(failure(500))
+    expect(await pending).toBe(false)
+    expect(store.cancellingId).toBe('')
+    expect(store.cancelErrorId).toBe(RESERVE_ID)
+    expect(store.cancelError).not.toBe('')
+    mocks.cancel.mockResolvedValue(cancellationReceiptFixture())
+    expect(await store.cancel(other, 'motivo')).toBe(true)
+    expect(store.cancelErrorId).toBe('')
+    expect(mocks.cancel).toHaveBeenCalledTimes(2)
+  })
+
   it('keeps the list intact when cancelling fails', async () => {
     mocks.cancel.mockRejectedValue(failure(500))
     const store = useFinanceReservesStore()

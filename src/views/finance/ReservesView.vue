@@ -250,8 +250,9 @@
               :key="item.id"
               :item="item"
               :matching="isCounted(item)"
-              :busy="finance.cancelling && cancelId === item.id"
-              :error="cancelId === item.id ? finance.cancelError : ''"
+              :busy="finance.cancellingId === item.id"
+              :blocked="!!finance.cancellingId && finance.cancellingId !== item.id"
+              :error="finance.cancelErrorId === item.id ? finance.cancelError : ''"
               @cancel="(reason: string) => cancelReserve(item, reason)"
             />
           </ul>
@@ -383,7 +384,7 @@ const status = ref<ReserveStatus>('active')
 const form = ref(emptyReserveForm())
 const formError = ref('')
 const statusBox = ref<HTMLElement | null>(null)
-const cancelId = ref('')
+
 const savedPeriod = ref('')
 
 function refresh() {
@@ -452,7 +453,8 @@ async function submit() {
 }
 
 async function cancelReserve(item: ReserveListItem, reason: string) {
-  cancelId.value = item.id
+  // The store runs one cancellation at a time; do not touch messages when it would refuse.
+  if (finance.cancelling) return
   finance.clearMessages()
   if (await finance.cancel(item, reason)) await focusStatus()
 }
