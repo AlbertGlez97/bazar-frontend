@@ -102,4 +102,31 @@ describe('audited help content', () => {
     const text = JSON.stringify([guide, faq])
     expect(text).not.toMatch(/\$\d|%|comisi[oó]n|reparto|sueldo|salario|lo que te toca/i)
   })
+  it('explains the finance overview in plain language without promising cash, reserves setup or distribution', () => {
+    const guide = HELP_ARTICLES.find((article) => article.id === 'resumen-finanzas')!
+    const faq = HELP_ARTICLES.find((article) => article.id === 'resumen-preguntas')!
+    for (const article of [guide, faq]) {
+      expect(article.category).toBe('Finanzas')
+      expect(article.audience).toBe('socio')
+    }
+    const steps = guide.steps.join(' ')
+    for (const label of ['Resumen', 'Resultado operativo registrado', 'Compras de inventario', 'Capital aportado registrado', 'Cobertura de costos', 'Última actualización'])
+      expect(steps).toContain(label)
+    const answers = Object.fromEntries((faq.questions ?? []).map((q) => [q.question, q.answer]))
+    expect(Object.keys(answers)).toEqual([
+      '¿Qué es el resultado operativo?',
+      '¿Qué diferencia hay entre margen y resultado operativo?',
+      '¿Qué son las compras de inventario?',
+      '¿Qué es una reserva?',
+      '¿Qué es el monto potencialmente disponible?',
+      '¿Por qué no es efectivo disponible?',
+      '¿Por qué una aportación no es ingreso?',
+    ])
+    expect(answers['¿Qué es una reserva?']).toContain('llegará después')
+    expect(guide.tips.join(' ')).toContain('llegará después')
+    expect(answers['¿Por qué no es efectivo disponible?']).toContain('no representa necesariamente efectivo disponible')
+    expect(answers['¿Por qué una aportación no es ingreso?']).toContain('no se suma al resultado operativo')
+    expect(answers['¿Qué son las compras de inventario?']).toContain('no se suman a los gastos operativos')
+    expect(JSON.stringify([guide, faq])).not.toMatch(/ganancia para repartir|reparto|comisi[oó]n|sueldo|salario|lo que te toca/i)
+  })
 })
