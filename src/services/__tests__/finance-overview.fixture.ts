@@ -11,7 +11,13 @@ export const overviewFixture = (over: Partial<FinanceOverview> = {}): FinanceOve
     utcOffsetMinutes: -360,
     interval: '[from,to)',
   },
-  timeBasis: { sales: 'occurredAt' },
+  timeBasis: {
+    sales: 'occurredAt',
+    expenses: 'occurredAt',
+    contributions: 'occurredAt',
+    workShifts: 'workDate',
+    reserves: 'exactPeriod',
+  },
   sales: { saleCount: 3, salesMinor: 100000, recordedCostMinor: 60000, recordedGrossMarginMinor: 40000 },
   costCoverage: {
     status: 'complete',
@@ -34,7 +40,8 @@ export const overviewFixture = (over: Partial<FinanceOverview> = {}): FinanceOve
     isWithdrawableProfit: false,
   },
   sync: { source: 'SERVER_CONFIRMED', localPendingIncluded: false },
-  warnings: [{ code: 'RESERVES_PENDING', message: 'pending' }],
+  // RESERVES_PENDING is no longer sent now that reserves are real; the screen still tolerates it.
+  warnings: [],
   generatedAt: '2026-10-07T18:00:00.000Z',
   ...over,
 })

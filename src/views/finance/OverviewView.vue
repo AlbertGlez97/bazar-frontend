@@ -257,10 +257,30 @@
           :minor="data.reserves.plannedMinor"
           :note="`${data.reserves.activeCount} ${data.reserves.activeCount === 1 ? 'reserva activa' : 'reservas activas'}`"
         />
-        <p class="overview-muted">
-          Reservas: próximamente. Aún no se pueden configurar, así que por
-          ahora el resumen no descuenta ninguna reserva.
+        <p
+          class="overview-muted"
+          data-test="reserves-explain"
+        >
+          Una reserva es un monto que planeas apartar; no es efectivo guardado
+          ni un pago. Solo se restan las reservas creadas para exactamente este
+          período<template v-if="reservesPeriodText">
+            ({{ reservesPeriodText }})
+          </template>: una reserva de otro período no cambia esta cifra.
         </p>
+        <p
+          v-if="data.reserves.activeCount === 0"
+          class="overview-muted"
+          data-test="reserves-none"
+        >
+          Todavía no hay reservas activas para este período.
+        </p>
+        <RouterLink
+          :to="reservesLink"
+          class="overview-link"
+          data-test="reserves-link"
+        >
+          Administrar reservas
+        </RouterLink>
       </section>
 
       <section
@@ -316,6 +336,7 @@ import {
   ReportRangePicker,
   TabNav,
 } from '@/components'
+import { RouterLink } from 'vue-router'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useFinanceOverviewStore } from '@/stores/finance-overview.store'
@@ -328,6 +349,7 @@ import {
   type RangePreset,
 } from '@/utils/business-time'
 import { formatMinorMoney } from '@/utils/money'
+import { formatPickedPeriod } from '@/utils/finance-reserves'
 import {
   coverageText,
   extraWarnings,
@@ -372,6 +394,13 @@ const shownPeriodText = computed(() => {
   if (!shown || (shown.from === range.from && shown.to === range.to)) return ''
   return `${formatDateKey(shown.from)} al ${formatDateKey(shown.to)}`
 })
+
+/** Reserves only count for the EXACT period on screen, so the link carries it. */
+const reservesPeriodText = computed(() => (finance.period ? formatPickedPeriod(finance.period) : ''))
+const reservesLink = computed(() => ({
+  path: '/app/finanzas/reservas',
+  query: finance.period ? { from: finance.period.from, to: finance.period.to } : {},
+}))
 
 function refresh() {
   if (!allowed.value || rangeError.value) return
@@ -467,6 +496,15 @@ onMounted(refresh)
   color: var(--color-text);
   border: 1px solid var(--color-warning);
   border-radius: var(--radius-md);
+}
+.overview-link {
+  justify-self: start;
+  color: var(--color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
 }
 .overview-empty {
   padding: var(--spacing-lg);

@@ -102,7 +102,7 @@ describe('audited help content', () => {
     const text = JSON.stringify([guide, faq])
     expect(text).not.toMatch(/\$\d|%|comisi[oó]n|reparto|sueldo|salario|lo que te toca/i)
   })
-  it('explains the finance overview in plain language without promising cash, reserves setup or distribution', () => {
+  it('explains the finance overview in plain language without promising cash or distribution', () => {
     const guide = HELP_ARTICLES.find((article) => article.id === 'resumen-finanzas')!
     const faq = HELP_ARTICLES.find((article) => article.id === 'resumen-preguntas')!
     for (const article of [guide, faq]) {
@@ -118,15 +118,33 @@ describe('audited help content', () => {
       '¿Qué diferencia hay entre margen y resultado operativo?',
       '¿Qué son las compras de inventario?',
       '¿Qué es una reserva?',
+      '¿Por qué mi reserva no aparece en este período?',
       '¿Qué es el monto potencialmente disponible?',
       '¿Por qué no es efectivo disponible?',
       '¿Por qué una aportación no es ingreso?',
     ])
-    expect(answers['¿Qué es una reserva?']).toContain('llegará después')
-    expect(guide.tips.join(' ')).toContain('llegará después')
+    expect(answers['¿Qué es una reserva?']).toContain('solo un plan')
+    expect(answers['¿Qué es una reserva?']).toContain('exactamente el mismo')
+    expect(answers['¿Por qué mi reserva no aparece en este período?']).toContain('período exacto')
+    expect(answers['¿Por qué mi reserva no aparece en este período?']).toContain('No cuentan en este período')
+    expect(JSON.stringify([guide, faq])).not.toMatch(/llegará después|próximamente|todavía no se pueden/i)
+    expect(guide.tips.join(' ')).toContain('pestaña Reservas')
     expect(answers['¿Por qué no es efectivo disponible?']).toContain('no representa necesariamente efectivo disponible')
     expect(answers['¿Por qué una aportación no es ingreso?']).toContain('no se suma al resultado operativo')
     expect(answers['¿Qué son las compras de inventario?']).toContain('no se suman a los gastos operativos')
     expect(JSON.stringify([guide, faq])).not.toMatch(/ganancia para repartir|reparto|comisi[oó]n|sueldo|salario|lo que te toca/i)
+  })
+  it('explains how to create and cancel reserves, the exact-period rule and that they are plans, not cash', () => {
+    const guide = HELP_ARTICLES.find((article) => article.id === 'reservas-finanzas')!
+    expect(guide.category).toBe('Finanzas')
+    expect(guide.audience).toBe('socio')
+    const steps = guide.steps.join(' ')
+    for (const label of ['Reservas', 'Nueva reserva', 'Guardar reserva', 'Anular', 'Total reservas']) expect(steps).toContain(label)
+    const answers = Object.fromEntries((guide.questions ?? []).map((q) => [q.question, q.answer]))
+    expect(answers['¿Puedo editar una reserva?']).toMatch(/^No\. .*anula la reserva y crea una nueva/)
+    expect(answers['¿Una reserva aparta dinero de la caja?']).toMatch(/^No\. /)
+    expect(guide.tips.join(' ')).toContain('exactamente el mismo período')
+    expect(guide.intro).toContain('no mueve dinero')
+    expect(JSON.stringify(guide)).not.toMatch(/ganancia para repartir|reparto|comisi[oó]n|sueldo|salario|lo que te toca|porcentaje/i)
   })
 })

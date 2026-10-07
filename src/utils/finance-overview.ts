@@ -47,7 +47,8 @@ export const hasRecordedActivity = (o: FinanceOverview): boolean =>
   o.expenses.operatingMinor !== 0 ||
   o.expenses.inventoryPurchasesMinor !== 0 ||
   o.contributions.count > 0 ||
-  o.workShifts.shiftCount > 0
+  o.workShifts.shiftCount > 0 ||
+  o.reserves.activeCount > 0
 
 /** Codes the view already explains with its own copy: showing them again would duplicate. */
 const COVERED_BY_VIEW = new Set([

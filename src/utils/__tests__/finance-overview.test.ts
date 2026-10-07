@@ -78,6 +78,9 @@ describe('finance overview utils', () => {
     })
     expect(hasRecordedActivity(empty)).toBe(false)
     expect(hasRecordedActivity(overviewFixture())).toBe(true)
+    expect(
+      hasRecordedActivity({ ...empty, reserves: { activeCount: 1, plannedMinor: 5000, matching: 'EXACT_PERIOD' } }),
+    ).toBe(true)
   })
 
   it('drops warnings the view already explains, maps known ones and falls back to the message', () => {

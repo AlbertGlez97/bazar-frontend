@@ -85,7 +85,7 @@ const section = (w: Awaited<ReturnType<typeof mounted>>, name: string) => w.find
 describe('overview screen: access, tabs and request', () => {
   it('lists Resumen as the first, active tab and has a single h1', async () => {
     const w = await mounted()
-    const tabs = w.findAllComponents(RouterLinkStub)
+    const tabs = w.findAllComponents(RouterLinkStub).slice(0, 5) // the tab nav; the reserves link comes later
     expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas'])
     expect(tabs[0]!.attributes('aria-current')).toBe('page')
     expect(w.findAll('h1')).toHaveLength(1)
@@ -220,12 +220,56 @@ describe('overview screen: hierarchy and figures', () => {
     expect(w.find('[data-test="operating"]').exists()).toBe(true)
   })
 
-  it('presents reserves as not yet configurable and the available amount with the exact disclaimer', async () => {
+  it('shows real reserves for the exact period, links to manage them and keeps the prudent disclaimer', async () => {
+    mocks.get.mockResolvedValue(
+      overviewFixture({
+        reserves: { activeCount: 2, plannedMinor: 150000, matching: 'EXACT_PERIOD' },
+        result: {
+          recordedOperatingResultMinor: 25000,
+          potentiallyAvailableMinor: -125000,
+          status: 'complete',
+          isCashBalance: false,
+          isWithdrawableProfit: false,
+        },
+      }),
+    )
     const w = await mounted()
-    expect(section(w, 'reserves')).toContain('Reservas: próximamente. Aún no se pueden configurar')
+    const text = section(w, 'reserves')
+    expect(text).toContain('Reservas planeadas para este periodo')
+    expect(text).toContain('$1,500.00')
+    expect(text).toContain('2 reservas activas')
+    expect(text).toContain('exactamente este período')
+    expect(text).toContain('una reserva de otro período no cambia esta cifra')
+    expect(text).not.toMatch(/próximamente|aún no se pueden configurar/i)
+    expect(w.find('[data-test="reserves-none"]').exists()).toBe(false)
+    const link = w.findAllComponents(RouterLinkStub).find((l) => l.text() === 'Administrar reservas')!
+    expect(link.props('to')).toEqual({ path: '/app/finanzas/reservas', query: { from: monthStart, to: today } })
+    expect(section(w, 'available')).toContain('-$1,250.00')
     expect(w.find('[data-test="available-disclaimer"]').text()).toBe(
       'Este cálculo considera el resultado operativo registrado y las reservas configuradas. No representa necesariamente efectivo disponible ni una recomendación de retiro.',
     )
+  })
+
+  it('says there are no reserves yet (without a coming-soon note) and still offers the link', async () => {
+    const w = await mounted()
+    expect(w.find('[data-test="reserves-none"]').text()).toBe('Todavía no hay reservas activas para este período.')
+    expect(section(w, 'reserves')).not.toMatch(/próximamente/i)
+    expect(w.findAllComponents(RouterLinkStub).some((l) => l.text() === 'Administrar reservas')).toBe(true)
+  })
+
+  it('shows the full overview, not the empty state, when the period only has reserves', async () => {
+    mocks.get.mockResolvedValue(
+      overviewFixture({
+        sales: { saleCount: 0, salesMinor: 0, recordedCostMinor: 0, recordedGrossMarginMinor: 0 },
+        expenses: { operatingMinor: 0, inventoryPurchasesMinor: 0 },
+        contributions: { amountMinor: 0, count: 0 },
+        workShifts: { shiftCount: 0, knownMinutes: 0, unknownDurationCount: 0 },
+        reserves: { activeCount: 1, plannedMinor: 5000, matching: 'EXACT_PERIOD' },
+      }),
+    )
+    const w = await mounted()
+    expect(w.find('[data-test="empty"]').exists()).toBe(false)
+    expect(w.find('[data-test="reserves"]').exists()).toBe(true)
   })
 
   it('never uses distribution wording', async () => {
