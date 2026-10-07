@@ -262,9 +262,7 @@
         >
           Una reserva es un monto que planeas apartar; no es efectivo guardado
           ni un pago. Solo se restan las reservas creadas para exactamente este
-          período<template v-if="reservesPeriodText">
-            ({{ reservesPeriodText }})
-          </template>: una reserva de otro período no cambia esta cifra.
+          período<template v-if="reservesPeriodText"> ({{ reservesPeriodText }})</template>: una reserva de otro período no cambia esta cifra.
         </p>
         <p
           v-if="data.reserves.activeCount === 0"

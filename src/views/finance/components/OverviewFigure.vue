@@ -54,6 +54,8 @@ withDefaults(
 <style scoped>
 .overview-figure {
   display: grid;
+  /* Pack rows at the top: cards stretched by a taller sibling must not push the amount down. */
+  align-content: start;
   gap: var(--spacing-xs);
   padding: var(--spacing-md);
   background: var(--color-surface);

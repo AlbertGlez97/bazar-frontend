@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { reactive } from 'vue'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -240,6 +242,9 @@ describe('overview screen: hierarchy and figures', () => {
     expect(text).toContain('2 reservas activas')
     expect(text).toContain('exactamente este período')
     expect(text).toContain('una reserva de otro período no cambia esta cifra')
+    const explain = w.find('[data-test="reserves-explain"]').text()
+    expect(explain).toMatch(/\(\d{2}\/\d{2}\/\d{4} al \d{2}\/\d{2}\/\d{4}\): una reserva de otro período/)
+    expect(explain).not.toMatch(/\s:/)
     expect(text).not.toMatch(/próximamente|aún no se pueden configurar/i)
     expect(w.find('[data-test="reserves-none"]').exists()).toBe(false)
     const link = w.findAllComponents(RouterLinkStub).find((l) => l.text() === 'Administrar reservas')!
@@ -421,6 +426,16 @@ describe('overview screen: retry labelling and contract errors', () => {
     expect(w.text()).not.toContain('No pudimos conectarnos')
     expect(w.find('[data-test="retry"]').exists()).toBe(false)
     expect(w.find('[data-test="operating"]').exists()).toBe(false)
+  })
+})
+
+describe('overview figure layout', () => {
+  it('packs rows at the top so an amount never drifts down in a card that has no note line', () => {
+    // jsdom has no layout engine: assert the stylesheet rule that stops grid rows from stretching.
+    const source = readFileSync(resolve(process.cwd(), 'src/views/finance/components/OverviewFigure.vue'), 'utf8')
+    const rule = source.match(/\.overview-figure\s*\{([^}]*)\}/)
+    expect(rule).not.toBeNull()
+    expect(rule![1]).toMatch(/align-content:\s*start/)
   })
 })
 
