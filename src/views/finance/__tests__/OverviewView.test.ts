@@ -86,7 +86,7 @@ describe('overview screen: access, tabs and request', () => {
   it('lists Resumen as the first, active tab and has a single h1', async () => {
     const w = await mounted()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas'])
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas'])
     expect(tabs[0]!.attributes('aria-current')).toBe('page')
     expect(w.findAll('h1')).toHaveLength(1)
     expect(w.find('h1').text()).toBe('Resumen')

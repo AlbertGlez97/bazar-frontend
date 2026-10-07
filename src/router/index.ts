@@ -129,6 +129,13 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        // Reservas (Finanzas > Reservas): reservas planeadas (crear, listar, anular); mismo guard que Jornadas.
+        path: 'finanzas/reservas',
+        name: 'FinanceReserves',
+        component: () => import('@/views/finance/ReservesView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         path: 'reportes',
         name: 'Reports',
         component: () => import('@/views/reports/ReportsView.vue'),

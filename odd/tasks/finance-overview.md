@@ -63,7 +63,7 @@ Source of truth re-read: `bazar-api/doc/finance-overview-reserves.md` (create/li
 
 - [x] FO-R1 Types + service + utils (period display, form validation, totals) + tests
 - [x] FO-R2 Pinia store (list, cursor pagination, stale guard, create/cancel with reused ids, overview refresh) + tests
-- [ ] FO-R3 ReservesView + tab + lazy route + tab-list test updates
+- [x] FO-R3 ReservesView + tab + lazy route + tab-list test updates
 - [ ] FO-R4 Overview integration (real reserves block, link, no "próximamente") + help + tests
 - [ ] FO-R5 Verification (full vitest, lint, build)
 
@@ -72,3 +72,4 @@ Route per task: delegated direct (single bounded writer; trigger: 2+ non-trivial
 ### Phase 2 evidence
 FO-R1 observed: service + utils tests 46 passed (create body/headers, replay, exact-period list params, cancel path, strict response validation, inclusive period display, form validation, totals separation, error mapping). RED not separately observed (types, service and utils were written together with their tests). Route: delegated direct.
 FO-R2 observed: store tests 21 passed (exact-period + all-periods queries, cursor paging without duplicates, stale-response guard for list and next page, last list kept on failure, create refreshes list and an already loaded overview, retry after network/5xx reuses the SAME id and audit instant, 400 frees the id, 409 refreshes and frees the id, double-submit guard, cancel reuses id, reset). Route: delegated direct.
+FO-R3 observed: `npx vitest run src/views/finance` 6 files / 150 tests passed (ReservesView 26 tests: tabs, exact-period request, one request per period/filter change, linked period, create with exclusive end + reused id on retry, 409 copy, cancel panel requires reason and returns focus, reversed display, other-period flag and separate totals, load more, no table, labels/aria-live). Tab-list assertions updated in Aportaciones/Gastos/Jornadas/Resumen view tests and finance-route.test.ts. eslint and vue-tsc -b clean. Route `/app/finanzas/reservas` (name FinanceReserves) lazy, same socio+gestion guard. Components: ReservesView.vue, components/ReserveCard.vue (inline confirm panel instead of AppModal: simpler focus return, no teleport). Route: delegated direct.
