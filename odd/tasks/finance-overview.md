@@ -22,8 +22,8 @@ Add a "Resumen" tab to Finanzas: an online, read-only overview of recorded opera
 ## Tasks
 
 - [x] FO-F1 Types + service + util (coverage text, exclusive-to, labelling) + tests (667b239)
-- [x] FO-F2 Pinia store (stale-response guard, last confirmed data, per-partner summary) + tests (see commit log: feat(finance): add overview store)
-- [ ] FO-F3 View + Resumen tab (first) + lazy route + tests
+- [x] FO-F2 Pinia store (stale-response guard, last confirmed data, per-partner summary) + tests (b7bbd9f)
+- [x] FO-F3 View + Resumen tab (first) + lazy route + tests
 - [ ] FO-F4 Help articles + tests
 - [ ] FO-F5 Verification (full vitest, lint, build)
 - [ ] FR1/FR2 Reserves CRUD — BLOCKED on backend (no endpoints exist)
@@ -37,3 +37,4 @@ Per task: delegated direct (single bounded writer; trigger: 2+ non-trivial files
 Branch `feat/finance-overview-reserves` created from `feat/finance-work-shifts` @ 6e05a0a (clean tree). Backend contract re-read; it matches the brief (no diff).
 FO-F1 observed: service/util tests 22 passed, eslint clean, vue-tsc -b clean. Auth + member/device headers come from the shared axios interceptor, so the overview service needs no explicit origin. Fixture shared at `src/services/__tests__/finance-overview.fixture.ts` (sibling convention).
 FO-F2 observed: store tests 8 passed (stale-response guard for success and failure, last-confirmed data kept on error, partner degradation, reset).
+FO-F3 observed: `npx vitest run src/views/finance src/router` 10 files / 242 tests passed (OverviewView 20 tests; Contributions/Expenses/WorkShifts tab assertions updated for the new first tab), eslint and vue-tsc -b clean. Route `/app/finanzas/resumen` (name FinanceOverview) lazy, same socio+gestion guard; `/app/finanzas` still Aportaciones.

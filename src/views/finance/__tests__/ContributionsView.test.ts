@@ -51,18 +51,19 @@ const mountView = () =>
     },
   })
 describe('contribution management', () => {
-  it('offers the Aportaciones | Gastos | Jornadas tab navigation with Aportaciones active', async () => {
+  it('offers the Resumen | Aportaciones | Gastos | Jornadas tab navigation with Aportaciones active', async () => {
     const w = mountView()
     await flushPromises()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Aportaciones', 'Gastos', 'Jornadas'])
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas'])
     expect(tabs.map((t) => t.props('to'))).toEqual([
+      '/app/finanzas/resumen',
       '/app/finanzas',
       '/app/finanzas/gastos',
       '/app/finanzas/jornadas',
     ])
-    expect(tabs[0]!.attributes('aria-current')).toBe('page')
-    expect(tabs[1]!.attributes('aria-current')).toBeUndefined()
+    expect(tabs[1]!.attributes('aria-current')).toBe('page')
+    expect(tabs[0]!.attributes('aria-current')).toBeUndefined()
   })
   it('opts its correction modal into keyboard focus management', async () => {
     const wrapper = mount(ContributionsView, {

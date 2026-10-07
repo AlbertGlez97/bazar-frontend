@@ -72,8 +72,25 @@ describe('finance route and navigation authority', () => {
       .matched.at(-1)!
     expect(typeof record.components?.default).toBe('function')
   })
-  it('lists Jornadas as the third Finanzas tab', () => {
+  it('serves Resumen at /app/finanzas/resumen with the same socio and gestion guard, lazily', () => {
+    const router = createAppRouter(createMemoryHistory())
+    const route = router.resolve('/app/finanzas/resumen')
+    expect(route.name).toBe('FinanceOverview')
+    expect(route.meta).toMatchObject({
+      requiresAuth: true,
+      requiresContext: true,
+      requiresSocio: true,
+      requiresGestion: true,
+    })
+    expect(typeof route.matched.at(-1)?.components?.default).toBe('function')
+    // The existing addresses are unchanged: /app/finanzas is still Aportaciones.
+    expect(router.resolve('/app/finanzas').name).toBe('Contributions')
+    expect(router.resolve('/app/finanzas/gastos').name).toBe('Expenses')
+    expect(router.resolve('/app/finanzas/jornadas').name).toBe('WorkShifts')
+  })
+  it('lists Resumen first, then Aportaciones, Gastos and Jornadas', () => {
     expect(FINANCE_TABS.map((t) => [t.to, t.label])).toEqual([
+      ['/app/finanzas/resumen', 'Resumen'],
       ['/app/finanzas', 'Aportaciones'],
       ['/app/finanzas/gastos', 'Gastos'],
       ['/app/finanzas/jornadas', 'Jornadas'],

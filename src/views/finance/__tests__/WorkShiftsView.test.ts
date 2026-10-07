@@ -124,13 +124,13 @@ const submit = async (w: ReturnType<typeof mountView>) => {
 }
 
 describe('work shifts screen: access and navigation', () => {
-  it('shows the three Finanzas tabs with Jornadas active and the form fields', async () => {
+  it('shows the four Finanzas tabs with Jornadas active and the form fields', async () => {
     const w = mountView()
     await flushPromises()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Aportaciones', 'Gastos', 'Jornadas'])
-    expect(tabs[2]!.attributes('aria-current')).toBe('page')
-    expect(tabs[0]!.attributes('aria-current')).toBeUndefined()
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas'])
+    expect(tabs[3]!.attributes('aria-current')).toBe('page')
+    expect(tabs[1]!.attributes('aria-current')).toBeUndefined()
     expect(w.text()).toContain('Registrar jornada')
     for (const id of ['member', 'date', 'duration-hours', 'duration-minutes', 'note'])
       expect(w.find(`#work-shift-${id}`).exists()).toBe(true)

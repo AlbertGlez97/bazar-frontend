@@ -107,6 +107,14 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        // Resumen (Finanzas > Resumen): vista en línea de solo lectura; mismo guard que Aportaciones.
+        // /app/finanzas sigue siendo Aportaciones: la pestaña Resumen solo se añade.
+        path: 'finanzas/resumen',
+        name: 'FinanceOverview',
+        component: () => import('@/views/finance/OverviewView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         // Gastos y compras de inventario (Finanzas > Gastos): mismo guard que Aportaciones.
         path: 'finanzas/gastos',
         name: 'Expenses',

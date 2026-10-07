@@ -126,12 +126,12 @@ describe('expenses screen', () => {
     w.unmount()
   })
 
-  it('shows the Aportaciones | Gastos | Jornadas tabs with Gastos active and the form fields', async () => {
+  it('shows the Resumen | Aportaciones | Gastos | Jornadas tabs with Gastos active and the form fields', async () => {
     const w = mountView()
     await flushPromises()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Aportaciones', 'Gastos', 'Jornadas'])
-    expect(tabs[1]!.attributes('aria-current')).toBe('page')
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas'])
+    expect(tabs[2]!.attributes('aria-current')).toBe('page')
     expect(w.text()).toContain('Registrar gasto')
     for (const id of ['nature', 'category', 'amount', 'date', 'payer', 'funds', 'description'])
       expect(w.find(`#expense-${id}`).exists()).toBe(true)
