@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { reactive } from 'vue'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
@@ -525,5 +527,13 @@ describe('reserves screen: structure and accessibility', () => {
     expect(w.text()).not.toMatch(/ganancia para repartir|reparto|comisi[oó]n|sueldo/i)
     expect(w.find('input[type="range"]').exists()).toBe(false)
     expect(w.text()).toContain('no mueve dinero')
+  })
+
+  it('keeps the form and the list stacked until a wide viewport (the sidebar leaves narrow columns)', () => {
+    // jsdom has no layout engine, so the breakpoint is asserted on the stylesheet itself.
+    const source = readFileSync(resolve(process.cwd(), 'src/views/finance/ReservesView.vue'), 'utf8')
+    const twoColumn = source.match(/@media \(min-width: (\d+)px\)\s*\{\s*\.reserves-layout\s*\{[^}]*grid-template-columns/)
+    expect(twoColumn).not.toBeNull()
+    expect(Number(twoColumn![1])).toBeGreaterThanOrEqual(1024)
   })
 })

@@ -599,7 +599,8 @@ onMounted(refresh)
   background: var(--color-primary-soft);
   font-weight: 600;
 }
-@media (min-width: 768px) {
+/* The app sidebar takes ~184px: below ~1024px the two columns would be too narrow to read. */
+@media (min-width: 1024px) {
   .reserves-layout {
     grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   }
