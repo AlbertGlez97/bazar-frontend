@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useFinanceOverviewStore } from '../finance-overview.store'
+import { FinanceOverviewContractError } from '@/utils/finance-overview'
 import { overviewFixture } from '@/services/__tests__/finance-overview.fixture'
 import type { FinanceOverview } from '@/types/finance-overview.types'
 
@@ -123,6 +124,48 @@ describe('finance overview store', () => {
     await first
     expect(store.error).toBe('')
     expect(store.overview).not.toBeNull()
+  })
+
+  it('keeps the stale flag while a retry after a failed refresh is pending, and clears it on success', async () => {
+    const store = useFinanceOverviewStore()
+    mocks.get.mockResolvedValueOnce(overviewFixture())
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    mocks.get.mockRejectedValueOnce(new Error('Network Error'))
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    expect(store.isStale).toBe(true)
+    const retry = deferred<FinanceOverview>()
+    mocks.get.mockReturnValueOnce(retry.promise)
+    const run = store.load({ from: '2026-10-01', to: '2026-10-07' })
+    expect(store.loading).toBe(true)
+    expect(store.isStale).toBe(true)
+    retry.resolve(overviewFixture())
+    await run
+    expect(store.isStale).toBe(false)
+    expect(store.error).toBe('')
+  })
+
+  it('stays stale when the retry fails again and reset clears the flag', async () => {
+    const store = useFinanceOverviewStore()
+    mocks.get.mockResolvedValueOnce(overviewFixture())
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    mocks.get.mockRejectedValue(new Error('Network Error'))
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    expect(store.isStale).toBe(true)
+    store.reset()
+    expect(store.isStale).toBe(false)
+  })
+
+  it('reports an invalid payload as a contract error, not a network one, and not retryable', async () => {
+    mocks.get.mockRejectedValue(new FinanceOverviewContractError())
+    const store = useFinanceOverviewStore()
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    expect(store.error).toContain('formato inesperado')
+    expect(store.error).not.toMatch(/conectarnos/)
+    expect(store.retryable).toBe(false)
+    mocks.get.mockRejectedValue(new Error('Network Error'))
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    expect(store.retryable).toBe(true)
   })
 
   it('reports loading while a request is pending and reset clears everything', async () => {

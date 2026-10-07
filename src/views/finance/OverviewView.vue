@@ -94,6 +94,7 @@
         Se conserva el último resumen confirmado; no es una actualización nueva.
       </p>
       <AppButton
+        v-if="finance.retryable"
         variant="ghost"
         :disabled="finance.loading"
         data-test="retry"
@@ -393,7 +394,8 @@ function onTo(value: string) {
 }
 
 watch(allowed, (value) => {
-  if (!value) finance.reset()
+  if (value) refresh()
+  else finance.reset()
 })
 onMounted(refresh)
 </script>

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../api'
 import { FinanceOverviewService, validFinanceOverview } from '../finance-overview.service'
+import { FinanceOverviewContractError } from '@/utils/finance-overview'
 import { overviewFixture } from './finance-overview.fixture'
 
 vi.mock('../api', () => ({ default: { get: vi.fn() } }))
@@ -40,7 +41,7 @@ describe('FinanceOverviewService', () => {
   ])('rejects an unknown shape: %s', async (_name, payload) => {
     expect(validFinanceOverview(payload)).toBe(false)
     vi.mocked(api.get).mockResolvedValue({ data: payload })
-    await expect(FinanceOverviewService.get('2026-10-01', '2026-10-02')).rejects.toThrow(/Invalid finance overview/)
+    await expect(FinanceOverviewService.get('2026-10-01', '2026-10-02')).rejects.toBeInstanceOf(FinanceOverviewContractError)
   })
 
   it('propagates request failures untouched', async () => {

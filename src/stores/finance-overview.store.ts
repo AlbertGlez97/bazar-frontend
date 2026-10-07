@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { FinanceOverviewService } from '@/services/finance-overview.service'
 import { WorkShiftsService } from '@/services/work-shifts.service'
 import { currentQueueOrigin } from '@/services/queue-origin'
-import { overviewErrorMessage, overviewExclusiveTo } from '@/utils/finance-overview'
+import { isContractError, overviewErrorMessage, overviewExclusiveTo } from '@/utils/finance-overview'
 import type { FinanceOverview } from '@/types/finance-overview.types'
 import type { WorkShiftSummary } from '@/types/work-shift.types'
 
@@ -27,10 +27,14 @@ export const useFinanceOverviewStore = defineStore('finance-overview', () => {
   const partners = ref<WorkShiftSummary | null>(null)
   const loading = ref(false)
   const error = ref('')
+  /** False when retrying cannot help (the server answered with an unexpected shape). */
+  const retryable = ref(true)
+  /** Set by a failed refresh and cleared only by a successful load or reset, so it survives retries. */
+  const refreshFailed = ref(false)
   let latest = 0
 
   /** True when the last refresh failed and `overview` is an older confirmed copy. */
-  const isStale = computed(() => !!error.value && !!overview.value)
+  const isStale = computed(() => refreshFailed.value && !!overview.value)
 
   async function fetchPartners(from: string, toExclusive: string): Promise<WorkShiftSummary | null> {
     const origin = currentQueueOrigin()
@@ -55,8 +59,12 @@ export const useFinanceOverviewStore = defineStore('finance-overview', () => {
     loading.value = false
     if (overviewResult.status === 'rejected') {
       error.value = overviewErrorMessage(overviewResult.reason)
+      retryable.value = !isContractError(overviewResult.reason)
+      refreshFailed.value = true
       return // keep the last confirmed overview and its partners untouched
     }
+    refreshFailed.value = false
+    retryable.value = true
     overview.value = overviewResult.value
     period.value = { ...next }
     partners.value = partnerResult.status === 'fulfilled' ? partnerResult.value : null
@@ -69,7 +77,9 @@ export const useFinanceOverviewStore = defineStore('finance-overview', () => {
     partners.value = null
     loading.value = false
     error.value = ''
+    retryable.value = true
+    refreshFailed.value = false
   }
 
-  return { overview, period, partners, loading, error, isStale, load, reset }
+  return { overview, period, partners, loading, error, retryable, isStale, load, reset }
 })

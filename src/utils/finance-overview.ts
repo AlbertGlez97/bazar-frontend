@@ -81,8 +81,21 @@ const ERROR_COPY: Record<string, string> = {
     'Hay un gasto con un tipo no reconocido y no se puede calcular el resumen. Avisa a soporte.',
 }
 
+/** The server answered 2xx but the body is not the contract this screen understands. */
+export class FinanceOverviewContractError extends Error {
+  constructor() {
+    super('Invalid finance overview response')
+    this.name = 'FinanceOverviewContractError'
+  }
+}
+export const isContractError = (error: unknown): boolean => error instanceof FinanceOverviewContractError
+
+const CONTRACT_ERROR_COPY =
+  'El resumen llegó en un formato inesperado. Avisa al equipo e intenta de nuevo más tarde.'
+
 /** Spanish message for a failed overview request. */
 export function overviewErrorMessage(error: unknown): string {
+  if (isContractError(error)) return CONTRACT_ERROR_COPY
   const data = (error as { response?: { data?: { code?: unknown; message?: unknown } } })?.response?.data
   const code = typeof data?.code === 'string' ? data.code : typeof data?.message === 'string' ? data.message : ''
   if (ERROR_COPY[code]) return ERROR_COPY[code]

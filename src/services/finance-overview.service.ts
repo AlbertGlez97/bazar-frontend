@@ -1,4 +1,5 @@
 import api from './api'
+import { FinanceOverviewContractError } from '@/utils/finance-overview'
 import type { FinanceOverview } from '@/types/finance-overview.types'
 
 type Rec = Record<string, unknown>
@@ -69,7 +70,7 @@ export const FinanceOverviewService = {
     const { data } = await api.get<unknown>('/finance/overview', {
       params: { from, to: toExclusive },
     })
-    if (!validFinanceOverview(data)) throw new Error('Invalid finance overview response')
+    if (!validFinanceOverview(data)) throw new FinanceOverviewContractError()
     return data
   },
 }

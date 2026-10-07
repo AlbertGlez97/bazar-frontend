@@ -8,6 +8,8 @@ import {
   missingCostPercent,
   moneyForScreenReader,
   overviewErrorMessage,
+  FinanceOverviewContractError,
+  isContractError,
   overviewExclusiveTo,
   partialSuffix,
 } from '../finance-overview'
@@ -96,5 +98,15 @@ describe('finance overview utils', () => {
     expect(overviewErrorMessage({ response: { data: { code: 'FINANCE_OVERVIEW_OVERFLOW' } } })).toContain('periodo más corto')
     expect(overviewErrorMessage({ response: { status: 500, data: {} } })).toMatch(/Algo salió mal/)
     expect(overviewErrorMessage(new Error('Network Error'))).toMatch(/No pudimos conectarnos/)
+    expect(overviewErrorMessage({ response: { status: 422, data: { code: 'FINANCE_OVERVIEW_INVALID_EXPENSE_NATURE' } } })).toContain('gasto')
+  })
+
+  it('maps a contract mismatch to its own non-network message', () => {
+    const message = overviewErrorMessage(new FinanceOverviewContractError())
+    expect(message).toContain('formato inesperado')
+    expect(message).not.toMatch(/conectarnos|internet/)
+    expect(isContractError(new FinanceOverviewContractError())).toBe(true)
+    expect(isContractError(new Error('Network Error'))).toBe(false)
+    expect(isContractError({ response: { status: 500 } })).toBe(false)
   })
 })

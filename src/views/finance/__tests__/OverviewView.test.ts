@@ -1,8 +1,10 @@
+import { reactive } from 'vue'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OverviewView from '../OverviewView.vue'
 import { addDaysToKey, businessToday } from '@/utils/business-time'
+import { FinanceOverviewContractError } from '@/utils/finance-overview'
 import { overviewFixture } from '@/services/__tests__/finance-overview.fixture'
 import type { FinanceOverview } from '@/types/finance-overview.types'
 
@@ -10,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   get: vi.fn(),
   summary: vi.fn(),
   session: { member: { role: 'socio' } as { role: string } },
-  mode: { currentMode: 'gestion' },
+  mode: { currentMode: 'gestion' } as { currentMode: string },
 }))
 vi.mock('@/services/finance-overview.service', () => ({
   FinanceOverviewService: { get: mocks.get },
@@ -96,6 +98,33 @@ describe('overview screen: access, tabs and request', () => {
     expect(mocks.get).toHaveBeenCalledWith(monthStart, tomorrow)
     expect(mocks.summary).toHaveBeenCalledTimes(1)
     expect(mocks.summary.mock.calls[0]![1]).toEqual({ from: monthStart, to: tomorrow })
+  })
+
+  it('requests the overview exactly once when access becomes allowed after mount', async () => {
+    mocks.session = reactive({ member: { role: 'colaborador' } })
+    mocks.mode = reactive({ currentMode: 'gestion' })
+    const w = await mounted()
+    expect(w.text()).toContain('Solo socios')
+    expect(mocks.get).not.toHaveBeenCalled()
+    mocks.session.member = { role: 'socio' }
+    await flushPromises()
+    expect(mocks.get).toHaveBeenCalledTimes(1)
+    expect(mocks.get).toHaveBeenCalledWith(monthStart, tomorrow)
+    expect(w.find('[data-test="operating"]').exists()).toBe(true)
+  })
+
+  it('does not request when access returns but the range is invalid', async () => {
+    mocks.session = reactive({ member: { role: 'socio' } })
+    const w = await mounted()
+    mocks.get.mockClear()
+    const inputs = w.findAll('input[type="date"]')
+    await inputs[0]!.setValue(today)
+    await inputs[1]!.setValue(addDaysToKey(today, -3))
+    mocks.session.member = { role: 'colaborador' }
+    await flushPromises()
+    mocks.session.member = { role: 'socio' }
+    await flushPromises()
+    expect(mocks.get).not.toHaveBeenCalled()
   })
 
   it('does not render nor load for a collaborator or in sales mode', async () => {
@@ -317,6 +346,37 @@ describe('overview screen: freshness and states', () => {
     expect(w.text()).toContain('No pudimos conectarnos')
     expect(w.text()).toContain('no es una actualización nueva')
     expect(w.find('[data-test="operating"]').exists()).toBe(true)
+  })
+})
+
+describe('overview screen: retry labelling and contract errors', () => {
+  it('keeps the last-confirmed label while a retry is pending and flips it after success', async () => {
+    const w = await mounted()
+    mocks.get.mockRejectedValueOnce(new Error('Network Error'))
+    await w.findAll('button').find((b) => b.text() === 'Este mes')!.trigger('click')
+    await flushPromises()
+    let release!: (o: FinanceOverview) => void
+    mocks.get.mockReturnValueOnce(new Promise<FinanceOverview>((r) => (release = r)))
+    await w.find('[data-test="retry"]').trigger('click')
+    await flushPromises()
+    expect(w.text()).toContain('Actualizando el resumen')
+    const pending = w.find('[data-test="freshness"]').text()
+    expect(pending).toContain('Último resumen confirmado')
+    expect(pending).not.toContain('Última actualización')
+    release(overviewFixture())
+    await flushPromises()
+    const done = w.find('[data-test="freshness"]').text()
+    expect(done).toContain('Última actualización')
+    expect(done).not.toContain('Último resumen confirmado')
+  })
+
+  it('explains an invalid payload without a network message and without a retry button', async () => {
+    mocks.get.mockRejectedValueOnce(new FinanceOverviewContractError())
+    const w = await mounted()
+    expect(w.text()).toContain('formato inesperado')
+    expect(w.text()).not.toContain('No pudimos conectarnos')
+    expect(w.find('[data-test="retry"]').exists()).toBe(false)
+    expect(w.find('[data-test="operating"]').exists()).toBe(false)
   })
 })
 
