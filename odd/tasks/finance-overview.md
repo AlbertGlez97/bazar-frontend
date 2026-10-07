@@ -24,8 +24,8 @@ Add a "Resumen" tab to Finanzas: an online, read-only overview of recorded opera
 - [x] FO-F1 Types + service + util (coverage text, exclusive-to, labelling) + tests (667b239)
 - [x] FO-F2 Pinia store (stale-response guard, last confirmed data, per-partner summary) + tests (b7bbd9f)
 - [x] FO-F3 View + Resumen tab (first) + lazy route + tests (a3ac1b9)
-- [x] FO-F4 Help articles + tests
-- [ ] FO-F5 Verification (full vitest, lint, build)
+- [x] FO-F4 Help articles + tests (abfcaf7)
+- [x] FO-F5 Verification (full vitest, lint, build)
 - [ ] FR1/FR2 Reserves CRUD — BLOCKED on backend (no endpoints exist)
 
 ## Route
@@ -39,3 +39,6 @@ FO-F1 observed: service/util tests 22 passed, eslint clean, vue-tsc -b clean. Au
 FO-F2 observed: store tests 8 passed (stale-response guard for success and failure, last-confirmed data kept on error, partner degradation, reset).
 FO-F3 observed: `npx vitest run src/views/finance src/router` 10 files / 242 tests passed (OverviewView 20 tests; Contributions/Expenses/WorkShifts tab assertions updated for the new first tab), eslint and vue-tsc -b clean. Route `/app/finanzas/resumen` (name FinanceOverview) lazy, same socio+gestion guard; `/app/finanzas` still Aportaciones.
 FO-F4 observed: help articles `resumen-finanzas` (guide) and `resumen-preguntas` (7 questions: resultado operativo, margen vs resultado, compras de inventario, reserva, monto potencialmente disponible, por qué no es efectivo, aportación no es ingreso); `npx vitest run src/config src/views/help` 11 files / 336 tests passed, eslint clean.
+FO-F5 observed: `npx vitest run` 206 files / 3576 tests passed (includes Aportaciones, Gastos and Jornadas regression; their tab assertions were updated for the new first tab), `npm run lint` clean, `npm run build` (vue-tsc -b + vite build) OK.
+Commits: FO-F1 667b239, FO-F2 b7bbd9f, FO-F3 a3ac1b9, FO-F4 abfcaf7, evidence/closure commit below.
+Pending: Reserves (FR1/FR2) blocked on backend (no reserves endpoints; the view only shows what the overview returns: `reserves.activeCount/plannedMinor` and a "próximamente" note). Real browser/viewport validation not done (jsdom cannot measure layout). Per-partner names come from the summary's embedded `member`; there is no fallback to the finance-references cache.
