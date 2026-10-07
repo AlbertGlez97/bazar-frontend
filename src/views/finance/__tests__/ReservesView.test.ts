@@ -239,6 +239,16 @@ describe('reserves screen: list', () => {
     expect(w.text()).not.toContain('No se pudo actualizar la lista')
   })
 
+  it('explains a missing server route and hides the retry button', async () => {
+    const w = await mounted()
+    mocks.list.mockRejectedValueOnce(failure(404))
+    await q(w, 'scope-all').trigger('click')
+    await flushPromises()
+    expect(w.text()).toContain('Esta función aún no está disponible en el servidor')
+    expect(w.text()).not.toContain('Algo salió mal')
+    expect(w.find('[data-test="retry"]').exists()).toBe(false)
+  })
+
   it('loads more with the cursor unchanged', async () => {
     mocks.list.mockResolvedValueOnce(reservePageFixture([monthItem()], 'cursor-1=='))
     const w = await mounted()

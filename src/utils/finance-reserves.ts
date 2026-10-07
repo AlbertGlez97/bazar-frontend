@@ -1,6 +1,7 @@
 import { addDaysToKey, formatDateKey, isValidDateKey, isValidRange } from '@/utils/business-time'
 import { parseMoneyText, sumMinor } from '@/utils/money'
 import { VOICE } from '@/config/voice'
+import { MISSING_ROUTE_COPY, isMissingRoute } from '@/utils/finance-overview'
 import type {
   ReserveFields,
   ReserveListItem,
@@ -130,6 +131,8 @@ export function isUncertainFailure(error: unknown): boolean {
   return !hasResponse(error) || (status !== null && (status >= 500 || status === 408 || status === 429))
 }
 
+export { isMissingRoute }
+
 export const isConflict = (error: unknown): boolean => statusOf(error) === 409
 
 /** Calm Spanish message for a failed reserve request; never claims something was saved. */
@@ -151,6 +154,6 @@ export function reserveErrorMessage(error: unknown, action: ReserveAction): stri
   if (status === 400) return 'El servidor no aceptó los datos. Revísalos e intenta de nuevo.'
   if (status === 401) return VOICE.apiErrors.session
   if (status === 403) return 'Solo las personas socias pueden administrar reservas desde este dispositivo.'
-  if (status === 404) return 'Esa reserva ya no existe. Actualiza la lista.'
+  if (status === 404) return action === 'cancel' ? 'Esa reserva ya no existe. Actualiza la lista.' : MISSING_ROUTE_COPY
   return VOICE.genericError
 }

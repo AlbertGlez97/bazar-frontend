@@ -7,6 +7,7 @@ import { VOICE } from '@/config/voice'
 import { useFinanceOverviewStore } from './finance-overview.store'
 import {
   isConflict,
+  isMissingRoute,
   isUncertainFailure,
   reserveErrorMessage,
   reserveExclusiveTo,
@@ -62,6 +63,8 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
   const loading = ref(false)
   const loadingMore = ref(false)
   const error = ref('')
+  /** False when the list error is a missing server route: retrying cannot help. */
+  const retryable = ref(true)
   const saving = ref(false)
   const saveError = ref('')
   /** Name of the reserve confirmed by the last successful create (for the status message). */
@@ -89,6 +92,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     loading.value = true
     loadingMore.value = false
     error.value = ''
+    retryable.value = true
     const current = origin()
     if (!current) {
       loading.value = false
@@ -104,6 +108,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     } catch (e) {
       if (id !== latest) return
       error.value = reserveErrorMessage(e, 'list') // keep the last confirmed list
+      retryable.value = !isMissingRoute(e)
     } finally {
       if (id === latest) loading.value = false
     }
@@ -127,6 +132,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     } catch (e) {
       if (id !== latest) return
       error.value = reserveErrorMessage(e, 'list')
+      retryable.value = !isMissingRoute(e)
     } finally {
       if (id === latest) loadingMore.value = false
     }
@@ -240,6 +246,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     loading.value = false
     loadingMore.value = false
     error.value = ''
+    retryable.value = true
     saving.value = false
     saveError.value = ''
     savedName.value = ''
@@ -265,6 +272,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     cancelError,
     cancelErrorId,
     cancelledName,
+    retryable,
     load,
     loadMore,
     create,

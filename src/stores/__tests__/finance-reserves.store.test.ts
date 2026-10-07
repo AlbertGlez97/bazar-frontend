@@ -129,6 +129,17 @@ describe('reserves store: list', () => {
     expect(store.loading).toBe(false)
   })
 
+  it('explains a missing list route and flags the error as not worth retrying', async () => {
+    mocks.list.mockRejectedValueOnce(failure(404))
+    const store = useFinanceReservesStore()
+    await store.load(query)
+    expect(store.error).toContain('Esta función aún no está disponible en el servidor')
+    expect(store.retryable).toBe(false)
+    mocks.list.mockRejectedValueOnce(failure(500))
+    await store.load(query)
+    expect(store.retryable).toBe(true)
+  })
+
   it('reports a context problem without calling the API when there is no origin', async () => {
     mocks.origin = null
     const store = useFinanceReservesStore()
@@ -204,6 +215,14 @@ describe('reserves store: create', () => {
     expect(mocks.list).toHaveBeenCalledTimes(1)
     await store.create(fields)
     expect(mocks.create.mock.calls[1]![1].id).not.toBe(mocks.create.mock.calls[0]![1].id)
+  })
+
+  it('explains a missing create route and does not claim anything was saved', async () => {
+    mocks.create.mockRejectedValueOnce(failure(404))
+    const store = useFinanceReservesStore()
+    expect(await store.create(fields)).toBe(false)
+    expect(store.saveError).toContain('Esta función aún no está disponible en el servidor')
+    expect(store.saveError).not.toMatch(/guardada|ya no existe/)
   })
 
   it('ignores a second submit while one is in flight', async () => {

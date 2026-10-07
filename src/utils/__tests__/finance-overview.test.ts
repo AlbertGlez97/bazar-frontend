@@ -10,6 +10,7 @@ import {
   overviewErrorMessage,
   FinanceOverviewContractError,
   isContractError,
+  isMissingRoute,
   overviewExclusiveTo,
   partialSuffix,
 } from '../finance-overview'
@@ -102,6 +103,20 @@ describe('finance overview utils', () => {
     expect(overviewErrorMessage({ response: { status: 500, data: {} } })).toMatch(/Algo salió mal/)
     expect(overviewErrorMessage(new Error('Network Error'))).toMatch(/No pudimos conectarnos/)
     expect(overviewErrorMessage({ response: { status: 422, data: { code: 'FINANCE_OVERVIEW_INVALID_EXPENSE_NATURE' } } })).toContain('gasto')
+  })
+
+  it('explains a missing server route (404) without the generic message', () => {
+    const message = overviewErrorMessage({ response: { status: 404, data: {} } })
+    expect(message).toContain('Esta función aún no está disponible en el servidor')
+    expect(message).not.toMatch(/Algo salió mal|conectarnos/)
+    expect(isMissingRoute({ response: { status: 404 } })).toBe(true)
+    expect(isMissingRoute({ response: { status: 500 } })).toBe(false)
+    expect(isMissingRoute(new Error('Network Error'))).toBe(false)
+    expect(isMissingRoute(new FinanceOverviewContractError())).toBe(false)
+    // other failures keep their own copy
+    expect(overviewErrorMessage({ response: { status: 500, data: {} } })).toMatch(/Algo salió mal/)
+    expect(overviewErrorMessage(new Error('Network Error'))).toMatch(/No pudimos conectarnos/)
+    expect(overviewErrorMessage(new FinanceOverviewContractError())).toContain('formato inesperado')
   })
 
   it('maps a contract mismatch to its own non-network message', () => {

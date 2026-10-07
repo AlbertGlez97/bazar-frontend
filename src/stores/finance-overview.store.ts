@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { FinanceOverviewService } from '@/services/finance-overview.service'
 import { WorkShiftsService } from '@/services/work-shifts.service'
 import { currentQueueOrigin } from '@/services/queue-origin'
-import { isContractError, overviewErrorMessage, overviewExclusiveTo } from '@/utils/finance-overview'
+import { isContractError, isMissingRoute, overviewErrorMessage, overviewExclusiveTo } from '@/utils/finance-overview'
 import type { FinanceOverview } from '@/types/finance-overview.types'
 import type { WorkShiftSummary } from '@/types/work-shift.types'
 
@@ -59,7 +59,7 @@ export const useFinanceOverviewStore = defineStore('finance-overview', () => {
     loading.value = false
     if (overviewResult.status === 'rejected') {
       error.value = overviewErrorMessage(overviewResult.reason)
-      retryable.value = !isContractError(overviewResult.reason)
+      retryable.value = !isContractError(overviewResult.reason) && !isMissingRoute(overviewResult.reason)
       refreshFailed.value = true
       return // keep the last confirmed overview and its partners untouched
     }

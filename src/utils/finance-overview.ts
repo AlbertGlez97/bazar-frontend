@@ -91,12 +91,19 @@ export class FinanceOverviewContractError extends Error {
 }
 export const isContractError = (error: unknown): boolean => error instanceof FinanceOverviewContractError
 
+/** HTTP 404 on a finance read/create: the server does not expose the route yet (not a data problem, a retry cannot help). */
+export const isMissingRoute = (error: unknown): boolean =>
+  (error as { response?: { status?: unknown } })?.response?.status === 404
+
+export const MISSING_ROUTE_COPY = 'Esta función aún no está disponible en el servidor. Avisa al equipo e intenta más tarde.'
+
 const CONTRACT_ERROR_COPY =
   'El resumen llegó en un formato inesperado. Avisa al equipo e intenta de nuevo más tarde.'
 
 /** Spanish message for a failed overview request. */
 export function overviewErrorMessage(error: unknown): string {
   if (isContractError(error)) return CONTRACT_ERROR_COPY
+  if (isMissingRoute(error)) return MISSING_ROUTE_COPY
   const data = (error as { response?: { data?: { code?: unknown; message?: unknown } } })?.response?.data
   const code = typeof data?.code === 'string' ? data.code : typeof data?.message === 'string' ? data.message : ''
   if (ERROR_COPY[code]) return ERROR_COPY[code]

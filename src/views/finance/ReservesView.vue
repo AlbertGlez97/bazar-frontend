@@ -213,6 +213,7 @@
             Se conserva la última lista cargada; puede estar desactualizada.
           </p>
           <AppButton
+            v-if="finance.retryable"
             variant="ghost"
             :disabled="finance.loading"
             data-test="retry"

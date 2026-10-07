@@ -419,6 +419,14 @@ describe('overview screen: retry labelling and contract errors', () => {
     expect(done).not.toContain('Último resumen confirmado')
   })
 
+  it('explains a missing server route calmly and hides the retry button', async () => {
+    mocks.get.mockRejectedValueOnce({ response: { status: 404, data: {} } })
+    const w = await mounted()
+    expect(w.text()).toContain('Esta función aún no está disponible en el servidor')
+    expect(w.text()).not.toContain('Algo salió mal')
+    expect(w.find('[data-test="retry"]').exists()).toBe(false)
+  })
+
   it('explains an invalid payload without a network message and without a retry button', async () => {
     mocks.get.mockRejectedValueOnce(new FinanceOverviewContractError())
     const w = await mounted()

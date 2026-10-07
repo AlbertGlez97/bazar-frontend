@@ -11,6 +11,7 @@ import {
   matchesRange,
   plannedTotalForRange,
   reserveErrorMessage,
+  isMissingRoute,
   reserveExclusiveTo,
   reserveFieldsFromForm,
   reservePickerPeriod,
@@ -105,6 +106,25 @@ describe('reserve totals', () => {
   })
 })
 
+describe('reserve error messages: missing server route', () => {
+  it('explains a 404 on list and create as an unavailable function, never as a missing reserve', () => {
+    for (const action of ['list', 'create'] as const) {
+      const message = reserveErrorMessage(failure(404), action)
+      expect(message).toContain('Esta función aún no está disponible en el servidor')
+      expect(message).not.toMatch(/ya no existe|Algo salió mal/)
+    }
+    expect(isMissingRoute(failure(404))).toBe(true)
+    expect(isMissingRoute(failure(500))).toBe(false)
+    expect(isMissingRoute(failure())).toBe(false)
+  })
+
+  it('keeps other list/create failures unchanged', () => {
+    expect(reserveErrorMessage(failure(500), 'list')).toMatch(/Algo salió mal/)
+    expect(reserveErrorMessage(failure(), 'list')).toMatch(/conectarnos/)
+    expect(reserveErrorMessage(new FinanceReserveContractError(), 'list')).toContain('formato inesperado')
+  })
+})
+
 describe('reserve error messages', () => {
   it('never claims the reserve was saved when offline and reassures about duplicates', () => {
     expect(reserveErrorMessage(failure(), 'create')).toBe(
@@ -119,6 +139,7 @@ describe('reserve error messages', () => {
     expect(reserveErrorMessage(failure(400), 'create')).toContain('Revísalos')
     expect(reserveErrorMessage(failure(403), 'create')).toContain('personas socias')
     expect(reserveErrorMessage(failure(404), 'cancel')).toContain('ya no existe')
+    expect(reserveErrorMessage(failure(404), 'cancel')).not.toContain('Esta función aún no está disponible en el servidor')
     expect(reserveErrorMessage(failure(500), 'list')).not.toMatch(/\d{3}|stack/i)
     expect(reserveErrorMessage(new FinanceReserveContractError(), 'create')).toContain('Actualiza la lista')
   })

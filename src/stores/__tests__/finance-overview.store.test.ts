@@ -156,6 +156,18 @@ describe('finance overview store', () => {
     expect(store.isStale).toBe(false)
   })
 
+  it('explains a missing server route and does not offer a retry that cannot help', async () => {
+    mocks.get.mockRejectedValue({ response: { status: 404, data: {} } })
+    const store = useFinanceOverviewStore()
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    expect(store.error).toContain('Esta función aún no está disponible en el servidor')
+    expect(store.retryable).toBe(false)
+    mocks.get.mockRejectedValue({ response: { status: 500, data: {} } })
+    await store.load({ from: '2026-10-01', to: '2026-10-07' })
+    expect(store.error).toMatch(/Algo salió mal/)
+    expect(store.retryable).toBe(true)
+  })
+
   it('reports an invalid payload as a contract error, not a network one, and not retryable', async () => {
     mocks.get.mockRejectedValue(new FinanceOverviewContractError())
     const store = useFinanceOverviewStore()
