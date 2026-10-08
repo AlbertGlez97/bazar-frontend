@@ -514,10 +514,20 @@ async function newSimulation() {
   focusConfig('sim-amount')
 }
 
-watch(allowed, (value) => {
-  if (value) refresh()
-  else store.reset()
-})
+// Access can stay allowed while the account, API, member or device changes.
+watch(
+  [allowed, () => session.owner?.accountId, () => session.owner?.apiBase,
+    () => session.memberId, () => session.deviceId],
+  () => {
+    store.reset()
+    amountText.value = ''
+    partnerText.value = '50'
+    workText.value = '50'
+    basis.value = 'WORK_SHIFTS'
+    applied.value = null
+    refresh()
+  },
+)
 onMounted(() => {
   store.clearError()
   refresh()
