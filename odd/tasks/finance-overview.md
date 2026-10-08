@@ -99,16 +99,16 @@ Found in a real browser (Resumen and Reservas) and fixed, each with tests (RED o
 - [x] 3. Amounts misaligned between cards with and without a note line; `OverviewFigure` grid now uses `align-content: start` so stretched rows do not push the amount down (65b9988)
 - [x] 4. HTTP 404 on `GET /finance/overview` and on reserves list/create showed "Algo salió mal"; it now says the function is not yet available on the server, with no retry button (a missing route cannot be fixed by retrying). Cancel keeps its own 404 meaning, "reserve not found" (e779c0d)
 
-Not browser-tested:
+Historical browser gaps (superseded by integrated evidence below):
 
 - Create and cancel a reserve against the real backend: the running Docker image lacks the /finance/overview and /finance/reserves routes.
 - Keyboard and screen-reader focus order.
 - A real offline state (only simulated in jsdom).
 - Layout fixes 1 and 3 are asserted on the stylesheet only (jsdom has no layout engine); they were not re-measured after the change.
 
-## Integrated closeout IC1 (local fixes; integration still pending)
+## Integrated closeout IC1 (verified; final acknowledgement recorded below)
 
-All bounded frontend fixes pass automated checks. Parent-reported real API/lab/Chrome proof is recorded below. Native review remains pending; this is not Phase4 closure. Route: delegated direct (multi-file preparation and implementation). Engram mirror remains pending and parent-owned.
+All bounded frontend fixes pass automated checks. Parent-reported real API/lab/Chrome proof is recorded below. Native review was approved and acknowledged; final local closeout evidence is recorded below. Route: delegated direct (multi-file preparation and implementation). Engram mirror remains pending and parent-owned.
 
 | Finding | Classification and correction |
 | --- | --- |
@@ -132,17 +132,17 @@ Only Reservas default and Este mes use full civil month: inclusive picker end vi
 - Touched sources/tests normalized to LF only; git diff --check:exit0. Initial unrelated CRLF-only status entries were not normalized, reset or staged.
 - No backend/lab/browser/remote/commit/review work performed by this frontend writer. Service/store/view fixtures prove consumer behavior only, not live receipts or layout.
 
-### Next action and risks
-Parent completed real create/reversal/replay409 arithmetic, logout/network behavior, responsive layouts and accessibility checks. Native risk assessment/review and the final closure decision remain pending. Reserves remain online-only: uncertain failures retain retry identity in memory, reset discards that volatile attempt, and there is no offline queue or fabricated success. A request already sent before logout cannot be undone; late responses cannot repopulate another session or trigger a new-session refresh. Commit identities and native review evidence remain parent-owned.
+### Verified outcome and remaining limitations
+Parent completed real create/reversal/replay409 arithmetic, logout/network behavior, responsive layouts and accessibility checks. Native review completed with no findings and exact acknowledgement burned authority. Accepted evidence limitations are recorded below. Reserves remain online-only: uncertain failures retain retry identity in memory, reset discards that volatile attempt, and there is no offline queue or fabricated success. A request already sent before logout cannot be undone; late responses cannot repopulate another session or trigger a new-session refresh. Commit identities and native review evidence remain parent-owned.
 
 ### Live-browser follow-up: confirmation after remount
 Parent observed a real successful07Oct create followed by navigation to Resumen and back via Administrar reservas: store savedName survived, but view-local savedPeriod did not, producing an empty-period confirmation. Confirmed UX bug, not theoretical. ReservesView now clears transient action messages on mount before refreshing; list/retry identities remain intact. Immediate confirmation and captured-period-during-await regressions still pass.
 
-Observed RED: remount regression1 failed/44 passed (view45 tests), exit1. GREEN: focused six files154 passed, exit0; full suite210 files/3734 passed, exit0 (105.82s, no retry). Lint, vue-tsc --noEmit, build and diff --check all exit0. Nonblocking dependency chunk warnings unchanged. Only view/test/tracker changed for this follow-up; no commit or lab/browser interaction. Parent must rebuild/refresh the real local frontend and re-observe navigation before accepting live closure.
+Observed RED: remount regression1 failed/44 passed (view45 tests), exit1. GREEN: focused six files154 passed, exit0; full suite210 files/3734 passed, exit0 (105.82s, no retry). Lint, vue-tsc --noEmit, build and diff --check all exit0. Nonblocking dependency chunk warnings unchanged. Only view/test/tracker changed for this follow-up; no commit or lab/browser interaction. Parent subsequently rebuilt/refreshed the real local frontend and verified the navigation correction.
 
 ## Parent-reported integrated evidence (2026-10-07)
 
-Automated implementation checks and authorized live checks are completed. These observations were supplied by the parent browser/API actors, not inferred from mocks. Native review is still pending; no Phase4 closed claim is made.
+Automated implementation checks and authorized live checks are completed. These observations were supplied by the parent browser/API actors, not inferred from mocks. Native review completed and was acknowledged. Local Phase4 is closed with the accepted evidence limitations below.
 
 | Live check | Observed result |
 | --- | --- |
@@ -156,4 +156,19 @@ Automated implementation checks and authorized live checks are completed. These 
 | Logout/account context | Loaded summary then logout/login showed no retained financial data. Normal authorized login/member context restored summary via loading state before a fresh fetch. |
 | Responsive/accessibility | Parent reports the previously requested live responsive and accessibility checks verified. |
 
-Final source verification remains focused154 tests/full3734 tests, lint, vue-tsc, build and diff checks all passing; parent independently repeated focused154. No source changes or normalization during packaging. Rollback boundaries: session cache/race behavior is confined to auth/overview/reserves stores and their tests; coverage complement is confined to its util/test; reserve period/form/receipt behavior is confined to its view/service/tests. Tracker evidence stays with the final work unit. Three local Conventional Commits are being packaged on feat/finance-overview-reserves without attribution or remote operations; the parent will record the exact three hashes after packaging (the final commit cannot contain its own hash without amendment).
+Final source verification remains focused154 tests/full3734 tests, lint, vue-tsc, build and diff checks all passing; parent independently repeated focused154. No source changes or normalization during packaging. Rollback boundaries: session cache/race behavior is confined to auth/overview/reserves stores and their tests; coverage complement is confined to its util/test; reserve period/form/receipt behavior is confined to its view/service/tests. Tracker evidence stays with the final work unit. Three local Conventional Commits were packaged on feat/finance-overview-reserves without attribution or remote operations; exact identities are recorded below.
+
+## Final local closeout and native acknowledgement (2026-10-07)
+
+Phase4 is closed for the authorized local scope. Parent real Chrome/API observations and worker automated checks are complete; parent independently repeated154 focused tests. No distributions, payments or Phase5 behavior was added. Full cross-repository evidence is in the API doc/finance-phase4-integrated-closeout.md report.
+
+Source commits:
+- d4623e697335da221338c6d406979687ad9515ae: session isolation/races and independent optional-summary publication.
+- ee753237807d3fa35f76f9d75445acd82881d2a8: coherent displayed coverage complement.
+- 2f5971c38678d26c27158fe9f135968607f299e4: reserve civil-month/applied-period/confirmation/remount fixes and receipt hardening.
+
+Parent native review completed all4 lenses with no findings. Approved review was acknowledged using the exact continuation; returned action acknowledged, authority burned. Lineage review-f0c95b7d441994fe; target sha256:324c8f8ed4426e814bc6312f342ec0eb1e9ad076928a53499dde2d8ef1145996. This final passive tracker update changes no source candidate bytes and requires only structural/secret-pattern/diff checks.
+
+Accepted limitations:legacy missing-cost warnings/partial potential/coverage are automated fixture-backed, not a live missing-cost claim; no clean current-domain API creation mechanism and no financial SQL patch. Existing SOCIO only; collaborator access covered by automated guards/RLS, not a new live account. Real keyboard/focus checks completed; no screen-reader run claimed. Reserves remain online-only, IndexedDB v4/prior queues unchanged. Auxiliary monthly/offline/API-retry reserves were cancelled; principal MXN3000 purchase reserve remains. Current-month contributions after relogin were MXN8101.76 while October7 baseline remained MXN8000.
+
+Engram writes were not attempted because authoritative runtime session registration is unavailable. Mirrors remain pending; no identity invented. No push/PR/merge/rebase/squash/public deployment. Final passive documentation commit identity will be supplied by parent readback without amendment.
