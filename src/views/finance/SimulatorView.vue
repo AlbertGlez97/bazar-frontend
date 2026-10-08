@@ -360,6 +360,7 @@ import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { AppAlert, AppButton, AppCard, CashInput, ReportRangePicker, TabNav } from '@/components'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
+import { useAuthStore } from '@/stores/auth.store'
 import { useFinanceDistributionStore } from '@/stores/finance-distribution.store'
 import { addDaysToKey, businessToday, validateRange, type RangePreset } from '@/utils/business-time'
 import { formatMinorMoney, minorToDisplay, parseMoneyText } from '@/utils/money'
@@ -386,6 +387,7 @@ import SimulatorRuleForm from './components/SimulatorRuleForm.vue'
 import SimulatorMemberResult from './components/SimulatorMemberResult.vue'
 
 const session = useSessionStore(),
+  auth = useAuthStore(),
   mode = useUiModeStore(),
   store = useFinanceDistributionStore()
 const allowed = computed(() => session.member?.role === 'socio' && mode.currentMode === 'gestion')
@@ -515,9 +517,9 @@ async function newSimulation() {
   focusConfig('sim-amount')
 }
 
-// Access can stay allowed while the account, API, member or device changes.
+// Access can stay allowed while the token, account, API, member or device changes.
 watch(
-  [allowed, () => session.owner?.accountId, () => session.owner?.apiBase,
+  [allowed, () => auth.token, () => session.owner?.accountId, () => session.owner?.apiBase,
     () => session.memberId, () => session.deviceId],
   () => {
     store.reset()

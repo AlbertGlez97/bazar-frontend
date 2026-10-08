@@ -18,7 +18,8 @@ vi.mock('@/services/finance-distribution.service', () => ({
 }))
 vi.mock('@/services/finance-overview.service', () => ({ FinanceOverviewService: { get: mocks.overview } }))
 const freshSession = () => ({ member: { role: 'socio' } as { role: string } | null, memberId: 'member-a', deviceId: 'device-a', owner: { accountId: 'account-a', apiBase: '/api/v1' } })
-const access = reactive({ session: freshSession(), mode: { currentMode: 'gestion' } })
+const access = reactive({ session: freshSession(), mode: { currentMode: 'gestion' }, auth: { token: 'token-a' } })
+vi.mock('@/stores/auth.store', () => ({ useAuthStore: () => access.auth }))
 vi.mock('@/stores/uiMode.store', () => ({ useUiModeStore: () => access.mode }))
 vi.mock('@/stores/session.store', () => ({ useSessionStore: () => access.session }))
 
@@ -45,6 +46,7 @@ beforeEach(() => {
   mocks.overview.mockReset()
   access.session = freshSession()
   access.mode = { currentMode: 'gestion' }
+  access.auth = { token: 'token-a' }
   mocks.overview.mockResolvedValue(baseOverview())
   mocks.simulate.mockResolvedValue(simulationFixture())
 })
@@ -105,7 +107,7 @@ describe('access, header and tabs', () => {
     expect(mocks.simulate).not.toHaveBeenCalled()
   })
 
-  it.each(['member', 'device', 'account', 'api'])('reloads an allowed mounted view after %s attribution changes and ignores old requests', async (identity) => {
+  it.each(['member', 'device', 'account', 'api', 'token'])('reloads an allowed mounted view after %s attribution changes and ignores old requests', async (identity) => {
     const w = await mounted()
     await setAmount(w, '6,000')
     await setRule(w, '70', '30')
@@ -119,6 +121,7 @@ describe('access, header and tabs', () => {
     mocks.simulate.mockReturnValueOnce(oldResult.promise)
     await q(w, 'sim-form').trigger('submit')
     mocks.overview.mockResolvedValueOnce(baseOverview(900000))
+    if (identity === 'token') access.auth.token = 'token-b'
     if (identity === 'member') access.session.memberId = 'member-b'
     if (identity === 'device') access.session.deviceId = 'device-b'
     if (identity === 'account') access.session.owner.accountId = 'account-b'
