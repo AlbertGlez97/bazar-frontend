@@ -142,6 +142,7 @@
               v-model="amountText"
               label="Monto a simular"
               :show-pad="false"
+              :description-id="maxMinor !== null ? 'sim-amount-hint' : undefined"
               :disabled="store.simulating"
             />
             <p

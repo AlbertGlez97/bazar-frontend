@@ -24,7 +24,7 @@
         :value="modelValue"
         :disabled="disabled"
         :aria-invalid="isUnclear ? 'true' : undefined"
-        :aria-describedby="isUnclear ? errorId : undefined"
+        :aria-describedby="describedBy"
         @input="onInput"
       >
     </div>
@@ -97,12 +97,15 @@ const props = withDefaults(defineProps<{
   showPad?: boolean
   /** id del <input> (si no, se genera uno). */
   id?: string
+  /** Optional id of externally rendered help for the actual input. */
+  descriptionId?: string
 }>(), {
   totalMinor: 0,
   disabled: false,
   label: 'Efectivo recibido',
   showPad: true,
   id: undefined,
+  descriptionId: undefined,
 })
 
 const emit = defineEmits<{
@@ -115,6 +118,9 @@ const errorId = computed(() => `${inputId.value}-error`)
 
 /** Texto capturado que no se puede leer con certeza (mismo criterio que el store). */
 const isUnclear = computed(() => parseCashInput(props.modelValue) === null)
+const describedBy = computed(() =>
+  [props.descriptionId, isUnclear.value ? errorId.value : undefined].filter(Boolean).join(' ') || undefined,
+)
 
 /** "150" si el total es entero, "125.50" si tiene centavos. */
 const exactText = computed(() => {

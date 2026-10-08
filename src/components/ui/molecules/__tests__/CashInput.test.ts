@@ -83,6 +83,17 @@ describe('CashInput — campo', () => {
     expect(wrapper.get('.cash-input__prefix').attributes('aria-hidden')).toBe('true')
   })
 
+  it('composes an external description with the parse error and removes absent error ids', async () => {
+    const wrapper = mount(CashInput, { props: { modelValue: '100', id: 'cash', descriptionId: 'maximum' } })
+    expect(wrapper.get('input').attributes('aria-describedby')).toBe('maximum')
+    await wrapper.setProps({ modelValue: '100,50' })
+    expect(wrapper.get('input').attributes('aria-describedby')).toBe('maximum cash-error')
+    expect(wrapper.find('#cash-error').exists()).toBe(true)
+    await wrapper.setProps({ modelValue: '', descriptionId: undefined })
+    expect(wrapper.get('input').attributes('aria-describedby')).toBeUndefined()
+    expect(wrapper.find('#cash-error').exists()).toBe(false)
+  })
+
   it('refleja el modelValue', () => {
     expect((mountCash({ modelValue: '150' }).get('input').element as HTMLInputElement).value).toBe('150')
   })
