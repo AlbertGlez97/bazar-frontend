@@ -461,7 +461,10 @@ const canCalculate = computed(
 )
 
 const result = computed(() => store.result)
-const resultIsStale = computed(() => !!result.value && !sameRequest(currentRequest.value, store.resultRequest))
+// A rejected retry also invalidates the old result, even when the request is unchanged.
+const resultIsStale = computed(
+  () => !!result.value && (!!store.error || !sameRequest(currentRequest.value, store.resultRequest)),
+)
 const partialResult = computed(() => !!result.value && isPartialResult(result.value))
 const warnings = computed(() => (result.value ? visibleWarnings(result.value) : []))
 
