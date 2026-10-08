@@ -17,7 +17,8 @@ vi.mock('@/services/finance-distribution.service', () => ({
   FinanceDistributionService: { simulate: mocks.simulate },
 }))
 vi.mock('@/services/finance-overview.service', () => ({ FinanceOverviewService: { get: mocks.overview } }))
-const access = reactive({ session: { member: { role: 'socio' } as { role: string } | null }, mode: { currentMode: 'gestion' } })
+const freshSession = () => ({ member: { role: 'socio' } as { role: string } | null, memberId: 'member-a', deviceId: 'device-a', owner: { accountId: 'account-a', apiBase: '/api/v1' } })
+const access = reactive({ session: freshSession(), mode: { currentMode: 'gestion' } })
 vi.mock('@/stores/uiMode.store', () => ({ useUiModeStore: () => access.mode }))
 vi.mock('@/stores/session.store', () => ({ useSessionStore: () => access.session }))
 
@@ -42,7 +43,7 @@ beforeEach(() => {
   setActivePinia(createPinia())
   mocks.simulate.mockReset()
   mocks.overview.mockReset()
-  access.session = { member: { role: 'socio' } }
+  access.session = freshSession()
   access.mode = { currentMode: 'gestion' }
   mocks.overview.mockResolvedValue(baseOverview())
   mocks.simulate.mockResolvedValue(simulationFixture())
@@ -92,8 +93,8 @@ describe('access, header and tabs', () => {
   })
 
   it.each([
-    ['a colaborador', () => (access.session = { member: { role: 'colaborador' } })],
-    ['no member', () => (access.session = { member: null })],
+    ['a colaborador', () => (access.session.member = { role: 'colaborador' })],
+    ['no member', () => (access.session.member = null)],
     ['venta mode', () => (access.mode = { currentMode: 'venta' })],
   ])('blocks %s with a calm message and requests nothing', async (_name, change) => {
     change()
@@ -102,6 +103,57 @@ describe('access, header and tabs', () => {
     expect(w.find('h1').exists()).toBe(false)
     expect(mocks.overview).not.toHaveBeenCalled()
     expect(mocks.simulate).not.toHaveBeenCalled()
+  })
+
+  it.each(['member', 'device', 'account', 'api'])('reloads an allowed mounted view after %s attribution changes and ignores old requests', async (identity) => {
+    const w = await mounted()
+    await setAmount(w, '6,000')
+    await setRule(w, '70', '30')
+    await q(w, 'basis-KNOWN_MINUTES').setValue(true)
+    await calculate(w)
+    expect(q(w, 'members').exists()).toBe(true)
+    const oldBase = deferred<ReturnType<typeof baseOverview>>()
+    mocks.overview.mockReturnValueOnce(oldBase.promise)
+    await w.find('.report-range-picker').trigger('submit')
+    const oldResult = deferred<DistributionSimulation>()
+    mocks.simulate.mockReturnValueOnce(oldResult.promise)
+    await q(w, 'sim-form').trigger('submit')
+    mocks.overview.mockResolvedValueOnce(baseOverview(900000))
+    if (identity === 'member') access.session.memberId = 'member-b'
+    if (identity === 'device') access.session.deviceId = 'device-b'
+    if (identity === 'account') access.session.owner.accountId = 'account-b'
+    if (identity === 'api') access.session.owner.apiBase = '/other/api/v1'
+    await flushPromises()
+    expect(mocks.overview).toHaveBeenCalledTimes(3)
+    expect(q(w, 'members').exists()).toBe(false)
+    expect(q(w, 'base-figure').text()).toContain('$9,000.00')
+    expect((w.get('#sim-amount').element as HTMLInputElement).value).toBe('')
+    expect((w.get('#sim-partner').element as HTMLInputElement).value).toBe('50')
+    expect((q(w, 'basis-WORK_SHIFTS').element as HTMLInputElement).checked).toBe(true)
+    oldBase.resolve(baseOverview(100000))
+    oldResult.resolve(simulationFixture())
+    await flushPromises()
+    expect(q(w, 'base-figure').text()).toContain('$9,000.00')
+    expect(q(w, 'members').exists()).toBe(false)
+    w.unmount()
+  })
+
+  it('clears the old error on attribution change without fetching while disallowed', async () => {
+    const w = await mounted()
+    await setAmount(w, '6,000')
+    mocks.simulate.mockRejectedValueOnce(http(500))
+    await calculate(w)
+    expect(useFinanceDistributionStore().error).not.toBe('')
+    access.session.memberId = 'member-b'
+    access.session.member = { role: 'colaborador' }
+    await flushPromises()
+    expect(mocks.overview).toHaveBeenCalledTimes(1)
+    expect(useFinanceDistributionStore().error).toBe('')
+    access.session.member = { role: 'socio' }
+    await flushPromises()
+    expect(mocks.overview).toHaveBeenCalledTimes(2)
+    expect((w.get('#sim-amount').element as HTMLInputElement).value).toBe('')
+    w.unmount()
   })
 
   it('stops showing the screen and wipes the result when access is lost', async () => {
