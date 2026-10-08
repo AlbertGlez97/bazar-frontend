@@ -4,6 +4,11 @@ import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from '../auth.store'
 import { useToastStore } from '../toast.store'
 import { useSessionStore } from '../session.store'
+import { useFinanceOverviewStore } from '../finance-overview.store'
+import { useFinanceReservesStore } from '../finance-reserves.store'
+import { FinanceOverviewService } from '@/services/finance-overview.service'
+import { overviewFixture } from '@/services/__tests__/finance-overview.fixture'
+import { reserveItemFixture } from '@/services/__tests__/finance-reserves.fixture'
 import AuthService from '@/services/auth.service'
 
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn() } }))
@@ -153,4 +158,44 @@ describe('auth session (contrato real bazar-api)', () => {
     expect(session.deviceId).toBeNull()
     expect(JSON.parse(localStorage.getItem('device_context')!).deviceId).toBe('d-1')
   })
+})
+
+it('clears Phase4 singleton data on logout without a mounted view', () => {
+  const auth = useAuthStore()
+  const overview = useFinanceOverviewStore()
+  const reserves = useFinanceReservesStore()
+  overview.overview = overviewFixture()
+  reserves.items = [reserveItemFixture()]
+  auth.logout()
+  expect(overview.overview).toBeNull()
+  expect(reserves.items).toEqual([])
+})
+it('clears Phase4 data on account or device context replacement', () => {
+  const auth = useAuthStore()
+  const overview = useFinanceOverviewStore()
+  const reserves = useFinanceReservesStore()
+  overview.overview = overviewFixture()
+  reserves.items = [reserveItemFixture()]
+  auth.token = 'replacement'
+  expect(overview.overview).toBeNull()
+  expect(reserves.items).toEqual([])
+  overview.overview = overviewFixture()
+  useSessionStore().deviceId = 'replacement-device'
+  expect(overview.overview).toBeNull()
+})
+
+it('logout invalidates an off-view pending overview and preserves unrelated durable state', async () => {
+  const auth = useAuthStore()
+  let finish!: (value: ReturnType<typeof overviewFixture>) => void
+  const get = vi.spyOn(FinanceOverviewService, 'get').mockReturnValueOnce(new Promise((r) => { finish = r }))
+  const store = useFinanceOverviewStore()
+  const run = store.load({ from: '2026-10-01', to: '2026-10-07' })
+  localStorage.setItem('unrelated-durable-queue', 'preserve')
+  auth.logout()
+  finish(overviewFixture())
+  await run
+  expect(store.overview).toBeNull()
+  expect(store.loading).toBe(false)
+  expect(localStorage.getItem('unrelated-durable-queue')).toBe('preserve')
+  get.mockRestore()
 })

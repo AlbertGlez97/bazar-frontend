@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import AuthService from '@/services/auth.service'
 import { useToastStore } from '@/stores/toast.store'
+import { useFinanceOverviewStore } from '@/stores/finance-overview.store'
+import { useFinanceReservesStore } from '@/stores/finance-reserves.store'
 import { useSessionStore } from '@/stores/session.store'
 import type { AccountBinding, LoginPayload } from '@/types/auth.types'
 import type { Member } from '@/types/member.types'
@@ -115,6 +117,20 @@ export const useAuthStore = defineStore('auth', () => {
   // expirada sin depender de una llamada al servidor.
   const isAuthenticated = computed(
     () => !!token.value && !!expiresAt.value && expiresAt.value > Date.now()
+  )
+
+  // Phase4 caches are volatile and must not survive account or attribution changes.
+  // Keep prior phases' durable queues and IndexedDB untouched.
+  const activeSession = useSessionStore()
+  function resetPhase4() {
+    useFinanceOverviewStore().reset()
+    useFinanceReservesStore().reset()
+  }
+  watch(
+    [token, () => activeSession.owner?.accountId, () => activeSession.owner?.apiBase,
+      () => activeSession.memberId, () => activeSession.deviceId],
+    resetPhase4,
+    { flush: 'sync' },
   )
 
   async function login(payload: LoginPayload) {
@@ -261,6 +277,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function logout() {
+    resetPhase4()
     loginGeneration++
     token.value     = null
     expiresAt.value = null

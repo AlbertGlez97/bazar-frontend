@@ -51,23 +51,28 @@ export const useFinanceOverviewStore = defineStore('finance-overview', () => {
     loading.value = true
     error.value = ''
     const toExclusive = overviewExclusiveTo(next.to)
-    const [overviewResult, partnerResult] = await Promise.allSettled([
-      FinanceOverviewService.get(next.from, toExclusive),
-      fetchPartners(next.from, toExclusive),
-    ])
-    if (id !== latest) return // a newer request owns the state
-    loading.value = false
-    if (overviewResult.status === 'rejected') {
-      error.value = overviewErrorMessage(overviewResult.reason)
-      retryable.value = !isContractError(overviewResult.reason) && !isMissingRoute(overviewResult.reason)
+    // Optional detail starts concurrently but never delays publishing the overview.
+    const partnerRequest = fetchPartners(next.from, toExclusive)
+    try {
+      const result = await FinanceOverviewService.get(next.from, toExclusive)
+      if (id !== latest) return
+      refreshFailed.value = false
+      retryable.value = true
+      overview.value = result
+      period.value = { ...next }
+      partners.value = null
+      void partnerRequest.then((detail) => {
+        if (id === latest) partners.value = detail
+      })
+    } catch (cause) {
+      if (id !== latest) return
+      error.value = overviewErrorMessage(cause)
+      retryable.value = !isContractError(cause) && !isMissingRoute(cause)
       refreshFailed.value = true
-      return // keep the last confirmed overview and its partners untouched
+      // Keep the last confirmed overview and its matching partners untouched.
+    } finally {
+      if (id === latest) loading.value = false
     }
-    refreshFailed.value = false
-    retryable.value = true
-    overview.value = overviewResult.value
-    period.value = { ...next }
-    partners.value = partnerResult.status === 'fulfilled' ? partnerResult.value : null
   }
 
   function reset() {

@@ -78,6 +78,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
   /** Name of the reserve confirmed by the last successful cancellation. */
   const cancelledName = ref('')
   let latest = 0
+  let sessionGeneration = 0
   let lastQuery: ReservesQuery | null = null
   let createAttempt: Attempt | null = null
   const cancelAttempts = new Map<string, Attempt>()
@@ -157,6 +158,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
     }
     createAttempt ??= newAttempt()
     const attempt = createAttempt
+    const generation = sessionGeneration
     saving.value = true
     try {
       const receipt = await FinanceReservesService.create(current, {
@@ -167,19 +169,21 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
         createdByMemberId: current.memberId,
         deviceId: current.deviceId,
       })
+      if (generation !== sessionGeneration) return false
       createAttempt = null // confirmed: the next reserve gets a fresh id
       savedName.value = receipt.name
+      await refreshAfterWrite()
+      return generation === sessionGeneration
     } catch (e) {
+      if (generation !== sessionGeneration) return false
       saveError.value = reserveErrorMessage(e, 'create')
       // Only a definitive refusal frees the id; an uncertain one must be retried with the same id.
       if (!isUncertainFailure(e)) createAttempt = null
       if (isConflict(e) && lastQuery) void load(lastQuery)
       return false
     } finally {
-      saving.value = false
+      if (generation === sessionGeneration) saving.value = false
     }
-    await refreshAfterWrite()
-    return true
   }
 
   /** Cancels a reserve. Returns true only when the server confirmed the cancellation. */
@@ -195,6 +199,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
       return false
     }
     const attempt = cancelAttempts.get(reserve.id) ?? newAttempt()
+    const generation = sessionGeneration
     cancelAttempts.set(reserve.id, attempt)
     cancelling.value = true
     cancellingId.value = reserve.id
@@ -206,20 +211,24 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
         createdByMemberId: current.memberId,
         deviceId: current.deviceId,
       })
+      if (generation !== sessionGeneration) return false
       cancelAttempts.delete(reserve.id)
       cancelledName.value = reserve.name
+      await refreshAfterWrite()
+      return generation === sessionGeneration
     } catch (e) {
+      if (generation !== sessionGeneration) return false
       cancelError.value = reserveErrorMessage(e, 'cancel')
       cancelErrorId.value = reserve.id
       if (!isUncertainFailure(e)) cancelAttempts.delete(reserve.id)
       if (isConflict(e) && lastQuery) void load(lastQuery)
       return false
     } finally {
-      cancelling.value = false
-      cancellingId.value = ''
+      if (generation === sessionGeneration) {
+        cancelling.value = false
+        cancellingId.value = ''
+      }
     }
-    await refreshAfterWrite()
-    return true
   }
 
   /** Forgets the pending create id (the form was cleared on purpose). */
@@ -236,6 +245,7 @@ export const useFinanceReservesStore = defineStore('finance-reserves', () => {
   }
 
   function reset() {
+    sessionGeneration++
     latest++
     lastQuery = null
     createAttempt = null
