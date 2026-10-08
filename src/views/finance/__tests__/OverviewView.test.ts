@@ -87,8 +87,8 @@ const section = (w: Awaited<ReturnType<typeof mounted>>, name: string) => w.find
 describe('overview screen: access, tabs and request', () => {
   it('lists Resumen as the first, active tab and has a single h1', async () => {
     const w = await mounted()
-    const tabs = w.findAllComponents(RouterLinkStub).slice(0, 5) // the tab nav; the reserves link comes later
-    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas'])
+    const tabs = w.findAllComponents(RouterLinkStub).slice(0, 6) // the tab nav; the reserves link comes later
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas', 'Simulador'])
     expect(tabs[0]!.attributes('aria-current')).toBe('page')
     expect(w.findAll('h1')).toHaveLength(1)
     expect(w.find('h1').text()).toBe('Resumen')

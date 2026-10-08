@@ -77,11 +77,11 @@ async function fillForm(w: Wrapper, name: string, amount: string, note = '') {
 }
 
 describe('reserves screen: access, tabs and request', () => {
-  it('lists Reservas as the last, active tab and has a single h1', async () => {
+  it('lists Reservas as the active tab, before Simulador and has a single h1', async () => {
     const w = await mounted()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas'])
-    expect(tabs.at(-1)!.attributes('aria-current')).toBe('page')
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas', 'Simulador'])
+    expect(tabs[4]!.attributes('aria-current')).toBe('page')
     expect(w.findAll('h1')).toHaveLength(1)
     expect(w.find('h1').text()).toBe('Reservas')
   })

@@ -130,7 +130,7 @@ describe('expenses screen', () => {
     const w = mountView()
     await flushPromises()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas'])
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas', 'Simulador'])
     expect(tabs[2]!.attributes('aria-current')).toBe('page')
     expect(w.text()).toContain('Registrar gasto')
     for (const id of ['nature', 'category', 'amount', 'date', 'payer', 'funds', 'description'])

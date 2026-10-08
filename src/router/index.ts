@@ -136,6 +136,13 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        // Simulador (Finanzas > Simulador): simulación pura de reparto, sin guardar nada; mismo guard que Reservas.
+        path: 'finanzas/simulador',
+        name: 'FinanceSimulator',
+        component: () => import('@/views/finance/SimulatorView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         path: 'reportes',
         name: 'Reports',
         component: () => import('@/views/reports/ReportsView.vue'),

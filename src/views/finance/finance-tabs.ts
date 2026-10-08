@@ -5,4 +5,5 @@ export const FINANCE_TABS = [
   { to: '/app/finanzas/gastos', label: 'Gastos' },
   { to: '/app/finanzas/jornadas', label: 'Jornadas' },
   { to: '/app/finanzas/reservas', label: 'Reservas' },
+  { to: '/app/finanzas/simulador', label: 'Simulador' },
 ] as const

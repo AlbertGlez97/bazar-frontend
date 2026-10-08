@@ -128,7 +128,7 @@ describe('work shifts screen: access and navigation', () => {
     const w = mountView()
     await flushPromises()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas'])
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas', 'Simulador'])
     expect(tabs[3]!.attributes('aria-current')).toBe('page')
     expect(tabs[1]!.attributes('aria-current')).toBeUndefined()
     expect(w.text()).toContain('Registrar jornada')

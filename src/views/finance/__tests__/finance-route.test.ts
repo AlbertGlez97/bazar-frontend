@@ -88,13 +88,14 @@ describe('finance route and navigation authority', () => {
     expect(router.resolve('/app/finanzas/gastos').name).toBe('Expenses')
     expect(router.resolve('/app/finanzas/jornadas').name).toBe('WorkShifts')
   })
-  it('lists Resumen first and Reservas last, between them Aportaciones, Gastos and Jornadas', () => {
+  it('lists Resumen first and Simulador last, between them Aportaciones, Gastos, Jornadas and Reservas', () => {
     expect(FINANCE_TABS.map((t) => [t.to, t.label])).toEqual([
       ['/app/finanzas/resumen', 'Resumen'],
       ['/app/finanzas', 'Aportaciones'],
       ['/app/finanzas/gastos', 'Gastos'],
       ['/app/finanzas/jornadas', 'Jornadas'],
       ['/app/finanzas/reservas', 'Reservas'],
+      ['/app/finanzas/simulador', 'Simulador'],
     ])
   })
   it('serves Reservas at /app/finanzas/reservas with the same socio and gestion guard, lazily', () => {
@@ -113,6 +114,21 @@ describe('finance route and navigation authority', () => {
     expect(router.resolve('/app/finanzas/resumen').name).toBe('FinanceOverview')
     expect(router.resolve('/app/finanzas/gastos').name).toBe('Expenses')
     expect(router.resolve('/app/finanzas/jornadas').name).toBe('WorkShifts')
+  })
+  it('serves Simulador at /app/finanzas/simulador with the same socio and gestion guard, lazily', () => {
+    const router = createAppRouter(createMemoryHistory())
+    const route = router.resolve('/app/finanzas/simulador')
+    expect(route.name).toBe('FinanceSimulator')
+    expect(route.meta).toMatchObject({
+      requiresAuth: true,
+      requiresContext: true,
+      requiresSocio: true,
+      requiresGestion: true,
+    })
+    expect(typeof route.matched.at(-1)?.components?.default).toBe('function')
+    // The existing addresses are unchanged.
+    expect(router.resolve('/app/finanzas').name).toBe('Contributions')
+    expect(router.resolve('/app/finanzas/reservas').name).toBe('FinanceReserves')
   })
   it('keeps the single Finanzas menu item active on every tab', () => {
     const items = getNavItems('gestion', { isSocio: true }).filter((r) =>
