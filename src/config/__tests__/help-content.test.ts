@@ -147,4 +147,38 @@ describe('audited help content', () => {
     expect(guide.intro).toContain('no mueve dinero')
     expect(JSON.stringify(guide)).not.toMatch(/ganancia para repartir|reparto|comisi[oó]n|sueldo|salario|lo que te toca|porcentaje/i)
   })
+  it('explains the distribution simulator as a simulation, with its labels and limits', () => {
+    const guide = HELP_ARTICLES.find((article) => article.id === 'simulador-reparto')!
+    const faq = HELP_ARTICLES.find((article) => article.id === 'simulador-preguntas')!
+    for (const article of [guide, faq]) {
+      expect(article.category).toBe('Finanzas')
+      expect(article.audience).toBe('socio')
+    }
+    const steps = guide.steps.join(' ')
+    for (const label of ['Simulador', 'Monto potencialmente disponible', 'Monto a simular', 'Parte por ser socio (%)', 'Parte por trabajo (%)', 'Base del trabajo', 'Calcular simulación', 'Cambiar regla', 'Nueva simulación', 'Total simulado'])
+      expect(steps).toContain(label)
+    expect(guide.intro).toContain('No guarda nada')
+    expect(guide.tips.join(' ')).toContain('Resultado de una configuración anterior')
+    expect(guide.tips.join(' ')).toContain('colaboradores solo pueden recibir la parte por trabajo')
+    expect(guide.tips.join(' ')).toContain('socios activos de hoy')
+    const answers = Object.fromEntries((faq.questions ?? []).map((q) => [q.question, q.answer]))
+    expect(Object.keys(answers)).toEqual([
+      '¿Qué es el simulador de reparto?',
+      '¿Qué significa la parte de socios?',
+      '¿Qué significa la parte de trabajo?',
+      '¿Cuál es la diferencia entre jornadas y horas?',
+      '¿Por qué las aportaciones no determinan automáticamente el reparto?',
+      '¿Qué ocurre con las jornadas sin duración?',
+      '¿Esto registra un pago?',
+      '¿Qué significa resultado financiero parcial?',
+    ])
+    expect(answers['¿Esto registra un pago?']).toMatch(/^No\. /)
+    expect(answers['¿Qué significa la parte de socios?']).toContain('Los colaboradores no reciben esta parte')
+    expect(answers['¿Qué significa la parte de socios?']).toContain('estado actual')
+    expect(answers['¿Qué significa la parte de trabajo?']).toContain('sea socia o colaboradora')
+    expect(answers['¿Qué ocurre con las jornadas sin duración?']).toContain('pesan 0')
+    expect(answers['¿Por qué las aportaciones no determinan automáticamente el reparto?']).toContain('no ingreso ni trabajo')
+    expect(answers['¿Qué significa resultado financiero parcial?']).toContain('sin costo registrado')
+    expect(JSON.stringify([guide, faq])).not.toMatch(/repartir dinero|pagar|confirmar reparto|ganancia para repartir|lo que te toca/i)
+  })
 })
