@@ -37,7 +37,8 @@
         data-test="exact-note"
       >
         Solo las reservas creadas para exactamente este período se restan del
-        monto potencialmente disponible.
+        monto potencialmente disponible. Una reserva mensual solo se resta en
+        Resumen si consultas el mismo mes completo.
       </p>
     </AppCard>
 
@@ -371,7 +372,11 @@ function linkedRange(): ReservePeriod | null {
   return validateRange(from, to, today.value, FUTURE_END_OK) ? null : { from, to }
 }
 const linked = linkedRange()
-const initial = linked ?? presetRange('mes')
+function reservePreset(next: RangePreset): ReservePeriod {
+  const value = presetRange(next)
+  return next === 'mes' ? { from: value.from, to: endOfMonthKey(value.to) } : value
+}
+const initial = linked ?? reservePreset('mes')
 const range = reactive({ from: initial.from, to: initial.to })
 const preset = ref<RangePreset | null>(linked ? null : 'mes')
 const rangeError = computed(() => {
@@ -416,8 +421,12 @@ function refresh() {
   applied.value = { from: range.from, to: range.to }
   void finance.load({ range: { ...applied.value }, scope: scope.value, status: status.value })
 }
+function loadApplied() {
+  if (!allowed.value || !applied.value) return
+  void finance.load({ range: { ...applied.value }, scope: scope.value, status: status.value })
+}
 function selectPreset(next: RangePreset) {
-  const value = presetRange(next)
+  const value = reservePreset(next)
   range.from = value.from
   range.to = value.to
   preset.value = next
@@ -464,9 +473,10 @@ async function submit() {
     return
   }
   try {
-    const fields = reserveFieldsFromForm(form.value, applied.value)
+    const submittedPeriod = { ...applied.value }
+    const fields = reserveFieldsFromForm(form.value, submittedPeriod)
     if (await finance.create(fields)) {
-      savedPeriod.value = formatPickedPeriod(applied.value)
+      savedPeriod.value = formatPickedPeriod(submittedPeriod)
       form.value = emptyReserveForm()
       await focusStatus()
     }
@@ -484,12 +494,16 @@ async function cancelReserve(item: ReserveListItem, reason: string) {
 }
 
 // One request per filter change; the period itself is applied by the picker.
-watch([scope, status], () => refresh())
+watch([scope, status], loadApplied)
 watch(allowed, (value) => {
   if (value) refresh()
   else finance.reset()
 })
-onMounted(refresh)
+onMounted(() => {
+  // Action feedback belongs to this visit, just like its submitted-period label.
+  finance.clearMessages()
+  refresh()
+})
 </script>
 
 <style scoped>

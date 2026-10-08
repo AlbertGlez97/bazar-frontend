@@ -35,9 +35,11 @@ function validReceiptShape(r: Rec): boolean {
     r.amountMinor >= 1 &&
     r.amountMinor <= MAX_MONEY_MINOR &&
     r.currency === 'MXN' &&
-    isValidDateKey(r.periodFrom as string) &&
-    isValidDateKey(r.periodTo as string) &&
-    (r.periodFrom as string) < (r.periodTo as string) &&
+    str(r.periodFrom) &&
+    isValidDateKey(r.periodFrom) &&
+    str(r.periodTo) &&
+    isValidDateKey(r.periodTo) &&
+    r.periodFrom < r.periodTo &&
     nullableStr(r.note) &&
     isInstant(r.occurredAt) &&
     isInstant(r.receivedAt) &&

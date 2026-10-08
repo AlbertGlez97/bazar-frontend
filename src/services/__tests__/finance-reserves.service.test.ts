@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import api from '../api'
-import { FinanceReservesService, validReservePage } from '../finance-reserves.service'
+import { FinanceReservesService, validReservePage, validReserveReceipt } from '../finance-reserves.service'
 import { FinanceReserveContractError } from '@/utils/finance-reserves'
 import {
   CANCEL_ID,
@@ -158,4 +158,11 @@ describe('FinanceReservesService.cancel', () => {
     vi.mocked(api.post).mockRejectedValue(failure)
     await expect(FinanceReservesService.cancel(reserveOrigin, RESERVE_ID, cancelPayload)).rejects.toBe(failure)
   })
+})
+
+it.each([null, 20261001, {}, []])('rejects non-string receipt dates %j without throwing', (value) => {
+  for (const key of ['periodFrom', 'periodTo']) {
+    expect(validReserveReceipt({ ...reserveReceiptFixture(), [key]: value })).toBe(false)
+    expect(validReservePage({ ...reservePageFixture(), items: [{ ...reserveItemFixture(), [key]: value }] })).toBe(false)
+  }
 })

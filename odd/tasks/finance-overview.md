@@ -53,9 +53,9 @@ Fixed in d2a5fec (full vitest 206 files / 3584 tests, lint, build all green):
 
 Pending (out of scope, deferred):
 
-- [ ] Store reset on logout / account switch
-- [ ] Percentage rounding can reach 101% (known + missing)
-- [ ] Overview blocked on slow partner summary (Promise.allSettled waits for both)
+- [x] Store reset on logout / account switch (IC1; volatile Phase4 stores only)
+- [x] Percentage rounding can reach 101% (known + missing) (IC1; complementary rounding)
+- [x] Overview blocked on slow partner summary (IC1; overview publishes independently)
 
 ## Phase 2: Reservas (backend create/list/cancel now exists)
 
@@ -86,9 +86,9 @@ Fixed (full vitest 210 files / 3696 tests, lint and build green after both):
 
 Deferred (out of scope):
 
-- [ ] Filters apply pending dates / controls diverge when the range is invalid
-- [ ] `savedPeriod` is captured after an await
-- [ ] Non-string dates in the receipt validator are untested
+- [x] Filters apply pending dates / controls diverge when the range is invalid (IC1; applied period stays stable)
+- [x] `savedPeriod` is captured after an await (IC1; capture submitted period before awaiting)
+- [x] Non-string dates in the receipt validator are untested (IC1; explicit string guards and JSON contract cases; no runtime defect reproduced)
 
 ## Browser findings
 
@@ -105,3 +105,55 @@ Not browser-tested:
 - Keyboard and screen-reader focus order.
 - A real offline state (only simulated in jsdom).
 - Layout fixes 1 and 3 are asserted on the stylesheet only (jsdom has no layout engine); they were not re-measured after the change.
+
+## Integrated closeout IC1 (local fixes; integration still pending)
+
+All bounded frontend fixes pass automated checks. Parent-reported real API/lab/Chrome proof is recorded below. Native review remains pending; this is not Phase4 closure. Route: delegated direct (multi-file preparation and implementation). Engram mirror remains pending and parent-owned.
+
+| Finding | Classification and correction |
+| --- | --- |
+| Off-view session leak | Confirmed bug: auth boundary resets only Phase4 in-memory stores on logout/token/account/member/device replacement. Reset generations suppress late reads, writes, failures and refresh continuation. Prior IndexedDB and durable queues are untouched. |
+| Coverage rounding | Confirmed bug: 101/200 displayed 51 + 50. Missing percentage now complements rounded known percentage; partial coverage never reaches 100. Exact backend percentage remains unchanged. |
+| Optional partner barrier | Confirmed performance defect: overview publishes without waiting for optional summary; request guards suppress late names across periods/reset. Last confirmed same-period data remains on failed refresh. |
+| Draft filters | Confirmed bug: scope/status now query the applied range, even with invalid/unapplied draft dates. Explicit Apply/presets still apply the picker. |
+| Saved period | Confirmed bug: submitted canonical range is captured before await, including when period changes during receipt/list refresh. Write busy guards stay active through refresh. |
+| Receipt date types | Hardening/coverage only: null/number/object/array already failed downstream validation without a runtime crash. Explicit string guards now precede calendar validation; no reproduced runtime defect is claimed. |
+
+### Reserve monthly behavior
+Only Reservas default and Este mes use full civil month: inclusive picker end via endOfMonthKey, then existing reserve serialization sends the next first day exclusively. Leap February2028 sends [2028-02-01,2028-03-01); December2026 sends [2026-12-01,2027-01-01). UTC06 midnight business-date boundaries are tested. Linked month-to-date and custom exact ranges are preserved; shared presetRange and Resumen month-to-date remain unchanged. Copy explains monthly reserves subtract only from the identical full-month overview.
+
+### Observed automated evidence
+- Baseline focused six files:126 tests passed.
+- RED before implementation:18 failures/130 passes in148 tests; corrected saved-period regression independently failed with expected original period versus changed day. Non-string JSON receipt tests passed baseline (hardening, not a reproduced bug).
+- GREEN final focused six files:153 tests passed, exit0 (auth18, overview15, reserves29, coverage16, view44, receipt31).
+- Full npm.cmd run test:run:210 files /3733 tests passed, exit0, no retry (106.98s). This includes general overview/business-time and prior-phase regression tests.
+- npm.cmd run lint:exit0; npx.cmd vue-tsc --noEmit:exit0; npm.cmd run build:exit0 (vue-tsc -b, Vite, PWA).
+- Build warns about unchanged large PDF/font/Excel dependency chunks (>500kB); non-blocking. Test harness logs missing stub router paths. Neither is represented as browser/API proof.
+- Touched sources/tests normalized to LF only; git diff --check:exit0. Initial unrelated CRLF-only status entries were not normalized, reset or staged.
+- No backend/lab/browser/remote/commit/review work performed by this frontend writer. Service/store/view fixtures prove consumer behavior only, not live receipts or layout.
+
+### Next action and risks
+Parent completed real create/reversal/replay409 arithmetic, logout/network behavior, responsive layouts and accessibility checks. Native risk assessment/review and the final closure decision remain pending. Reserves remain online-only: uncertain failures retain retry identity in memory, reset discards that volatile attempt, and there is no offline queue or fabricated success. A request already sent before logout cannot be undone; late responses cannot repopulate another session or trigger a new-session refresh. Commit identities and native review evidence remain parent-owned.
+
+### Live-browser follow-up: confirmation after remount
+Parent observed a real successful07Oct create followed by navigation to Resumen and back via Administrar reservas: store savedName survived, but view-local savedPeriod did not, producing an empty-period confirmation. Confirmed UX bug, not theoretical. ReservesView now clears transient action messages on mount before refreshing; list/retry identities remain intact. Immediate confirmation and captured-period-during-await regressions still pass.
+
+Observed RED: remount regression1 failed/44 passed (view45 tests), exit1. GREEN: focused six files154 passed, exit0; full suite210 files/3734 passed, exit0 (105.82s, no retry). Lint, vue-tsc --noEmit, build and diff --check all exit0. Nonblocking dependency chunk warnings unchanged. Only view/test/tracker changed for this follow-up; no commit or lab/browser interaction. Parent must rebuild/refresh the real local frontend and re-observe navigation before accepting live closure.
+
+## Parent-reported integrated evidence (2026-10-07)
+
+Automated implementation checks and authorized live checks are completed. These observations were supplied by the parent browser/API actors, not inferred from mocks. Native review is still pending; no Phase4 closed claim is made.
+
+| Live check | Observed result |
+| --- | --- |
+| Chrome October 7 baseline (MXN) | Sales 15000, known sold cost 6000, gross margin 9000, operating expense 1500, operating result 7500. Inventory purchases 3000 and capital contributions 8000 remain separate. Four shifts, 960 known minutes and one unknown duration. |
+| Reserves and reversal | Planned total 3000 then 4000 changed potentially available amount from 4500 to 3500. Reversing the bazaar reserve restored 4500; historical cancellation reason remained visible. |
+| Civil month | Exact monthly [2026-10-01,2026-11-01) reserve verified; auxiliary reserve subsequently cancelled. General analysis range stayed independent. |
+| Real API worker | Create201, exact replay200, changed-payload conflict409, reversal201, reversal replay200, double-reversal409. |
+| UTC06 contribution boundary | Parent observed temporal deltas 33/132/165/176 minor units across the 06Z boundary. |
+| Real Chrome offline | User DevTools Offline produced: "No pudimos guardar la reserva. Revisa tu conexión; si reintentas no se duplicará." Reconnection using the same form created one MXN1 auxiliary reserve, then cancelled it. |
+| API unreachable | Failure followed by retry succeeded with one auxiliary reserve, subsequently cancelled. No offline queue or fabricated success. |
+| Logout/account context | Loaded summary then logout/login showed no retained financial data. Normal authorized login/member context restored summary via loading state before a fresh fetch. |
+| Responsive/accessibility | Parent reports the previously requested live responsive and accessibility checks verified. |
+
+Final source verification remains focused154 tests/full3734 tests, lint, vue-tsc, build and diff checks all passing; parent independently repeated focused154. No source changes or normalization during packaging. Rollback boundaries: session cache/race behavior is confined to auth/overview/reserves stores and their tests; coverage complement is confined to its util/test; reserve period/form/receipt behavior is confined to its view/service/tests. Tracker evidence stays with the final work unit. Three local Conventional Commits are being packaged on feat/finance-overview-reserves without attribution or remote operations; the parent will record the exact three hashes after packaging (the final commit cannot contain its own hash without amendment).

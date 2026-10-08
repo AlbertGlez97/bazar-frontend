@@ -5,7 +5,7 @@ import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ReservesView from '../ReservesView.vue'
-import { addDaysToKey, businessToday } from '@/utils/business-time'
+import { addDaysToKey, businessToday, endOfMonthKey } from '@/utils/business-time'
 import {
   CANCEL_ID,
   RESERVE_ID,
@@ -43,7 +43,8 @@ vi.mock('@/stores/session.store', () => ({ useSessionStore: () => mocks.session 
 const today = businessToday()
 const monthStart = `${today.slice(0, 8)}01`
 const tomorrow = addDaysToKey(today, 1)
-const monthItem = (over = {}) => reserveItemFixture({ periodFrom: monthStart, periodTo: tomorrow, ...over })
+const monthExclusive = addDaysToKey(endOfMonthKey(today), 1)
+const monthItem = (over = {}) => reserveItemFixture({ periodFrom: monthStart, periodTo: monthExclusive, ...over })
 const failure = (status?: number) => Object.assign(new Error('x'), status ? { response: { status } } : {})
 
 beforeEach(() => {
@@ -85,10 +86,10 @@ describe('reserves screen: access, tabs and request', () => {
     expect(w.find('h1').text()).toBe('Reservas')
   })
 
-  it('loads the month so far once, asking for the EXACT period with an exclusive end', async () => {
+  it('loads the full civil month once, asking for the EXACT period with an exclusive end', async () => {
     await mounted()
     expect(mocks.list).toHaveBeenCalledTimes(1)
-    expect(mocks.list.mock.calls[0]![1]).toEqual({ status: 'active', limit: 20, from: monthStart, to: tomorrow })
+    expect(mocks.list.mock.calls[0]![1]).toEqual({ status: 'active', limit: 20, from: monthStart, to: monthExclusive })
   })
 
   it('starts on the period linked from the overview when it is valid', async () => {
@@ -102,7 +103,7 @@ describe('reserves screen: access, tabs and request', () => {
   it('ignores a malformed linked period', async () => {
     mocks.route.query = { from: 'x', to: tomorrow }
     await mounted()
-    expect(mocks.list.mock.calls[0]![1]).toMatchObject({ from: monthStart, to: tomorrow })
+    expect(mocks.list.mock.calls[0]![1]).toMatchObject({ from: monthStart, to: monthExclusive })
   })
 
   it('accepts a linked period that ends in the future', async () => {
@@ -151,7 +152,7 @@ describe('reserves screen: access, tabs and request', () => {
     expect(mocks.list.mock.calls[0]![1]).toMatchObject({ status: 'reversed' })
   })
 
-  it('does not request while the range is invalid', async () => {
+  it('filters the applied period even when draft dates are invalid', async () => {
     const w = await mounted()
     mocks.list.mockClear()
     const inputs = w.findAll('input[type="date"]')
@@ -159,7 +160,8 @@ describe('reserves screen: access, tabs and request', () => {
     await inputs[1]!.setValue(addDaysToKey(today, -3))
     await q(w, 'scope-all').trigger('click')
     await flushPromises()
-    expect(mocks.list).not.toHaveBeenCalled()
+    expect(mocks.list).toHaveBeenCalledTimes(1)
+    expect(mocks.list.mock.calls[0]![1]).not.toHaveProperty('from')
   })
 })
 
@@ -266,7 +268,7 @@ describe('reserves screen: list', () => {
   it('explains that only the exact period is subtracted from the potentially available amount', async () => {
     const w = await mounted()
     expect(q(w, 'exact-note').text()).toBe(
-      'Solo las reservas creadas para exactamente este período se restan del monto potencialmente disponible.',
+      'Solo las reservas creadas para exactamente este per\u00edodo se restan del monto potencialmente disponible. Una reserva mensual solo se resta en Resumen si consultas el mismo mes completo.',
     )
   })
 })
@@ -298,7 +300,7 @@ describe('reserves screen: create', () => {
       name: 'Renta',
       amountMinor: 150000,
       periodFrom: monthStart,
-      periodTo: tomorrow,
+      periodTo: monthExclusive,
       note: 'Esperando cotización',
       createdByMemberId: 'm',
       deviceId: 'd',
@@ -414,7 +416,8 @@ describe('reserves screen: period hint and future period end', () => {
     await flushPromises()
   }
 
-  it('shows a calm hint for the month-to-date default, linked to the period text', async () => {
+  it('shows a calm hint for a linked month-to-date period, linked to the period text', async () => {
+    mocks.route.query = { from: monthStart, to: today }
     const w = await mounted()
     const hint = q(w, 'period-hint')
     expect(hint.exists()).toBe(true)
@@ -469,7 +472,7 @@ describe('reserves screen: period hint and future period end', () => {
 
 describe('reserves screen: two open cancel panels', () => {
   const second = () =>
-    reserveItemFixture({ id: '0199a600-0000-7000-8000-0000000000aa', name: 'Luz', periodFrom: monthStart, periodTo: tomorrow })
+    reserveItemFixture({ id: '0199a600-0000-7000-8000-0000000000aa', name: 'Luz', periodFrom: monthStart, periodTo: monthExclusive })
   const confirmFor = (w: Wrapper, index: number) => w.findAll('[data-test="cancel-confirm"]')[index]!
   async function openBoth(w: Wrapper) {
     for (const button of w.findAll('[data-test="cancel-open"]').slice().reverse()) await button.trigger('click')
@@ -546,4 +549,79 @@ describe('reserves screen: structure and accessibility', () => {
     expect(twoColumn).not.toBeNull()
     expect(Number(twoColumn![1])).toBeGreaterThanOrEqual(1024)
   })
+})
+
+it('keeps unapplied valid dates out of status filters until explicit Apply', async () => {
+  const w = await mounted()
+  const inputs = w.findAll('input[type="date"]')
+  await inputs[0]!.setValue('2026-09-01')
+  await inputs[1]!.setValue('2026-09-30')
+  await w.find('#reserve-status').setValue('reversed')
+  await flushPromises()
+  expect(mocks.list.mock.calls.at(-1)![1]).toMatchObject({ from: monthStart, to: monthExclusive, status: 'reversed' })
+  expect(q(w, 'period-pending').exists()).toBe(true)
+  await w.find('form.report-range-picker').trigger('submit')
+  await flushPromises()
+  expect(mocks.list.mock.calls.at(-1)![1]).toMatchObject({ from: '2026-09-01', to: '2026-10-01' })
+})
+it('announces the submitted period even if the picker changes during receipt and refresh', async () => {
+  let finish!: (v: unknown) => void
+  mocks.create.mockReturnValueOnce(new Promise((r) => { finish = r }))
+  const w = await mounted()
+  const submittedLabel = q(w, 'form-period').text().match(/\d{2}\/\d{2}\/\d{4} al \d{2}\/\d{2}\/\d{4}/)![0]
+  await fillForm(w, 'Renta', '100')
+  await q(w, 'create-form').trigger('submit')
+  w.findComponent({ name: 'ReportRangePicker' }).vm.$emit('select-preset', 'hoy')
+  await flushPromises()
+  finish(reserveReceiptFixture())
+  await flushPromises()
+  expect(q(w, 'saved').text()).toContain(submittedLabel)
+})
+it.each([
+  ['2028-02-15T12:00:00Z', '2028-02-01', '2028-03-01'],
+  ['2026-12-15T12:00:00Z', '2026-12-01', '2027-01-01'],
+  ['2026-11-01T05:59:59Z', '2026-10-01', '2026-11-01'],
+  ['2026-11-01T06:00:00Z', '2026-11-01', '2026-12-01'],
+])('uses the business civil month at %s', async (instant, from, to) => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(instant))
+  try {
+    const w = await mounted()
+    expect(mocks.list.mock.calls[0]![1]).toMatchObject({ from, to })
+    await w.findAll('.report-range-picker__preset').find((b) => b.text() === 'Este mes')!.trigger('click')
+    await flushPromises()
+    expect(mocks.list.mock.calls.at(-1)![1]).toMatchObject({ from, to })
+    w.unmount()
+  } finally { vi.useRealTimers() }
+})
+
+it('retains the submitted label when period changes while the confirmed write list is refreshing', async () => {
+  let finish!: (v: unknown) => void
+  const w = await mounted()
+  const label = q(w, 'form-period').text().match(/\d{2}\/\d{2}\/\d{4} al \d{2}\/\d{2}\/\d{4}/)![0]
+  mocks.create.mockResolvedValueOnce(reserveReceiptFixture())
+  mocks.list.mockReturnValueOnce(new Promise((r) => { finish = r }))
+  await fillForm(w, 'Renta', '100')
+  await q(w, 'create-form').trigger('submit')
+  await flushPromises()
+  w.findComponent({ name: 'ReportRangePicker' }).vm.$emit('select-preset', 'hoy')
+  await flushPromises()
+  finish(reservePageFixture())
+  await flushPromises()
+  expect(q(w, 'saved').text()).toContain(label)
+})
+
+it('clears stale confirmation when returning to Reservas with the same Pinia session', async () => {
+  mocks.route.query = { from: '2026-10-07', to: '2026-10-07' }
+  mocks.create.mockResolvedValueOnce(reserveReceiptFixture({ name: 'Next market' }))
+  const first = await mounted()
+  await fillForm(first, 'Next market', '100')
+  await q(first, 'create-form').trigger('submit')
+  await flushPromises()
+  expect(q(first, 'saved').text()).toContain('07/10/2026')
+  first.unmount() // Navigation away destroys only view-local submitted-period state.
+  const returned = await mounted()
+  expect(q(returned, 'saved').exists()).toBe(false)
+  expect(returned.text()).not.toContain('Next market')
+  returned.unmount()
 })
