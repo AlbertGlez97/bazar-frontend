@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import AuthService from '@/services/auth.service'
 import { useToastStore } from '@/stores/toast.store'
+import { useFinanceDistributionStore } from '@/stores/finance-distribution.store'
 import { useFinanceOverviewStore } from '@/stores/finance-overview.store'
 import { useFinanceReservesStore } from '@/stores/finance-reserves.store'
 import { useSessionStore } from '@/stores/session.store'
@@ -125,6 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
   function resetPhase4() {
     useFinanceOverviewStore().reset()
     useFinanceReservesStore().reset()
+    useFinanceDistributionStore().reset()
   }
   watch(
     [token, () => activeSession.owner?.accountId, () => activeSession.owner?.apiBase,

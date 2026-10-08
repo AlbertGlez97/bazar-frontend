@@ -6,6 +6,8 @@ import { useToastStore } from '../toast.store'
 import { useSessionStore } from '../session.store'
 import { useFinanceOverviewStore } from '../finance-overview.store'
 import { useFinanceReservesStore } from '../finance-reserves.store'
+import { useFinanceDistributionStore } from '../finance-distribution.store'
+import { simulationFixture } from '@/services/__tests__/finance-distribution.fixture'
 import { FinanceOverviewService } from '@/services/finance-overview.service'
 import { overviewFixture } from '@/services/__tests__/finance-overview.fixture'
 import { reserveItemFixture } from '@/services/__tests__/finance-reserves.fixture'
@@ -198,4 +200,18 @@ it('logout invalidates an off-view pending overview and preserves unrelated dura
   expect(store.loading).toBe(false)
   expect(localStorage.getItem('unrelated-durable-queue')).toBe('preserve')
   get.mockRestore()
+})
+
+it('clears the in-memory simulator result on logout and on context replacement', () => {
+  const auth = useAuthStore()
+  const simulator = useFinanceDistributionStore()
+  simulator.result = simulationFixture()
+  auth.logout()
+  expect(simulator.result).toBeNull()
+  simulator.result = simulationFixture()
+  auth.token = 'replacement'
+  expect(simulator.result).toBeNull()
+  simulator.result = simulationFixture()
+  useSessionStore().memberId = 'replacement-member'
+  expect(simulator.result).toBeNull()
 })
