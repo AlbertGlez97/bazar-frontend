@@ -128,3 +128,9 @@ describe('finance overview utils', () => {
     expect(isContractError({ response: { status: 500 } })).toBe(false)
   })
 })
+
+it.each([[101, 200, 50.5], [0, 2, 0], [1, 200, 0.5], [999, 1000, 99.9], [200, 200, 100]])('keeps rounded coverage complementary (%s/%s)', (known, total, percentage) => {
+  const c = cov({ totalLineCount: total, knownCostLineCount: known, missingCostLineCount: total - known, knownCostLinePercentage: percentage })
+  expect(knownCostPercent(c)! + missingCostPercent(c)).toBe(100)
+  if (known < total) expect(knownCostPercent(c)).toBeLessThan(100)
+})

@@ -11,14 +11,14 @@ type Coverage = FinanceOverview['costCoverage']
 /** Whole-number percentage of lines with a known cost; never rounds a partial coverage up to 100. */
 export function knownCostPercent(c: Coverage): number | null {
   if (c.knownCostLinePercentage === null) return null
-  const rounded = Math.round(c.knownCostLinePercentage)
+  const rounded = Math.max(0, Math.min(100, Math.round(c.knownCostLinePercentage)))
   return c.missingCostLineCount > 0 ? Math.min(rounded, 99) : rounded
 }
 
 /** Whole-number percentage of lines without a known cost; at least 1 when any is missing. */
 export function missingCostPercent(c: Coverage): number {
   if (c.missingCostLineCount <= 0 || c.totalLineCount <= 0) return 0
-  return Math.min(100, Math.max(1, Math.round((c.missingCostLineCount / c.totalLineCount) * 100)))
+  return 100 - (knownCostPercent(c) ?? 0)
 }
 
 /** `Cobertura de costos: 92%` or `Cobertura de costos: Sin líneas de venta`. */
