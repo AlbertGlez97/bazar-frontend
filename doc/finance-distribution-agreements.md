@@ -33,6 +33,10 @@ Export always refreshes live detail. If refresh fails or the selection/session c
 
 Fixture PDFs and unit tests do not establish real backend integration or legal effect.
 
+Local final checks passed: 224 Vitest files / 4,037 tests, production build and ESLint (temporary QA harness has formatting warnings). Fixture-based browser inspection of the real history/detail/create/void components at 320/390/768/1280 found no document horizontal overflow. Representative rasterized active/voided/partial and 22-page long PDFs were visually inspected without clipping, missing glyphs or truncated signatures; voided totals can span two pages. These checks do not close the real integrated checklist below or prove exhaustive keyboard behavior.
+
+Temporary QA artifacts remain untracked under `tmp/agreements-qa` and `tmp/pdfs/agreements` because cleanup was denied. They and the temporary Python raster helper are excluded from commits and native candidate review; no application dependency was added.
+
 - [ ] Real authorized test: simulate, confirm, list/detail and export without source financial changes.
 - [ ] Change source data after simulation: observe drift, no creation, recalculate/reconfirm.
 - [ ] Lose a create/reversal response: exact manual retry returns the original identity/folio.
