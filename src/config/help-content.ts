@@ -317,7 +317,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
     id: 'simulador-reparto', title: 'Usar el Simulador de reparto', category: 'Finanzas', audience: 'socio',
     keywords: ['simulador', 'simulación', 'reparto', 'socios', 'trabajo', 'jornadas', 'horas', 'porcentaje', 'finanzas'],
-    intro: 'El Simulador calcula, solo como prueba, cómo se dividiría un monto del período entre las personas del equipo según una regla. No guarda nada y no registra pagos, retiros ni movimientos de dinero. Necesita conexión.',
+    intro: 'El Simulador calcula, solo como prueba, cómo se dividiría un monto del período entre las personas del equipo según una regla. No guarda nada al calcular y no registra pagos, retiros ni movimientos de dinero. Crear acuerdo de reparto es una acción separada con título y confirmación explícita. Necesita conexión.',
     steps: [
       'En Gestión abre Finanzas y elige la pestaña Simulador. Elige arriba el período con Hoy, Ayer, Esta semana, Este mes o con las fechas, y pulsa Actualizar si cambiaste las fechas.',
       'En Base financiera revisa el Monto potencialmente disponible del período: es el máximo que puedes simular. Si ves el aviso de resultado parcial, hay ventas con costos incompletos.',
@@ -325,6 +325,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       'En Regla escribe la Parte por ser socio (%) y la Parte por trabajo (%), o toca una regla rápida como 50 / 50. Deben sumar 100%.',
       'En Base del trabajo elige Jornadas u Horas registradas, y pulsa Calcular simulación.',
       'Lee el resultado: arriba está el aviso de que es una simulación, luego el Monto simulado, el Componente socios y el Componente trabajo, y una tarjeta por persona con su Total simulado y cómo se calculó su trabajo.',
+      'Para conservar un resultado vigente, pulsa Crear acuerdo de reparto, revisa con las personas participantes, escribe el título y confirma. Cancelar no guarda nada.',
       'Para probar otra regla pulsa Cambiar regla; para empezar de cero pulsa Nueva simulación.',
     ],
     tips: [
@@ -439,10 +440,178 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
     tips: ['Guardar una venta sin conexión no confirma su aceptación ni asegura que la existencia siga disponible. Un conflicto puede requerir revisión de un socio.'],
   },
+  {
+    "id": "acuerdos-que-son",
+    "title": "Qué es un acuerdo de reparto",
+    "category": "Finanzas",
+    "audience": "socio",
+    "keywords": [
+      "acuerdo",
+      "reparto",
+      "simulación",
+      "pdf",
+      "anular"
+    ],
+    "intro": "Un acuerdo conserva una simulación aceptada por las personas participantes. No registra pagos ni movimientos de dinero.",
+    "steps": [
+      "En Gestión abre Finanzas y la pestaña Acuerdos; solo las personas socias activas pueden administrarlos.",
+      "Consulta el folio, título, período, regla, personas participantes y montos guardados.",
+      "Lee el aviso: el documento no es un contrato legal ni prueba que el dinero se haya entregado."
+    ],
+    "tips": []
+  },
+  {
+    "id": "acuerdos-simulacion",
+    "title": "Simulación y acuerdo: cuándo se guarda",
+    "category": "Finanzas",
+    "audience": "socio",
+    "keywords": [
+      "acuerdo",
+      "reparto",
+      "simulación",
+      "pdf",
+      "anular"
+    ],
+    "intro": "Calcular simulación no guarda nada. Crear acuerdo de reparto es una acción distinta que requiere confirmación.",
+    "steps": [
+      "Calcula una simulación vigente y revisa el resultado con las personas participantes.",
+      "Pulsa Crear acuerdo de reparto, escribe el título obligatorio y una nota opcional, y revisa nuevamente.",
+      "Solo la confirmación explícita crea el documento; cancelar no guarda un acuerdo. Si los datos cambiaron, calcula y confirma otra simulación."
+    ],
+    "tips": []
+  },
+  {
+    "id": "acuerdos-inmutables",
+    "title": "Por qué un acuerdo no se edita",
+    "category": "Finanzas",
+    "audience": "socio",
+    "keywords": [
+      "acuerdo",
+      "reparto",
+      "simulación",
+      "pdf",
+      "anular"
+    ],
+    "intro": "El documento conserva los nombres, roles, datos y montos registrados al crearlo para mantener su historia.",
+    "steps": [
+      "Abre el detalle para leer el resultado guardado; no usa los nombres o datos actuales para recalcularlo.",
+      "Un cambio posterior en jornadas, reservas o personas no cambia ese documento.",
+      "Si hay un error, anula y crea un sustituto; no hay edición de los montos históricos."
+    ],
+    "tips": []
+  },
+  {
+    "id": "acuerdos-corregir",
+    "title": "Cómo corregir un acuerdo",
+    "category": "Finanzas",
+    "audience": "socio",
+    "keywords": [
+      "acuerdo",
+      "reparto",
+      "simulación",
+      "pdf",
+      "anular"
+    ],
+    "intro": "La corrección conserva el documento anterior y crea otro relacionado; nunca reescribe su historia.",
+    "steps": [
+      "Anula el acuerdo con un motivo y espera la confirmación.",
+      "En su detalle anulado sin sustituto pulsa Crear acuerdo sustituto; se consulta y muestra el folio anterior.",
+      "Calcula una nueva simulación, revisa los resultados y confirma el nuevo acuerdo. Los detalles muestran los vínculos en ambas direcciones."
+    ],
+    "tips": []
+  },
+  {
+    "id": "acuerdos-anular",
+    "title": "Cómo anular un acuerdo",
+    "category": "Finanzas",
+    "audience": "socio",
+    "keywords": [
+      "acuerdo",
+      "reparto",
+      "simulación",
+      "pdf",
+      "anular"
+    ],
+    "intro": "Anular registra un motivo y fecha sin borrar el documento original ni modificar sus montos.",
+    "steps": [
+      "Con conexión abre el detalle activo y pulsa Anular acuerdo.",
+      "Escribe un motivo de 1 a 1000 caracteres y pulsa Confirmar anulación. Cancelar no anula.",
+      "Si la respuesta no se confirmó, reintenta la misma anulación; no cambies de motivo o acuerdo. El detalle confirmado muestra Anulado y conserva el documento."
+    ],
+    "tips": []
+  },
+  {
+    "id": "acuerdos-no-pago",
+    "title": "Un acuerdo no es un pago",
+    "category": "Finanzas",
+    "audience": "socio",
+    "keywords": [
+      "acuerdo",
+      "reparto",
+      "simulación",
+      "pdf",
+      "anular"
+    ],
+    "intro": "Crear o anular un acuerdo no entrega dinero ni registra retiros, transferencias, deudas u obligaciones.",
+    "steps": [
+      "Lee los montos como un resultado acordado del cálculo, no como dinero recibido.",
+      "No busques un estado Pagado: esta función no administra pagos ni liquidaciones.",
+      "Aportaciones, gastos, jornadas, reservas y ventas no cambian al crear o anular un acuerdo."
+    ],
+    "tips": []
+  },
+  {
+    "id": "acuerdos-pdf",
+    "title": "Qué contiene el PDF del acuerdo",
+    "category": "Finanzas",
+    "audience": "socio",
+    "keywords": [
+      "acuerdo",
+      "reparto",
+      "simulación",
+      "pdf",
+      "anular"
+    ],
+    "intro": "Generar PDF crea una copia local bajo demanda del documento guardado, sin almacenarla en el servidor.",
+    "steps": [
+      "Desde el éxito de creación o el detalle pulsa Generar PDF; se necesita conexión para confirmar el estado actual.",
+      "El PDF incluye folio, fecha, período, título, nota, base, regla, trabajo, participantes, montos, totales, avisos y espacios de firma y fecha.",
+      "Si está anulado, muestra ANULADO, motivo y fecha. Una consulta fallida impide exportar un estado activo desactualizado; reintenta cuando vuelva la conexión."
+    ],
+    "tips": []
+  },
+  {
+    "id": "acuerdos-efecto-legal",
+    "title": "Alcance y efecto legal del documento",
+    "category": "Finanzas",
+    "audience": "socio",
+    "keywords": [
+      "acuerdo",
+      "reparto",
+      "simulación",
+      "pdf",
+      "anular"
+    ],
+    "intro": "El acuerdo no es un contrato legal ni lleva firmas digitales. Su efecto legal depende del contexto y de la ley aplicable.",
+    "steps": [
+      "Lee el aviso del documento antes de usarlo fuera de la aplicación.",
+      "Los espacios de firma manuscrita y fecha del PDF están vacíos; la aplicación no afirma que alguien haya firmado.",
+      "No interpretes el documento como una promesa de validez legal, un comprobante de pago o asesoramiento jurídico."
+    ],
+    "tips": []
+  },
 ]
 
 /** Audit evidence is never rendered or indexed as reader-facing help text. */
 export const HELP_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
+  'acuerdos-que-son': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
+  'acuerdos-simulacion': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
+  'acuerdos-inmutables': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
+  'acuerdos-corregir': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
+  'acuerdos-anular': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
+  'acuerdos-no-pago': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
+  'acuerdos-pdf': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
+  'acuerdos-efecto-legal': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
   'crear-producto': ['src/components/ui/organisms/ProductForm.vue', 'src/views/products/ProductCatalogView.vue'],
   'editar-producto': ['src/components/ui/organisms/ProductForm.vue', 'src/views/products/ProductCatalogView.vue'],
   fotos: ['src/components/ui/organisms/ProductForm.vue'],

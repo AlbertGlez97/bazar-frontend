@@ -5,6 +5,9 @@ import { useFinanceAgreementsStore } from '../finance-agreements.store'
 import { AGREEMENT_ID, agreementFixture, agreementItemFixture, agreementOrigin, reversalFixture } from '@/services/__tests__/finance-agreements.fixture'
 import { FinanceAgreementContractError } from '@/utils/finance-agreements'
 import type { AgreementFields } from '@/types/finance-agreement.types'
+const pdf = vi.hoisted(() => ({ render: vi.fn(), save: vi.fn() }))
+vi.mock('@/services/agreement-pdf', () => ({ renderAgreementPdfBlob: pdf.render, agreementPdfFileName: (folio: string) => 'acuerdo-' + folio.toLowerCase() + '.pdf' }))
+vi.mock('@/utils/report-files', () => ({ saveBlob: pdf.save }))
 const mocks = vi.hoisted(() => ({ create: vi.fn(), list: vi.fn(), get: vi.fn(), reverse: vi.fn() }))
 vi.mock('@/services/finance-agreements.service', () => ({ FinanceAgreementsService: mocks }))
 const state = reactive({ auth: { token: 'token-a' }, session: {
@@ -36,6 +39,7 @@ beforeEach(() => {
   state.session.deviceId = agreementOrigin.deviceId
   state.session.deviceToken = 'device-token'
   state.session.member = { role: 'socio', active: true }
+  pdf.render.mockResolvedValue(new Blob(['%PDF-test'], { type: 'application/pdf' }))
   mocks.create.mockResolvedValue(agreementFixture())
   mocks.reverse.mockResolvedValue(reversalFixture())
   mocks.list.mockResolvedValue({ items: [agreementItemFixture()], nextCursor: null })
@@ -240,5 +244,63 @@ describe('live status separated from frozen detail', () => {
     await store.loadDetail(AGREEMENT_ID)
     expect(store.detailCurrent).toBe(true)
     expect(store.detail?.status).toBe('voided')
+  })
+})
+
+describe('on-demand current PDF export', () => {
+  it('refuses export when the authoritative detail refresh fails', async () => {
+    const store = useFinanceAgreementsStore(); await store.loadDetail(AGREEMENT_ID)
+    mocks.get.mockRejectedValueOnce(new Error('Network Error'))
+    expect(await store.exportPdf(AGREEMENT_ID)).toBe(false)
+    expect(store.pdfError).toContain('No se pudo actualizar')
+    expect(store.pdfLoading).toBe(false)
+  })
+})
+
+describe('PDF delivery isolation', () => {
+  it('renders refreshed voided snapshot and downloads a sanitized named Blob once', async () => {
+    const store = useFinanceAgreementsStore()
+    const snapshot = agreementFixture({ status: 'voided', reversal: reversalFixture() })
+    mocks.get.mockResolvedValueOnce(snapshot)
+    expect(await store.exportPdf(AGREEMENT_ID)).toBe(true)
+    expect(pdf.render.mock.calls.at(-1)?.[0]).toEqual(snapshot)
+    expect(pdf.save).toHaveBeenCalledWith(expect.any(Blob), 'acuerdo-ac-2026-00001.pdf')
+    expect(store.pdfLoading).toBe(false)
+  })
+  it('drops PDF generation after an auth change and never persists or downloads a late Blob', async () => {
+    const store = useFinanceAgreementsStore(), pending = deferred<Blob>()
+    pdf.render.mockReturnValueOnce(pending.promise)
+    const run = store.exportPdf(AGREEMENT_ID)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(store.pdfLoading).toBe(true)
+    expect(await store.exportPdf(AGREEMENT_ID)).toBe(false)
+    state.auth.token = 'token-b'
+    pending.resolve(new Blob(['%PDF-']))
+    expect(await run).toBe(false)
+    expect(pdf.save).not.toHaveBeenCalled()
+    expect(store.pdfLoading).toBe(false)
+  })
+  it('drops a download when navigation changes and reports renderer failure without altering agreement', async () => {
+    const store = useFinanceAgreementsStore(), pending = deferred<Blob>()
+    let selected = true
+    pdf.render.mockReturnValueOnce(pending.promise)
+    const run = store.exportPdf(AGREEMENT_ID, () => selected)
+    await new Promise(resolve => setTimeout(resolve, 0)); selected = false
+    pending.resolve(new Blob(['%PDF-'])); expect(await run).toBe(false)
+    expect(pdf.save).not.toHaveBeenCalled()
+    pdf.render.mockRejectedValueOnce(new Error('Font failure'))
+    expect(await store.exportPdf(AGREEMENT_ID)).toBe(false)
+    expect(store.pdfError).toContain('acuerdo guardado no cambió')
+    expect(store.detail?.participants).toEqual(agreementFixture().participants)
+  })
+  it('does not fetch detail or generate while offline or an uncertain write remains', async () => {
+    const store = useFinanceAgreementsStore()
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    expect(await store.exportPdf(AGREEMENT_ID)).toBe(false)
+    expect(mocks.get).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
+    mocks.create.mockRejectedValueOnce(new Error('Network Error')); await store.create(fields)
+    expect(await store.exportPdf(AGREEMENT_ID)).toBe(false)
+    expect(pdf.render).not.toHaveBeenCalled()
   })
 })

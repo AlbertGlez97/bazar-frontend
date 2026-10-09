@@ -93,6 +93,23 @@
       @confirm="confirmVoid"
       @retry="retryVoid"
     />
+    <p
+      v-if="store.pdfError"
+      role="alert"
+      data-test="detail-pdf-error"
+    >
+      {{ store.pdfError }}
+    </p>
+    <AppButton
+      v-if="document"
+      type="button"
+      data-test="detail-pdf"
+      :loading="store.pdfLoading"
+      :disabled="!online || store.pdfLoading || store.detailLoading || store.saving || store.reversing || !!store.pendingCreate || !!store.pendingReversal"
+      @click="exportPdf"
+    >
+      Generar PDF
+    </AppButton>
     <template v-if="document">
       <p
         v-if="!store.detailCurrent"
@@ -255,8 +272,9 @@ const route = useRoute(), store = useFinanceAgreementsStore(), auth = useAuthSto
 const allowed = computed(() => !!auth.token && session.member?.role === 'socio' && session.member.active === true && mode.currentMode === 'gestion')
 const id = computed(() => typeof route.params.id === 'string' ? route.params.id : '')
 const document = computed(() => store.detail?.id === id.value ? store.detail : null)
+const viewActive = ref(true)
 const voidOpen = ref(false), voidFolio = ref(''), mutationNotice = ref('')
-const canVoid = computed(() => allowed.value && online.value && !store.saving && !store.reversing && !store.pendingCreate &&
+const canVoid = computed(() => allowed.value && online.value && !store.saving && !store.reversing && !store.pdfLoading && !store.pendingCreate &&
   (!store.pendingReversal || store.pendingReversal.agreementId === id.value) &&
   (!!store.pendingReversal || (document.value?.status === 'active' && store.detailCurrent)))
 function openVoid() {
@@ -285,6 +303,11 @@ async function sendVoid(reason: string) {
   }
 }
 const heading = ref<HTMLElement | null>(null), online = ref(navigator.onLine)
+async function exportPdf() {
+  const selectedId = id.value
+  if (!allowed.value || !online.value || !document.value) return
+  await store.exportPdf(selectedId, () => viewActive.value && allowed.value && id.value === selectedId)
+}
 async function refresh() {
   if (!allowed.value) return
   if (!isAgreementId(id.value)) {
@@ -306,7 +329,7 @@ watch([id, allowed, () => auth.token, () => session.owner?.accountId, () => sess
   void refresh()
 }, { immediate: true })
 onMounted(() => { window.addEventListener('online', onOnline); window.addEventListener('offline', onOffline) })
-onUnmounted(() => { window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline) })
+onUnmounted(() => { viewActive.value = false; window.removeEventListener('online', onOnline); window.removeEventListener('offline', onOffline) })
 </script>
 
 <style scoped>

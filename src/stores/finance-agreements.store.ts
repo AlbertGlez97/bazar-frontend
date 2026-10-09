@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { v7 } from 'uuid'
 import { FinanceAgreementsService } from '@/services/finance-agreements.service'
+import { saveBlob } from '@/utils/report-files'
 import { currentQueueOrigin } from '@/services/queue-origin'
 import { useAuthStore } from './auth.store'
 import { useSessionStore } from './session.store'
@@ -32,6 +33,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   const reversing = ref(false), reverseError = ref('')
   const reversed = ref<AgreementReversalReceipt | null>(null)
   const alreadyVoided = ref(false)
+  const pdfLoading = ref(false), pdfError = ref('')
   const simulationChanged = ref(false)
   const createAttempt = ref<CreateAttempt | null>(null)
   const reverseAttempt = ref<ReverseAttempt | null>(null)
@@ -144,7 +146,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
     }
   }
   async function create(fields: AgreementFields): Promise<DistributionAgreement | null> {
-    if (saving.value || reversing.value) return null
+    if (saving.value || reversing.value || pdfLoading.value) return null
     if (reverseAttempt.value) {
       saveError.value = 'Hay una anulación sin confirmar. Resuelve ese mismo intento antes de crear un acuerdo.'
       return null
@@ -178,7 +180,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   /** Exact replay is safe even after financial drift; it must precede any new creation. */
   async function retryCreate(): Promise<DistributionAgreement | null> {
     const attempt = createAttempt.value, selected = origin()
-    if (!attempt || saving.value || reversing.value || reverseAttempt.value) return null
+    if (!attempt || saving.value || reversing.value || pdfLoading.value || reverseAttempt.value) return null
     if (!selected || !sameOrigin(selected, attempt.origin) || !online()) {
       saveError.value = selected && online() ? accessMessage : offlineMessage
       return null
@@ -231,6 +233,28 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
       if (current(run, selected)) reversing.value = false
     }
   }
+  /** Refresh live status before rendering; delivery is guarded after every asynchronous boundary. */
+  async function exportPdf(id: string, stillSelected: () => boolean = () => true): Promise<boolean> {
+    if (pdfLoading.value || saving.value || reversing.value || createAttempt.value || reverseAttempt.value) return false
+    const run = generation, selected = origin()
+    pdfError.value = ''
+    if (!selected || !online()) { pdfError.value = selected ? offlineMessage : accessMessage; return false }
+    pdfLoading.value = true
+    try {
+      const snapshot = await loadDetail(id)
+      if (!current(run, selected) || !stillSelected()) return false
+      if (!snapshot) { pdfError.value = 'No se pudo actualizar el estado del acuerdo. No se generó el PDF. ' + detailError.value; return false }
+      const { renderAgreementPdfBlob, agreementPdfFileName } = await import('@/services/agreement-pdf')
+      if (!current(run, selected) || !stillSelected() || !online()) return false
+      const blob = await renderAgreementPdfBlob(copy(snapshot))
+      if (!current(run, selected) || !stillSelected() || !online()) return false
+      saveBlob(blob, agreementPdfFileName(snapshot.folio))
+      return true
+    } catch {
+      if (current(run, selected) && stillSelected()) pdfError.value = 'No se pudo generar el PDF. Reintenta; el acuerdo guardado no cambió.'
+      return false
+    } finally { if (current(run, selected)) pdfLoading.value = false }
+  }
   /** Call only after the server successfully recalculated a simulation; never discard an uncertain write. */
   function acceptSimulation(fingerprint: string) {
     if (!isSimulationFingerprint(fingerprint) || createAttempt.value || saving.value) return
@@ -241,7 +265,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   function reset() {
     generation++; listRevision++; detailRevision++
     items.value = []; nextCursor.value = null; shown.value = null
-    detailCurrent.value = false; alreadyVoided.value = false
+    detailCurrent.value = false; alreadyVoided.value = false; pdfLoading.value = false; pdfError.value = ''
     detail.value = null; created.value = null; reversed.value = null
     createAttempt.value = null; reverseAttempt.value = null
     loading.value = false; loadingMore.value = false; detailLoading.value = false
@@ -254,6 +278,6 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
     () => session.memberId, () => session.deviceId, () => session.deviceToken,
     () => session.member?.role, () => session.member?.active], reset, { flush: 'sync' })
   return { items, nextCursor, shown, loading, loadingMore, error, detail, detailLoading, detailError,
-    detailCurrent, alreadyVoided, saving, saveError, created, reversing, reverseError, reversed, simulationChanged,
+    detailCurrent, alreadyVoided, pdfLoading, pdfError, exportPdf, saving, saveError, created, reversing, reverseError, reversed, simulationChanged,
     pendingCreate, pendingReversal, acceptSimulation, load, loadMore, loadDetail, create, retryCreate, reverse, clearMessages, reset }
 })

@@ -5,8 +5,8 @@
     size="lg"
     manage-focus
     hide-footer
-    :hide-close="busy"
-    :close-on-backdrop="!busy"
+    :hide-close="busy || pdfBusy"
+    :close-on-backdrop="!busy && !pdfBusy"
     @update:model-value="close"
   >
     <section
@@ -23,7 +23,23 @@
       </h3>
       <p>{{ created.title }}</p>
       <p>{{ created.notice }}</p>
+      <p
+        v-if="pdfError"
+        role="alert"
+        data-test="created-pdf-error"
+      >
+        {{ pdfError }}
+      </p>
       <div class="agreement-actions">
+        <AppButton
+          type="button"
+          data-test="created-pdf"
+          :disabled="!pdfAllowed || pdfBusy"
+          :loading="pdfBusy"
+          @click="generatePdf"
+        >
+          Generar PDF
+        </AppButton>
         <RouterLink
           :to="'/app/finanzas/acuerdos/' + created.id"
           data-test="view-created"
@@ -202,10 +218,13 @@ const props = defineProps<{
   busy: boolean
   error: string
   pending: CreateAgreementPayload | null
+  pdfBusy?: boolean
+  pdfAllowed?: boolean
+  pdfError?: string
   replacement?: { id: string; folio: string } | null
   created: DistributionAgreement | null
 }>()
-const emit = defineEmits<{ 'update:modelValue': [value: boolean]; create: [fields: AgreementFields]; retry: [] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: boolean]; create: [fields: AgreementFields]; retry: []; pdf: [] }>()
 const title = ref(''), note = ref(''), formError = ref('')
 const errorBox = ref<HTMLElement | null>(null), successHeading = ref<HTMLElement | null>(null)
 const reviewRequest = computed(() => props.pending ?? props.request)
@@ -218,7 +237,8 @@ watch(() => props.modelValue, (open) => {
 }, { immediate: true })
 watch(() => props.created, async (document) => { if (document && props.modelValue) { await nextTick(); successHeading.value?.focus() } })
 watch(() => props.error, async (error) => { if (error && props.modelValue) { await nextTick(); errorBox.value?.focus() } })
-function close(open: boolean) { if (!props.busy) emit('update:modelValue', open) }
+function close(open: boolean) { if (!props.busy && !props.pdfBusy) emit('update:modelValue', open) }
+function generatePdf() { if (props.created && props.pdfAllowed && !props.pdfBusy) emit('pdf') }
 function retry() { if (props.pending && props.retryAllowed && !props.busy) emit('retry') }
 async function submit() {
   if (!props.eligible || props.busy || props.pending || !props.request || !props.simulation) return

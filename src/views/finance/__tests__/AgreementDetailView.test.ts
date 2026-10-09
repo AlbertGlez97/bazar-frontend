@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { useFinanceAgreementsStore } from '@/stores/finance-agreements.store'
 import AgreementDetailView from '../AgreementDetailView.vue'
 import { AGREEMENT_ID, agreementFixture, agreementOrigin, reversalFixture } from '@/services/__tests__/finance-agreements.fixture'
 const mocks = vi.hoisted(() => ({ list: vi.fn(), get: vi.fn(), create: vi.fn(), reverse: vi.fn() }))
@@ -177,4 +178,17 @@ describe('reversal recovery and access', () => {
     expect(document.querySelector('[data-test="confirm-void"]')).toBeNull()
     w.unmount()
   })
+})
+
+it('routes PDF through guarded authoritative export and exposes failures/offline restrictions', async () => {
+  const w = await mounted(), store = useFinanceAgreementsStore()
+  const exportPdf = vi.spyOn(store, 'exportPdf').mockImplementation(async () => { store.pdfError = 'No se pudo actualizar el estado'; return false })
+  await w.find('[data-test="detail-pdf"]').trigger('click'); await flushPromises()
+  expect(exportPdf).toHaveBeenCalledWith(AGREEMENT_ID, expect.any(Function))
+  const canDeliver = exportPdf.mock.calls[0]![1]!
+  expect(w.find('[data-test="detail-pdf-error"]').text()).toContain('actualizar')
+  window.dispatchEvent(new Event('offline')); await flushPromises()
+  expect(w.find('[data-test="detail-pdf"]').attributes('disabled')).toBeDefined()
+  w.unmount()
+  expect(canDeliver()).toBe(false)
 })

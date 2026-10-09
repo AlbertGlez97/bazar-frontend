@@ -1097,3 +1097,32 @@ it('closes substitution confirmation on target changes and rejects a late forced
   expect(mocks.create).not.toHaveBeenCalled()
   w.unmount()
 })
+
+it('exports the confirmed created agreement only and never the displayed simulation', async () => {
+  const w = await mounted()
+  await setAmount(w, '6000'); await calculate(w)
+  await q(w, 'create-agreement').trigger('click'); await flushPromises()
+  const form = w.findComponent(AgreementCreateForm)
+  form.vm.$emit('create', { ...sent(), title: 'Created', simulationFingerprint: simulationFixture().simulationFingerprint }); await flushPromises()
+  const store = useFinanceAgreementsStore(), exportPdf = vi.spyOn(store, 'exportPdf').mockResolvedValue(true)
+  form.vm.$emit('pdf'); await flushPromises()
+  expect(exportPdf).toHaveBeenCalledWith(agreementFixture().id, expect.any(Function))
+  expect(mocks.simulate).toHaveBeenCalledTimes(1)
+  access.auth.token = ''; await flushPromises(); form.vm.$emit('pdf'); await flushPromises()
+  expect(exportPdf).toHaveBeenCalledTimes(1)
+  w.unmount()
+})
+
+it('cancels PDF delivery after the simulator unmounts even if the selected session remains valid', async () => {
+  const w = await mounted()
+  await setAmount(w, '6000'); await calculate(w)
+  await q(w, 'create-agreement').trigger('click'); await flushPromises()
+  const form = w.findComponent(AgreementCreateForm)
+  form.vm.$emit('create', { ...sent(), title: 'Created', simulationFingerprint: simulationFixture().simulationFingerprint }); await flushPromises()
+  const store = useFinanceAgreementsStore(), exportPdf = vi.spyOn(store, 'exportPdf').mockResolvedValue(true)
+  form.vm.$emit('pdf'); await flushPromises()
+  const canDeliver = exportPdf.mock.calls[0]![1]!
+  expect(canDeliver()).toBe(true)
+  w.unmount()
+  expect(canDeliver()).toBe(false)
+})

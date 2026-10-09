@@ -427,9 +427,13 @@
       :error="agreements.saveError"
       :pending="agreements.pendingCreate"
       :created="agreements.created"
+      :pdf-busy="agreements.pdfLoading"
+      :pdf-error="agreements.pdfError"
+      :pdf-allowed="agreementAccess && online && !agreements.pendingCreate && !agreements.pendingReversal"
       :replacement="confirmationReplacement"
       @create="createAgreement"
       @retry="retryAgreement"
+      @pdf="exportCreatedPdf"
     />
   </section>
   <p v-else>
@@ -575,7 +579,7 @@ const agreementOpen = ref(false)
 const confirmationSimulation = ref<DistributionSimulation | null>(null)
 const confirmationRequest = ref<DistributionSimulationRequest | null>(null)
 const agreementAccess = computed(() => allowed.value && !!auth.token && session.member?.active === true && !!session.memberId && !!session.deviceId)
-const canRecoverAgreement = computed(() => agreementAccess.value && online.value && !agreements.saving && !agreements.reversing && !agreements.pendingReversal)
+const canRecoverAgreement = computed(() => agreementAccess.value && online.value && !agreements.saving && !agreements.reversing && !agreements.pdfLoading && !agreements.pendingReversal)
 const canCreateAgreement = computed(() => canRecoverAgreement.value && !agreements.pendingCreate && resultEligible.value && !replacementLoading.value &&
   (!replacementRequested.value || !!replacement.value))
 const confirmationEligible = computed(() => canRecoverAgreement.value && resultEligible.value &&
@@ -595,6 +599,11 @@ function openAgreement() {
 async function createAgreement(fields: AgreementFields) {
   if (!confirmationEligible.value || !agreementOpen.value) return
   await agreements.create({ ...fields, replacesAgreementId: confirmationReplacement.value?.id ?? null })
+}
+async function exportCreatedPdf() {
+  const documentId = agreements.created?.id
+  if (!documentId || !agreementOpen.value || !agreementAccess.value || !online.value) return
+  await agreements.exportPdf(documentId, () => agreementOpen.value && agreementAccess.value && agreements.created?.id === documentId)
 }
 async function retryAgreement() {
   if (!canRecoverAgreement.value || !agreementOpen.value) return
@@ -705,6 +714,7 @@ onMounted(() => {
   refresh()
 })
 onUnmounted(() => {
+  agreementOpen.value = false
   window.removeEventListener('online', onOnline)
   window.removeEventListener('offline', onOffline)
 })

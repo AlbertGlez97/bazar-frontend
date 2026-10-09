@@ -182,3 +182,17 @@ describe('audited help content', () => {
     expect(JSON.stringify([guide, faq])).not.toMatch(/repartir dinero|pagar|confirmar reparto|ganancia para repartir|lo que te toca/i)
   })
 })
+
+describe('agreement help', () => {
+  it('covers all eight requested topics without promising payments or legal validity', () => {
+    const ids = ['acuerdos-que-son','acuerdos-simulacion','acuerdos-inmutables','acuerdos-corregir','acuerdos-anular','acuerdos-no-pago','acuerdos-pdf','acuerdos-efecto-legal']
+    for (const id of ids) {
+      const article = HELP_ARTICLES.find(a => a.id === id)!
+      expect(article.audience).toBe('socio'); expect(article.steps.length).toBeGreaterThanOrEqual(3)
+    }
+    const simulator = HELP_ARTICLES.find(a => a.id === 'simulador-reparto')!
+    expect(simulator.intro).toContain('confirmación explícita')
+    expect(HELP_ARTICLES.find(a => a.id === 'acuerdos-efecto-legal')?.intro).toContain('ley aplicable')
+    expect(HELP_ARTICLES.find(a => a.id === 'acuerdos-pdf')?.steps.join(' ')).toContain('ANULADO')
+  })
+})

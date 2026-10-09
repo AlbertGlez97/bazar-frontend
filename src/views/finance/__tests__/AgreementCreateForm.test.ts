@@ -83,7 +83,7 @@ describe('agreement creation confirmation', () => {
     expect(w.findComponent(RouterLinkStub).props('to')).toBe('/app/finanzas/acuerdos/' + agreementFixture().id)
     expect(document.activeElement).toBe(w.find('h3').element)
     expect(w.find('[data-test="confirm-agreement"]').exists()).toBe(false)
-    expect(w.text()).not.toContain('Descargar PDF')
+    expect(w.find('[data-test="created-pdf"]').exists()).toBe(true)
   })
 })
 
@@ -94,4 +94,14 @@ it('shows the authoritative replacement folio and includes its id in the confirm
   await w.find('#agreement-title').setValue('Replacement')
   await w.find('form').trigger('submit')
   expect((w.emitted('create')?.[0]?.[0] as { replacesAgreementId: string }).replacesAgreementId).toBe(target.id)
+})
+
+it('offers PDF only for the confirmed document and guards busy/offline attempts', async () => {
+  const w = await mounted({ created: agreementFixture(), pdfAllowed: true })
+  await w.find('[data-test="created-pdf"]').trigger('click')
+  expect(w.emitted('pdf')).toHaveLength(1)
+  await w.setProps({ pdfBusy: true }); await w.find('[data-test="created-pdf"]').trigger('click')
+  expect(w.emitted('pdf')).toHaveLength(1)
+  await w.setProps({ pdfBusy: false, pdfAllowed: false, pdfError: 'No se pudo actualizar' })
+  expect(w.find('[data-test="created-pdf-error"]').text()).toContain('actualizar')
 })

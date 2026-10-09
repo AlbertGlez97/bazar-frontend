@@ -172,7 +172,7 @@
             <p>Período: {{ formatReservePeriod(item.from, item.to) }}</p>
             <p>Monto acordado: {{ formatMinorMoney(item.requestedAmountMinor) }} · Asignado: {{ formatMinorMoney(item.distributedMinor) }}</p>
             <p>{{ bpsToPercentText(item.partnerShareBps) }}% socios · {{ bpsToPercentText(item.workShareBps) }}% trabajo · {{ item.workBasis === 'WORK_SHIFTS' ? 'Jornadas' : 'Horas registradas' }}</p>
-            <p>{{ item.participantCount }} personas participantes ? Base financiera {{ item.financialStatus === 'partial' ? 'parcial' : 'completa' }}.</p>
+            <p>{{ item.participantCount }} personas participantes · Base financiera {{ item.financialStatus === 'partial' ? 'parcial' : 'completa' }}.</p>
             <p>Registrado: {{ formatAgreementInstant(item.receivedAt) }} (UTC−6).</p>
             <p v-if="item.voidedAt">
               Anulado: {{ formatAgreementInstant(item.voidedAt) }}. Consulta el detalle para ver el motivo.
