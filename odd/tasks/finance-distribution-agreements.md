@@ -15,7 +15,7 @@ Implement historical, immutable agreements from accepted simulations using the e
 
 ## Tasks
 
-- [ ] A1 — Preserve simulator fingerprint and robust freshness/connection eligibility. Route: delegated; preparation and behavior changes across non-trivial files. Acceptance: fingerprint validated, pending inputs/failed retry/remount/offline cannot create; successful recalculation restores eligibility.
+- [x] A1 — Preserve simulator fingerprint and robust freshness/connection eligibility. Route: delegated; preparation and behavior changes across non-trivial files. Acceptance: fingerprint validated, pending inputs/failed retry/remount/offline cannot create; successful recalculation restores eligibility. Commit `a9cd961`; meaningful RED observed, 116 focused tests GREEN, build/lint/diff checks passed. Native risk medium, under_budget; boundary remains `b04fba4`. Build reports chunk-size and mixed-import warnings.
 - [ ] A2 — Exact agreement adapter and ephemeral state. Route: delegated; multiple non-trivial files. Acceptance: strict contract, origin/session isolation, same-request replay, drift invalidation, mapped 400/401/403/404/409/422/503; no persistence.
 - [ ] A3 — Confirmation, success, history/detail and navigation. Route: delegated; multiple non-trivial files. Acceptance: socio-only, filters/cursors, snapshot names/amounts/warnings, no recalculation/editing, responsive cards.
 - [ ] A4 — Reversal and replacement references. Route: delegated; multiple non-trivial files. Acceptance: required reason, connection, replay/double attempt, focus, historical snapshot retained, real replacement links.
@@ -34,5 +34,5 @@ Use existing Vitest/Vue Test Utils. Observe meaningful deterministic RED before 
 ## Evidence and next step
 
 - Read-only delegated contract audit completed; parent spot-checked API contract document. No tests run yet.
-- Next: A1 implementation and focused proof. Tasks remain open until observed checks and commit identities are recorded.
+- Next: A2 exact agreement adapter and ephemeral state. A1 committed range: 258 authored lines including initial task document; review deferred under native slice budget. Tasks remain open until observed checks and commit identities are recorded.
 - Final report must preserve all requested headings and explicitly leave integrated real testing pending unless performed.
