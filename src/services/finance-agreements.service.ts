@@ -102,7 +102,7 @@ export const FinanceAgreementsService = {
   async create(origin: FinanceOrigin, payload: CreateAgreementPayload): Promise<DistributionAgreement> {
     const body = { ...normalizeAgreementFields(payload), ...auditPayload(origin, { ...payload, reason: '' }) }
     const { data } = await api.post<unknown>(endpoint, body, config(origin))
-    if (!validAgreement(data) || data.status !== 'active' || data.id !== body.id ||
+    if (!validAgreement(data) || data.id !== body.id ||
         data.title !== body.title || data.note !== (body.note ?? null) ||
         data.replacesAgreementId !== (body.replacesAgreementId ?? null) || data.simulationFingerprint !== body.simulationFingerprint ||
         data.period.from !== body.from || data.period.to !== body.to || data.financialBase.requestedAmountMinor !== body.requestedAmountMinor ||

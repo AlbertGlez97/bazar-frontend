@@ -28,3 +28,14 @@ describe('snapshot agreement PDF', () => {
     expect(agreementPdfFileName('../../X\\Y')).not.toMatch(/[\/\\]/)
   })
 })
+
+it.each(['active', 'voided'] as const)('prints the full stored integrity identifier for %s without recomputing it', status => {
+  const digest = '0123456789abcdef'.repeat(4);
+  const snapshot = agreementFixture({ snapshotFingerprint: digest, status, ...(status === 'voided' ? { reversal: reversalFixture() } : {}) });
+  const content = text(buildAgreementPdfDefinition(snapshot).content);
+  expect(content).toContain('Código de verificación');
+  expect(content).toContain('Identificador de integridad del registro');
+  expect(content).toContain(digest);
+  expect(content).toContain('No es una firma digital');
+  expect(snapshot.snapshotFingerprint).toBe(digest);
+});

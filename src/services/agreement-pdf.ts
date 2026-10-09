@@ -54,6 +54,12 @@ export function buildAgreementPdfDefinition(snapshot: DistributionAgreement): TD
     { text: 'Total asignado: ' + money(s.totals.distributedMinor), bold: true },
     { text: 'Sin asignar: ' + money(s.totals.undistributedMinor) },
     ...(s.warnings.length ? [heading('Avisos conservados'), { ul: s.warnings.map(w => agreementWarningText(w.code)) } as Content] : []),
+    { table: { widths: ['*'], dontBreakRows: true, body: [[{ stack: [
+      heading('Código de verificación'),
+      { text: 'Identificador de integridad del registro', fontSize: 9, color: '#65554c' },
+      { text: s.snapshotFingerprint, fontSize: 8, noWrap: false, margin: [0, 4, 0, 4] },
+      { text: 'No es una firma digital ni acredita autenticidad legal.', fontSize: 8, color: '#65554c' },
+    ] }]] }, layout: 'noBorders' },
     heading('Alcance del documento'),
     { text: s.notice },
     { text: 'No registra pagos, retiros ni transferencias. No modifica aportaciones, gastos, jornadas o reservas.' },

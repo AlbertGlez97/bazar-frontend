@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import AgreementCreateForm from '../components/AgreementCreateForm.vue'
 import { simulationFixture } from '@/services/__tests__/finance-distribution.fixture'
-import { agreementFixture } from '@/services/__tests__/finance-agreements.fixture'
+import { agreementFixture, reversalFixture } from '@/services/__tests__/finance-agreements.fixture'
 const request = { from: '2026-10-01', to: '2026-11-01', requestedAmountMinor: 600000,
   partnerShareBps: 5000, workShareBps: 5000, workBasis: 'WORK_SHIFTS' as const }
 const props = () => ({ modelValue: false, simulation: simulationFixture(), request,
@@ -105,3 +105,17 @@ it('offers PDF only for the confirmed document and guards busy/offline attempts'
   await w.setProps({ pdfBusy: false, pdfAllowed: false, pdfError: 'No se pudo actualizar' })
   expect(w.find('[data-test="created-pdf-error"]').text()).toContain('actualizar')
 })
+
+it('shows a recovered voided replay as annulled rather than a newly active agreement', async () => {
+  const snapshot = agreementFixture({ status: 'voided', reversal: reversalFixture(), replacedBy: { id: '0190aaaa-0000-7000-8000-000000000099', folio: 'AC-2026-00002' } });
+  const w = await mounted();
+  await w.setProps({ created: snapshot });
+  await flushPromises();
+  expect(w.find('h3').text()).toBe('Acuerdo recuperado: ' + snapshot.folio);
+  expect(w.find('[data-test="replayed-voided"]').text()).toContain('Este acuerdo ya fue anulado.');
+  expect(w.text()).toContain(snapshot.reversal!.reason);
+  expect(w.text()).toContain('Sustituido por: AC-2026-00002');
+  expect(w.findComponent(RouterLinkStub).props('to')).toBe('/app/finanzas/acuerdos/' + snapshot.id);
+  expect(document.activeElement).toBe(w.find('h3').element);
+  expect(w.find('[data-test="confirm-agreement"]').exists()).toBe(false);
+});

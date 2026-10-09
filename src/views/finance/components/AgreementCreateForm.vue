@@ -19,8 +19,23 @@
         ref="successHeading"
         tabindex="-1"
       >
-        Acuerdo creado: {{ created.folio }}
+        {{ created.status === 'voided' ? 'Acuerdo recuperado' : 'Acuerdo creado' }}: {{ created.folio }}
       </h3>
+      <AppAlert
+        v-if="created.status === 'voided'"
+        type="warning"
+        title="Acuerdo anulado"
+        data-test="replayed-voided"
+      >
+        <p>Este acuerdo ya fue anulado. El reintento recuperó el mismo documento; no creó otro acuerdo.</p>
+        <template v-if="created.reversal">
+          <p>Motivo: {{ created.reversal.reason }}</p>
+          <p>Anulado: {{ formatAgreementInstant(created.reversal.occurredAt) }} (UTC-6)</p>
+        </template>
+        <p v-if="created.replacedBy">
+          Sustituido por: {{ created.replacedBy.folio }}
+        </p>
+      </AppAlert>
       <p>{{ created.title }}</p>
       <p>{{ created.notice }}</p>
       <p
@@ -202,7 +217,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { AppAlert, AppButton, AppInput, AppModal, AppTextarea } from '@/components'
-import { AGREEMENT_NOTICE, agreementWarningText, normalizeAgreementFields, agreementErrorMessage } from '@/utils/finance-agreements'
+import { AGREEMENT_NOTICE, formatAgreementInstant, agreementWarningText, normalizeAgreementFields, agreementErrorMessage } from '@/utils/finance-agreements'
 import { bpsToPercentText } from '@/utils/finance-distribution'
 import { formatReservePeriod } from '@/utils/finance-reserves'
 import { formatMinorMoney } from '@/utils/money'

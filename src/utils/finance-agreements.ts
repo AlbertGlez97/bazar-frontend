@@ -69,6 +69,7 @@ export function agreementErrorMessage(error: unknown, basis: AgreementFields['wo
   if (code === 'FINANCE_AGREEMENT_ID_CONFLICT') return 'Ese identificador corresponde a otro intento. Revisa el historial antes de continuar.'
   if (code === 'FINANCE_AGREEMENT_ALREADY_VOIDED') return 'El acuerdo ya fue anulado. Actualiza su detalle.'
   if (code === 'FINANCE_AGREEMENT_REPLACEMENT_INVALID') return 'Solo puedes reemplazar un acuerdo anulado que no tenga reemplazo.'
+  if (code === 'FINANCE_AGREEMENT_REVERSAL_TIME_INVALID') return 'La fecha de anulación debe ser igual o posterior a la del acuerdo y no puede estar en el futuro según el servidor. Revisa la fecha y hora del dispositivo.'
   if (code === 'FINANCE_AGREEMENT_BUSY') return 'El servidor está ocupado. Reintenta el mismo intento; no se duplicará.'
   if (code.startsWith('FINANCE_DISTRIBUTION_') || code.startsWith('FINANCE_OVERVIEW_'))
     return simulationErrorMessage(error, basis)

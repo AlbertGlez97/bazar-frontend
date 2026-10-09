@@ -98,3 +98,10 @@ describe('online adapter boundary', () => {
     online.mockRestore()
   })
 })
+
+it('accepts a voided exact create replay with current replacement links and the unchanged snapshot', async () => {
+  const snapshot = agreementFixture({ status: 'voided', reversal: reversalFixture(), replacedBy: { id: '0190aaaa-0000-7000-8000-000000000099', folio: 'AC-2026-00002' } });
+  vi.mocked(api.post).mockResolvedValue({ status: 200, data: snapshot });
+  expect(await FinanceAgreementsService.create(agreementOrigin, payload())).toEqual(snapshot);
+  expect(vi.mocked(api.post).mock.calls[0]?.[1]).toEqual(payload());
+});

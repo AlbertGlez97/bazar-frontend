@@ -304,3 +304,17 @@ describe('PDF delivery isolation', () => {
     expect(pdf.render).not.toHaveBeenCalled()
   })
 })
+
+it('resolves an uncertain create retry to the authoritative voided document without changing its attempt', async () => {
+  const store = useFinanceAgreementsStore();
+  mocks.create.mockRejectedValueOnce(new Error('Network Error'));
+  expect(await store.create(fields)).toBeNull();
+  const attempt = store.pendingCreate!;
+  const snapshot = agreementFixture({ id: attempt.id, occurredAt: attempt.occurredAt, status: 'voided', reversal: reversalFixture({ agreementId: attempt.id }), replacedBy: { id: '0190aaaa-0000-7000-8000-000000000099', folio: 'AC-2026-00002' } });
+  mocks.create.mockResolvedValueOnce(snapshot);
+  expect(await store.retryCreate()).toEqual(snapshot);
+  expect(mocks.create.mock.calls[1]).toEqual(mocks.create.mock.calls[0]);
+  expect(store.created).toEqual(snapshot);
+  expect(store.pendingCreate).toBeNull();
+  expect(store.saveError).toBe('');
+});

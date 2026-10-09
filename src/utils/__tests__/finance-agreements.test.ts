@@ -44,3 +44,8 @@ describe('historical agreement copy and dates', () => {
     expect(formatAgreementInstant('2026-01-01T04:00:00.000Z')).toContain('2025')
   })
 })
+
+it('explains reversal chronology and backend time in Spanish without implying uncertain creation', () => {
+  const message = agreementErrorMessage({ response: { status: 422, data: { code: 'FINANCE_AGREEMENT_REVERSAL_TIME_INVALID' } } });
+  expect(message).toBe('La fecha de anulación debe ser igual o posterior a la del acuerdo y no puede estar en el futuro según el servidor. Revisa la fecha y hora del dispositivo.');
+});
