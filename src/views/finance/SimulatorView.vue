@@ -388,6 +388,35 @@
     >
       Revisar intento pendiente
     </AppButton>
+    <p
+      v-if="replacementLoading"
+      role="status"
+    >
+      Consultando el acuerdo que se sustituirá…
+    </p>
+    <AppAlert
+      v-if="replacementError"
+      type="error"
+      title="No se puede preparar la sustitución"
+      data-test="replacement-error"
+    >
+      {{ replacementError }}
+      <AppButton
+        type="button"
+        variant="ghost"
+        :disabled="!online || replacementLoading"
+        @click="loadReplacement"
+      >
+        Reintentar consulta
+      </AppButton>
+    </AppAlert>
+    <p
+      v-if="replacement"
+      role="status"
+      data-test="replacement-target"
+    >
+      Crearás un sustituto de {{ replacement.folio }}. Calcula una nueva simulación y confirma sus resultados; el documento anterior se conserva.
+    </p>
     <AgreementCreateForm
       v-model="agreementOpen"
       :simulation="confirmationSimulation"
@@ -398,6 +427,7 @@
       :error="agreements.saveError"
       :pending="agreements.pendingCreate"
       :created="agreements.created"
+      :replacement="confirmationReplacement"
       @create="createAgreement"
       @retry="retryAgreement"
     />
@@ -408,6 +438,8 @@
 </template>
 
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
+import { isAgreementId } from '@/utils/finance-agreements'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { AppAlert, AppButton, AppCard, CashInput, ReportRangePicker, TabNav } from '@/components'
 import { useUiModeStore } from '@/stores/uiMode.store'
@@ -433,7 +465,7 @@ import {
   type SimulatorPeriod,
 } from '@/utils/finance-distribution'
 import type { DistributionSimulation, DistributionSimulationRequest, DistributionWorkBasis } from '@/types/finance-distribution.types'
-import type { AgreementFields } from '@/types/finance-agreement.types'
+import type { AgreementFields, DistributionAgreement } from '@/types/finance-agreement.types'
 import AgreementCreateForm from './components/AgreementCreateForm.vue'
 import { FINANCE_TABS } from './finance-tabs'
 import OverviewFigure from './components/OverviewFigure.vue'
@@ -533,30 +565,63 @@ const resultIsStale = computed(() => !!result.value && !resultEligible.value)
 const partialResult = computed(() => !!result.value && isPartialResult(result.value))
 const warnings = computed(() => (result.value ? visibleWarnings(result.value) : []))
 
+const route = useRoute()
+const replacement = ref<DistributionAgreement | null>(null), replacementError = ref(''), replacementLoading = ref(false)
+const replacementQuery = computed(() => route?.query?.replacesAgreementId)
+const replacementRequested = computed(() => replacementQuery.value !== undefined)
+const confirmationReplacement = ref<{ id: string; folio: string } | null>(null)
+let replacementRevision = 0
 const agreementOpen = ref(false)
 const confirmationSimulation = ref<DistributionSimulation | null>(null)
 const confirmationRequest = ref<DistributionSimulationRequest | null>(null)
 const agreementAccess = computed(() => allowed.value && !!auth.token && session.member?.active === true && !!session.memberId && !!session.deviceId)
 const canRecoverAgreement = computed(() => agreementAccess.value && online.value && !agreements.saving && !agreements.reversing && !agreements.pendingReversal)
-const canCreateAgreement = computed(() => canRecoverAgreement.value && !agreements.pendingCreate && resultEligible.value)
+const canCreateAgreement = computed(() => canRecoverAgreement.value && !agreements.pendingCreate && resultEligible.value && !replacementLoading.value &&
+  (!replacementRequested.value || !!replacement.value))
 const confirmationEligible = computed(() => canRecoverAgreement.value && resultEligible.value &&
+  (!replacementRequested.value || (!!replacement.value && confirmationReplacement.value?.id === replacement.value.id)) &&
   !!confirmationSimulation.value && confirmationSimulation.value.simulationFingerprint === result.value?.simulationFingerprint)
 function openAgreement() {
   if (!canCreateAgreement.value && !(agreements.pendingCreate && canRecoverAgreement.value)) return
   confirmationSimulation.value = result.value ? JSON.parse(JSON.stringify(result.value)) : null
   confirmationRequest.value = store.resultRequest ? { ...store.resultRequest } : null
+  const target = replacement.value
+  confirmationReplacement.value = target && (!agreements.pendingCreate || agreements.pendingCreate.replacesAgreementId === target.id)
+    ? { id: target.id, folio: target.folio } : null
   agreements.created = null
   agreements.clearMessages()
   agreementOpen.value = true
 }
 async function createAgreement(fields: AgreementFields) {
   if (!confirmationEligible.value || !agreementOpen.value) return
-  await agreements.create(fields)
+  await agreements.create({ ...fields, replacesAgreementId: confirmationReplacement.value?.id ?? null })
 }
 async function retryAgreement() {
   if (!canRecoverAgreement.value || !agreementOpen.value) return
   await agreements.retryCreate()
 }
+async function loadReplacement() {
+  const revision = ++replacementRevision
+  replacement.value = null; replacementError.value = ''; replacementLoading.value = false
+  agreementOpen.value = false; confirmationReplacement.value = null
+  if (!replacementRequested.value) return
+  store.invalidateResult()
+  const targetId = replacementQuery.value
+  if (!isAgreementId(targetId)) { replacementError.value = 'El acuerdo que se quiere sustituir no es válido.'; return }
+  if (!agreementAccess.value || !online.value) { replacementError.value = 'Necesitas conexión y una sesión vigente para consultar el acuerdo que se sustituirá.'; return }
+  replacementLoading.value = true
+  const target = await agreements.loadDetail(targetId)
+  if (revision !== replacementRevision || !agreementAccess.value || targetId !== replacementQuery.value) return
+  replacementLoading.value = false
+  if (!target) { replacementError.value = agreements.detailError; return }
+  if (target.status !== 'voided' || target.replacedBy) {
+    replacementError.value = 'Solo puedes sustituir un acuerdo anulado que no tenga sustituto.'; return
+  }
+  replacement.value = target
+  store.invalidateResult()
+}
+watch([replacementQuery, agreementAccess, () => auth.token, () => session.owner?.accountId, () => session.owner?.apiBase,
+  () => session.memberId, () => session.deviceId, () => session.deviceToken, () => online.value], () => { void loadReplacement() }, { immediate: true })
 watch(() => agreements.simulationChanged, (changed) => { if (changed) store.invalidateResult() }, { immediate: true })
 watch(agreementAccess, (access) => {
   if (!access) { agreementOpen.value = false; confirmationSimulation.value = null; confirmationRequest.value = null }

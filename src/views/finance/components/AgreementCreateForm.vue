@@ -49,6 +49,18 @@
       @submit.prevent="submit"
     >
       <p>{{ AGREEMENT_NOTICE }}</p>
+      <p
+        v-if="replacement"
+        data-test="replacement-confirmation"
+      >
+        Este nuevo acuerdo sustituirá a {{ replacement.folio }}. El documento anterior no se editará.
+      </p>
+      <p
+        v-else-if="pending?.replacesAgreementId"
+        data-test="replacement-confirmation"
+      >
+        El intento original conserva la sustitución del acuerdo {{ pending.replacesAgreementId }}.
+      </p>
       <p>Revisa con las personas participantes antes de crear el acuerdo. Se conservará este resultado sin editarlo.</p>
       <AppAlert
         v-if="pending"
@@ -106,7 +118,7 @@
               v-for="person in reviewSimulation.members"
               :key="person.memberId"
             >
-              <strong>{{ person.name }}</strong> ? {{ person.role === 'socio' ? 'Socio' : 'Colaborador' }} · {{ person.isActive ? 'Activo' : 'Inactivo' }}
+              <strong>{{ person.name }}</strong> · {{ person.role === 'socio' ? 'Socio' : 'Colaborador' }} · {{ person.isActive ? 'Activo' : 'Inactivo' }}
               <p>Por ser socio: {{ formatMinorMoney(person.partnerAmountMinor) }} · Por trabajo: {{ formatMinorMoney(person.workAmountMinor) }} · Total: {{ formatMinorMoney(person.totalMinor) }}</p>
               <p>Trabajo: {{ person.workUnits }} {{ reviewRequest.workBasis === 'WORK_SHIFTS' ? 'jornadas' : 'minutos conocidos' }}. Jornadas: {{ person.shiftCount }} · Minutos conocidos: {{ person.knownMinutes }} · Sin duración: {{ person.unknownDurationCount }}.</p>
             </li>
@@ -190,6 +202,7 @@ const props = defineProps<{
   busy: boolean
   error: string
   pending: CreateAgreementPayload | null
+  replacement?: { id: string; folio: string } | null
   created: DistributionAgreement | null
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; create: [fields: AgreementFields]; retry: [] }>()
@@ -211,7 +224,8 @@ async function submit() {
   if (!props.eligible || props.busy || props.pending || !props.request || !props.simulation) return
   try {
     const fields = normalizeAgreementFields({ ...props.request, title: title.value, note: note.value,
-      simulationFingerprint: props.simulation.simulationFingerprint })
+      simulationFingerprint: props.simulation.simulationFingerprint,
+      ...(props.replacement ? { replacesAgreementId: props.replacement.id } : {}) })
     formError.value = ''
     emit('create', fields)
   } catch (cause) {

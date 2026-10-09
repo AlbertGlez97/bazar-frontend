@@ -86,3 +86,12 @@ describe('agreement creation confirmation', () => {
     expect(w.text()).not.toContain('Descargar PDF')
   })
 })
+
+it('shows the authoritative replacement folio and includes its id in the confirmed strict fields', async () => {
+  const target = { id: agreementFixture().id, folio: agreementFixture().folio }
+  const w = await mounted({ replacement: target })
+  expect(w.find('[data-test="replacement-confirmation"]').text()).toContain(target.folio)
+  await w.find('#agreement-title').setValue('Replacement')
+  await w.find('form').trigger('submit')
+  expect((w.emitted('create')?.[0]?.[0] as { replacesAgreementId: string }).replacesAgreementId).toBe(target.id)
+})

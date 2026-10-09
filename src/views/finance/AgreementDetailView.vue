@@ -51,7 +51,63 @@
         Reintentar consulta
       </AppButton>
     </AppAlert>
+    <p
+      v-if="mutationNotice"
+      role="status"
+      data-test="void-notice"
+    >
+      {{ mutationNotice }}
+    </p>
+    <AppAlert
+      v-if="store.pendingReversal && store.pendingReversal.agreementId !== id"
+      type="warning"
+      title="Anulación pendiente"
+    >
+      Resuelve el intento pendiente antes de cambiar otro acuerdo.
+      <RouterLink :to="'/app/finanzas/acuerdos/' + store.pendingReversal.agreementId">
+        Ver acuerdo pendiente
+      </RouterLink>
+    </AppAlert>
+    <p
+      v-if="store.pendingCreate"
+      role="status"
+    >
+      Resuelve el acuerdo pendiente en el simulador antes de anular otro acuerdo.
+    </p>
+    <AppButton
+      v-if="store.pendingReversal?.agreementId === id || (document?.status === 'active' && store.detailCurrent)"
+      type="button"
+      data-test="open-void"
+      :disabled="!canVoid"
+      @click="openVoid"
+    >
+      {{ store.pendingReversal?.agreementId === id ? 'Revisar anulación pendiente' : 'Anular acuerdo' }}
+    </AppButton>
+    <AgreementVoidForm
+      v-model="voidOpen"
+      :folio="voidFolio"
+      :allowed="canVoid"
+      :busy="store.reversing"
+      :error="store.reverseError"
+      :pending="store.pendingReversal?.agreementId === id ? store.pendingReversal.payload : null"
+      @confirm="confirmVoid"
+      @retry="retryVoid"
+    />
     <template v-if="document">
+      <p
+        v-if="!store.detailCurrent"
+        role="status"
+      >
+        El documento recibido se conserva. Actualiza el detalle para confirmar su estado actual.
+        <AppButton
+          type="button"
+          variant="ghost"
+          :disabled="!online || store.detailLoading"
+          @click="refresh"
+        >
+          Actualizar estado del acuerdo
+        </AppButton>
+      </p>
       <AppCard>
         <AppBadge
           :color="document.status === 'voided' ? 'gray' : 'green'"
@@ -88,6 +144,13 @@
             {{ document.replacedBy.folio }}
           </RouterLink>.
         </p>
+        <RouterLink
+          v-if="document.status === 'voided' && !document.replacedBy && store.detailCurrent && online && !store.pendingCreate && !store.pendingReversal"
+          :to="{ path: '/app/finanzas/simulador', query: { replacesAgreementId: document.id } }"
+          data-test="create-replacement"
+        >
+          Crear acuerdo sustituto
+        </RouterLink>
         <section
           v-if="document.reversal"
           aria-labelledby="agreement-reversal-title"
@@ -185,12 +248,42 @@ import { formatReservePeriod } from '@/utils/finance-reserves'
 import { ruleSummary } from '@/utils/finance-distribution'
 import { formatMinorMoney } from '@/utils/money'
 import { AGREEMENT_ACCESS_COPY, agreementWarningText, formatAgreementInstant, isAgreementId } from '@/utils/finance-agreements'
+import AgreementVoidForm from './components/AgreementVoidForm.vue'
 import { FINANCE_TABS } from './finance-tabs'
 
 const route = useRoute(), store = useFinanceAgreementsStore(), auth = useAuthStore(), session = useSessionStore(), mode = useUiModeStore()
 const allowed = computed(() => !!auth.token && session.member?.role === 'socio' && session.member.active === true && mode.currentMode === 'gestion')
 const id = computed(() => typeof route.params.id === 'string' ? route.params.id : '')
 const document = computed(() => store.detail?.id === id.value ? store.detail : null)
+const voidOpen = ref(false), voidFolio = ref(''), mutationNotice = ref('')
+const canVoid = computed(() => allowed.value && online.value && !store.saving && !store.reversing && !store.pendingCreate &&
+  (!store.pendingReversal || store.pendingReversal.agreementId === id.value) &&
+  (!!store.pendingReversal || (document.value?.status === 'active' && store.detailCurrent)))
+function openVoid() {
+  if (!canVoid.value) return
+  voidFolio.value = document.value?.folio ?? 'el acuerdo pendiente'
+  store.reverseError = ''; mutationNotice.value = ''; voidOpen.value = true
+}
+async function confirmVoid(reason: string) {
+  if (!voidOpen.value || !canVoid.value || store.pendingReversal) return
+  await sendVoid(reason)
+}
+async function retryVoid() {
+  const attempt = store.pendingReversal
+  if (!voidOpen.value || !canVoid.value || attempt?.agreementId !== id.value) return
+  await sendVoid(attempt.payload.reason)
+}
+async function sendVoid(reason: string) {
+  const selectedId = id.value
+  const receipt = await store.reverse(selectedId, reason)
+  if (!allowed.value || id.value !== selectedId) return
+  if (receipt || store.alreadyVoided) {
+    voidOpen.value = false
+    mutationNotice.value = receipt ? 'Anulación confirmada. El documento original se conserva.' : store.reverseError
+    await refresh()
+    await nextTick(); heading.value?.focus()
+  }
+}
 const heading = ref<HTMLElement | null>(null), online = ref(navigator.onLine)
 async function refresh() {
   if (!allowed.value) return
@@ -203,10 +296,11 @@ async function refresh() {
   const result = await store.loadDetail(id.value)
   if (result && allowed.value) { await nextTick(); heading.value?.focus() }
 }
-function onOnline() { online.value = true }
+function onOnline() { online.value = true; if (!store.detailLoading) void refresh() }
 function onOffline() { online.value = false }
 watch([id, allowed, () => auth.token, () => session.owner?.accountId, () => session.owner?.apiBase,
   () => session.memberId, () => session.deviceId, () => session.deviceToken], () => {
+  voidOpen.value = false; mutationNotice.value = ''
   if (!allowed.value) return
   if (!online.value && store.detail?.id !== id.value) store.detail = null
   void refresh()

@@ -5,7 +5,7 @@ import { FinanceAgreementsService } from '@/services/finance-agreements.service'
 import { currentQueueOrigin } from '@/services/queue-origin'
 import { useAuthStore } from './auth.store'
 import { useSessionStore } from './session.store'
-import { agreementErrorMessage, agreementReason, isSimulationChanged, isSimulationFingerprint,
+import { agreementErrorCode, agreementErrorMessage, agreementReason, isSimulationChanged, isSimulationFingerprint,
   isUncertainAgreementFailure, normalizeAgreementFields } from '@/utils/finance-agreements'
 import type { FinanceOrigin } from '@/services/contributions-records'
 import type { AgreementFields, AgreementFilter, AgreementListItem, AgreementReversalReceipt,
@@ -26,11 +26,12 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   const shown = ref<AgreementFilter | null>(null)
   const loading = ref(false), loadingMore = ref(false), error = ref('')
   const detail = ref<DistributionAgreement | null>(null)
-  const detailLoading = ref(false), detailError = ref('')
+  const detailLoading = ref(false), detailError = ref(''), detailCurrent = ref(false)
   const saving = ref(false), saveError = ref('')
   const created = ref<DistributionAgreement | null>(null)
   const reversing = ref(false), reverseError = ref('')
   const reversed = ref<AgreementReversalReceipt | null>(null)
+  const alreadyVoided = ref(false)
   const simulationChanged = ref(false)
   const createAttempt = ref<CreateAttempt | null>(null)
   const reverseAttempt = ref<ReverseAttempt | null>(null)
@@ -96,7 +97,8 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   }
   async function loadDetail(id: string): Promise<DistributionAgreement | null> {
     const revision = ++detailRevision, run = generation, selected = origin()
-    detail.value = null
+    if (detail.value?.id !== id) detail.value = null
+    detailCurrent.value = false
     detailLoading.value = false
     detailError.value = ''
     if (!selected || !online()) { detailError.value = selected ? offlineMessage : accessMessage; return null }
@@ -105,6 +107,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
       const document = await FinanceAgreementsService.get(selected, id)
       if (!current(run, selected) || revision !== detailRevision) return null
       detail.value = document
+      detailCurrent.value = true
       return document
     } catch (cause) {
       if (current(run, selected) && revision === detailRevision) detailError.value = agreementErrorMessage(cause)
@@ -206,6 +209,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
     const run = generation
     reversing.value = true
     reverseError.value = ''
+    alreadyVoided.value = false
     try {
       const receipt = await FinanceAgreementsService.reverse(copy(attempt.origin), id, copy(attempt.payload))
       if (!current(run, selected)) return null
@@ -213,12 +217,14 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
       reversed.value = receipt
       // The receipt's original remains active: never pretend that it is the live detail projection.
       detailRevision++
-      detail.value = null
+      detailCurrent.value = false
       detailLoading.value = false
       return receipt
     } catch (cause) {
       if (!current(run, selected)) return null
       reverseError.value = agreementErrorMessage(cause)
+      alreadyVoided.value = agreementErrorCode(cause) === 'FINANCE_AGREEMENT_ALREADY_VOIDED'
+      if (alreadyVoided.value) detailCurrent.value = false
       if (!isUncertainAgreementFailure(cause)) reverseAttempt.value = null
       return null
     } finally {
@@ -235,6 +241,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   function reset() {
     generation++; listRevision++; detailRevision++
     items.value = []; nextCursor.value = null; shown.value = null
+    detailCurrent.value = false; alreadyVoided.value = false
     detail.value = null; created.value = null; reversed.value = null
     createAttempt.value = null; reverseAttempt.value = null
     loading.value = false; loadingMore.value = false; detailLoading.value = false
@@ -247,6 +254,6 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
     () => session.memberId, () => session.deviceId, () => session.deviceToken,
     () => session.member?.role, () => session.member?.active], reset, { flush: 'sync' })
   return { items, nextCursor, shown, loading, loadingMore, error, detail, detailLoading, detailError,
-    saving, saveError, created, reversing, reverseError, reversed, simulationChanged,
+    detailCurrent, alreadyVoided, saving, saveError, created, reversing, reverseError, reversed, simulationChanged,
     pendingCreate, pendingReversal, acceptSimulation, load, loadMore, loadDetail, create, retryCreate, reverse, clearMessages, reset }
 })
