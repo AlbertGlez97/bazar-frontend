@@ -236,3 +236,54 @@ describe('reset and "Nueva simulación"', () => {
     expect(source).not.toMatch(/localStorage|sessionStorage|indexedDB|local-db/i)
   })
 })
+
+describe('result eligibility', () => {
+  it('keeps a failed retry invalid after clearing presentation errors and restores only on success', async () => {
+    const store = useFinanceDistributionStore()
+    const overview = overviewFixture()
+    overview.result.potentiallyAvailableMinor = 800000
+    mocks.overview.mockResolvedValue(overview)
+    mocks.simulate.mockResolvedValue(simulationFixture())
+    await store.loadBase(period)
+    await store.simulate(request)
+    expect(store.isResultEligible(request)).toBe(true)
+    mocks.simulate.mockRejectedValueOnce(http(500))
+    await store.simulate(request)
+    store.clearError()
+    await store.loadBase(period)
+    expect(store.isResultEligible(request)).toBe(false)
+    await store.simulate(request)
+    expect(store.isResultEligible(request)).toBe(true)
+  })
+
+  it('blocks pending or changed bases and lets drift invalidate a pending simulation', async () => {
+    const store = useFinanceDistributionStore()
+    const overview = overviewFixture()
+    overview.result.potentiallyAvailableMinor = 800000
+    mocks.overview.mockResolvedValue(overview)
+    mocks.simulate.mockResolvedValue(simulationFixture())
+    await store.loadBase(period)
+    await store.simulate(request)
+    const pendingBase = deferred<ReturnType<typeof overviewFixture>>()
+    mocks.overview.mockReturnValueOnce(pendingBase.promise)
+    const refresh = store.loadBase(period)
+    expect(store.isResultEligible(request)).toBe(false)
+    pendingBase.resolve(overview)
+    await refresh
+    expect(store.isResultEligible(request)).toBe(true)
+    overview.result.potentiallyAvailableMinor = 900000
+    await store.loadBase(period)
+    expect(store.isResultEligible(request)).toBe(false)
+    overview.result.potentiallyAvailableMinor = 800000
+    await store.loadBase(period)
+    expect(store.isResultEligible(request)).toBe(false)
+    const pendingSim = deferred<ReturnType<typeof simulationFixture>>()
+    mocks.simulate.mockReturnValueOnce(pendingSim.promise)
+    const run = store.simulate(request)
+    store.invalidateResult()
+    pendingSim.resolve(simulationFixture())
+    await expect(run).resolves.toBe(false)
+    expect(store.isResultEligible(request)).toBe(false)
+    expect(store.result).not.toBeNull()
+  })
+})

@@ -356,7 +356,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { AppAlert, AppButton, AppCard, CashInput, ReportRangePicker, TabNav } from '@/components'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
@@ -375,7 +375,6 @@ import {
   isPartialResult,
   ruleState,
   ruleSummary,
-  sameRequest,
   simulatorPreset,
   visibleWarnings,
   type SimulatorPeriod,
@@ -391,6 +390,13 @@ const session = useSessionStore(),
   mode = useUiModeStore(),
   store = useFinanceDistributionStore()
 const allowed = computed(() => session.member?.role === 'socio' && mode.currentMode === 'gestion')
+
+const online = ref(navigator.onLine)
+function onOnline() { online.value = true }
+function onOffline() {
+  online.value = false
+  store.invalidateResult()
+}
 
 const today = ref(businessToday())
 /** The period end may be in the future (e.g. a full month) so reserves can match it. */
@@ -457,14 +463,17 @@ const currentRequest = computed<DistributionSimulationRequest | null>(() => {
   })
 })
 const canCalculate = computed(
-  () => allowed.value && !!currentRequest.value && !rangeError.value && !periodPending.value && !store.simulating,
+  () => allowed.value && online.value && !!currentRequest.value && !rangeError.value &&
+    !periodPending.value && !store.simulating && !store.baseLoading,
 )
 
 const result = computed(() => store.result)
-// A rejected retry also invalidates the old result, even when the request is unchanged.
-const resultIsStale = computed(
-  () => !!result.value && (!!store.error || !sameRequest(currentRequest.value, store.resultRequest)),
+// This boundary also gates agreement confirmation when it is added.
+const resultEligible = computed(
+  () => allowed.value && online.value && !rangeError.value && !periodPending.value &&
+    store.isResultEligible(currentRequest.value),
 )
+const resultIsStale = computed(() => !!result.value && !resultEligible.value)
 const partialResult = computed(() => !!result.value && isPartialResult(result.value))
 const warnings = computed(() => (result.value ? visibleWarnings(result.value) : []))
 
@@ -472,7 +481,7 @@ const configBox = ref<HTMLElement | null>(null)
 const resultHeading = ref<HTMLElement | null>(null)
 
 function refresh() {
-  if (!allowed.value || rangeError.value) return
+  if (!allowed.value || !online.value || rangeError.value) return
   applied.value = { from: range.from, to: range.to }
   void store.loadBase({ ...applied.value })
 }
@@ -535,8 +544,15 @@ watch(
   },
 )
 onMounted(() => {
+  window.addEventListener('online', onOnline)
+  window.addEventListener('offline', onOffline)
+  if (!online.value) store.invalidateResult()
   store.clearError()
   refresh()
+})
+onUnmounted(() => {
+  window.removeEventListener('online', onOnline)
+  window.removeEventListener('offline', onOffline)
 })
 </script>
 

@@ -24,6 +24,7 @@ describe('FinanceDistributionService.simulate', () => {
     const result = await FinanceDistributionService.simulate(request)
     expect(api.post).toHaveBeenCalledTimes(1)
     expect(api.post).toHaveBeenCalledWith('/finance/distribution-simulations', request)
+    expect(result.simulationFingerprint).toBe('sim1:' + 'a'.repeat(64))
     expect(result.members.map((m) => m.totalMinor)).toEqual([270000, 330000])
   })
 
@@ -69,6 +70,10 @@ describe('validDistributionSimulation', () => {
 
   const base = simulationFixture()
   it.each([
+    ['missing fingerprint', { ...base, simulationFingerprint: undefined }],
+    ['short fingerprint', { ...base, simulationFingerprint: 'sim1:abc' }],
+    ['uppercase fingerprint', { ...base, simulationFingerprint: 'sim1:' + 'A'.repeat(64) }],
+    ['wrong fingerprint version', { ...base, simulationFingerprint: 'sim2:' + 'a'.repeat(64) }],
     ['not an object', 'nope'],
     ['null', null],
     ['persisted true', { ...base, persisted: true }],

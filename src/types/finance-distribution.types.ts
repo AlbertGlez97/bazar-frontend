@@ -35,6 +35,7 @@ export interface DistributionWarning {
 }
 
 export interface DistributionSimulation {
+  simulationFingerprint: string
   period: {
     from: string
     to: string

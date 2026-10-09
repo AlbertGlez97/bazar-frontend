@@ -41,6 +41,7 @@ function validMember(value: unknown): boolean {
 export function validDistributionSimulation(value: unknown): value is DistributionSimulation {
   const o = obj(value)
   if (!o || o.simulation !== true || o.persisted !== false || o.currency !== 'MXN') return false
+  if (!text(o.simulationFingerprint) || !/^sim1:[0-9a-f]{64}$/.test(o.simulationFingerprint)) return false
   const period = obj(o.period)
   const base = obj(o.financialBase)
   const rule = obj(o.rule)

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { FinanceDistributionService } from '@/services/finance-distribution.service'
 import { FinanceOverviewService } from '@/services/finance-overview.service'
 import { isContractError, isMissingRoute, overviewErrorMessage, overviewExclusiveTo } from '@/utils/finance-overview'
-import { simulationErrorMessage, type SimulatorPeriod } from '@/utils/finance-distribution'
+import { sameRequest, simulationErrorMessage, type SimulatorPeriod } from '@/utils/finance-distribution'
 import type { DistributionSimulation, DistributionSimulationRequest } from '@/types/finance-distribution.types'
 
 /** What the simulator needs from the overview: the amount it may start from. */
@@ -36,10 +36,36 @@ export const useFinanceDistributionStore = defineStore('finance-distribution', (
   const resultRequest = ref<DistributionSimulationRequest | null>(null)
   const simulating = ref(false)
   const error = ref('')
+  // Eligibility is independent of dismissible presentation errors.
+  const resultInvalidated = ref(false)
   let latestBase = 0
   let latestSimulation = 0
 
   const baseIsStale = computed(() => baseRefreshFailed.value && !!base.value)
+
+  function baseMatchesResult(): boolean {
+    const current = base.value
+    const simulation = result.value
+    return !!current && !!simulation &&
+      current.period.from === simulation.period.from &&
+      overviewExclusiveTo(current.period.to) === simulation.period.to &&
+      current.potentiallyAvailableMinor === simulation.financialBase.potentiallyAvailableMinor &&
+      current.status === simulation.financialBase.status
+  }
+
+  /** Callers must also check access, connection and unapplied picker edits. */
+  function isResultEligible(request: DistributionSimulationRequest | null): boolean {
+    return !!result.value && !resultInvalidated.value && !simulating.value &&
+      !baseLoading.value && !baseError.value && !baseIsStale.value &&
+      sameRequest(request, resultRequest.value) && baseMatchesResult()
+  }
+
+  /** Preserve the displayed snapshot, but revoke it and any in-flight recalculation. */
+  function invalidateResult() {
+    latestSimulation++
+    resultInvalidated.value = true
+    simulating.value = false
+  }
 
   async function loadBase(period: SimulatorPeriod): Promise<void> {
     const id = ++latestBase
@@ -61,11 +87,13 @@ export const useFinanceDistributionStore = defineStore('finance-distribution', (
       }
       baseRefreshFailed.value = false
       baseRetryable.value = true
+      if (result.value && !baseMatchesResult()) invalidateResult()
     } catch (cause) {
       if (id !== latestBase) return
       baseError.value = overviewErrorMessage(cause)
       baseRetryable.value = !isContractError(cause) && !isMissingRoute(cause)
       baseRefreshFailed.value = true
+      invalidateResult()
     } finally {
       if (id === latestBase) baseLoading.value = false
     }
@@ -76,12 +104,14 @@ export const useFinanceDistributionStore = defineStore('finance-distribution', (
     if (simulating.value) return false // no double submit
     const id = ++latestSimulation
     simulating.value = true
+    resultInvalidated.value = true
     error.value = ''
     try {
       const simulation = await FinanceDistributionService.simulate(request)
       if (id !== latestSimulation) return false
       result.value = simulation
       resultRequest.value = { ...request }
+      resultInvalidated.value = false
       return true
     } catch (cause) {
       if (id !== latestSimulation) return false
@@ -102,6 +132,7 @@ export const useFinanceDistributionStore = defineStore('finance-distribution', (
     latestSimulation++
     result.value = null
     resultRequest.value = null
+    resultInvalidated.value = false
     simulating.value = false
     error.value = ''
   }
@@ -116,6 +147,7 @@ export const useFinanceDistributionStore = defineStore('finance-distribution', (
     baseRefreshFailed.value = false
     result.value = null
     resultRequest.value = null
+    resultInvalidated.value = false
     simulating.value = false
     error.value = ''
   }
@@ -132,6 +164,8 @@ export const useFinanceDistributionStore = defineStore('finance-distribution', (
     error,
     loadBase,
     simulate,
+    isResultEligible,
+    invalidateResult,
     clearError,
     clearResult,
     reset,

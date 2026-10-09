@@ -32,6 +32,7 @@ export const simulationFixture = (over: Partial<DistributionSimulation> = {}): D
     utcOffsetMinutes: -360,
     interval: '[from,to)',
   },
+  simulationFingerprint: 'sim1:' + 'a'.repeat(64),
   simulation: true,
   persisted: false,
   currency: 'MXN',
