@@ -188,3 +188,28 @@ describe('fresh confirmation after reverted financial drift', () => {
     expect(mocks.create).toHaveBeenCalledTimes(2)
   })
 })
+
+
+describe('uncertain cross-operation sequencing', () => {
+  it('blocks reversal after an uncertain create has settled until that exact create is resolved', async () => {
+    const store = useFinanceAgreementsStore()
+    mocks.create.mockRejectedValueOnce(new Error('lost response'))
+    await store.create(fields)
+    await store.reverse(AGREEMENT_ID, 'Correction')
+    expect(mocks.reverse).not.toHaveBeenCalled()
+    await store.retryCreate()
+    await store.reverse(AGREEMENT_ID, 'Correction')
+    expect(mocks.reverse).toHaveBeenCalledTimes(1)
+  })
+  it('blocks new creation after an uncertain reversal has settled until that exact reversal is resolved', async () => {
+    const store = useFinanceAgreementsStore()
+    mocks.reverse.mockRejectedValueOnce(new Error('lost response'))
+    await store.reverse(AGREEMENT_ID, 'Correction')
+    await store.create(fields)
+    await store.retryCreate()
+    expect(mocks.create).not.toHaveBeenCalled()
+    await store.reverse(AGREEMENT_ID, 'Correction')
+    await store.create(fields)
+    expect(mocks.create).toHaveBeenCalledTimes(1)
+  })
+})

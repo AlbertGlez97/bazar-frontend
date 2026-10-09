@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeAgreementFields, agreementErrorMessage } from '../finance-agreements'
+import { normalizeAgreementFields, agreementErrorMessage, AGREEMENT_NOTICE, agreementWarningText, formatAgreementInstant } from '../finance-agreements'
 const fields = { from: '2026-10-01', to: '2026-11-01', requestedAmountMinor: 600000, partnerShareBps: 5000,
   workShareBps: 5000, workBasis: 'WORK_SHIFTS' as const, title: '  October  ', simulationFingerprint: 'sim1:' + 'a'.repeat(64) }
 describe('agreement form contract', () => {
@@ -29,5 +29,18 @@ describe('agreement domain error mapping', () => {
     [422, 'FINANCE_DISTRIBUTION_EXCEEDS_AVAILABLE', 'supera'],
   ])('maps %i %s by domain code', (status, code, expected) => {
     expect(agreementErrorMessage({ response: { status, data: { code } } })).toContain(expected)
+  })
+})
+
+
+describe('historical agreement copy and dates', () => {
+  it('preserves the exact UTF-8 notice and uses historical rather than live eligibility language', () => {
+    expect(AGREEMENT_NOTICE).toBe('Documento generado a partir de una simulación aceptada por los participantes. No es un contrato legal ni registra pagos.')
+    expect(agreementWarningText('PARTNER_ELIGIBILITY_IS_CURRENT_STATE')).toContain('al crear el acuerdo')
+    expect(agreementWarningText('PARTNER_ELIGIBILITY_IS_CURRENT_STATE')).not.toContain('hoy')
+    expect(agreementWarningText('UNKNOWN')).toContain('no reconocido')
+  })
+  it('formats server instants in the fixed UTC−6 business timezone', () => {
+    expect(formatAgreementInstant('2026-01-01T04:00:00.000Z')).toContain('2025')
   })
 })

@@ -55,7 +55,7 @@ describe('contribution management', () => {
     const w = mountView()
     await flushPromises()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas', 'Simulador'])
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas', 'Simulador', 'Acuerdos'])
     expect(tabs.map((t) => t.props('to'))).toEqual([
       '/app/finanzas/resumen',
       '/app/finanzas',
@@ -63,6 +63,7 @@ describe('contribution management', () => {
       '/app/finanzas/jornadas',
       '/app/finanzas/reservas',
       '/app/finanzas/simulador',
+      '/app/finanzas/acuerdos',
     ])
     expect(tabs[1]!.attributes('aria-current')).toBe('page')
     expect(tabs[0]!.attributes('aria-current')).toBeUndefined()

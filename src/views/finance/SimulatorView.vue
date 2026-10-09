@@ -15,7 +15,7 @@
       <p>
         Prueba cómo se dividiría un monto del período entre las personas del
         equipo según una regla. Solo calcula: no guarda nada, no registra
-        pagos, retiros ni movimientos de dinero.
+        pagos, retiros ni movimientos de dinero. Si aceptan el resultado, pueden conservarlo como un acuerdo de reparto.
       </p>
     </header>
 
@@ -319,7 +319,31 @@
               </li>
             </ul>
 
+            <p
+              v-if="agreements.pendingReversal"
+              role="status"
+            >
+              Hay una anulación sin confirmar. Resuélvela desde el detalle del acuerdo antes de crear otro.
+            </p>
             <div class="sim-actions">
+              <AppButton
+                v-if="!agreements.pendingCreate"
+                type="button"
+                data-test="create-agreement"
+                :disabled="!canCreateAgreement"
+                @click="openAgreement"
+              >
+                Crear acuerdo de reparto
+              </AppButton>
+              <AppButton
+                v-else
+                type="button"
+                data-test="recover-agreement"
+                :disabled="!canRecoverAgreement"
+                @click="openAgreement"
+              >
+                Revisar intento pendiente
+              </AppButton>
               <AppButton
                 variant="secondary"
                 type="button"
@@ -349,6 +373,34 @@
         </section>
       </div>
     </div>
+    <p
+      v-if="agreements.pendingCreate && !result"
+      role="status"
+    >
+      Hay un acuerdo sin confirmar.
+    </p>
+    <AppButton
+      v-if="agreements.pendingCreate && !result"
+      type="button"
+      :disabled="!canRecoverAgreement"
+      data-test="recover-agreement"
+      @click="openAgreement"
+    >
+      Revisar intento pendiente
+    </AppButton>
+    <AgreementCreateForm
+      v-model="agreementOpen"
+      :simulation="confirmationSimulation"
+      :request="confirmationRequest"
+      :eligible="confirmationEligible"
+      :retry-allowed="canRecoverAgreement"
+      :busy="agreements.saving"
+      :error="agreements.saveError"
+      :pending="agreements.pendingCreate"
+      :created="agreements.created"
+      @create="createAgreement"
+      @retry="retryAgreement"
+    />
   </section>
   <p v-else>
     {{ ACCESS_COPY }}
@@ -362,6 +414,7 @@ import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useFinanceDistributionStore } from '@/stores/finance-distribution.store'
+import { useFinanceAgreementsStore } from '@/stores/finance-agreements.store'
 import { addDaysToKey, businessToday, validateRange, type RangePreset } from '@/utils/business-time'
 import { formatMinorMoney, minorToDisplay, parseMoneyText } from '@/utils/money'
 import { formatReservePeriod } from '@/utils/finance-reserves'
@@ -379,7 +432,9 @@ import {
   visibleWarnings,
   type SimulatorPeriod,
 } from '@/utils/finance-distribution'
-import type { DistributionSimulationRequest, DistributionWorkBasis } from '@/types/finance-distribution.types'
+import type { DistributionSimulation, DistributionSimulationRequest, DistributionWorkBasis } from '@/types/finance-distribution.types'
+import type { AgreementFields } from '@/types/finance-agreement.types'
+import AgreementCreateForm from './components/AgreementCreateForm.vue'
 import { FINANCE_TABS } from './finance-tabs'
 import OverviewFigure from './components/OverviewFigure.vue'
 import SimulatorRuleForm from './components/SimulatorRuleForm.vue'
@@ -388,7 +443,8 @@ import SimulatorMemberResult from './components/SimulatorMemberResult.vue'
 const session = useSessionStore(),
   auth = useAuthStore(),
   mode = useUiModeStore(),
-  store = useFinanceDistributionStore()
+  store = useFinanceDistributionStore(),
+  agreements = useFinanceAgreementsStore()
 const allowed = computed(() => session.member?.role === 'socio' && mode.currentMode === 'gestion')
 
 const online = ref(navigator.onLine)
@@ -477,6 +533,35 @@ const resultIsStale = computed(() => !!result.value && !resultEligible.value)
 const partialResult = computed(() => !!result.value && isPartialResult(result.value))
 const warnings = computed(() => (result.value ? visibleWarnings(result.value) : []))
 
+const agreementOpen = ref(false)
+const confirmationSimulation = ref<DistributionSimulation | null>(null)
+const confirmationRequest = ref<DistributionSimulationRequest | null>(null)
+const agreementAccess = computed(() => allowed.value && !!auth.token && session.member?.active === true && !!session.memberId && !!session.deviceId)
+const canRecoverAgreement = computed(() => agreementAccess.value && online.value && !agreements.saving && !agreements.reversing && !agreements.pendingReversal)
+const canCreateAgreement = computed(() => canRecoverAgreement.value && !agreements.pendingCreate && resultEligible.value)
+const confirmationEligible = computed(() => canRecoverAgreement.value && resultEligible.value &&
+  !!confirmationSimulation.value && confirmationSimulation.value.simulationFingerprint === result.value?.simulationFingerprint)
+function openAgreement() {
+  if (!canCreateAgreement.value && !(agreements.pendingCreate && canRecoverAgreement.value)) return
+  confirmationSimulation.value = result.value ? JSON.parse(JSON.stringify(result.value)) : null
+  confirmationRequest.value = store.resultRequest ? { ...store.resultRequest } : null
+  agreements.created = null
+  agreements.clearMessages()
+  agreementOpen.value = true
+}
+async function createAgreement(fields: AgreementFields) {
+  if (!confirmationEligible.value || !agreementOpen.value) return
+  await agreements.create(fields)
+}
+async function retryAgreement() {
+  if (!canRecoverAgreement.value || !agreementOpen.value) return
+  await agreements.retryCreate()
+}
+watch(() => agreements.simulationChanged, (changed) => { if (changed) store.invalidateResult() }, { immediate: true })
+watch(agreementAccess, (access) => {
+  if (!access) { agreementOpen.value = false; confirmationSimulation.value = null; confirmationRequest.value = null }
+})
+
 const configBox = ref<HTMLElement | null>(null)
 const resultHeading = ref<HTMLElement | null>(null)
 
@@ -505,6 +590,7 @@ async function calculate() {
   const request = currentRequest.value
   if (!canCalculate.value || !request) return
   if (await store.simulate(request)) {
+    if (store.result) agreements.acceptSimulation(store.result.simulationFingerprint)
     await nextTick()
     resultHeading.value?.focus()
   }
@@ -535,6 +621,9 @@ watch(
     () => session.memberId, () => session.deviceId],
   () => {
     store.reset()
+    agreementOpen.value = false
+    confirmationSimulation.value = null
+    confirmationRequest.value = null
     amountText.value = ''
     partnerText.value = '50'
     workText.value = '50'

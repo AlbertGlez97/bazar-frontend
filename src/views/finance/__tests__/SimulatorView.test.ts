@@ -10,14 +10,19 @@ import { addDaysToKey } from '@/utils/business-time'
 import { simulatorPreset } from '@/utils/finance-distribution'
 import { overviewFixture } from '@/services/__tests__/finance-overview.fixture'
 import { ADID_ID, memberFixture, simulationFixture } from '@/services/__tests__/finance-distribution.fixture'
+import AgreementCreateForm from '../components/AgreementCreateForm.vue'
+import { useFinanceAgreementsStore } from '@/stores/finance-agreements.store'
+import { agreementFixture } from '@/services/__tests__/finance-agreements.fixture'
 import type { DistributionSimulation } from '@/types/finance-distribution.types'
 
-const mocks = vi.hoisted(() => ({ simulate: vi.fn(), overview: vi.fn() }))
+const mocks = vi.hoisted(() => ({ simulate: vi.fn(), overview: vi.fn(), create: vi.fn(), list: vi.fn(), get: vi.fn(), reverse: vi.fn() }))
+vi.mock('@/services/finance-agreements.service', () => ({ FinanceAgreementsService: { create: mocks.create, list: mocks.list, get: mocks.get, reverse: mocks.reverse } }))
+vi.mock('@/services/queue-origin', async (importOriginal) => ({ ...(await importOriginal<object>()), currentQueueOrigin: () => ({ ...access.session.owner, memberId: access.session.memberId, deviceId: access.session.deviceId }) }))
 vi.mock('@/services/finance-distribution.service', () => ({
   FinanceDistributionService: { simulate: mocks.simulate },
 }))
 vi.mock('@/services/finance-overview.service', () => ({ FinanceOverviewService: { get: mocks.overview } }))
-const freshSession = () => ({ member: { role: 'socio' } as { role: string } | null, memberId: 'member-a', deviceId: 'device-a', owner: { accountId: 'account-a', apiBase: '/api/v1' } })
+const freshSession = () => ({ member: { role: 'socio', active: true } as { role: string; active?: boolean } | null, memberId: 'member-a', deviceId: 'device-a', owner: { accountId: 'account-a', apiBase: '/api/v1' } })
 const access = reactive({ session: freshSession(), mode: { currentMode: 'gestion' }, auth: { token: 'token-a' } })
 vi.mock('@/stores/auth.store', () => ({ useAuthStore: () => access.auth }))
 vi.mock('@/stores/uiMode.store', () => ({ useUiModeStore: () => access.mode }))
@@ -44,6 +49,8 @@ beforeEach(() => {
   setActivePinia(createPinia())
   mocks.simulate.mockReset()
   mocks.overview.mockReset()
+  mocks.create.mockReset()
+  mocks.create.mockResolvedValue(agreementFixture())
   access.session = freshSession()
   access.mode = { currentMode: 'gestion' }
   access.auth = { token: 'token-a' }
@@ -72,12 +79,12 @@ async function calculate(w: Wrapper) {
 const sent = () => mocks.simulate.mock.calls.at(-1)![0]
 
 describe('access, header and tabs', () => {
-  it('lists Simulador as the last, active tab and has a single h1', async () => {
+  it('lists Simulador as the active tab beside Acuerdos and has a single h1', async () => {
     const w = await mounted()
     const tabs = w.findAllComponents(RouterLinkStub)
-    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas', 'Simulador'])
-    expect(tabs.at(-1)!.props('to')).toBe('/app/finanzas/simulador')
-    expect(tabs.at(-1)!.attributes('aria-current')).toBe('page')
+    expect(tabs.map((t) => t.text())).toEqual(['Resumen', 'Aportaciones', 'Gastos', 'Jornadas', 'Reservas', 'Simulador', 'Acuerdos'])
+    expect(tabs.at(-2)!.props('to')).toBe('/app/finanzas/simulador')
+    expect(tabs.at(-2)!.attributes('aria-current')).toBe('page')
     expect(w.findAll('h1')).toHaveLength(1)
     expect(w.find('h1').text()).toBe('Simulador de reparto')
   })
@@ -885,6 +892,142 @@ describe('refreshed result freshness', () => {
     }))
     await calculate(w)
     expect(q(w, 'stale-note').exists()).toBe(false)
+    w.unmount()
+  })
+})
+
+
+describe('agreement creation readiness', () => {
+  it('offers creation only after a valid current simulation and disables it for pending dates', async () => {
+    const w = await mounted()
+    expect(q(w, 'create-agreement').exists()).toBe(false)
+    await setAmount(w, '6,000')
+    await calculate(w)
+    expect(q(w, 'create-agreement').attributes('disabled')).toBeUndefined()
+    w.findComponent({ name: 'ReportRangePicker' }).vm.$emit('update:from', addDaysToKey(month.from, 1))
+    await flushPromises()
+    expect(q(w, 'create-agreement').attributes('disabled')).toBeDefined()
+    w.unmount()
+  })
+})
+
+
+describe('agreement confirmation integration', () => {
+  it('closes without a write and only submits reviewed fields after explicit confirmation', async () => {
+    const w = await mounted()
+    await setAmount(w, '6,000')
+    await calculate(w)
+    await q(w, 'create-agreement').trigger('click')
+    const form = w.findComponent(AgreementCreateForm)
+    expect(form.props('eligible')).toBe(true)
+    expect(mocks.create).not.toHaveBeenCalled()
+    form.vm.$emit('update:modelValue', false)
+    await flushPromises()
+    expect(form.props('modelValue')).toBe(false)
+    await q(w, 'create-agreement').trigger('click')
+    form.vm.$emit('create', { ...sent(), title: 'October agreement', note: '', simulationFingerprint: simulationFixture().simulationFingerprint })
+    await flushPromises()
+    expect(mocks.create).toHaveBeenCalledTimes(1)
+    expect(useFinanceAgreementsStore().created?.folio).toBe('AC-2026-00001')
+    w.unmount()
+  })
+  it('invalidates displayed simulation on drift and only restores confirmation after recalculation', async () => {
+    const w = await mounted()
+    await setAmount(w, '6,000')
+    await calculate(w)
+    await q(w, 'create-agreement').trigger('click')
+    const form = w.findComponent(AgreementCreateForm)
+    mocks.create.mockRejectedValueOnce(http(409, { code: 'FINANCE_AGREEMENT_SIMULATION_CHANGED' }))
+    form.vm.$emit('create', { ...sent(), title: 'October agreement', simulationFingerprint: simulationFixture().simulationFingerprint })
+    await flushPromises()
+    expect(form.props('error')).toContain('Los datos cambiaron. Calcula una nueva simulación')
+    expect(form.props('eligible')).toBe(false)
+    expect(q(w, 'stale-note').exists()).toBe(true)
+    form.vm.$emit('update:modelValue', false)
+    await flushPromises()
+    await calculate(w)
+    expect(useFinanceAgreementsStore().simulationChanged).toBe(false)
+    expect(q(w, 'create-agreement').attributes('disabled')).toBeUndefined()
+    w.unmount()
+  })
+  it('retries an uncertain original body rather than creating a changed draft', async () => {
+    const w = await mounted()
+    await setAmount(w, '6,000')
+    await calculate(w)
+    await q(w, 'create-agreement').trigger('click')
+    const form = w.findComponent(AgreementCreateForm)
+    mocks.create.mockRejectedValueOnce(new Error('lost'))
+    form.vm.$emit('create', { ...sent(), title: 'Original title', simulationFingerprint: simulationFixture().simulationFingerprint })
+    await flushPromises()
+    const original = mocks.create.mock.calls[0]
+    form.vm.$emit('update:modelValue', false)
+    await flushPromises()
+    await setAmount(w, '5,000')
+    expect(q(w, 'create-agreement').exists()).toBe(false)
+    await q(w, 'recover-agreement').trigger('click')
+    expect(form.props('pending')?.title).toBe('Original title')
+    form.vm.$emit('retry')
+    await flushPromises()
+    expect(mocks.create.mock.calls[1]).toEqual(original)
+    w.unmount()
+  })
+  it('closes confirmation and ignores its pending success when attribution changes', async () => {
+    const w = await mounted()
+    await setAmount(w, '6,000')
+    await calculate(w)
+    await q(w, 'create-agreement').trigger('click')
+    const form = w.findComponent(AgreementCreateForm)
+    const pending = deferred<ReturnType<typeof agreementFixture>>()
+    mocks.create.mockReturnValueOnce(pending.promise)
+    form.vm.$emit('create', { ...sent(), title: 'Original title', simulationFingerprint: simulationFixture().simulationFingerprint })
+    await flushPromises()
+    access.session.memberId = 'another-member'
+    await flushPromises()
+    expect(form.props('modelValue')).toBe(false)
+    pending.resolve(agreementFixture())
+    await flushPromises()
+    expect(useFinanceAgreementsStore().created).toBeNull()
+    w.unmount()
+  })
+  it('blocks creation and retry when offline or the selected socio is inactive', async () => {
+    const w = await mounted()
+    await setAmount(w, '6,000')
+    await calculate(w)
+    window.dispatchEvent(new Event('offline'))
+    await flushPromises()
+    expect(q(w, 'create-agreement').attributes('disabled')).toBeDefined()
+    window.dispatchEvent(new Event('online'))
+    await flushPromises()
+    await calculate(w)
+    access.session.member!.active = false
+    await flushPromises()
+    expect(q(w, 'create-agreement').attributes('disabled')).toBeDefined()
+    expect(mocks.create).not.toHaveBeenCalled()
+    w.unmount()
+  })
+})
+
+
+describe('uncertain attempt survives UI-only navigation changes', () => {
+  it('preserves the original request through leaving and returning to Gestion mode', async () => {
+    const w = await mounted()
+    await setAmount(w, '6,000')
+    await calculate(w)
+    await q(w, 'create-agreement').trigger('click')
+    const form = w.findComponent(AgreementCreateForm)
+    mocks.create.mockRejectedValueOnce(new Error('lost'))
+    form.vm.$emit('create', { ...sent(), title: 'Original title', simulationFingerprint: simulationFixture().simulationFingerprint })
+    await flushPromises()
+    const first = mocks.create.mock.calls[0]
+    access.mode.currentMode = 'venta'
+    await flushPromises()
+    expect(useFinanceAgreementsStore().pendingCreate).not.toBeNull()
+    access.mode.currentMode = 'gestion'
+    await flushPromises()
+    await q(w, 'recover-agreement').trigger('click')
+    w.findComponent(AgreementCreateForm).vm.$emit('retry')
+    await flushPromises()
+    expect(mocks.create.mock.calls[1]).toEqual(first)
     w.unmount()
   })
 })

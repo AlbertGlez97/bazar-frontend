@@ -143,6 +143,18 @@ const routes: RouteRecordRaw[] = [
         meta: { requiresSocio: true, requiresGestion: true },
       },
       {
+        path: 'finanzas/acuerdos',
+        name: 'FinanceAgreements',
+        component: () => import('@/views/finance/AgreementsView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
+        path: 'finanzas/acuerdos/:id',
+        name: 'FinanceAgreementDetail',
+        component: () => import('@/views/finance/AgreementDetailView.vue'),
+        meta: { requiresSocio: true, requiresGestion: true },
+      },
+      {
         path: 'reportes',
         name: 'Reports',
         component: () => import('@/views/reports/ReportsView.vue'),

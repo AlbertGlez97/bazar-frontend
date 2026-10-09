@@ -17,7 +17,7 @@ export const agreementFixture = (over: Partial<DistributionAgreement> = {}): Dis
     folio: 'AC-2026-00001', status: 'active', title: 'October agreement', note: null,
     replacesAgreementId: null, replacesAgreement: null, replacedBy: null, reversal: null,
     generatedFrom: 'DISTRIBUTION_SIMULATOR', algorithmVersion: 1,
-    notice: 'Documento generado a partir de una simulaci?n aceptada por los participantes. No es un contrato legal ni registra pagos.',
+    notice: 'Documento generado a partir de una simulación aceptada por los participantes. No es un contrato legal ni registra pagos.',
     participants: snapshot.members, snapshotFingerprint: 'b'.repeat(64),
     occurredAt: '2026-10-09T12:00:00.000Z', receivedAt: '2026-10-09T12:00:01.000Z',
     createdBy: { memberId: agreementOrigin.memberId, accountId: agreementOrigin.accountId, deviceId: agreementOrigin.deviceId, name: 'Alberto' },

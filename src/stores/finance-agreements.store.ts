@@ -52,8 +52,8 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   function current(run: number, selected: FinanceOrigin): boolean {
     return run === generation && sameOrigin(origin(), selected)
   }
-  const accessMessage = 'Confirma la sesi?n, la persona socia y el dispositivo antes de continuar.'
-  const offlineMessage = 'Necesitas conexi?n para consultar o modificar acuerdos. No se enviar? ning?n intento sin conexi?n.'
+  const accessMessage = 'Confirma la sesión, la persona socia y el dispositivo antes de continuar.'
+  const offlineMessage = 'Necesitas conexión para consultar o modificar acuerdos. No se enviará ningún intento sin conexión.'
 
   async function load(filter: AgreementFilter = {}): Promise<void> {
     const revision = ++listRevision, run = generation, selected = origin()
@@ -142,6 +142,10 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   }
   async function create(fields: AgreementFields): Promise<DistributionAgreement | null> {
     if (saving.value || reversing.value) return null
+    if (reverseAttempt.value) {
+      saveError.value = 'Hay una anulación sin confirmar. Resuelve ese mismo intento antes de crear un acuerdo.'
+      return null
+    }
     const selected = origin()
     if (!selected || !online()) { saveError.value = selected ? offlineMessage : accessMessage; return null }
     let normalized: AgreementFields
@@ -155,7 +159,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
       return sendCreate(createAttempt.value)
     }
     if (normalized.simulationFingerprint === rejectedFingerprint) {
-      saveError.value = 'Calcula y confirma una nueva simulaci?n antes de crear el acuerdo.'
+      saveError.value = 'Calcula y confirma una nueva simulación antes de crear el acuerdo.'
       return null
     }
     const attempt: CreateAttempt = {
@@ -171,7 +175,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   /** Exact replay is safe even after financial drift; it must precede any new creation. */
   async function retryCreate(): Promise<DistributionAgreement | null> {
     const attempt = createAttempt.value, selected = origin()
-    if (!attempt || saving.value || reversing.value) return null
+    if (!attempt || saving.value || reversing.value || reverseAttempt.value) return null
     if (!selected || !sameOrigin(selected, attempt.origin) || !online()) {
       saveError.value = selected && online() ? accessMessage : offlineMessage
       return null
@@ -181,6 +185,10 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
 
   async function reverse(id: string, reasonText: string): Promise<AgreementReversalReceipt | null> {
     if (saving.value || reversing.value) return null
+    if (createAttempt.value) {
+      reverseError.value = 'Hay un acuerdo sin confirmar. Resuelve ese mismo intento antes de anular otro acuerdo.'
+      return null
+    }
     const selected = origin()
     if (!selected || !online()) { reverseError.value = selected ? offlineMessage : accessMessage; return null }
     let reason: string
@@ -188,7 +196,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
     catch (cause) { reverseError.value = agreementErrorMessage(cause); return null }
     const previous = reverseAttempt.value
     if (previous && (previous.agreementId !== id || previous.payload.reason !== reason || !sameOrigin(selected, previous.origin))) {
-      reverseError.value = 'Hay una anulaci?n sin confirmar. Reintenta el mismo acuerdo y motivo antes de cambiarlos.'
+      reverseError.value = 'Hay una anulación sin confirmar. Reintenta el mismo acuerdo y motivo antes de cambiarlos.'
       return null
     }
     const attempt = previous ?? { origin: selected, agreementId: id, payload: {

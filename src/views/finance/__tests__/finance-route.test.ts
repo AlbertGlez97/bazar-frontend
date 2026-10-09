@@ -96,6 +96,7 @@ describe('finance route and navigation authority', () => {
       ['/app/finanzas/jornadas', 'Jornadas'],
       ['/app/finanzas/reservas', 'Reservas'],
       ['/app/finanzas/simulador', 'Simulador'],
+      ['/app/finanzas/acuerdos', 'Acuerdos'],
     ])
   })
   it('serves Reservas at /app/finanzas/reservas with the same socio and gestion guard, lazily', () => {
@@ -136,5 +137,18 @@ describe('finance route and navigation authority', () => {
     )
     expect(items.map((r) => r.to)).toEqual(['/app/finanzas'])
     expect(items[0]?.exact).toBe(false)
+  })
+})
+
+
+describe('agreement routes', () => {
+  it.each([
+    ['/app/finanzas/acuerdos', 'FinanceAgreements'],
+    ['/app/finanzas/acuerdos/0190aaaa-0000-7000-8000-000000000010', 'FinanceAgreementDetail'],
+  ])('serves %s lazily with full finance authority', (path, name) => {
+    const route = createAppRouter(createMemoryHistory()).resolve(path)
+    expect(route.name).toBe(name)
+    expect(route.meta).toMatchObject({ requiresAuth: true, requiresContext: true, requiresSocio: true, requiresGestion: true })
+    expect(typeof route.matched.at(-1)?.components?.default).toBe('function')
   })
 })
