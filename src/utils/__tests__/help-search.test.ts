@@ -58,6 +58,26 @@ describe('ranked help index search', () => {
     expect(scores).toEqual([...scores].sort((a, b) => b - a))
   })
 
+  it('ranks a keyword-only hit above a body-only hit (fails if the keyword weight drops below the body weights)', () => {
+    const STRONG = ['title', 'topic', 'category']
+    const BODY = ['intro', 'steps', 'questions', 'tips']
+    // Single tokens taken from article keywords; for each, compare the best keyword-only and body-only results.
+    const candidates = HELP_ARTICLES.flatMap((article) => article.keywords).map((word) => word.toLowerCase())
+    let compared = 0
+    for (const token of new Set(candidates)) {
+      const results = searchHelpIndex(token, 100)
+      const keywordOnly = results.filter((r) => r.matchedIn.includes('keyword') && !r.matchedIn.some((f) => STRONG.includes(f)))
+      const bodyOnly = results.filter((r) => !r.matchedIn.includes('keyword') && !r.matchedIn.some((f) => STRONG.includes(f)) && r.matchedIn.some((f) => BODY.includes(f)))
+      if (keywordOnly.length === 0 || bodyOnly.length === 0) continue
+      compared += 1
+      const lastKeyword = Math.max(...keywordOnly.map((r) => results.indexOf(r)))
+      const firstBody = Math.min(...bodyOnly.map((r) => results.indexOf(r)))
+      expect(lastKeyword, token).toBeLessThan(firstBody)
+      expect(Math.min(...keywordOnly.map((r) => r.score)), token).toBeGreaterThan(Math.max(...bodyOnly.map((r) => r.score)))
+    }
+    expect(compared).toBeGreaterThan(0)
+  })
+
   it('also matches category and topic titles', () => {
     const results = searchHelpIndex('finanzas jornadas')
     expect(results[0]!.topicId).toBe('finanzas.jornadas')

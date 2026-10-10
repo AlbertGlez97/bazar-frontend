@@ -276,7 +276,7 @@ describe('help content v2', () => {
     expect(HELP_ARTICLES.filter((article) => !ORIGINAL_IDS.includes(article.id)).map((article) => article.id)).toEqual(['aportaciones'])
   })
   it('gives every article a topic', () => {
-    for (const article of HELP_ARTICLES) expect(article.topic, article.id).toMatch(/^[a-z-]+(.[a-z-]+)?$/)
+    for (const article of HELP_ARTICLES) expect(article.topic, article.id).toMatch(/^[a-z-]+(\.[a-z-]+)?$/)
   })
   it('explains contributions with only what the Aportaciones screen and its contract say', () => {
     const article = HELP_ARTICLES.find((item) => item.id === 'aportaciones')!
