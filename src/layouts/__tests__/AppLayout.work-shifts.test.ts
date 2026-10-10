@@ -68,16 +68,16 @@ describe('AppLayout work shifts lifecycle', () => {
     wrapper.unmount()
   })
 
-  it('titles the Jornadas route as Finanzas', async () => {
+  it('titles the Jornadas route as Jornadas', async () => {
     const { wrapper } = await mountLayout()
-    expect(wrapper.get('.app-header__title').text()).toBe('Finanzas')
+    expect(wrapper.get('.app-header__title').text()).toBe('Jornadas')
     wrapper.unmount()
   })
 
   it('keeps the shell usable when starting the store fails', async () => {
     workShifts.start.mockRejectedValueOnce(new Error('indexeddb unavailable'))
     const { wrapper } = await mountLayout()
-    expect(wrapper.get('.app-header__title').text()).toBe('Finanzas')
+    expect(wrapper.get('.app-header__title').text()).toBe('Jornadas')
     wrapper.unmount()
   })
 })
