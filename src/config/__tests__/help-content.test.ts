@@ -258,3 +258,39 @@ describe('agreement help', () => {
     expect(HELP_ARTICLES.find(a => a.id === 'acuerdos-pdf')?.steps.join(' ')).toContain('ANULADO')
   })
 })
+
+const ORIGINAL_IDS = [
+  'acceso', 'modos', 'primera-venta', 'carrito', 'efectivo', 'crear-producto', 'editar-producto', 'fotos', 'imprimir-qr',
+  'crear-deuda', 'abonos', 'calendario', 'incidencias', 'reportes', 'gastos', 'corregir-gasto', 'jornadas', 'jornadas-preguntas',
+  'resumen-finanzas', 'resumen-preguntas', 'reservas-finanzas', 'simulador-reparto', 'simulador-preguntas', 'equipo',
+  'dispositivos', 'contrasena', 'instalar', 'preguntas', 'escanear', 'sin-conexion',
+  'acuerdos-que-son', 'acuerdos-simulacion', 'acuerdos-inmutables', 'acuerdos-corregir', 'acuerdos-anular', 'acuerdos-no-pago',
+  'acuerdos-pdf', 'acuerdos-efecto-legal', 'pagos-acuerdo', 'pagos-preguntas',
+]
+
+describe('help content v2', () => {
+  it('keeps all 40 original articles and adds only the contributions article', () => {
+    expect(ORIGINAL_IDS).toHaveLength(40)
+    expect(HELP_ARTICLES.map((article) => article.id)).toEqual(expect.arrayContaining(ORIGINAL_IDS))
+    expect(HELP_ARTICLES).toHaveLength(41)
+    expect(HELP_ARTICLES.filter((article) => !ORIGINAL_IDS.includes(article.id)).map((article) => article.id)).toEqual(['aportaciones'])
+  })
+  it('gives every article a topic', () => {
+    for (const article of HELP_ARTICLES) expect(article.topic, article.id).toMatch(/^[a-z-]+(.[a-z-]+)?$/)
+  })
+  it('explains contributions with only what the Aportaciones screen and its contract say', () => {
+    const article = HELP_ARTICLES.find((item) => item.id === 'aportaciones')!
+    expect(article.audience).toBe('socio')
+    expect(article.category).toBe('Finanzas')
+    expect(article.topic).toBe('finanzas.aportaciones')
+    const steps = article.steps.join(' ')
+    for (const label of ['Aportaciones', 'Registrar aportación', 'Socio', 'Cantidad', 'Fecha', 'Nota', 'Desde', 'Hasta (inclusive)', 'Actualizar', 'Corregir', 'Anular', 'Motivo', 'Cantidad correcta', 'Fecha correcta', 'Corregida', 'Anulada', 'Pendiente', 'Sincronizada'])
+      expect(steps).toContain(label)
+    expect(article.intro).toContain('No es una venta')
+    expect(article.intro).toContain('no es utilidad')
+    expect(article.tips.join(' ')).toContain('no devuelve capital')
+    expect(article.tips.join(' ')).toContain('Requiere revisión')
+    expect(HELP_EVIDENCE.aportaciones).toEqual(['doc/finance-contributions.md', 'src/views/finance/ContributionsView.vue'])
+    expect(JSON.stringify(article)).not.toMatch(/reparto|comisi[oó]n|sueldo|salario|propiedad de/i)
+  })
+})

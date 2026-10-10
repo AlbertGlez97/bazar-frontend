@@ -2,8 +2,9 @@ import type { HelpArticle } from '@/types/help.types'
 
 export const CASH_HELP: HelpArticle = {
   id: 'efectivo',
+  topic: 'ventas.efectivo',
   title: 'Recibir efectivo, combinar billetes y dar cambio',
-  category: 'Vender',
+  category: 'Ventas',
   audience: 'all',
   keywords: ['cobrar', 'dinero', 'selección', 'billetes', 'monedas', 'justo'],
   intro: 'Efectivo recibido es el dinero que entrega el cliente, no el precio de la venta. La app calcula cuánto falta o cuánto cambio debes entregar.',
@@ -24,7 +25,7 @@ export const CASH_HELP: HelpArticle = {
 
 export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
-    id: 'acceso', title: 'Entrar por primera vez y elegir quién atiende', category: 'Comenzar', audience: 'all',
+    id: 'acceso', topic: 'primeros-pasos.acceso', title: 'Entrar por primera vez y elegir quién atiende', category: 'Primeros pasos', audience: 'all',
     keywords: ['login', 'contraseña', 'registro', 'solicitud', 'dispositivo', 'miembro'],
     intro: 'Para operar necesitas una cuenta aprobada y un dispositivo y una persona identificados. La solicitud de un negocio nuevo no inicia una sesión automáticamente.',
     steps: [
@@ -37,7 +38,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['No hay recuperación de contraseña desde una opción Olvidé mi contraseña. Consulta al responsable si no puedes entrar; Cambiar mi contraseña requiere una sesión abierta.'],
   },
   {
-    id: 'modos', title: 'Modo Venta, Modo Gestión y permisos', category: 'Comenzar', audience: 'all',
+    id: 'modos', topic: 'primeros-pasos.modos', title: 'Modo Venta, Modo Gestión y permisos', category: 'Primeros pasos', audience: 'all',
     keywords: ['socio', 'colaborador', 'inicio', 'menú', 'ayuda'],
     intro: 'Los modos organizan las pantallas; el rol determina qué acciones puedes realizar. Cambiar a Gestión no convierte a un colaborador en socio.',
     steps: [
@@ -50,7 +51,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Antes de cambiar de pantalla durante un cobro, termina o revisa tu trabajo. La ayuda de efectivo junto al carrito se abre sin salir de la venta.'],
   },
   {
-    id: 'primera-venta', title: 'Hacer una primera venta de contado', category: 'Vender', audience: 'all',
+    id: 'primera-venta', topic: 'ventas.primera-venta', title: 'Hacer una primera venta de contado', category: 'Ventas', audience: 'all',
     keywords: ['buscar', 'categoría', 'cuadrícula', 'lista', 'cobrar'],
     intro: 'Una venta de contado reúne productos, verifica cantidades y registra el efectivo. No basta con agregar productos para que la venta quede cobrada.',
     steps: [
@@ -64,7 +65,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['El precio proviene del catálogo. El carrito no ofrece un cambio de precio por venta.'],
   },
   {
-    id: 'carrito', title: 'Cambiar cantidades, quitar y vaciar el carrito', category: 'Vender', audience: 'all',
+    id: 'carrito', topic: 'ventas.primera-venta', title: 'Cambiar cantidades, quitar y vaciar el carrito', category: 'Ventas', audience: 'all',
     keywords: ['cantidad', 'única', 'quitar', 'vaciar', 'menos', 'más'],
     intro: 'Revisa el carrito antes de cobrar. La cantidad de piezas puede ser distinta del número de productos diferentes.',
     steps: [
@@ -78,7 +79,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   CASH_HELP,
   {
-    id: 'crear-producto', title: 'Crear un producto: pieza única o por cantidad', category: 'Productos', audience: 'socio',
+    id: 'crear-producto', topic: 'productos.catalogo', title: 'Crear un producto: pieza única o por cantidad', category: 'Productos', audience: 'socio',
     keywords: ['nuevo', 'nombre', 'precio', 'costo', 'stock', 'existencia'],
     intro: 'Los socios preparan el catálogo desde Productos en Gestión. Decide el tipo y la existencia inicial antes de guardar.',
     steps: [
@@ -91,7 +92,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['No crees una cantidad con existencia cero para reponerla después: la app no ofrece un ajuste o reposición manual de existencias.'],
   },
   {
-    id: 'editar-producto', title: 'Editar, desactivar y reactivar productos', category: 'Productos', audience: 'socio',
+    id: 'editar-producto', topic: 'productos.catalogo', title: 'Editar, desactivar y reactivar productos', category: 'Productos', audience: 'socio',
     keywords: ['editar', 'desactivar', 'reactivar', 'inactivos', 'existencia', 'precio'],
     intro: 'Editar corrige los datos permitidos del catálogo. Desactivar retira un producto de la oferta sin tratarlo como una venta.',
     steps: [
@@ -104,7 +105,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['No hay ajuste de existencia, merma ni reversión de ventas desde Editar. Resolver una incidencia tampoco repone stock.'],
   },
   {
-    id: 'fotos', title: 'Añadir o cambiar la foto de un producto', category: 'Productos', audience: 'socio',
+    id: 'fotos', topic: 'productos.catalogo', title: 'Añadir o cambiar la foto de un producto', category: 'Productos', audience: 'socio',
     keywords: ['foto', 'imagen', 'jpeg', 'png', 'webp', 'heic', '5mb'],
     intro: 'Una imagen ayuda a reconocer el producto; no cambia su tipo, cantidad o precio.',
     steps: [
@@ -116,7 +117,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Si se rechaza la foto, revisa su formato y tamaño; cambiar solamente la extensión no convierte la imagen. Guardar el producto y subir la imagen son pasos separados: si falla solo la foto, el producto puede haberse guardado. Búscalo antes de crear otro.'],
   },
   {
-    id: 'imprimir-qr', title: 'Preparar e imprimir etiquetas QR', category: 'Productos', audience: 'all',
+    id: 'imprimir-qr', topic: 'productos.etiquetas-qr', title: 'Preparar e imprimir etiquetas QR', category: 'Productos', audience: 'all',
     keywords: ['etiquetas', 'selección', 'pdf', 'a4', 'calibración', 'codigo qr'],
     intro: 'Las etiquetas identifican los productos al escanear en Venta. Un socio tiene la pantalla Códigos QR; en Productos, cualquier rol en Gestión puede usar las etiquetas de productos seleccionados.',
     steps: [
@@ -131,7 +132,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['No sustituyas el QR generado por un código de barras comercial. Comprueba que el lector agrega el producto esperado.'],
   },
   {
-    id: 'crear-deuda', title: 'Registrar fiado o apartado desde una venta', category: 'Deudas', audience: 'socio',
+    id: 'crear-deuda', topic: 'deudas', title: 'Registrar fiado o apartado desde una venta', category: 'Deudas', audience: 'socio',
     keywords: ['deudor', 'cliente', 'abono inicial', 'fiado', 'apartado', 'una línea'],
     intro: 'Fiado entrega el producto y deja un saldo por cobrar. Apartado reserva el producto. Registrar estas operaciones corresponde a socios, aunque el ofrecimiento pueda aparecer en el carrito de un colaborador.',
     steps: [
@@ -145,7 +146,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['El abono inicial no se hereda del efectivo recibido. No documentes la operación como cobrada hasta revisar su resultado. No hay cancelación ni edición de una deuda registrada.'],
   },
   {
-    id: 'abonos', title: 'Consultar una deuda y registrar un abono', category: 'Deudas', audience: 'socio',
+    id: 'abonos', topic: 'deudas', title: 'Consultar una deuda y registrar un abono', category: 'Deudas', audience: 'socio',
     keywords: ['saldo', 'pagar', 'liquidar', 'deudor', 'pendiente'],
     intro: 'Deudas muestra operaciones activas o pendientes. Para saldar una deuda se registra un abono por el saldo completo; no hay un botón independiente Liquidar.',
     steps: [
@@ -158,7 +159,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['No hay cancelación, edición general ni una vista de historial de deudas liquidadas en esta pantalla. No repitas un abono ante una respuesta incierta sin verificar su resultado.'],
   },
   {
-    id: 'calendario', title: 'Preparar y consultar fechas de cuotas', category: 'Deudas', audience: 'socio',
+    id: 'calendario', topic: 'deudas', title: 'Preparar y consultar fechas de cuotas', category: 'Deudas', audience: 'socio',
     keywords: ['calendario', 'cuotas', 'fecha', 'vencimiento', 'atrasada'],
     intro: 'El calendario refleja las cuotas acordadas. Las fechas opcionales se preparan al crear el fiado o apartado, no se reprograman después.',
     steps: [
@@ -170,7 +171,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['El calendario posterior es de consulta: no ofrece cambiar fechas o editar el plan de una deuda ya creada.'],
   },
   {
-    id: 'incidencias', title: 'Revisar y resolver incidencias detectadas', category: 'Administrar', audience: 'socio',
+    id: 'incidencias', topic: 'administracion.incidencias', title: 'Revisar y resolver incidencias detectadas', category: 'Administración', audience: 'socio',
     keywords: ['conflicto', 'stock', 'fecha', 'resolver', 'notas'],
     intro: 'Incidencias reúne conflictos detectados por el sistema, como problemas de existencias o fechas. No es un formulario para dar de alta cualquier ajuste.',
     steps: [
@@ -182,7 +183,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Resolver una incidencia no devuelve dinero, revierte una venta ni ajusta existencias automáticamente.'],
   },
   {
-    id: 'reportes', title: 'Leer reportes y descargar PDF o Excel', category: 'Administrar', audience: 'socio',
+    id: 'reportes', topic: 'administracion.reportes', title: 'Leer reportes y descargar PDF o Excel', category: 'Administración', audience: 'socio',
     keywords: ['ventas', 'abonos', 'utilidad', 'costo', 'fechas', 'exportar', 'excel', 'pdf'],
     intro: 'Reportes combina ventas de contado y abonos. El ingreso cobrado, la utilidad y el número de ventas no son la misma medida.',
     steps: [
@@ -195,7 +196,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['La exportación se habilita cuando hay ventas de contado en la consulta. Un periodo con solo abonos puede mostrar información y aun así no permitir descargar el reporte.'],
   },
   {
-    id: 'gastos', title: 'Registrar un gasto o una compra de inventario', category: 'Finanzas', audience: 'socio',
+    id: 'gastos', topic: 'finanzas.gastos', title: 'Registrar un gasto o una compra de inventario', category: 'Finanzas', audience: 'socio',
     keywords: ['gasto', 'gastos', 'compra', 'inventario', 'origen', 'dinero personal', 'aportación', 'pagado por', 'finanzas'],
     intro: 'Un gasto es dinero que salió para que el negocio funcione, como el transporte, la renta del bazar o la publicidad. Se registra en Finanzas, pestaña Gastos, y sirve para dejar constancia de qué se pagó, quién lo pagó y de dónde salió el dinero.',
     steps: [
@@ -213,7 +214,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
   },
   {
-    id: 'corregir-gasto', title: 'Anular o corregir un gasto registrado', category: 'Finanzas', audience: 'socio',
+    id: 'corregir-gasto', topic: 'finanzas.gastos', slug: 'corregir', title: 'Anular o corregir un gasto registrado', category: 'Finanzas', audience: 'socio',
     keywords: ['anular', 'corregir', 'gasto', 'error', 'motivo', 'reemplazo'],
     intro: 'Un gasto registrado no se edita ni se borra. Si hubo un error, se anula o se corrige: el registro original se conserva y queda marcado, para que el historial siga siendo confiable.',
     steps: [
@@ -228,7 +229,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
   },
   {
-    id: 'jornadas', title: 'Registrar una jornada de trabajo', category: 'Finanzas', audience: 'socio',
+    id: 'jornadas', topic: 'finanzas.jornadas', slug: 'corregir', title: 'Registrar una jornada de trabajo', category: 'Finanzas', audience: 'socio',
     keywords: ['jornada', 'jornadas', 'trabajo', 'turno', 'horas', 'minutos', 'persona', 'asistencia', 'anular', 'corregir', 'motivo', 'finanzas'],
     intro: 'Una jornada deja constancia de que una persona trabajó un día en el negocio y, si lo sabes, cuánto tiempo. Se registra en Finanzas, pestaña Jornadas. Solo guarda el trabajo realizado: no es una venta ni un pago.',
     steps: [
@@ -250,7 +251,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
   },
   {
-    id: 'jornadas-preguntas', title: 'Preguntas sobre las jornadas', category: 'Finanzas', audience: 'socio',
+    id: 'jornadas-preguntas', topic: 'finanzas.jornadas', title: 'Preguntas sobre las jornadas', category: 'Finanzas', audience: 'socio',
     keywords: ['jornada', 'sin horas', 'duración', 'venta', 'pago', 'corregir', 'anular', 'trabajo'],
     intro: 'Respuestas cortas sobre lo que una jornada es y lo que no es.',
     steps: [],
@@ -268,7 +269,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Si dos personas trabajaron el mismo día, registra una jornada para cada una.'],
   },
   {
-    id: 'resumen-finanzas', title: 'Leer el Resumen de Finanzas', category: 'Finanzas', audience: 'socio',
+    id: 'resumen-finanzas', topic: 'finanzas.resumen', title: 'Leer el Resumen de Finanzas', category: 'Finanzas', audience: 'socio',
     keywords: ['resumen', 'resultado operativo', 'margen', 'costo', 'cobertura', 'periodo', 'finanzas', 'reservas', 'disponible'],
     intro: 'El Resumen junta, para un periodo, lo que está registrado: ventas, costo de lo vendido, gastos, compras de inventario, aportaciones y trabajo. Solo lee datos confirmados; no cambia nada y necesita conexión.',
     steps: [
@@ -285,7 +286,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
   },
   {
-    id: 'resumen-preguntas', title: 'Preguntas sobre el Resumen de Finanzas', category: 'Finanzas', audience: 'socio',
+    id: 'resumen-preguntas', topic: 'finanzas.resumen', title: 'Preguntas sobre el Resumen de Finanzas', category: 'Finanzas', audience: 'socio',
     keywords: ['resultado operativo', 'margen', 'inventario', 'reserva', 'disponible', 'efectivo', 'aportación', 'ingreso'],
     intro: 'Respuestas cortas sobre lo que significa cada cifra del Resumen y lo que no significa.',
     steps: [],
@@ -302,7 +303,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Las cifras se calculan con lo que ya está confirmado en el servidor; lo pendiente de sincronizar no entra.'],
   },
   {
-    id: 'reservas-finanzas', title: 'Crear y anular reservas', category: 'Finanzas', audience: 'socio',
+    id: 'reservas-finanzas', topic: 'finanzas.reservas', title: 'Crear y anular reservas', category: 'Finanzas', audience: 'socio',
     keywords: ['reserva', 'reservas', 'anular', 'periodo', 'período', 'planear', 'finanzas', 'disponible'],
     intro: 'Una reserva es un monto que planeas apartar de un periodo para un fin, por ejemplo cubrir un gasto futuro. Es solo un plan: no mueve dinero, no es efectivo guardado y no es un pago. Necesita conexión.',
     steps: [
@@ -323,7 +324,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
   },
   {
-    id: 'simulador-reparto', title: 'Usar el Simulador de reparto', category: 'Finanzas', audience: 'socio',
+    id: 'simulador-reparto', topic: 'finanzas.simulador', title: 'Usar el Simulador de reparto', category: 'Finanzas', audience: 'socio',
     keywords: ['simulador', 'simulación', 'reparto', 'socios', 'trabajo', 'jornadas', 'horas', 'porcentaje', 'finanzas'],
     intro: 'El Simulador calcula, solo como prueba, cómo se dividiría un monto del período entre las personas del equipo según una regla. No guarda nada al calcular y no registra pagos, retiros ni movimientos de dinero. Crear acuerdo de reparto es una acción separada con título y confirmación explícita. Necesita conexión.',
     steps: [
@@ -343,7 +344,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
   },
   {
-    id: 'simulador-preguntas', title: 'Preguntas sobre el Simulador de reparto', category: 'Finanzas', audience: 'socio',
+    id: 'simulador-preguntas', topic: 'finanzas.simulador', title: 'Preguntas sobre el Simulador de reparto', category: 'Finanzas', audience: 'socio',
     keywords: ['simulador', 'simulación', 'parte de socios', 'parte de trabajo', 'jornadas', 'horas', 'aportaciones', 'pago', 'parcial'],
     intro: 'Respuestas cortas sobre lo que calcula el Simulador de reparto y lo que no hace.',
     steps: [],
@@ -360,7 +361,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Los montos simulados no son lo que cada persona debe recibir: son una prueba para conversar y decidir en equipo.'],
   },
   {
-    id: 'equipo', title: 'Consultar Mi equipo y agregar una persona', category: 'Ajustes', audience: 'socio',
+    id: 'equipo', topic: 'dispositivos-sesion.equipo', title: 'Consultar Mi equipo y agregar una persona', category: 'Dispositivos y sesión', audience: 'socio',
     keywords: ['miembro', 'colaborador', 'socio', 'comisión', 'persona'],
     intro: 'Mi equipo identifica a las personas que trabajan en el negocio. Es una pantalla de socios, disponible desde Ajustes en ambos modos.',
     steps: [
@@ -372,7 +373,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['La pantalla permite agregar y consultar; no ofrece editar un miembro existente ni un perfil general de la cuenta.'],
   },
   {
-    id: 'dispositivos', title: 'Registrar un dispositivo y administrar su acceso', category: 'Ajustes', audience: 'socio',
+    id: 'dispositivos', topic: 'dispositivos-sesion.dispositivos', title: 'Registrar un dispositivo y administrar su acceso', category: 'Dispositivos y sesión', audience: 'socio',
     keywords: ['tablet', 'teléfono', 'código', 'correo', 'email', 'revocar', 'reemitir'],
     intro: 'Dispositivos controla los accesos de las tablets y teléfonos del negocio. Protege los códigos y compártelos solo con quien deba usarlos.',
     steps: [
@@ -385,7 +386,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Revisa el nombre del dispositivo antes de revocar o reemitir: puede interrumpir una sesión en curso. No compartas códigos en lugares públicos.'],
   },
   {
-    id: 'contrasena', title: 'Cambiar mi contraseña con la sesión abierta', category: 'Ajustes', audience: 'all',
+    id: 'contrasena', topic: 'dispositivos-sesion.contrasena', title: 'Cambiar mi contraseña con la sesión abierta', category: 'Dispositivos y sesión', audience: 'all',
     keywords: ['contraseña', 'clave', 'seguridad', 'login'],
     intro: 'Cada persona autenticada puede abrir Cambiar mi contraseña desde Ajustes. Esto no es un procedimiento de recuperación de una cuenta cerrada.',
     steps: [
@@ -397,7 +398,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['No existe una opción de restablecimiento por Olvidé mi contraseña. Si ya no puedes entrar, consulta al responsable.'],
   },
   {
-    id: 'instalar', title: 'Instalar la app en una tablet o teléfono', category: 'Comenzar', audience: 'all',
+    id: 'instalar', topic: 'primeros-pasos.instalar', title: 'Instalar la app en una tablet o teléfono', category: 'Primeros pasos', audience: 'all',
     keywords: ['pwa', 'instalar', 'inicio', 'ios', 'navegador'],
     intro: 'Instalar crea un acceso a La Marchanta. La opción depende del navegador y del dispositivo; no reemplaza la conexión cuando una operación la requiere.',
     steps: [
@@ -409,7 +410,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Si no aparece la opción, ese navegador puede no ofrecer instalación en ese momento. Instalar no garantiza que todos los datos u operaciones funcionen sin internet.'],
   },
   {
-    id: 'preguntas', title: 'Preguntas frecuentes y límites actuales', category: 'Comenzar', audience: 'all',
+    id: 'preguntas', topic: 'primeros-pasos.preguntas', title: 'Preguntas frecuentes y límites actuales', category: 'Primeros pasos', audience: 'all',
     keywords: ['no aparece', 'permiso', 'precio', 'ajustar', 'devolución', 'cancelar', 'historial'],
     intro: 'Cuando no encuentres una acción, verifica primero el modo, el rol y el estado de la operación. No todas las tareas de un negocio están implementadas.',
     steps: [],
@@ -423,7 +424,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['No hay una ruta de historial general, reservas internas ni un perfil general editable. No uses otra pantalla para simular una función que no existe.'],
   },
   {
-    id: 'escanear', title: 'Agregar un producto con su código QR', category: 'Vender', audience: 'all',
+    id: 'escanear', topic: 'ventas.escanear', title: 'Agregar un producto con su código QR', category: 'Ventas', audience: 'all',
     keywords: ['codigo qr', 'cámara', 'escanear', 'etiqueta', 'uuid'],
     intro: 'El lector reconoce etiquetas QR de productos de La Marchanta. No es un lector de cualquier código comercial de barras.',
     steps: [
@@ -435,7 +436,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Un código de barras comercial o un QR ajeno sin identificador válido no identifica un producto de La Marchanta. El lector puede reconocer un identificador válido dentro de otro texto; eso no garantiza que cualquier QR o dirección web funcione. Si la cámara no abre, revisa sus permisos.'],
   },
   {
-    id: 'sin-conexion', title: 'Sin conexión, ventas pendientes y respuestas inciertas', category: 'Vender', audience: 'all',
+    id: 'sin-conexion', topic: 'offline.pendientes', title: 'Sin conexión, ventas pendientes y respuestas inciertas', category: 'Sin conexión', audience: 'all',
     keywords: ['offline', 'internet', 'sincronización', 'pendiente', 'reintentar', 'duplicado'],
     intro: 'La app puede guardar trabajo pendiente y usar una copia del catálogo. La información local no garantiza que una operación ya fue aceptada.',
     steps: [
@@ -449,7 +450,26 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Guardar una venta sin conexión no confirma su aceptación ni asegura que la existencia siga disponible. Un conflicto puede requerir revisión de un socio.'],
   },
   {
+    id: 'aportaciones', topic: 'finanzas.aportaciones', title: 'Registrar, corregir y anular una aportación', category: 'Finanzas', audience: 'socio',
+    keywords: ['aportación', 'aportaciones', 'capital', 'aportar', 'socio', 'corregir', 'anular'],
+    intro: 'Una aportación anota el capital que un socio entregó al negocio. No es una venta, no es utilidad, no determina propiedad y no implica recuperación automática.',
+    steps: [
+      'En Gestión abre Finanzas y la pestaña Aportaciones. Solo las personas socias pueden entrar.',
+      'En Registrar aportación elige el Socio, escribe la Cantidad y la Fecha. La Nota es opcional.',
+      'Pulsa Registrar aportación. La aportación aparece en Aportaciones registradas: Pendiente si aún falta enviarla y Sincronizada cuando ya quedó guardada.',
+      'Para buscar aportaciones, usa Desde, Hasta (inclusive) y Socio, y pulsa Actualizar. Si hay más resultados, pulsa Cargar más.',
+      'Si te equivocaste, pulsa Corregir o Anular en el registro, escribe el Motivo y guarda. Al corregir, indica también la Cantidad correcta y la Fecha correcta.',
+      'El registro original no se borra: queda marcado como Corregida o Anulada junto con su motivo.',
+    ],
+    tips: [
+      'Corregir o anular solo arregla el registro: no devuelve capital.',
+      'Si no aparecen socios para elegir, conéctate una vez para cargar el equipo.',
+      'Sin conexión la lista puede estar incompleta. Si una aportación o corrección muestra Requiere revisión, usa Reintentar con el origen original o Reintentar corrección.',
+    ],
+  },
+  {
     "id": "acuerdos-que-son",
+    "topic": "finanzas.acuerdos",
     "title": "Qué es un acuerdo de reparto",
     "category": "Finanzas",
     "audience": "socio",
@@ -470,6 +490,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     "id": "acuerdos-simulacion",
+    "topic": "finanzas.acuerdos",
     "title": "Simulación y acuerdo: cuándo se guarda",
     "category": "Finanzas",
     "audience": "socio",
@@ -490,6 +511,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     "id": "acuerdos-inmutables",
+    "topic": "finanzas.acuerdos",
     "title": "Por qué un acuerdo no se edita",
     "category": "Finanzas",
     "audience": "socio",
@@ -510,6 +532,8 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     "id": "acuerdos-corregir",
+    "topic": "finanzas.acuerdos",
+    "slug": "corregir",
     "title": "Cómo corregir un acuerdo",
     "category": "Finanzas",
     "audience": "socio",
@@ -530,6 +554,8 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     "id": "acuerdos-anular",
+    "topic": "finanzas.acuerdos",
+    "slug": "anular",
     "title": "Cómo anular un acuerdo",
     "category": "Finanzas",
     "audience": "socio",
@@ -550,6 +576,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     "id": "acuerdos-no-pago",
+    "topic": "finanzas.acuerdos",
     "title": "Un acuerdo no es un pago",
     "category": "Finanzas",
     "audience": "socio",
@@ -570,6 +597,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     "id": "acuerdos-pdf",
+    "topic": "finanzas.acuerdos",
     "title": "Qué contiene el PDF del acuerdo",
     "category": "Finanzas",
     "audience": "socio",
@@ -590,6 +618,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     "id": "acuerdos-efecto-legal",
+    "topic": "finanzas.acuerdos",
     "title": "Alcance y efecto legal del documento",
     "category": "Finanzas",
     "audience": "socio",
@@ -609,7 +638,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     "tips": []
   },
   {
-    id: 'pagos-acuerdo', title: 'Registrar un pago de un acuerdo', category: 'Finanzas', audience: 'socio',
+    id: 'pagos-acuerdo', topic: 'finanzas.pagos', title: 'Registrar un pago de un acuerdo', category: 'Finanzas', audience: 'socio',
     keywords: ['pago', 'pagos', 'registrar pago', 'acuerdo', 'pendiente', 'pagado', 'parcial', 'acordado', 'anular pago'],
     intro: 'Registrar un pago anota que ya le entregaste dinero a una persona de un acuerdo, fuera de la app. La app no mueve dinero: solo guarda lo acordado, lo pagado y lo pendiente. Necesita conexión.',
     steps: [
@@ -627,7 +656,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
   },
   {
-    id: 'pagos-preguntas', title: 'Preguntas sobre los pagos de un acuerdo', category: 'Finanzas', audience: 'socio',
+    id: 'pagos-preguntas', topic: 'finanzas.pagos', title: 'Preguntas sobre los pagos de un acuerdo', category: 'Finanzas', audience: 'socio',
     keywords: ['pago', 'pagos', 'acuerdo', 'parcial', 'pendiente', 'sin conexión', 'anular', 'corregir', 'más de lo acordado'],
     intro: 'Respuestas cortas sobre qué significa registrar un pago y qué no hace.',
     steps: [],
@@ -649,6 +678,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
 
 /** Audit evidence is never rendered or indexed as reader-facing help text. */
 export const HELP_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
+  aportaciones: ['doc/finance-contributions.md', 'src/views/finance/ContributionsView.vue'],
   'acuerdos-que-son': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
   'acuerdos-simulacion': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
   'acuerdos-inmutables': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
