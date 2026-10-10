@@ -5,7 +5,7 @@ import { FinancePaymentsService } from '@/services/finance-payments.service'
 import { currentQueueOrigin } from '@/services/queue-origin'
 import { useAuthStore } from './auth.store'
 import { useSessionStore } from './session.store'
-import { agreementErrorCode } from '@/utils/finance-agreements'
+import { agreementErrorCode, agreementErrorStatus } from '@/utils/finance-agreements'
 import { OFFLINE_READ_MESSAGE, OFFLINE_REGISTER_MESSAGE, OFFLINE_REVERSE_MESSAGE,
   PAYMENT_ACCESS_MESSAGE, PaymentFormError, isUncertainPaymentFailure, normalizePaymentFields, paymentErrorMessage,
   paymentReasonText } from '@/utils/finance-payments'
@@ -43,6 +43,8 @@ export const useFinancePaymentsStore = defineStore('finance-payments', () => {
   const pendingReversal = computed(() => reverseAttempt.value ? {
     paymentId: reverseAttempt.value.paymentId, payload: copy(reverseAttempt.value.payload),
   } : null)
+  /** Bumped after a rejection that proved the snapshot stale, so the view re-reads the agreement detail. */
+  const staleRefreshes = ref(0)
   let generation = 0, loadRevision = 0
 
   function origin(): FinanceOrigin | null {
@@ -79,6 +81,19 @@ export const useFinancePaymentsStore = defineStore('finance-payments', () => {
   async function refreshAfter(id: string, selected: FinanceOrigin, run: number) {
     if (current(run, selected)) await load(id)
   }
+  /**
+   * A definitive rejection that proves the local snapshot is stale (overpayment, voided agreement or payment,
+   * unknown target): re-read the server state and ask the view to re-read the agreement detail too.
+   * Uncertain outcomes never come here: their exact attempt is kept for a manual retry.
+   */
+  async function refreshStale(cause: unknown, id: string | null, selected: FinanceOrigin, run: number) {
+    const code = agreementErrorCode(cause)
+    const stale = agreementErrorStatus(cause) === 404 || ['FINANCE_PAYMENT_EXCEEDS_PENDING',
+      'FINANCE_PAYMENT_AGREEMENT_VOIDED', 'FINANCE_PAYMENT_ALREADY_VOIDED'].includes(code)
+    if (!stale || !id || !current(run, selected)) return
+    staleRefreshes.value++
+    await refreshAfter(id, selected, run)
+  }
 
   async function sendRegister(attempt: RegisterAttempt): Promise<DistributionPayment | null> {
     const run = generation
@@ -95,7 +110,11 @@ export const useFinancePaymentsStore = defineStore('finance-payments', () => {
     } catch (cause) {
       if (!current(run, attempt.origin)) return null
       saveError.value = paymentErrorMessage(cause)
-      if (!isUncertainPaymentFailure(cause)) registerAttempt.value = null
+      if (!isUncertainPaymentFailure(cause)) {
+        registerAttempt.value = null
+        saving.value = false
+        await refreshStale(cause, attempt.agreementId, attempt.origin, run)
+      }
       return null
     } finally {
       if (current(run, attempt.origin)) saving.value = false
@@ -174,9 +193,9 @@ export const useFinancePaymentsStore = defineStore('finance-payments', () => {
       if (!current(run, selected)) return null
       reverseError.value = paymentErrorMessage(cause)
       if (!isUncertainPaymentFailure(cause)) reverseAttempt.value = null
-      if (agreementErrorCode(cause) === 'FINANCE_PAYMENT_ALREADY_VOIDED' && agreementId.value) {
+      if (!isUncertainPaymentFailure(cause)) {
         reversing.value = false
-        await refreshAfter(agreementId.value, selected, run)
+        await refreshStale(cause, agreementId.value, selected, run)
       }
       return null
     } finally {
@@ -187,6 +206,7 @@ export const useFinancePaymentsStore = defineStore('finance-payments', () => {
   function clearMessages() { error.value = ''; saveError.value = ''; reverseError.value = '' }
   function reset() {
     generation++; loadRevision++
+    staleRefreshes.value = 0
     agreementId.value = null; items.value = []; summary.value = null
     registered.value = null; reversedPayment.value = null
     registerAttempt.value = null; reverseAttempt.value = null
@@ -197,6 +217,6 @@ export const useFinancePaymentsStore = defineStore('finance-payments', () => {
   watch([() => auth.token, () => session.owner?.accountId, () => session.owner?.apiBase,
     () => session.memberId, () => session.deviceId, () => session.deviceToken,
     () => session.member?.role, () => session.member?.active], reset, { flush: 'sync' })
-  return { agreementId, items, summary, loading, error, saving, saveError, registered, reversing, reverseError, reversedPayment,
+  return { staleRefreshes, agreementId, items, summary, loading, error, saving, saveError, registered, reversing, reverseError, reversedPayment,
     pendingPayment, pendingReversal, load, register, retryRegister, reverse, clearMessages, reset }
 })

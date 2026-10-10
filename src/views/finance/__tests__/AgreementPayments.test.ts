@@ -413,3 +413,62 @@ describe('focus and keyboard', () => {
     expect(document.activeElement?.id).toBe('agreement-payments-title')
   })
 })
+
+describe('stale snapshot after a definitive rejection', () => {
+  const staleSummary = () => paymentSummaryFixture({
+    status: 'PARTIALLY_PAID', paidMinor: 120000, pendingMinor: 480000, hasPayments: true, paymentCount: 1, activePaymentCount: 1,
+    participants: [
+      participantSummaryFixture({ paidMinor: 120000, pendingMinor: 150000, status: 'PARTIALLY_PAID' }),
+      participantSummaryFixture({ memberId: ADID_ID, memberName: 'Adid', agreedMinor: 330000, pendingMinor: 330000 }),
+    ],
+  })
+  it('refreshes the dialog header, the page summary and the detail after EXCEEDS_PENDING and keeps the error', async () => {
+    const w = await mounted()
+    await w.find('[data-test="open-register-payment"]').trigger('click'); await flushPromises()
+    expect(w.find('[data-test="form-pending"]').text()).toBe('$2,700.00')
+    paymentMocks.list.mockResolvedValue({ items: [paymentFixture({ amountMinor: 120000 })], paymentSummary: staleSummary() })
+    paymentMocks.create.mockRejectedValueOnce(http(422, 'FINANCE_PAYMENT_EXCEEDS_PENDING', { agreedMinor: 270000, paidMinor: 120000, pendingMinor: 150000 }))
+    await w.find('#payment-amount').setValue('2000')
+    await w.find('form').trigger('submit'); await flushPromises()
+    expect(w.find('[data-test="payment-error"]').text()).toContain('$1,500.00')
+    expect(w.find('[data-test="form-paid"]').text()).toBe('$1,200.00')
+    expect(w.find('[data-test="form-pending"]').text()).toBe('$1,500.00')
+    expect(w.find('[data-test="person-pending"]').text()).toBe('$1,500.00')
+    expect(w.find('[data-test="payment-status"]').text()).toBe('Pago parcial')
+    expect(agreementMocks.get).toHaveBeenCalledTimes(2)
+    expect(w.find('[data-test="pending-payment-alert"]').exists()).toBe(false)
+  })
+  it('closes the dialog and shows the voided notice when the agreement was voided elsewhere', async () => {
+    const w = await mounted()
+    await w.find('[data-test="open-register-payment"]').trigger('click'); await flushPromises()
+    agreementMocks.get.mockResolvedValue(agreementFixture({ status: 'voided', reversal: reversalFixture() }))
+    paymentMocks.create.mockRejectedValueOnce(http(409, 'FINANCE_PAYMENT_AGREEMENT_VOIDED'))
+    await w.find('#payment-amount').setValue('100')
+    await w.find('form').trigger('submit'); await flushPromises()
+    expect(w.find('[data-test="submit-payment"]').exists()).toBe(false)
+    expect(w.find('[data-test="payments-voided-notice"]').exists()).toBe(true)
+    expect(w.findAll('[data-test="open-register-payment"]')).toHaveLength(0)
+  })
+  it('shows ANULADO on the payment row after ALREADY_VOIDED', async () => {
+    listWith([paymentFixture()])
+    const w = await mounted()
+    await w.find('[data-test="open-reverse-payment"]').trigger('click'); await flushPromises()
+    listWith([voidedPaymentFixture()])
+    paymentMocks.reverse.mockRejectedValueOnce(http(409, 'FINANCE_PAYMENT_ALREADY_VOIDED'))
+    await w.find('#payment-reverse-reason').setValue('Motivo')
+    await w.find('form').trigger('submit'); await flushPromises()
+    expect(w.find('[data-test="payment-voided-badge"]').text()).toBe('ANULADO')
+    expect(w.find('[data-test="reverse-error"]').text()).toContain('ya estaba anulado')
+    expect(agreementMocks.get).toHaveBeenCalledTimes(2)
+  })
+  it('does not refresh anything after an uncertain failure', async () => {
+    const w = await mounted()
+    await w.find('[data-test="open-register-payment"]').trigger('click'); await flushPromises()
+    paymentMocks.create.mockRejectedValueOnce(new Error('Network Error'))
+    await w.find('#payment-amount').setValue('100')
+    await w.find('form').trigger('submit'); await flushPromises()
+    expect(paymentMocks.list).toHaveBeenCalledTimes(1)
+    expect(agreementMocks.get).toHaveBeenCalledTimes(1)
+    expect(w.find('[data-test="retry-payment"]').exists()).toBe(true)
+  })
+})

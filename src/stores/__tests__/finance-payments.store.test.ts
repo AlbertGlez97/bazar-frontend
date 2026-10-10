@@ -297,3 +297,78 @@ describe('session isolation', () => {
     expect(store.loading).toBe(false)
   })
 })
+
+describe('stale snapshot after a definitive rejection', () => {
+  const stale = [
+    ['EXCEEDS_PENDING', http(422, 'FINANCE_PAYMENT_EXCEEDS_PENDING', { agreedMinor: 270000, paidMinor: 120000, pendingMinor: 150000 })],
+    ['AGREEMENT_VOIDED', http(409, 'FINANCE_PAYMENT_AGREEMENT_VOIDED')],
+    ['404', http(404)],
+  ] as const
+  it.each(stale)('reloads the server state, keeps the error and discards the attempt on %s (register)', async (_name, failure) => {
+    const store = useFinancePaymentsStore()
+    mocks.list.mockResolvedValue({ items: [paymentFixture()], paymentSummary: partialSummaryFixture() })
+    mocks.create.mockRejectedValueOnce(failure)
+    expect(await store.register(AGREEMENT_ID, fields)).toBeNull()
+    expect(mocks.list).toHaveBeenCalledTimes(1)
+    expect(store.summary?.paidMinor).toBe(100000)
+    expect(store.items).toHaveLength(1)
+    expect(store.saveError).not.toBe('')
+    expect(store.pendingPayment).toBeNull()
+    expect(store.staleRefreshes).toBe(1)
+    expect(store.saving).toBe(false)
+    await store.register(AGREEMENT_ID, fields)
+    expect(mocks.create.mock.calls[1]![2].id).not.toBe(mocks.create.mock.calls[0]![2].id)
+  })
+  it('keeps the exact backend numbers in the message after refreshing', async () => {
+    const store = useFinancePaymentsStore()
+    mocks.create.mockRejectedValueOnce(http(422, 'FINANCE_PAYMENT_EXCEEDS_PENDING', { agreedMinor: 270000, paidMinor: 120000, pendingMinor: 150000 }))
+    await store.register(AGREEMENT_ID, fields)
+    expect(store.saveError).toContain('$1,500.00')
+  })
+  it.each([['ALREADY_VOIDED', http(409, 'FINANCE_PAYMENT_ALREADY_VOIDED')], ['404', http(404)]])(
+    'reloads the server state and discards the attempt on %s (reverse)', async (_name, failure) => {
+      const store = useFinancePaymentsStore()
+      await store.load(AGREEMENT_ID)
+      mocks.list.mockClear()
+      mocks.list.mockResolvedValue({ items: [voidedPaymentFixture()], paymentSummary: partialSummaryFixture() })
+      mocks.reverse.mockRejectedValueOnce(failure)
+      expect(await store.reverse(PAYMENT_ID, 'Motivo')).toBeNull()
+      expect(mocks.list).toHaveBeenCalledTimes(1)
+      expect(store.items[0]!.status).toBe('voided')
+      expect(store.reverseError).not.toBe('')
+      expect(store.pendingReversal).toBeNull()
+      expect(store.staleRefreshes).toBe(1)
+    })
+  it.each([new Error('Network Error'), http(503), http(429), new FinancePaymentContractError()])(
+    'does NOT refresh on an uncertain outcome %#', async (failure) => {
+      const store = useFinancePaymentsStore()
+      mocks.create.mockRejectedValueOnce(failure)
+      await store.register(AGREEMENT_ID, fields)
+      mocks.reverse.mockRejectedValueOnce(failure)
+      await store.reverse(PAYMENT_ID, 'Motivo')
+      expect(mocks.list).not.toHaveBeenCalled()
+      expect(store.staleRefreshes).toBe(0)
+      expect(store.pendingPayment).not.toBeNull()
+    })
+  it.each([http(400), http(403), http(409, 'FINANCE_PAYMENT_ID_CONFLICT'), http(422, 'FINANCE_PAYMENT_TIME_INVALID')])(
+    'does not refresh for rejections that say nothing about staleness %#', async (failure) => {
+      const store = useFinancePaymentsStore()
+      mocks.create.mockRejectedValueOnce(failure)
+      await store.register(AGREEMENT_ID, fields)
+      expect(mocks.list).not.toHaveBeenCalled()
+    })
+  it('ignores a stale-refresh reply that arrives after a session change', async () => {
+    const reply = deferred<{ items: never[]; paymentSummary: ReturnType<typeof paymentSummaryFixture> }>()
+    mocks.list.mockReturnValueOnce(reply.promise)
+    mocks.create.mockRejectedValueOnce(http(422, 'FINANCE_PAYMENT_EXCEEDS_PENDING', { agreedMinor: 1, paidMinor: 0, pendingMinor: 1 }))
+    const store = useFinancePaymentsStore()
+    const run = store.register(AGREEMENT_ID, fields)
+    await vi.waitFor(() => expect(mocks.list).toHaveBeenCalled())
+    state.auth.token = 'token-b'
+    reply.resolve({ items: [], paymentSummary: paymentSummaryFixture() })
+    await run
+    expect(store.summary).toBeNull()
+    expect(store.loading).toBe(false)
+    expect(store.staleRefreshes).toBe(0)
+  })
+})

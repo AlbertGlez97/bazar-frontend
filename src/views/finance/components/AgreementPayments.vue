@@ -224,7 +224,7 @@
     />
     <AgreementPaymentReverseForm
       v-model="reverseOpen"
-      :payment="reverseTarget"
+      :payment="freshReverseTarget"
       :busy="store.reversing"
       :error="store.reverseError"
       :online="online"
@@ -263,13 +263,14 @@ const paymentsOf = (memberId: string) => history.value.filter((payment) => payme
 const pendingForThisAgreement = computed(() =>
   store.pendingPayment?.agreementId === props.agreementId ? store.pendingPayment.payload : null)
 const pendingReversalPayment = computed(() => history.value.find((payment) => payment.id === store.pendingReversal?.paymentId) ?? null)
+// The dialog header always follows the latest server summary, never the snapshot captured when it opened.
 const formParticipant = computed(() => {
-  const pending = pendingForThisAgreement.value
-  if (!pending) return registerPerson.value
-  return props.summary?.participants.find((person) => person.memberId === pending.participantMemberId) ?? registerPerson.value
+  const memberId = pendingForThisAgreement.value?.participantMemberId ?? registerPerson.value?.memberId
+  return props.summary?.participants.find((person) => person.memberId === memberId) ?? registerPerson.value
 })
 const pendingReversePayload = computed(() =>
   reverseTarget.value && store.pendingReversal?.paymentId === reverseTarget.value.id ? store.pendingReversal.payload : null)
+const freshReverseTarget = computed(() => history.value.find((payment) => payment.id === reverseTarget.value?.id) ?? reverseTarget.value)
 const busy = computed(() => store.saving || store.reversing)
 const registerBlocked = computed(() => busy.value || !!store.pendingPayment || !!store.pendingReversal)
 const reverseBlocked = computed(() => busy.value || !!store.pendingPayment || !!store.pendingReversal)
@@ -340,6 +341,12 @@ async function retryReverse() {
   if (!attempt || attempt.paymentId !== reverseTarget.value?.id) return
   await sendReverse(attempt.payload.reason)
 }
+// A rejection proved the local snapshot stale: re-read the agreement detail too. The error message stays visible.
+watch(() => store.staleRefreshes, () => emit('changed'))
+// A voided agreement accepts no new payments: close the register dialog; the voided notice explains why.
+watch(() => props.agreementStatus, (status) => {
+  if (status === 'voided' && registerOpen.value && !pendingForThisAgreement.value) registerOpen.value = false
+})
 watch(() => props.agreementId, () => {
   registerOpen.value = false; reverseOpen.value = false; notice.value = ''
   registerPerson.value = null; reverseTarget.value = null
