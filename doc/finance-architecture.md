@@ -1,4 +1,4 @@
-# Finanzas frontend: architecture and status through Phase 5.5
+# Finanzas frontend: architecture and status through Phase 6 (payments, pending closure)
 
 Entry point for the Finanzas screens. Per-feature details live in the linked documents. The backend contract lives in `../bazar-api/doc/finance-architecture.md`.
 
@@ -12,7 +12,7 @@ Entry point for the Finanzas screens. Per-feature details live in the linked doc
 | 4 | Resumen operativo + Reservas | CLOSED |
 | 5 | Simulador | CLOSED |
 | 5.5 | Acuerdos + PDF | CLOSED |
-| 6 | Not started | NOT STARTED |
+| 6 | Pagos reales de acuerdos (inside the agreement detail) | NOT CLOSED. Implemented in the frontend and covered by Vitest; real integration against bazar-api and the browser checks are pending. |
 
 Future improvement, not blocking: attach or retain a signed or scanned PDF.
 
@@ -28,7 +28,9 @@ Finanzas lives in Gestión, so it is socio-only and recommended on a laptop (pho
 | Jornadas | `/app/finanzas/jornadas` | `WorkShiftsView` | `work-shifts.store` | `work-shifts.service`, `work-shift-sync`, `work-shift-db` |
 | Reservas | `/app/finanzas/reservas` | `ReservesView` | `finance-reserves.store` | `finance-reserves.service` |
 | Simulador | `/app/finanzas/simulador` | `SimulatorView` | `finance-distribution.store` | `finance-distribution.service` |
-| Acuerdos | `/app/finanzas/acuerdos` and `/app/finanzas/acuerdos/:id` | `AgreementsView`, `AgreementDetailView` | `finance-agreements.store` | `finance-agreements.service`, `agreement-pdf` |
+| Acuerdos | `/app/finanzas/acuerdos` and `/app/finanzas/acuerdos/:id` | `AgreementsView`, `AgreementDetailView` (with the Pagos section: `AgreementPayments`, `AgreementPaymentForm`, `AgreementPaymentReverseForm`) | `finance-agreements.store`, `finance-payments.store` | `finance-agreements.service`, `finance-payments.service`, `agreement-pdf` |
+
+Payments have no tab of their own: they live in the Pagos section of the agreement detail.
 
 ## Offline versus online
 
@@ -41,18 +43,23 @@ Finanzas lives in Gestión, so it is socio-only and recommended on a laptop (pho
 | Reservas | Online only; uncertain create or cancel keeps its identity for an exact retry |
 | Simulador | Ephemeral and online; nothing is persisted and results are never stored |
 | Acuerdos | Persisted in the backend, online only; no offline queue and no automatic sends |
+| Pagos de acuerdos | Persisted in the backend, online only. Registering or reversing offline shows "Necesitas conexión para registrar un pago." (or the reversal equivalent); nothing is sent, queued or stored, and totals are never computed optimistically |
 
 ## IndexedDB
 
-Database `la-marchanta`, version 4 (unchanged by the work shift reversal UI: `pending-work-shifts` already holds `kind: reverse` records) (`DB_VERSION` in `src/services/local-db.ts`). Stores added per phase: contributions v2 (`pending-contributions`, `contribution-history`, `finance-references`), expenses v3 (`pending-expenses`, `expense-history`), work shifts v4 (`pending-work-shifts`, `work-shift-history`). Phases 4, 5 and 5.5 added no stores. See `finance-contributions.md`, `finance-expenses.md` and `finance-work-shifts.md`.
+Database `la-marchanta`, version 4 (unchanged by the work shift reversal UI: `pending-work-shifts` already holds `kind: reverse` records) (`DB_VERSION` in `src/services/local-db.ts`). Stores added per phase: contributions v2 (`pending-contributions`, `contribution-history`, `finance-references`), expenses v3 (`pending-expenses`, `expense-history`), work shifts v4 (`pending-work-shifts`, `work-shift-history`). Phases 4, 5, 5.5 and 6 added no stores (payments never touch IndexedDB or localStorage). See `finance-contributions.md`, `finance-expenses.md` and `finance-work-shifts.md`.
 
 ## Session and ownership
 
-Reserves, overview, simulator and agreements keep their state in memory only. `auth.store.ts` `resetPhase4()` clears it on logout or when the account, API, member, device or token changes, and late replies from a previous session are ignored. Offline records keep the account, API, member and device origin of the session that created them and replay under that origin, never under a new session.
+Reserves, overview, simulator, agreements and payments keep their state in memory only. `auth.store.ts` `resetPhase4()` clears it on logout or when the account, API, member, device or token changes, and late replies from a previous session are ignored. Offline records keep the account, API, member and device origin of the session that created them and replay under that origin, never under a new session.
 
 ## Simulator and agreements
 
 The Simulador asks the backend to calculate a distribution and displays it; the backend contract is `../bazar-api/doc/finance-distribution-simulator.md`. Confirming a result creates an immutable agreement through `finance-agreements.service` and requires a title and explicit confirmation. Drift between the simulation and the backend blocks confirmation. Voiding requires a reason, and a replacement is created from a new simulation. Details are in `finance-distribution-agreements.md`, with the closing evidence in `finance-distribution-agreements-close.md`.
+
+## Payments (Phase 6)
+
+A payment records that money was really paid, outside the system, to one frozen participant of an agreement. La Marchanta does not move money: it shows what was agreed, what was paid and what is pending, and "agreed" is never "paid". Payments are immutable and only reversible (anular); a mistake is fixed by reversing and registering the right payment. They are socio-only, online only, and use their own memory-only `finance-payments.store`, registered in `resetPhase4()`. Payments do not touch Resumen, Aportaciones, Gastos, Jornadas, Reservas, the Simulador, or the agreement PDF. See `finance-distribution-agreements.md` (Payments) and `../bazar-api/doc/finance-distribution-payments.md`.
 
 ## PDF
 
@@ -60,12 +67,13 @@ The Simulador asks the backend to calculate a distribution and displays it; the 
 
 ## Help
 
-In-app articles (`src/config/help-content.ts`, category Finanzas) cover Gastos, Jornadas, Resumen, Reservas and Simulador, including how to create an agreement.
+In-app articles (`src/config/help-content.ts`, category Finanzas) cover Gastos, Jornadas, Resumen, Reservas and Simulador, including how to create an agreement and how to register, annul and understand payments of an agreement.
 
 ## Known limitations
 
-- Agreements and the simulator are not available offline.
+- Agreements, payments and the simulator are not available offline.
+- The payments list is unpaginated by design (bounded by participants times corrections).
 
 ## What does not exist
 
-Payments, withdrawals, executed distributions, bank or cash reconciliation, digital signature, and stored signed or scanned PDFs.
+Withdrawals, executed distributions, payment methods, payment receipts or PDFs, bank or cash reconciliation, an offline queue for payments, atomic replacement of a payment, digital signature, and stored signed or scanned PDFs.
