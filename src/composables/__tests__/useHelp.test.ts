@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -201,6 +201,32 @@ describe('useHelp', () => {
     const { api } = await setup('/app/ayuda')
     expect(api.openHelpDrawer()).toBe(false)
     expect(helpDrawerOpen.value).toBe(false)
+  })
+
+  it('does not open a drawer on an explicit id while on the Help page either', async () => {
+    await setup('/app/ayuda')
+    expect(openHelpDrawer('finanzas.jornadas.corregir')).toBe(false)
+    expect(helpDrawerOpen.value).toBe(false)
+    expect(drawerTarget.value).toBeNull()
+  })
+
+  it('opens an unknown explicit id on Primeros pasos and reports success', async () => {
+    await setup('/app/venta')
+    expect(openHelpDrawer('no-existe')).toBe(true)
+    expect(helpDrawerOpen.value).toBe(true)
+    expect(drawerTarget.value).toEqual({ categoryId: 'primeros-pasos' })
+  })
+
+  it('works before any useHelp() call: explicit ids resolve and the default is Primeros pasos', async () => {
+    vi.resetModules()
+    const fresh = await import('../useHelp')
+    expect(fresh.helpDrawerOpen.value).toBe(false)
+    expect(fresh.openHelpDrawer('finanzas.jornadas.corregir')).toBe(true)
+    expect(fresh.drawerTarget.value).toEqual({ categoryId: 'finanzas', topicId: 'finanzas.jornadas', articleId: 'jornadas' })
+    fresh.closeHelpDrawer()
+    // No route has been bound yet, so the argument-less call falls back to the default help.
+    expect(fresh.openHelpDrawer()).toBe(true)
+    expect(fresh.drawerTarget.value).toEqual({ categoryId: 'primeros-pasos' })
   })
 
   it('exposes the current route target', async () => {

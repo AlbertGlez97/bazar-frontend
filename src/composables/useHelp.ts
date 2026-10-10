@@ -80,6 +80,8 @@ const DEFAULT_TARGET: HelpTarget = { categoryId: 'primeros-pasos' }
  * current route; it does not open on the Help page itself (returns false).
  */
 export function openHelpDrawer(idOrPath?: string): boolean {
+  // The Help page already is the help: an explicit id does not open a duplicate drawer either.
+  if (activeRoute?.name === 'Help') return false
   const target = idOrPath === undefined
     ? helpTargetForRoute(activeRoute?.name, activeRoute?.path)
     : resolveHelpTarget(idOrPath) ?? DEFAULT_TARGET
