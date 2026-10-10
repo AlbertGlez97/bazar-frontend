@@ -52,9 +52,9 @@ describe('help motion tokens', () => {
 /** The `<style>` block of an SFC, without comments. Fails loudly when there is none. */
 function styleOf(file: string): string {
   const source = read(file)
-  const match = /<style[^>]*>([sS]*?)</style>/.exec(source)
+  const match = /<style[^>]*>([\s\S]*?)<\/style>/.exec(source)
   if (!match) throw new Error(`${file} has no <style> block`)
-  return match[1]!.replace(//*[sS]*?*//g, '')
+  return match[1]!.replace(/\/\*[\s\S]*?\*\//g, '')
 }
 
 /** Split on commas that are not inside parentheses (`a 1s, b var(--x, 2s)`). */
@@ -71,7 +71,7 @@ function splitTopLevel(value: string): string[] {
   return parts.map((part) => part.trim()).filter(Boolean)
 }
 
-const LITERAL_TIME = /^-?(d*.)?d+m?s$/
+const LITERAL_TIME = /^-?(\d*\.)?\d+m?s$/
 
 /**
  * Literal durations/delays in transition and animation declarations, parsed per declaration
@@ -83,14 +83,14 @@ const LITERAL_TIME = /^-?(d*.)?d+m?s$/
  */
 function literalDurations(style: string): string[] {
   const found: string[] = []
-  const declaration = /(?:^|[;{s])((?:transition|animation)(?:-[a-z]+)*)s*:s*([^;}]+)/g
+  const declaration = /(?:^|[;{\s])((?:transition|animation)(?:-[a-z]+)*)\s*:\s*([^;}]+)/g
   for (const match of style.matchAll(declaration)) {
     const property = match[1]!
     const value = match[2]!
     if (property === 'transition-property' || property === 'animation-name') continue
     for (const item of splitTopLevel(value)) {
       // Drop var(...) calls: they are the tokenized, allowed form.
-      const tokens = item.replace(/var([^)]*)/g, ' ').split(/s+/).filter(Boolean)
+      const tokens = item.replace(/var\([^)]*\)/g, ' ').split(/\s+/).filter(Boolean)
       const times = tokens.filter((token) => LITERAL_TIME.test(token))
       if (times.length === 0) continue
       const zero = times.every((token) => /^0m?s$/.test(token))
@@ -105,11 +105,7 @@ function literalDurations(style: string): string[] {
 describe('literalDurations (the guard itself)', () => {
   it('flags literal durations on one line, across lines and inside lists', () => {
     expect(literalDurations('a { transition: opacity 200ms ease; }')).toHaveLength(1)
-    expect(literalDurations('a {
-  transition:
-    opacity var(--motion-base) ease,
-    transform .3s ease;
-}')).toHaveLength(1)
+    expect(literalDurations('a {\n  transition:\n    opacity var(--motion-base) ease,\n    transform .3s ease;\n}')).toHaveLength(1)
     expect(literalDurations('a { animation: spin 1s linear infinite; }')).toHaveLength(1)
     expect(literalDurations('a { transition: opacity 0s; }')).toHaveLength(1)
     expect(literalDurations('a { transition: visibility 5s linear var(--motion-base); }')).toHaveLength(1)
@@ -118,11 +114,7 @@ describe('literalDurations (the guard itself)', () => {
 
   it('accepts tokens, the visibility zero-duration switch and a delay reset', () => {
     expect(literalDurations('a { transition: opacity var(--motion-base) var(--motion-ease); }')).toEqual([])
-    expect(literalDurations('a {
- transition:
-  grid-template-rows var(--motion-base) var(--motion-ease),
-  visibility 0s linear var(--motion-base);
-}')).toEqual([])
+    expect(literalDurations('a {\n transition:\n  grid-template-rows var(--motion-base) var(--motion-ease),\n  visibility 0s linear var(--motion-base);\n}')).toEqual([])
     expect(literalDurations('a { transition-delay: 0s; }')).toEqual([])
     expect(literalDurations('a { transition: none; }')).toEqual([])
   })
@@ -141,7 +133,7 @@ describe.each(MOTION_FILES)('%s', (file) => {
 
   it('animates only transform, opacity, grid rows and colors, never height', () => {
     expect(style).not.toMatch(/transition[^;]*(max-)?height/)
-    expect(style).not.toMatch(/animation:s*[^;]*height/)
+    expect(style).not.toMatch(/animation:\s*[^;]*height/)
   })
 })
 
