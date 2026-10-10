@@ -25,7 +25,7 @@ Replace the single long help page (index plus anchors plus scroll) with a contex
 9. Back navigation whitelist extended to the finance routes; missing `routeTitles` filled in.
 
 ## Tasks
-- [ ] CH1 Content structure (categories/topics/articles), HELP_ROUTE_CONTEXT, search upgrade, useHelp composable, router/back-whitelist/routeTitles fixes, data-layer tests
+- [x] CH1 Content structure (categories/topics/articles), HELP_ROUTE_CONTEXT, search upgrade, useHelp composable, router/back-whitelist/routeTitles fixes, data-layer tests
 - [ ] CH2 AppAccordion, AppDrawer, HelpCenter (desktop sidebar, mobile levels, breadcrumb), search results UI, `?` button and drawer integration in AppLayout, motion and reduced-motion, a11y, UI tests
 - [ ] CH3 Real browser validation (context per route, drawer, Center, search, refresh, responsive 320/390/768/1280, animations, reduced motion, keyboard)
 - [ ] CH4 Docs (`doc/help-system.md`, README/finance docs), full suites, merge to main, push
@@ -34,4 +34,10 @@ Replace the single long help page (index plus anchors plus scroll) with a contex
 Delegated direct: two sequential writers (CH1 data layer, CH2 UI); parent runs real browser validation and final verification.
 
 ## Progress / evidence
-(pending)
+CH1 (data layer) done by writer 1, route: delegated direct.
+- Commits: b719f61 content structure + aportaciones article; 4376801 finance route titles; a9085b2 safe return util; f8d2a27 ranked search; d90b4c6 lint cleanup; 9a4c98b route context + useHelp.
+- Structure: 8 categories, 24 topics, 41 articles (40 original ids and copy untouched, plus `aportaciones`). Category id `offline` (title Sin conexión) avoids clashing with the `sin-conexion` article id.
+- Test-first: route-context, help-return, search index and useHelp tests were written and failed (module or export missing) before their implementation; help-structure and content tests were written after the content edit.
+- Migrated assertion: AppLayout.work-shifts titles Jornadas as "Jornadas" (was "Finanzas"), as the plan requires.
+- Verification: npx vitest run 236 files / 4385 tests passed; npm run lint clean; npx vue-tsc -b clean; npm run build ok; git diff --check clean.
+- Router: Help route and scrollBehavior unchanged (query-only selection needs no change; a topic/article change scrolls to top).
