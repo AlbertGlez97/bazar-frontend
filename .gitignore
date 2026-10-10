@@ -32,3 +32,6 @@ dist-ssr
 # Coverage
 coverage/
 .nyc_output/
+
+# Local QA artifacts (screenshots, rendered PDFs, throwaway harnesses)
+/tmp/
