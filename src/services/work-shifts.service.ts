@@ -11,8 +11,12 @@ const headers = (origin: FinanceOrigin) => ({
 
 export const WorkShiftsService = {
   async send(record: PendingWorkShift): Promise<unknown> {
+    const path =
+      record.kind === 'create'
+        ? '/finance/work-shifts'
+        : `/finance/work-shifts/${record.workShiftId}/reversals`
     return (
-      await api.post('/finance/work-shifts', record.payload, {
+      await api.post(path, record.payload, {
         headers: headers(record.origin),
         financialOrigin: record.origin,
         skipAuthRedirect: true,

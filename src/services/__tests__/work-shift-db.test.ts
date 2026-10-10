@@ -52,7 +52,7 @@ describe('durable work shift persistence', () => {
     closeLocalDb()
     const { pending } = await workShiftSnapshot(origin)
     expect(pending).toHaveLength(1)
-    expect(pending[0]?.payload.minutes).toBe(510)
+    expect(pending[0]?.payload).toMatchObject({ minutes: 510 })
     expect(pending[0]?.origin).toEqual(origin)
     expect(pending[0]?.state).toBe('pending')
   })
@@ -63,8 +63,8 @@ describe('durable work shift persistence', () => {
       payload: payload({ minutes: null, note: null }),
     })
     const { pending } = await workShiftSnapshot(origin)
-    expect(pending[0]?.payload.minutes).toBeNull()
-    expect(pending[0]?.payload.note).toBeNull()
+    expect(pending[0]?.payload).toMatchObject({ minutes: null })
+    expect(pending[0]?.payload).toMatchObject({ note: null })
   })
 
   it('isolates records by account and API base', async () => {

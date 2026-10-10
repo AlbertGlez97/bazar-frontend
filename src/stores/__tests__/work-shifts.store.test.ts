@@ -106,6 +106,76 @@ describe('durable work shift store', () => {
     expect(store.pending).toEqual([])
   })
 
+  it('queues an annulment with a trimmed reason and no replacement', async () => {
+    const store = useWorkShiftsStore()
+    await store.reverse('original', '  Registrada dos veces  ')
+    const operation = mocks.enqueue.mock.calls[0]?.[1]
+    expect(operation).toMatchObject({
+      kind: 'reverse',
+      workShiftId: 'original',
+      payload: {
+        reason: 'Registrada dos veces',
+        createdByMemberId: 'actor',
+        deviceId: 'device',
+      },
+    })
+    expect(operation.payload.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/)
+    expect(operation.payload.replacement).toBeUndefined()
+    expect(new Date(operation.payload.occurredAt).toISOString()).toBe(operation.payload.occurredAt)
+  })
+
+  it('queues a correction whose replacement has its own UUID v7 and origin', async () => {
+    const store = useWorkShiftsStore()
+    await store.reverse('original', 'Duración incorrecta', { ...fields, minutes: null, note: null })
+    const { payload } = mocks.enqueue.mock.calls[0]?.[1]
+    expect(payload.replacement).toMatchObject({
+      memberId: 'worker',
+      workDate: '2026-10-03',
+      minutes: null,
+      note: null,
+      createdByMemberId: 'actor',
+      deviceId: 'device',
+    })
+    expect(payload.replacement.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-/)
+    expect(payload.replacement.id).not.toBe(payload.id)
+    expect(store.pending).toHaveLength(1)
+  })
+
+  it.each(['', '   ', 'x'.repeat(1001)])('refuses an invalid reason %#', async (reason) => {
+    const store = useWorkShiftsStore()
+    await expect(store.reverse('original', reason)).rejects.toThrow('motivo')
+    expect(mocks.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('rejects a reversal when the durable write fails', async () => {
+    mocks.enqueue.mockRejectedValue(new Error('disk full'))
+    const store = useWorkShiftsStore()
+    await expect(store.reverse('original', 'Motivo')).rejects.toThrow('disk full')
+    expect(store.pending).toEqual([])
+  })
+
+  it('refuses a reversal for a collaborator', async () => {
+    mocks.role = 'colaborador'
+    const store = useWorkShiftsStore()
+    await expect(store.reverse('original', 'Motivo')).rejects.toThrow('Solo socios')
+    expect(mocks.enqueue).not.toHaveBeenCalled()
+  })
+
+  it('re-reads the list and the summary period after a sync that confirmed a reversal', async () => {
+    const query = { from: '2026-10-01', to: '2026-10-08' }
+    mocks.snapshot.mockResolvedValue({ pending: [], history: [], references: undefined })
+    mocks.summary.mockResolvedValue(emptySummary)
+    mocks.sync.mockResolvedValue(1)
+    const store = useWorkShiftsStore()
+    await store.load()
+    await store.refreshSummary(query)
+    mocks.summary.mockClear()
+    mocks.snapshot.mockClear()
+    await store.sync()
+    expect(mocks.snapshot).toHaveBeenCalled()
+    expect(mocks.summary).toHaveBeenCalledWith(expect.anything(), query)
+  })
+
   it('refuses to operate for a collaborator', async () => {
     mocks.role = 'colaborador'
     const store = useWorkShiftsStore()

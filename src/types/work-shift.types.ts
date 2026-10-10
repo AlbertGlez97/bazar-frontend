@@ -38,13 +38,35 @@ export interface WorkShiftMember {
 }
 
 /**
- * Read-only marker present on a list item once the shift was annulled or
- * corrected on the server. This app does not create corrections yet; the
- * state is only displayed.
+ * Reversal marker on a confirmed shift: it was annulled (no replacement) or
+ * corrected (replacement). A list item carries the audit fields; the minimal
+ * `{ id, replacementWorkShiftId }` form is also accepted.
  */
 export interface WorkShiftListReversal {
   id: string
   replacementWorkShiftId: string | null
+  workShiftId?: string
+  reason?: string
+  occurredAt?: string
+  receivedAt?: string
+  createdByMemberId?: string
+  createdByAccountId?: string
+  deviceId?: string
+  contextId?: string
+}
+
+/**
+ * Exact body of POST /finance/work-shifts/:id/reversals. `replacement` is a
+ * full creation payload with its own UUID; omit it to annul without replacing.
+ */
+export interface WorkShiftReversalPayload {
+  id: string
+  /** Explicitly zoned instant. */
+  occurredAt: string
+  reason: string
+  createdByMemberId: string
+  deviceId: string
+  replacement?: WorkShiftPayload
 }
 
 /**
@@ -63,6 +85,20 @@ export interface WorkShift extends WorkShiftPayload {
 /** Body of a 201/200 response to POST /finance/work-shifts. */
 export interface WorkShiftReceipt extends WorkShift {
   warnings: WorkShiftWarning[]
+}
+
+/** Body of a 201/200 response to POST /finance/work-shifts/:id/reversals. */
+export interface WorkShiftReversalReceipt extends WorkShiftListReversal {
+  workShiftId: string
+  reason: string
+  occurredAt: string
+  receivedAt: string
+  createdByMemberId: string
+  createdByAccountId: string
+  deviceId: string
+  contextId: string
+  original: WorkShiftReceipt
+  replacement: WorkShiftReceipt | null
 }
 
 export interface WorkShiftPage {

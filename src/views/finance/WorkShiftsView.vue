@@ -355,6 +355,7 @@ const allRows = computed<Row[]>(() => {
   if (!allowed.value) return []
   const map = new Map<string, Row>(finance.history.map((r) => [r.id, { ...r }]))
   for (const op of finance.pending) {
+    if (op.kind !== 'create') continue
     const existing = map.get(op.id)
     if (existing) existing.pending = op
     else map.set(op.id, { ...op.payload, pending: op })

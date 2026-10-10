@@ -1,8 +1,14 @@
-import type { WorkShift, WorkShiftPayload } from '@/types/work-shift.types'
+import type {
+  WorkShift,
+  WorkShiftPayload,
+  WorkShiftReversalPayload,
+} from '@/types/work-shift.types'
 import type { FinanceOrigin } from './contributions-records'
 
-/** Only creation is queued: corrections are not available yet. */
-export type WorkShiftOperation = { kind: 'create'; payload: WorkShiftPayload }
+/** A creation, or the annulment/correction of a confirmed (or still queued) shift. */
+export type WorkShiftOperation =
+  | { kind: 'create'; payload: WorkShiftPayload }
+  | { kind: 'reverse'; workShiftId: string; payload: WorkShiftReversalPayload }
 
 export type PendingWorkShift = WorkShiftOperation & {
   key: string

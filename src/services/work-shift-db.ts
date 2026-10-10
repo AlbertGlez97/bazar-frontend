@@ -7,7 +7,10 @@ import type {
   WorkShiftHistory,
   WorkShiftOperation,
 } from './work-shift-records'
-import type { WorkShift } from '@/types/work-shift.types'
+import type {
+  WorkShift,
+  WorkShiftReversalReceipt,
+} from '@/types/work-shift.types'
 
 /** Corrupt rows are skipped (never deleted or sent) so one bad record cannot hide the rest. */
 function wellFormedPending(r: PendingWorkShift): boolean {
@@ -17,7 +20,8 @@ function wellFormedPending(r: PendingWorkShift): boolean {
     typeof x.scope === 'string' &&
     typeof x.id === 'string' &&
     typeof x.createdAt === 'string' &&
-    x.kind === 'create' &&
+    (x.kind === 'create' ||
+      (x.kind === 'reverse' && typeof x.workShiftId === 'string')) &&
     !!x.payload &&
     typeof x.payload === 'object' &&
     !!x.origin &&
@@ -73,6 +77,14 @@ export async function enqueueWorkShift(
     operation.payload.deviceId !== origin.deviceId
   )
     throw new Error('Financial operation origin mismatch')
+  const replacement =
+    operation.kind === 'reverse' ? operation.payload.replacement : undefined
+  if (
+    replacement &&
+    (replacement.createdByMemberId !== origin.memberId ||
+      replacement.deviceId !== origin.deviceId)
+  )
+    throw new Error('Financial operation origin mismatch')
   const tx = db.transaction(
     ['pending-work-shifts', 'work-shift-history'],
     'readwrite',
@@ -86,13 +98,39 @@ export async function enqueueWorkShift(
       existing.kind !== operation.kind ||
       existing.origin.memberId !== origin.memberId ||
       existing.origin.deviceId !== origin.deviceId ||
+      (existing.kind === 'reverse' &&
+        operation.kind === 'reverse' &&
+        existing.workShiftId !== operation.workShiftId) ||
       JSON.stringify(existing.payload) !==
         JSON.stringify(plain(operation.payload))
     )
       throw new Error('Operation identity already exists')
     return existing
   }
-  if (await historyStore.get(key(scope, operation.payload.id))) {
+  if (operation.kind === 'reverse') {
+    const pending = (await pendingStore.getAll()).filter(
+      (r) => r.scope === scope,
+    )
+    const original = await historyStore.get(key(scope, operation.workShiftId))
+    if (
+      original?.workShift.reversal ||
+      pending.some(
+        (r) => r.kind === 'reverse' && r.workShiftId === operation.workShiftId,
+      )
+    ) {
+      await tx.done
+      throw new Error('Work shift already has a correction')
+    }
+    if (
+      !original &&
+      !pending.some(
+        (r) => r.kind === 'create' && r.id === operation.workShiftId,
+      )
+    ) {
+      await tx.done
+      throw new Error('Work shift must be available locally before correction')
+    }
+  } else if (await historyStore.get(key(scope, operation.payload.id))) {
     await tx.done
     throw new Error('Work shift identity already confirmed')
   }
@@ -149,7 +187,7 @@ export async function retryWorkShift(record: PendingWorkShift) {
 /** History insertion and pending deletion share one IndexedDB transaction. */
 export async function confirmWorkShift(
   record: PendingWorkShift,
-  receipt: WorkShift,
+  receipt: WorkShift | WorkShiftReversalReceipt,
 ) {
   const db = await openLocalDb(),
     tx = db.transaction(
@@ -157,22 +195,32 @@ export async function confirmWorkShift(
       'readwrite',
     )
   const store = tx.objectStore('work-shift-history')
-  const id = key(record.scope, receipt.id),
-    existing = (await store.get(id))?.workShift
-  await store.put(
-    plain({
-      key: id,
-      scope: record.scope,
-      workShift: {
-        ...existing,
-        ...receipt,
-        // The receipt freezes the warning; a later list never carries it.
-        warnings: receipt.warnings ?? existing?.warnings,
-        member: receipt.member ?? existing?.member,
-        reversal: receipt.reversal ?? existing?.reversal ?? null,
-      },
-    }),
-  )
+  const put = async (item: WorkShift) => {
+    const id = key(record.scope, item.id),
+      existing = (await store.get(id))?.workShift
+    await store.put(
+      plain({
+        key: id,
+        scope: record.scope,
+        workShift: {
+          ...existing,
+          ...item,
+          // The receipt freezes the warning; a later list never carries it.
+          warnings: item.warnings ?? existing?.warnings,
+          member: item.member ?? existing?.member,
+          reversal: item.reversal ?? existing?.reversal ?? null,
+        },
+      }),
+    )
+  }
+  if (record.kind === 'create') await put(receipt as WorkShift)
+  else {
+    // Original and replacement are stored in the same transaction as the removal of the pending record.
+    const { original, replacement, ...metadata } =
+      receipt as WorkShiftReversalReceipt
+    await put({ ...original, reversal: metadata })
+    if (replacement) await put(replacement)
+  }
   await tx.objectStore('pending-work-shifts').delete(record.key)
   await tx.done
 }

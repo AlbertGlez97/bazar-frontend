@@ -4,6 +4,7 @@ import {
   classifyFinanceFailure,
   isInstant,
   isUuid,
+  sameInstant,
 } from './finance-shared'
 import {
   confirmWorkShift,
@@ -21,6 +22,7 @@ import type {
   WorkShiftPage,
   WorkShiftPayload,
   WorkShiftReceipt,
+  WorkShiftReversalReceipt,
   WorkShiftSummary,
 } from '@/types/work-shift.types'
 
@@ -158,9 +160,78 @@ function sameShift(
   )
 }
 
+/** Strict shape of the reversal receipt (the list marker is validated by `isWorkShift`). */
+export function isWorkShiftReversalReceipt(
+  v: unknown,
+): v is WorkShiftReversalReceipt {
+  const r = asObject(v)
+  return (
+    !!r &&
+    isUuid(r.id) &&
+    isUuid(r.workShiftId) &&
+    (r.replacementWorkShiftId === null || isUuid(r.replacementWorkShiftId)) &&
+    isUuid(r.createdByMemberId) &&
+    isUuid(r.deviceId) &&
+    typeof r.reason === 'string' &&
+    !!r.reason.trim() &&
+    isInstant(r.occurredAt) &&
+    isInstant(r.receivedAt) &&
+    typeof r.createdByAccountId === 'string' &&
+    !!r.createdByAccountId &&
+    typeof r.contextId === 'string' &&
+    !!r.contextId
+  )
+}
+
+/** The confirmed original must still be the shift this device saw. */
+function sameOriginal(a: WorkShift, b: WorkShift): boolean {
+  return (
+    a.memberId === b.memberId &&
+    a.workDate === b.workDate &&
+    a.minutes === b.minutes &&
+    a.note === b.note &&
+    a.deviceId === b.deviceId &&
+    a.createdByMemberId === b.createdByMemberId
+  )
+}
+
+function validReceipt(
+  v: unknown,
+  record: PendingWorkShift,
+  original?: WorkShift,
+): v is WorkShift | WorkShiftReversalReceipt {
+  if (record.kind === 'create')
+    return sameShift(v, record.payload, record.origin)
+  if (
+    !isWorkShiftReversalReceipt(v) ||
+    v.id !== record.id ||
+    v.workShiftId !== record.workShiftId ||
+    v.reason !== record.payload.reason ||
+    v.createdByMemberId !== record.origin.memberId ||
+    v.deviceId !== record.origin.deviceId ||
+    !sameInstant(v.occurredAt, record.payload.occurredAt) ||
+    v.createdByAccountId !== record.origin.accountId ||
+    (record.origin.contextId && v.contextId !== record.origin.contextId)
+  )
+    return false
+  if (
+    !isWorkShift(v.original) ||
+    v.original.id !== record.workShiftId ||
+    v.original.contextId !== v.contextId ||
+    (original && !sameOriginal(v.original, original))
+  )
+    return false
+  const replacement = record.payload.replacement
+  return replacement
+    ? v.replacementWorkShiftId === replacement.id &&
+        sameShift(v.replacement, replacement, record.origin) &&
+        v.replacement.contextId === v.contextId
+    : v.replacementWorkShiftId === null && v.replacement === null
+}
+
 const running = new Set<string>()
 
-/** Sends pending work shifts, each under its own UUID. */
+/** Sends pending work shifts: creates before reversals, each under its own UUID. */
 export async function syncWorkShifts(
   origin: FinanceOrigin,
   send: (record: PendingWorkShift) => Promise<unknown>,
@@ -172,7 +243,13 @@ export async function syncWorkShifts(
   const run = async () => {
     let synced = 0
     const snapshot = await workShiftSnapshot(origin)
-    for (const record of snapshot.pending) {
+    const ordered = [...snapshot.pending].sort(
+      (a, b) =>
+        (a.kind === 'create' ? 0 : 1) - (b.kind === 'create' ? 0 : 1) ||
+        a.createdAt.localeCompare(b.createdAt) ||
+        a.id.localeCompare(b.id),
+    )
+    for (const record of ordered) {
       if (
         record.state !== 'pending' ||
         record.nextAttemptAt > (options.now?.() ?? Date.now())
@@ -189,9 +266,27 @@ export async function syncWorkShifts(
         continue
       if (options.online && !options.online()) break
       if (options.canSend && !options.canSend(record.origin)) break
+      let original: WorkShift | undefined
+      if (record.kind === 'reverse') {
+        // A reversal is never sent before its original is confirmed on the server.
+        const current = await workShiftSnapshot(origin)
+        original = current.history.find((r) => r.id === record.workShiftId)
+        if (!original) {
+          const dependency = current.pending.find(
+            (r) => r.kind === 'create' && r.id === record.workShiftId,
+          )
+          if (!dependency || dependency.state !== 'pending')
+            await updateWorkShiftAttempt(
+              record,
+              'needs_review',
+              'La jornada original requiere revisión antes de corregirse.',
+            )
+          continue
+        }
+      }
       try {
         const receipt = await send(record)
-        if (!sameShift(receipt, record.payload, record.origin))
+        if (!validReceipt(receipt, record, original))
           throw new Error('Uncertain financial acknowledgement')
         await confirmWorkShift(record, receipt)
         synced++

@@ -20,6 +20,7 @@ import type {
   WorkShiftFields,
   WorkShiftFilter,
   WorkShiftPayload,
+  WorkShiftReversalPayload,
   WorkShiftSummary,
 } from '@/types/work-shift.types'
 import type {
@@ -186,6 +187,30 @@ export const useWorkShiftsStore = defineStore('work-shifts', () => {
     await enqueue({ kind: 'create', payload })
     return payload.id
   }
+  /**
+   * Annuls a shift, or corrects it when `replacement` is given. Persists the
+   * reversal (and its replacement, under its own UUID) before resolving; the
+   * server is only contacted by the sync once the original is confirmed.
+   */
+  async function reverse(
+    workShiftId: string,
+    reason: string,
+    replacement?: WorkShiftFields,
+  ) {
+    const o = origin()
+    if (!o) throw new Error('Solo socios pueden administrar jornadas.')
+    const text = reason.trim()
+    if (!text || text.length > 1000) throw new Error('Indica un motivo válido.')
+    const payload: WorkShiftReversalPayload = {
+      id: v7(),
+      createdByMemberId: o.memberId,
+      deviceId: o.deviceId,
+      occurredAt: new Date().toISOString(),
+      reason: text,
+      ...(replacement ? { replacement: payloadFrom(o, replacement) } : {}),
+    }
+    await enqueue({ kind: 'reverse', workShiftId, payload })
+  }
   async function sync() {
     const o = origin()
     if (!o || syncing.value || !navigator.onLine) return
@@ -288,6 +313,7 @@ export const useWorkShiftsStore = defineStore('work-shifts', () => {
     refresh,
     refreshSummary,
     create,
+    reverse,
     retry,
     sync,
     start,
