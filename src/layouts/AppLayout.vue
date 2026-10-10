@@ -146,17 +146,23 @@
             @dismiss="dismissReview"
           />
         </div>
-        <RouterLink
-          :to="helpTarget"
+        <!-- En la propia ayuda el cajón no tiene sentido: el botón no se muestra. -->
+        <button
+          v-if="!isHelpRoute"
+          ref="helpButton"
+          type="button"
           class="app-header__help"
           aria-label="Ayuda"
+          aria-haspopup="dialog"
+          :aria-expanded="helpDrawerOpen ? 'true' : 'false'"
+          @click="openHelpDrawer()"
         >
           <CircleHelp
             :size="20"
             aria-hidden="true"
           />
           <span>Ayuda</span>
-        </RouterLink>
+        </button>
         <span class="app-header__date">{{ formattedDate }}</span>
       </header>
 
@@ -165,6 +171,9 @@
         <RouterView />
       </div>
     </main>
+
+    <!-- Ayuda rápida: una sola instancia para todas las pantallas de /app -->
+    <HelpDrawer :return-focus="helpButton" />
   </div>
 </template>
 
@@ -184,6 +193,8 @@ import { APP_NAME } from '@/config/app'
 import { landingFor } from '@/router/landing'
 import { getNavItems } from './nav-items'
 import { CircleHelp } from '@lucide/vue'
+import HelpDrawer from '@/components/help/HelpDrawer.vue'
+import { useHelp } from '@/composables/useHelp'
 
 const authStore = useAuthStore()
 // El modo se inicializa al crearse el store (antes de que la vista hija
@@ -196,9 +207,10 @@ const expenses = useExpensesStore()
 const workShifts = useWorkShiftsStore()
 const router    = useRouter()
 const route     = useRoute()
-const helpTarget = computed(() => route.name === 'Help'
-  ? { path: '/app/ayuda', query: route.query }
-  : { path: '/app/ayuda', query: { from: route.fullPath } })
+// Ayuda contextual: useHelp() liga la ruta actual al cajón (se llama una sola vez, aquí).
+const { openHelpDrawer, helpDrawerOpen } = useHelp()
+const helpButton = ref<HTMLButtonElement | null>(null)
+const isHelpRoute = computed(() => route.name === 'Help')
 
 // Colapso del sidebar. En un celular (menos de 768 px) arranca colapsado: la
 // barra de 240 px se comería el contenido; se puede expandir cuando se necesite
@@ -303,7 +315,8 @@ function handleLogout() {
 </script>
 
 <style scoped>
-.app-header__help { display: inline-flex; align-items: center; justify-content: center; gap: var(--spacing-xs); min-height: 44px; padding: 0 var(--spacing-sm); color: var(--color-primary); flex-shrink: 0; border-radius: var(--radius-sm); }
+.app-header__help { display: inline-flex; align-items: center; justify-content: center; gap: var(--spacing-xs); min-height: 44px; padding: 0 var(--spacing-sm); color: var(--color-primary); flex-shrink: 0; border-radius: var(--radius-sm); font: inherit; transition: background var(--motion-fast) var(--motion-ease); }
+.app-header__help:hover, .app-header__help[aria-expanded='true'] { background: color-mix(in srgb, var(--color-primary) 10%, transparent); }
 .app-header__help:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 /* ── Grid principal ──────────────────────────────────────────── */
 .app-layout {
