@@ -264,6 +264,35 @@ describe('quick help drawer: interaction', () => {
     wrapper.unmount()
   })
 
+  it('lands focus on the Center heading after "Ver toda la ayuda", not on the body', async () => {
+    const { wrapper } = await mountAt('/app/finanzas/jornadas', { realHelp: true })
+    await helpButton(wrapper).trigger('click')
+    await flushPromises()
+    const cta = document.body.querySelector<HTMLAnchorElement>('[data-action="open-center"]')!
+    cta.focus() // a real click focuses the link first
+    cta.click()
+    await flushPromises()
+    const heading = document.querySelector<HTMLElement>('[data-help-heading]')
+    expect(heading?.textContent).toContain('Jornadas')
+    expect(document.activeElement).toBe(heading)
+    wrapper.unmount()
+  })
+
+  it('lands focus on the Center heading after a related-topic link', async () => {
+    const { wrapper, router } = await mountAt('/app/finanzas/acuerdos/abc-123', { realHelp: true })
+    await helpButton(wrapper).trigger('click')
+    await flushPromises()
+    const link = document.body.querySelector<HTMLAnchorElement>('.help-drawer__related-link')!
+    link.focus()
+    link.click()
+    await flushPromises()
+    expect(router.currentRoute.value.query.topic).toBe('finanzas.pagos')
+    const heading = document.querySelector<HTMLElement>('[data-help-heading]')
+    expect(heading?.textContent).toContain('Pagos')
+    expect(document.activeElement).toBe(heading)
+    wrapper.unmount()
+  })
+
   it('does not offer the drawer on the Help page itself', async () => {
     const { wrapper } = await mountAt('/app/ayuda')
     expect(wrapper.find('.app-header__help').exists()).toBe(false)

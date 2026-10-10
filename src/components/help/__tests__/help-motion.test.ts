@@ -49,19 +49,99 @@ describe('help motion tokens', () => {
   })
 })
 
-describe.each(MOTION_FILES)('%s', (file) => {
+/** The `<style>` block of an SFC, without comments. Fails loudly when there is none. */
+function styleOf(file: string): string {
   const source = read(file)
-  const style = source.slice(source.indexOf('<style'))
+  const match = /<style[^>]*>([sS]*?)</style>/.exec(source)
+  if (!match) throw new Error(`${file} has no <style> block`)
+  return match[1]!.replace(//*[sS]*?*//g, '')
+}
+
+/** Split on commas that are not inside parentheses (`a 1s, b var(--x, 2s)`). */
+function splitTopLevel(value: string): string[] {
+  const parts: string[] = []
+  let depth = 0
+  let current = ''
+  for (const char of value) {
+    if (char === '(') depth += 1
+    if (char === ')') depth -= 1
+    if (char === ',' && depth === 0) { parts.push(current); current = '' } else current += char
+  }
+  parts.push(current)
+  return parts.map((part) => part.trim()).filter(Boolean)
+}
+
+const LITERAL_TIME = /^-?(d*.)?d+m?s$/
+
+/**
+ * Literal durations/delays in transition and animation declarations, parsed per declaration
+ * (so multi-line values are covered). Allowed, and only these:
+ *  - a zero literal (`0s`/`0ms`) on a `visibility` transition item: visibility is a discrete
+ *    property, its `0s` duration plus a tokenized delay is what keeps closed panels hidden after they collapse;
+ *  - `transition-delay: 0s` (resetting the delay in the open state).
+ * Everything else must come from `var(--motion-*)`.
+ */
+function literalDurations(style: string): string[] {
+  const found: string[] = []
+  const declaration = /(?:^|[;{s])((?:transition|animation)(?:-[a-z]+)*)s*:s*([^;}]+)/g
+  for (const match of style.matchAll(declaration)) {
+    const property = match[1]!
+    const value = match[2]!
+    if (property === 'transition-property' || property === 'animation-name') continue
+    for (const item of splitTopLevel(value)) {
+      // Drop var(...) calls: they are the tokenized, allowed form.
+      const tokens = item.replace(/var([^)]*)/g, ' ').split(/s+/).filter(Boolean)
+      const times = tokens.filter((token) => LITERAL_TIME.test(token))
+      if (times.length === 0) continue
+      const zero = times.every((token) => /^0m?s$/.test(token))
+      const visibilityItem = property === 'transition' && tokens[0] === 'visibility'
+      const delayReset = property === 'transition-delay'
+      if (!(zero && (visibilityItem || delayReset))) found.push(`${property}: ${item}`)
+    }
+  }
+  return found
+}
+
+describe('literalDurations (the guard itself)', () => {
+  it('flags literal durations on one line, across lines and inside lists', () => {
+    expect(literalDurations('a { transition: opacity 200ms ease; }')).toHaveLength(1)
+    expect(literalDurations('a {
+  transition:
+    opacity var(--motion-base) ease,
+    transform .3s ease;
+}')).toHaveLength(1)
+    expect(literalDurations('a { animation: spin 1s linear infinite; }')).toHaveLength(1)
+    expect(literalDurations('a { transition: opacity 0s; }')).toHaveLength(1)
+    expect(literalDurations('a { transition: visibility 5s linear var(--motion-base); }')).toHaveLength(1)
+    expect(literalDurations('a { transition-duration: 150ms; }')).toHaveLength(1)
+  })
+
+  it('accepts tokens, the visibility zero-duration switch and a delay reset', () => {
+    expect(literalDurations('a { transition: opacity var(--motion-base) var(--motion-ease); }')).toEqual([])
+    expect(literalDurations('a {
+ transition:
+  grid-template-rows var(--motion-base) var(--motion-ease),
+  visibility 0s linear var(--motion-base);
+}')).toEqual([])
+    expect(literalDurations('a { transition-delay: 0s; }')).toEqual([])
+    expect(literalDurations('a { transition: none; }')).toEqual([])
+  })
+})
+
+describe.each(MOTION_FILES)('%s', (file) => {
+  const style = styleOf(file)
+
+  it('has a style block with real rules', () => {
+    expect(style.trim().length).toBeGreaterThan(0)
+  })
 
   it('uses motion tokens, never literal durations', () => {
-    const transitions = style.split('\n').filter((line) => /transition|animation/.test(line) && /\d(ms|s)\b/.test(line))
-    // Allowed literal: the `0s` delay of the visibility switch in the accordion.
-    expect(transitions.filter((line) => !/\b0s\b/.test(line))).toEqual([])
+    expect(literalDurations(style)).toEqual([])
   })
 
   it('animates only transform, opacity, grid rows and colors, never height', () => {
-    expect(style).not.toMatch(/transition[^;]*\b(max-)?height\b/)
-    expect(style).not.toMatch(/animation:\s*[^;]*height/)
+    expect(style).not.toMatch(/transition[^;]*(max-)?height/)
+    expect(style).not.toMatch(/animation:s*[^;]*height/)
   })
 })
 

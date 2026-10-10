@@ -23,11 +23,19 @@ describe('agreement help discovery', () => {
     wrapper.unmount()
   })
 
-  it('finds the correction article specifically', async () => {
-    const { wrapper } = await openHelp()
+  it('finds the correction article specifically and opens it expanded', async () => {
+    const { wrapper, router } = await openHelp()
     await wrapper.get('input[type="search"]').setValue('sustituto')
     await flushPromises()
-    expect(wrapper.text()).toContain('Finanzas › Acuerdos')
+    const hits = wrapper.findAll('.help-results__link')
+    const correction = hits.find((link) => link.attributes('href')?.includes('article=acuerdos-corregir'))
+    expect(correction, 'a result opens acuerdos-corregir').toBeDefined()
+    expect(correction!.text()).toContain('Finanzas › Acuerdos')
+    await correction!.trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.query).toMatchObject({ topic: 'finanzas.acuerdos', article: 'acuerdos-corregir' })
+    expect(wrapper.find('article#acuerdos-corregir').exists()).toBe(true)
+    expect(wrapper.get('[data-item-id="acuerdos-corregir"]').attributes('aria-expanded')).toBe('true')
     wrapper.unmount()
   })
 })

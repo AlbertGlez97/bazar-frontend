@@ -43,6 +43,10 @@ An unknown route falls back to Primeros pasos, so the drawer is never empty.
 - `q` is the search text (trimmed, at most 100 characters). While it is set, the results replace the panel. Opening a result drops `q`.
 - `parseHelpQuery` and `helpLocation` (both in `src/composables/useHelp.ts`) read and build these locations. Selection uses `router.push`; typing in the search uses `router.replace`. Refresh, deep links and back/forward therefore work without a store.
 
+### Legacy hash links
+
+The first help page used `/app/ayuda#<articleId>`. Those links keep working: when the Help route has a hash and no `topic` query, `HelpCenter` resolves the hash (article id, topic id or category id, via `resolveHelpTarget`) and `router.replace`s to `?topic=<topic>&article=<id>`, keeping a safe `from`. The new location has no hash, so there is no redirect loop. An existing `topic` wins over the hash, and an unknown or malformed hash degrades to the home view without redirecting.
+
 ## Help Center
 
 `src/views/help/HelpView.vue` is a thin route component (title plus the "Volver" button, `data-action="return"`). The Center is `src/components/help/HelpCenter.vue`:

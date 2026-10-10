@@ -16,6 +16,7 @@
         :id="titleId"
         class="help-article__title"
         tabindex="-1"
+        data-help-heading
         :data-item-id="article.id"
       >
         {{ article.title }}

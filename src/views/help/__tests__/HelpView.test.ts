@@ -80,10 +80,21 @@ describe('help presentation under the global reset', () => {
     const headingFiles = ['HelpTopicPanel', 'HelpCategoryOverview', 'HelpHome', 'HelpSearchResults', 'HelpArticleContent']
     for (const file of headingFiles) {
       const source = readFileSync(`src/components/help/${file}.vue`, 'utf8')
-      expect(source, file).toMatch(/__title:focus,\s*\.[\w-]+__title:focus-visible\s*\{\s*outline:\s*none/)
+      const style = source.slice(source.indexOf('<style'))
+      // Every element carrying data-help-heading, whatever the attribute order or line breaks.
+      const tags = [...source.matchAll(/data-help-heading/g)].map((match) => {
+        const start = source.lastIndexOf('<', match.index)
+        return source.slice(start, source.indexOf('>', match.index) + 1)
+      })
+      expect(tags.length, file).toBeGreaterThan(0)
+      for (const tag of tags) {
+        expect(tag, `${file} heading is a programmatic focus target`).toMatch(/\btabindex="-1"/)
+        const className = /\bclass="([\w-]+)"/.exec(tag)?.[1]
+        expect(className, `${file} heading has a class to hang the rule on`).toBeTruthy()
+        const rule = new RegExp(`\\.${className}:focus,\\s*\\.${className}:focus-visible\\s*\\{[^}]*outline:\\s*none`)
+        expect(style, `${file} .${className}`).toMatch(rule)
+      }
     }
-    // Headings that receive focus from code are non-interactive and tabindex="-1".
-    expect(readFileSync('src/components/help/HelpTopicPanel.vue', 'utf8')).toMatch(/tabindex="-1"\s+data-help-heading/)
 
     const interactive = [
       'src/components/help/HelpCenter.vue', 'src/components/help/HelpSidebar.vue', 'src/components/help/HelpLinkList.vue',
