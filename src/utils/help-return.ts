@@ -21,7 +21,6 @@ export function isHelpFromShape(value: unknown): value is string {
     && value.length <= MAX_FROM_LENGTH
     && /^\/app(?:[/?#]|$)/.test(value)
     && !value.startsWith('//')
-    // eslint-disable-next-line no-control-regex
     && !/[\\\u0000-\u001f\u007f]/.test(value)
 }
 

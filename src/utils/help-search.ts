@@ -81,8 +81,8 @@ export function searchHelpIndex(query: string, limit: number = DEFAULT_LIMIT): r
   const tokens = [...new Set(normalize(query).split(/\s+/).filter(Boolean))]
   if (tokens.length === 0 || limit <= 0) return []
   index ??= buildIndex()
-  const ranked: (HelpSearchResult & { order: number })[] = []
-  index.forEach((entry, order) => {
+  const ranked: HelpSearchResult[] = []
+  index.forEach((entry) => {
     let score = 0
     const matched = new Set<HelpMatchField>()
     for (const token of tokens) {
@@ -100,13 +100,11 @@ export function searchHelpIndex(query: string, limit: number = DEFAULT_LIMIT): r
       breadcrumb: breadcrumbOf(target),
       score,
       matchedIn: FIELD_ORDER.filter((field) => matched.has(field)),
-      order,
     })
   })
   return ranked
-    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .sort((a, b) => b.score - a.score) // Array.sort is stable: ties keep catalogue order
     .slice(0, limit)
-    .map(({ order: _order, ...result }) => result)
 }
 
 const POPULAR_TOPIC_IDS = ['ventas.primera-venta', 'ventas.efectivo', 'productos.catalogo', 'deudas', 'finanzas.resumen']
