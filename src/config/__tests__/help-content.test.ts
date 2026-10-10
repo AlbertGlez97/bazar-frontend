@@ -201,6 +201,50 @@ describe('audited help content', () => {
   })
 })
 
+describe('distribution payments help', () => {
+  const guide = () => HELP_ARTICLES.find((a) => a.id === 'pagos-acuerdo')!
+  const faq = () => HELP_ARTICLES.find((a) => a.id === 'pagos-preguntas')!
+  const answers = () => Object.fromEntries((faq().questions ?? []).map((q) => [q.question, q.answer]))
+  it('lives in Finanzas for socios and keeps its evidence files', () => {
+    for (const article of [guide(), faq()]) {
+      expect(article.category).toBe('Finanzas')
+      expect(article.audience).toBe('socio')
+      for (const path of HELP_EVIDENCE[article.id] ?? []) expect(existsSync(path)).toBe(true)
+    }
+  })
+  it('walks through registering a payment with the real labels and says it only records', () => {
+    const steps = guide().steps.join(' ')
+    for (const label of ['Pagos', 'Registrar pago', 'Usar pendiente completo', 'Fecha y hora del pago', 'Nota', 'Reintentar el mismo pago', 'Sin pagar', 'Pago parcial', 'Pagado', 'Sin monto acordado', 'Historial de pagos'])
+      expect(steps).toContain(label)
+    expect(guide().intro).toContain('La app no mueve dinero')
+    expect(guide().intro).toContain('fuera de la app')
+    expect(guide().tips.join(' ')).toContain('Anular pago')
+    expect(guide().tips.join(' ')).toContain('no cambian el Resumen')
+  })
+  it('answers every requested question in plain Spanish', () => {
+    expect(Object.keys(answers())).toEqual(expect.arrayContaining([
+      '¿Qué significa registrar un pago?', '¿Registrar un pago mueve dinero?', '¿Cuál es la diferencia entre un acuerdo y un pago?',
+      '¿Qué es un pago parcial?', '¿Por qué no puedo pagar más de lo acordado?', '¿Qué hago si registré un pago mal?',
+      '¿Por qué no puedo registrar pagos sin conexión?', '¿Qué pasa con los pagos si el acuerdo se anula?',
+    ]))
+    expect(answers()['¿Registrar un pago mueve dinero?']).toMatch(/^No\. La Marchanta no mueve dinero/)
+    expect(answers()['¿Cuál es la diferencia entre un acuerdo y un pago?']).toContain('Lo acordado nunca cuenta como pagado')
+    expect(answers()['¿Por qué no puedo pagar más de lo acordado?']).toContain('cuánto queda pendiente')
+    expect(answers()['¿Qué hago si registré un pago mal?']).toContain('Anular pago')
+    expect(answers()['¿Qué hago si registré un pago mal?']).toContain('registra el pago correcto')
+    expect(answers()['¿Por qué no puedo registrar pagos sin conexión?']).toContain('Necesitas conexión para registrar un pago')
+    expect(answers()['¿Qué pasa con los pagos si el acuerdo se anula?']).toContain('se conservan como historial')
+  })
+  it('never invites the reader to pay through the app and no longer says payments do not exist', () => {
+    const text = JSON.stringify([guide(), faq()])
+    expect(text).not.toMatch(/Pagar\b|transferir desde la app|paga desde la app/)
+    const agreementText = ['acuerdos-que-son', 'acuerdos-no-pago'].map((id) => JSON.stringify(HELP_ARTICLES.find((a) => a.id === id))).join(' ')
+    expect(agreementText).not.toContain('no administra pagos')
+    expect(agreementText).toContain('sección Pagos')
+    expect(HELP_ARTICLES.find((a) => a.id === 'acuerdos-anular')!.tips.join(' ')).toContain('se conservan como historial')
+  })
+})
+
 describe('agreement help', () => {
   it('covers all eight requested topics without promising payments or legal validity', () => {
     const ids = ['acuerdos-que-son','acuerdos-simulacion','acuerdos-inmutables','acuerdos-corregir','acuerdos-anular','acuerdos-no-pago','acuerdos-pdf','acuerdos-efecto-legal']

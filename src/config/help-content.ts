@@ -460,7 +460,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       "pdf",
       "anular"
     ],
-    "intro": "Un acuerdo conserva una simulación aceptada por las personas participantes. No registra pagos ni movimientos de dinero.",
+    "intro": "Un acuerdo conserva una simulación aceptada por las personas participantes. El acuerdo en sí no mueve dinero; los pagos reales se anotan aparte, en la sección Pagos de su detalle.",
     "steps": [
       "En Gestión abre Finanzas y la pestaña Acuerdos; solo las personas socias activas pueden administrarlos.",
       "Consulta el folio, título, período, regla, personas participantes y montos guardados.",
@@ -546,7 +546,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       "Escribe un motivo de 1 a 1000 caracteres y pulsa Confirmar anulación. Cancelar no anula.",
       "Si la respuesta no se confirmó, reintenta la misma anulación; no cambies de motivo o acuerdo. El detalle confirmado muestra Anulado y conserva el documento."
     ],
-    "tips": []
+    "tips": ["Si el acuerdo ya tiene pagos registrados, la confirmación te lo avisa: anular el acuerdo no borra ni revierte esos pagos, se conservan como historial."]
   },
   {
     "id": "acuerdos-no-pago",
@@ -560,10 +560,10 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       "pdf",
       "anular"
     ],
-    "intro": "Crear o anular un acuerdo no entrega dinero ni registra retiros, transferencias, deudas u obligaciones.",
+    "intro": "Crear o anular un acuerdo no entrega dinero ni registra retiros, transferencias, deudas u obligaciones. Un pago es otra cosa: se anota después, cuando de verdad ocurrió.",
     "steps": [
       "Lee los montos como un resultado acordado del cálculo, no como dinero recibido.",
-      "No busques un estado Pagado: esta función no administra pagos ni liquidaciones.",
+      "El acuerdo nunca dice Pagado por sí solo. Lo pagado sale únicamente de los pagos que registras en la sección Pagos del detalle; la app no mueve dinero.",
       "Aportaciones, gastos, jornadas, reservas y ventas no cambian al crear o anular un acuerdo."
     ],
     "tips": []
@@ -608,6 +608,43 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     ],
     "tips": []
   },
+  {
+    id: 'pagos-acuerdo', title: 'Registrar un pago de un acuerdo', category: 'Finanzas', audience: 'socio',
+    keywords: ['pago', 'pagos', 'registrar pago', 'acuerdo', 'pendiente', 'pagado', 'parcial', 'acordado', 'anular pago'],
+    intro: 'Registrar un pago anota que ya le entregaste dinero a una persona de un acuerdo, fuera de la app. La app no mueve dinero: solo guarda lo acordado, lo pagado y lo pendiente. Necesita conexión.',
+    steps: [
+      'En Gestión abre Finanzas, la pestaña Acuerdos y entra al detalle del acuerdo. Baja hasta la sección Pagos.',
+      'Cada persona muestra Acordado, Pagado y Pendiente, y una marca: Sin pagar, Pago parcial, Pagado o Sin monto acordado. Esa marca es distinta de Activo o Anulado, que habla del acuerdo.',
+      'Pulsa Registrar pago en la persona que recibió el dinero. Escribe el monto en pesos, o pulsa Usar pendiente completo para llenar solo el monto; ese botón no guarda nada.',
+      'Revisa la Fecha y hora del pago (la fecha en que de verdad se pagó, no una futura), agrega una Nota si quieres y pulsa Registrar pago.',
+      'Los totales se actualizan con lo que confirma el servidor. En Historial de pagos verás el monto, la fecha, la nota y quién lo registró.',
+      'Si se cortó la conexión y no sabes si se guardó, pulsa Reintentar el mismo pago: se envía exactamente el mismo registro y no se duplica.',
+    ],
+    tips: [
+      'Un pago registrado no se edita ni se borra. Si te equivocaste, usa Anular pago con un motivo y registra el pago correcto.',
+      'Cuando un acuerdo está Anulado ya no se pueden registrar pagos nuevos, pero los anteriores se conservan como historial.',
+      'Los pagos no cambian el Resumen, las aportaciones, los gastos, las jornadas, las reservas ni el PDF del acuerdo.',
+    ],
+  },
+  {
+    id: 'pagos-preguntas', title: 'Preguntas sobre los pagos de un acuerdo', category: 'Finanzas', audience: 'socio',
+    keywords: ['pago', 'pagos', 'acuerdo', 'parcial', 'pendiente', 'sin conexión', 'anular', 'corregir', 'más de lo acordado'],
+    intro: 'Respuestas cortas sobre qué significa registrar un pago y qué no hace.',
+    steps: [],
+    questions: [
+      { question: '¿Qué significa registrar un pago?', answer: 'Significa anotar que ya le entregaste dinero a una persona del acuerdo, por ejemplo en efectivo o por transferencia, fuera de la app. Queda guardado con su monto, fecha, nota y quién lo registró.' },
+      { question: '¿Registrar un pago mueve dinero?', answer: 'No. La Marchanta no mueve dinero: solo anota lo acordado, lo que realmente se pagó y lo que falta. El pago ocurre fuera de la app y aquí solo se deja constancia.' },
+      { question: '¿Cuál es la diferencia entre un acuerdo y un pago?', answer: 'El acuerdo es lo que las personas aceptaron que le tocaba a cada una. El pago es dinero que de verdad se entregó. Lo acordado nunca cuenta como pagado hasta que registras el pago.' },
+      { question: '¿Qué es un pago parcial?', answer: 'Es un pago menor a lo acordado. La persona queda en Pago parcial y el Pendiente baja por ese monto. Puedes registrar más pagos hasta completar lo acordado y entonces aparece Pagado.' },
+      { question: '¿Por qué no puedo pagar más de lo acordado?', answer: 'Porque el pago no puede superar lo que falta por pagar. Si intentas un monto mayor, la app te muestra cuánto se acordó, cuánto ya se pagó y cuánto queda pendiente.' },
+      { question: '¿Qué significa Sin monto acordado?', answer: 'Que esa persona aparece en el acuerdo con $0.00, así que no hay nada que pagarle y no se puede registrar un pago.' },
+      { question: '¿Qué hago si registré un pago mal?', answer: 'Un pago no se edita. Pulsa Anular pago, escribe el motivo y confirma; el pago queda en el historial con la marca ANULADO y el Pendiente vuelve a subir. Después registra el pago correcto.' },
+      { question: '¿Por qué no puedo registrar pagos sin conexión?', answer: 'Porque un pago es un registro de dinero real y debe confirmarlo el servidor para no duplicarse ni pasarse del pendiente. Sin conexión verás el aviso Necesitas conexión para registrar un pago y no se guarda ni se envía nada.' },
+      { question: '¿Qué pasa con los pagos si el acuerdo se anula?', answer: 'Los pagos ya registrados se conservan como historial; no se borran ni se revierten solos. En un acuerdo Anulado ya no se pueden registrar pagos nuevos.' },
+      { question: '¿Quién puede registrar o anular pagos?', answer: 'Solo las personas socias activas, con conexión y desde un dispositivo autorizado.' },
+    ],
+    tips: ['Registra el pago cuando de verdad ocurra y con la fecha real; la fecha no puede ser futura.'],
+  },
 ]
 
 /** Audit evidence is never rendered or indexed as reader-facing help text. */
@@ -619,6 +656,8 @@ export const HELP_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
   'acuerdos-anular': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
   'acuerdos-no-pago': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
   'acuerdos-pdf': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
+  'pagos-acuerdo': ['doc/finance-distribution-agreements.md', 'src/views/finance/components/AgreementPayments.vue', 'src/views/finance/components/AgreementPaymentForm.vue'],
+  'pagos-preguntas': ['doc/finance-distribution-agreements.md', 'src/views/finance/components/AgreementPayments.vue', 'src/views/finance/components/AgreementPaymentReverseForm.vue'],
   'acuerdos-efecto-legal': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
   'crear-producto': ['src/components/ui/organisms/ProductForm.vue', 'src/views/products/ProductCatalogView.vue'],
   'editar-producto': ['src/components/ui/organisms/ProductForm.vue', 'src/views/products/ProductCatalogView.vue'],
