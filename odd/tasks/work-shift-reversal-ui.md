@@ -20,7 +20,7 @@ Let a socio void ("Anular") or correct ("Corregir") a work shift from Jornadas, 
 - [x] WR3 View: Anular / Corregir actions, dialogs, states, permissions, summary refresh (jsdom-tested; real browser pending in WR6)
 - [x] WR4 Help articles + docs
 - [x] WR5 Automated tests (void, correct, offline, permissions, regression)
-- [ ] WR6 Real browser validation (cases A, B, C), responsive and accessibility
+- [x] WR6 Real browser validation (cases A, B, C), responsive and accessibility
 - [ ] WR7 Integration to main and push
 
 ## Route
@@ -39,3 +39,6 @@ Delegated direct: one writer (2+ non-trivial files). Parent runs the verificatio
 - New tests: `work-shift-reversal.test.ts` (queue, dependency, order, replay, scope, uncertain receipts, 403/404/409), `WorkShiftsView.reversal.test.ts` (visibility, permissions, void, correct, states, summary, focus/Escape), store tests in `work-shifts.store.test.ts`, help expectations.
 - Verification (this writer, foreground): `npx vitest run` 226 files / 4104 tests passed; `npm run lint` clean; `npx vue-tsc -b` clean; `npm run build` built.
 - Not done by this writer: real browser validation (WR6) and integration/push (WR7).
+
+- Real browser validation (parent, Chrome, isolated local stack bazar-dev-local, socio session started by the user): A) created 8 h, empty reason blocked (native required), Escape closed the dialog and returned focus to Anular, void with reason showed Anulada + reason, summary 0, original kept, no buttons on the reversed row. B) created 8 h, corrected to 6 h: original Corregida with reason, replacement active, summary 1 jornada / 6 h. Database confirmed: void without replacement; original reversed with replacement; replacement 360 min active. Responsive: no horizontal overflow and dialog inside viewport at 320/390/768 (same-origin iframes, Escape closes); 320 px dialog scrolls internally with actions visible. C) API container stopped (real network failure; navigator.onLine stayed true, DevTools Offline mode was not toggled): offline void of a synced shift, offline create + correction of a still pending shift; queue survived a reload; after restart the void synced, the create waited for its retry backoff, then create and reversal+replacement synced in order with no duplicates (5 shift rows, 0 pending, summary 1 / 3 h).
+- Observations: the success banner after an online void reads "guardada en este dispositivo ... se sincronizará" (same wording pattern as creation; not changed). A collaborator session was not exercised in the browser (covered by jsdom tests; backend enforces 403).
