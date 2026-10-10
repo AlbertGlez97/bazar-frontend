@@ -141,6 +141,14 @@
   /* Transiciones */
   --transition: 0.2s ease;
 
+  /* Movimiento de la ayuda (cajón, acordeón, cambio de tema). Se anulan con
+     `prefers-reduced-motion: reduce` (ver el final de este archivo). */
+  --motion-fast: 150ms;
+  --motion-base: 180ms;
+  --motion-slow: 220ms;
+  --motion-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --motion-shift: 8px;
+
   /* Layout: paneles de ancho/alto fijo, no relativos al viewport (un sidebar
      o un header no deben achicarse con el ancho de pantalla) — en rem para
      que escalen con la fuente del sistema, igual que el resto. */
@@ -397,4 +405,28 @@ ul, ol { list-style: none; }
     radial-gradient(circle at 48px 0, var(--color-surface) 15.5px, transparent 16px) 0 16px / 64px 16px repeat-x,
     linear-gradient(90deg, var(--color-accent) 50%, var(--color-surface) 50%) 0 0 / 64px 16px repeat-x;
   filter: drop-shadow(0 1px 0 var(--color-border-strong));
+}
+
+/* ── Movimiento reducido ─────────────────────────────────────────────
+   Quien pide menos movimiento no ve deslizamientos ni desvanecidos en la
+   ayuda: los tokens de duración pasan a ~0 y los componentes de la ayuda
+   (cajón, acordeón, cambio de tema, barra lateral) pierden transiciones,
+   animaciones y desplazamientos. El contenido sigue apareciendo y
+   desapareciendo, solo sin viaje. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0.01ms;
+    --motion-base: 0.01ms;
+    --motion-slow: 0.01ms;
+    --motion-shift: 0px;
+  }
+  .help-center, .help-center *, .help-center *::before, .help-center *::after,
+  .app-drawer-root, .app-drawer-root *, .app-drawer-root *::before, .app-drawer-root *::after,
+  .app-accordion, .app-accordion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -75,6 +75,7 @@ export { default as CategoryQuickFilter } from './ui/molecules/CategoryQuickFilt
 export { default as TabNav } from './ui/molecules/TabNav.vue'
 export { default as ReportRangePicker } from './ui/molecules/ReportRangePicker.vue'
 export { default as CuotasPlaneadasEditor } from './ui/molecules/CuotasPlaneadasEditor.vue'
+export { default as AppAccordion } from './ui/molecules/AppAccordion.vue'
 
 // ── ORGANISMOS — secciones complejas con lógica propia ───────────────
 export { default as BusinessRegistrationForm } from './ui/organisms/BusinessRegistrationForm.vue'
@@ -90,6 +91,7 @@ export { default as ProductForm         } from './ui/organisms/ProductForm.vue'
 export { default as AppModal        } from './ui/organisms/AppModal.vue'
 export { default as AppCard         } from './ui/organisms/AppCard.vue'
 export { default as AppKebabMenu    } from './ui/organisms/AppKebabMenu.vue'
+export { default as AppDrawer } from './ui/organisms/AppDrawer.vue'
 export { default as LandingHero     } from './ui/organisms/LandingHero.vue'
 export { default as FeaturesSection } from './ui/organisms/FeaturesSection.vue'
 export { default as AudienceSection } from './ui/organisms/AudienceSection.vue'
