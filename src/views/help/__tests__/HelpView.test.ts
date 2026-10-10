@@ -1,97 +1,80 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
-import { createPinia } from 'pinia'
-import { createMemoryHistory, createRouter } from 'vue-router'
-import HelpView from '../HelpView.vue'
-import { HELP_ARTICLES } from '@/config/help-content'
+import { flushPromises } from '@vue/test-utils'
+import { openHelp } from '@/components/help/__tests__/helpTestUtils'
 import { useUiModeStore } from '@/stores/uiMode.store'
 
 afterEach(() => { document.body.innerHTML = '' })
 
-async function openHelp(query: Record<string, string> = {}, hash = '') {
-  const pinia = createPinia()
-  useUiModeStore(pinia).setMode('venta')
-  const stub = { template: '<div />' }
-  const router = createRouter({ history: createMemoryHistory(), routes: [
-    { path: '/app/ayuda', name: 'Help', component: HelpView },
-    { path: '/app', name: 'AppHome', component: stub },
-    { path: '/app/venta', name: 'Sale', component: stub },
-    { path: '/app/productos', name: 'ProductCatalog', component: stub },
-    { path: '/app/reportes', name: 'Reports', component: stub, meta: { requiresSocio: true, requiresGestion: true } },
-  ] })
-  await router.push({ name: 'Help', query, hash })
-  await router.isReady()
-  const wrapper = mount(HelpView, { attachTo: document.body, global: { plugins: [pinia, router] } })
-  await flushPromises()
-  return { wrapper, router }
-}
-
-describe('HelpView', () => {
-  it('renders frequently asked questions as question/answer pairs', async () => {
-    const { wrapper } = await openHelp()
-    expect(wrapper.findAll('#preguntas dt').length).toBeGreaterThan(2)
-    expect(wrapper.findAll('#preguntas dd')).toHaveLength(wrapper.findAll('#preguntas dt').length)
-  })
-  it('renders readable semantic articles, role labels and a named index without internal evidence', async () => {
+describe('HelpView (route component)', () => {
+  it('renders the page title and delegates the content to the Help Center', async () => {
     const { wrapper } = await openHelp()
     expect(wrapper.get('h1').text()).toContain('Ayuda')
-    expect(wrapper.findAll('article')).toHaveLength(HELP_ARTICLES.length)
-    expect(wrapper.findAll('article h2')).toHaveLength(HELP_ARTICLES.length)
-    expect(wrapper.get('nav[aria-label="Índice de ayuda"]').attributes('aria-label')).toBe('Índice de ayuda')
+    expect(wrapper.find('.help-center').exists()).toBe(true)
+    expect(wrapper.find('nav[aria-label="Temas de ayuda"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('renders frequently asked questions as question/answer pairs', async () => {
+    const { wrapper } = await openHelp({ query: { topic: 'primeros-pasos.preguntas' } })
+    expect(wrapper.findAll('#preguntas dt').length).toBeGreaterThan(2)
+    expect(wrapper.findAll('#preguntas dd')).toHaveLength(wrapper.findAll('#preguntas dt').length)
+    wrapper.unmount()
+  })
+
+  it('renders readable semantic articles and role labels without internal evidence', async () => {
+    const { wrapper } = await openHelp({ query: { topic: 'finanzas.gastos' } })
+    expect(wrapper.findAll('article')).toHaveLength(2)
+    expect(wrapper.findAll('h3 > button[aria-expanded]')).toHaveLength(2)
     expect(wrapper.text()).toContain('Solo socios')
     expect(wrapper.text()).not.toContain('src/')
+    wrapper.unmount()
   })
-  it('searches accents and body tokens locally, announces count and offers clearing empty results', async () => {
-    const { wrapper } = await openHelp()
-    await wrapper.get('input[type="search"]').setValue('BÍLLETES selección')
-    expect(wrapper.find('article#efectivo').exists()).toBe(true)
-    expect(wrapper.get('[role="status"]').text()).toContain('temas')
-    await wrapper.get('input').setValue('no-existe-unicornio')
-    expect(wrapper.findAll('article')).toHaveLength(0)
-    expect(wrapper.text()).toContain('No encontramos')
-    await wrapper.get('button[data-action="clear-search"]').trigger('click')
-    expect(wrapper.findAll('article')).toHaveLength(HELP_ARTICLES.length)
-  })
-  it('supports direct hash focus and section navigation even after filtering', async () => {
-    const { wrapper, router } = await openHelp({}, '#efectivo')
-    expect(document.activeElement?.id).toBe('efectivo')
-    await wrapper.get('input').setValue('no-existe-unicornio')
-    await router.replace({ name: 'Help', hash: '#crear-deuda' })
-    await flushPromises()
-    expect(wrapper.find('article#crear-deuda').exists()).toBe(true)
-    expect(document.activeElement?.id).toBe('crear-deuda')
-  })
+
   it('returns to a known app screen without mode changes or history loops', async () => {
-    const { wrapper, router } = await openHelp({ from: '/app/productos' })
+    const { wrapper, router } = await openHelp({ query: { from: '/app/productos' } })
     await wrapper.get('[data-action="return"]').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('ProductCatalog')
     expect(useUiModeStore().currentMode).toBe('venta')
+    wrapper.unmount()
   })
-  it.each(['https://example.org', '//example.org', '/login', '/app/ayuda', '/app/ayuda?from=/app/ayuda', '/app/../login', '/app/missing', '/app/reportes'])('uses a safe mode fallback for %s', async (from) => {
-    const { wrapper, router } = await openHelp({ from })
-    await wrapper.get('[data-action="return"]').trigger('click')
+
+  it.each(['https://example.org', '//example.org', '/login', '/app/ayuda', '/app/ayuda?from=/app/ayuda', '/app/../login', '/app/missing', '/app/reportes'])(
+    'uses a safe mode fallback for %s',
+    async (from) => {
+      const { wrapper, router } = await openHelp({ query: { from } })
+      await wrapper.get('[data-action="return"]').trigger('click')
+      await flushPromises()
+      expect(router.currentRoute.value.name).toBe('Sale')
+      wrapper.unmount()
+    },
+  )
+
+  it('keeps navigation on the same help route and preserves its return hint', async () => {
+    const { wrapper, router } = await openHelp({ query: { from: '/app/productos' } })
+    const link = wrapper.findAll('.help-sidebar__category').find((item) => item.text().includes('Ventas'))!
+    await link.trigger('click')
     await flushPromises()
-    expect(router.currentRoute.value.name).toBe('Sale')
-  })
-  it('keeps section navigation on the same help route and preserves its return hint', async () => {
-    const { wrapper, router } = await openHelp({ from: '/app/productos' })
-    await wrapper.get('nav a[href*="#efectivo"]').trigger('click')
-    await flushPromises()
-    expect(router.currentRoute.value.hash).toBe('#efectivo')
-    expect(router.currentRoute.value.query.from).toBe('/app/productos')
-    expect(document.activeElement?.id).toBe('efectivo')
+    expect(router.currentRoute.value.name).toBe('Help')
+    expect(router.currentRoute.value.query).toMatchObject({ topic: 'ventas', from: '/app/productos' })
+    wrapper.unmount()
   })
 })
 
 describe('help presentation under the global reset', () => {
+  const article = readFileSync('src/components/help/HelpArticleContent.vue', 'utf8')
   it('ordered steps', () => {
-    const source = readFileSync('src/views/help/HelpView.vue', 'utf8')
-    expect(source).toMatch(/\.help-view ol\s*\{[^}]*list-style:\s*decimal/)
+    expect(article).toMatch(/\.help-article ol\s*\{[^}]*list-style:\s*decimal/)
   })
   it('readable article width', () => {
-    const source = readFileSync('src/views/help/HelpView.vue', 'utf8')
-    expect(source).toMatch(/\.help-view__article\s*\{[^}]*max-width:\s*70ch/)
+    expect(article).toMatch(/\.help-article\s*\{[^}]*max-width:\s*70ch/)
+  })
+  it('does not remove the global focus ring', () => {
+    const css = readFileSync('src/assets/main.css', 'utf8')
+    expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*3px solid/)
+    for (const file of ['HelpCenter', 'HelpSidebar', 'HelpTopicPanel', 'HelpLinkList']) {
+      expect(readFileSync(`src/components/help/${file}.vue`, 'utf8')).not.toMatch(/:focus-visible\s*\{[^}]*outline:\s*(none|0)/)
+    }
   })
 })
