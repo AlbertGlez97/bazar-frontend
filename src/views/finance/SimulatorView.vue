@@ -178,6 +178,14 @@
           >
             {{ store.error }}
           </p>
+          <p
+            v-if="!online"
+            class="sim-stale"
+            role="status"
+            data-test="offline-note"
+          >
+            Necesitas conexión para calcular una simulación y crear un acuerdo. Vuelve a conectarte e inténtalo de nuevo.
+          </p>
           <AppButton
             type="submit"
             :loading="store.simulating"
