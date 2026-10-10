@@ -87,7 +87,7 @@ import HelpLink from './HelpLink.vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@lucide/vue'
-import { getHelpCategory, getHelpTopic } from '@/config/help-structure'
+import { getHelpCategory, getHelpTopic, resolveHelpTarget } from '@/config/help-structure'
 import { helpLocation, parseHelpQuery } from '@/composables/useHelp'
 import { useMediaQuery } from '@/composables/useMediaQuery'
 import { usePrefersReducedMotion } from '@/composables/usePrefersReducedMotion'
@@ -160,10 +160,26 @@ watch(query, (value) => {
 
 let suppressFocus = false
 function clearSearch() {
-  suppressFocus = true
+  // Only a real navigation consumes the flag: with a blank query the URL has no `q` to drop.
+  if (query.value) suppressFocus = true
   searchText.value = ''
   void nextTick(() => searchRef.value?.focus())
 }
+
+// ── Legacy links: /app/ayuda#<article or topic id> (the old single page used hash anchors) ──
+function decodeHash(hash: string): string {
+  try { return decodeURIComponent(hash.replace(/^#/, '')) } catch { return '' }
+}
+watch(
+  () => [route.hash, route.query.topic] as const,
+  ([hash, topic]) => {
+    if (!hash || topic !== undefined) return
+    const legacy = resolveHelpTarget(decodeHash(hash))
+    // The new location has no hash, so this cannot loop. An unknown hash stays on the home view.
+    if (legacy) void router.replace(helpLocation(legacy, { from: from.value }))
+  },
+  { immediate: true },
+)
 
 // ── Focus: after a navigation the person lands on the new content ────────────
 const main = ref<HTMLElement | null>(null)
@@ -180,7 +196,10 @@ function flushFocus() {
   const root = main.value
   if (!root) return
   const articleId = target.value?.articleId
-  const article = articleId ? root.querySelector<HTMLElement>(`[data-item-id="${articleId}"]`) : null
+  // Compared in code, never interpolated into a selector: the id comes from the URL.
+  const article = articleId
+    ? ([...root.querySelectorAll<HTMLElement>('[data-item-id]')].find((node) => node.dataset.itemId === articleId) ?? null)
+    : null
   const element = article ?? root.querySelector<HTMLElement>('[data-help-heading]')
   element?.focus({ preventScroll: true })
   if (article) article.scrollIntoView?.({ block: 'nearest', behavior: scrollBehavior.value })

@@ -485,3 +485,103 @@ describe('Help Center: content and audience', () => {
     wrapper.unmount()
   })
 })
+
+describe('Help Center: legacy hash links', () => {
+  it('turns /app/ayuda#<article id> into topic and article, once, keeping from', async () => {
+    const { wrapper, router, navigations } = await openHelp({ hash: '#jornadas', query: { from: '/app/productos' } })
+    const { query, hash } = router.currentRoute.value
+    expect(query).toEqual({ topic: 'finanzas.jornadas', article: 'jornadas', from: '/app/productos' })
+    expect(hash).toBe('')
+    expect(navigations).toHaveLength(1)
+    expect(wrapper.get('[data-item-id="jornadas"]').attributes('aria-expanded')).toBe('true')
+    expect(renderedArticleIds().sort()).toEqual([...idsOfTopic('finanzas.jornadas')].sort())
+    wrapper.unmount()
+  })
+
+  it('resolves an agreement article hash such as #acuerdos-corregir', async () => {
+    const { wrapper, router } = await openHelp({ hash: '#acuerdos-corregir' })
+    expect(router.currentRoute.value.query).toEqual({ topic: 'finanzas.acuerdos', article: 'acuerdos-corregir' })
+    expect(wrapper.get('[data-item-id="acuerdos-corregir"]').attributes('aria-expanded')).toBe('true')
+    wrapper.unmount()
+  })
+
+  it('resolves a topic id or a category id hash', async () => {
+    const topic = await openHelp({ hash: '#finanzas.gastos' })
+    expect(topic.router.currentRoute.value.query).toEqual({ topic: 'finanzas.gastos' })
+    topic.wrapper.unmount()
+    const category = await openHelp({ hash: '#ventas' })
+    expect(category.router.currentRoute.value.query).toEqual({ topic: 'ventas' })
+    category.wrapper.unmount()
+  })
+
+  it('degrades an unknown or malformed hash to the home panel without redirecting', async () => {
+    for (const hash of ['#no-existe', '#%E0%A4%A', '#__proto__']) {
+      const { wrapper, router, navigations } = await openHelp({ hash })
+      expect(router.currentRoute.value.query).toEqual({})
+      expect(navigations).toHaveLength(0)
+      expect(wrapper.text()).toContain('¿En qué te ayudamos?')
+      wrapper.unmount()
+    }
+  })
+
+  it('lets an existing topic win over the hash', async () => {
+    const { wrapper, router, navigations } = await openHelp({ hash: '#jornadas', query: { topic: 'ventas' } })
+    expect(router.currentRoute.value.query).toEqual({ topic: 'ventas' })
+    expect(router.currentRoute.value.hash).toBe('#jornadas')
+    expect(navigations).toHaveLength(0)
+    expect(wrapper.get('.help-center__main h2').text()).toBe('Ventas')
+    wrapper.unmount()
+  })
+
+  it('drops an unsafe from while still resolving the hash', async () => {
+    const { wrapper, router } = await openHelp({ hash: '#jornadas', query: { from: 'https://evil.example' } })
+    expect(router.currentRoute.value.query).toEqual({ topic: 'finanzas.jornadas', article: 'jornadas' })
+    wrapper.unmount()
+  })
+
+  it('redirects when an old link is followed while the Center is open', async () => {
+    const { wrapper, router } = await openHelp()
+    await router.push({ name: 'Help', hash: '#efectivo' })
+    await flushPromises()
+    expect(router.currentRoute.value.query).toMatchObject({ topic: 'ventas.efectivo', article: 'efectivo' })
+    expect(router.currentRoute.value.hash).toBe('')
+    wrapper.unmount()
+  })
+})
+
+describe('Help Center: focus robustness', () => {
+  it('still moves focus to the new heading after clearing a blank search', async () => {
+    const { wrapper } = await openHelp()
+    await wrapper.get('input[type="search"]').setValue('   ')
+    await flushPromises()
+    await wrapper.get('[data-action="clear-search"]').trigger('click')
+    await flushPromises()
+    // A real click on a link moves focus out of the field; jsdom does not, so do it explicitly.
+    ;(document.activeElement as HTMLElement).blur()
+    // One single navigation: a stale suppress flag would swallow exactly this one.
+    await click(wrapper, '.help-sidebar__category', 'Finanzas')
+    expect(document.activeElement).toBe(heading())
+    expect(heading()?.textContent).toContain('Finanzas')
+    wrapper.unmount()
+  })
+
+  it('keeps focus in the search field when clearing a real query', async () => {
+    const { wrapper } = await openHelp({ query: { q: 'abonos' } })
+    await wrapper.get('[data-action="clear-search"]').trigger('click')
+    await flushPromises()
+    expect(document.activeElement).toBe(wrapper.get('input[type="search"]').element)
+    ;(document.activeElement as HTMLElement).blur()
+    await click(wrapper, '.help-sidebar__category', 'Finanzas')
+    expect(document.activeElement).toBe(heading())
+    wrapper.unmount()
+  })
+
+  it('degrades a hostile article id to the heading without throwing', async () => {
+    for (const article of ['a"] , [x', 'x"]\\', "'; alert(1)", '[data-item-id]']) {
+      const { wrapper } = await openHelp({ query: { topic: 'finanzas.jornadas', article } })
+      expect(document.activeElement).toBe(heading())
+      expect(wrapper.get('.help-center__main h2').text()).toBe('Jornadas')
+      wrapper.unmount()
+    }
+  })
+})

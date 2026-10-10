@@ -1,4 +1,4 @@
-import { vi } from 'vitest'
+import { afterEach, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -7,7 +7,11 @@ import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
 import type { UiMode } from '@/types/ui-mode.types'
 
-type Listener = (event: { matches: boolean }) => void
+const restoreStack: Array<() => void> = []
+// Every viewport mock is undone after each test, in reverse order, so none leaks into the next test or file.
+afterEach(() => { while (restoreStack.length) restoreStack.pop()!() })
+
+type Listener =(event: { matches: boolean }) => void
 
 /** Minimal viewport: `min-width`/`max-width` queries follow `width`; reduced motion follows `reduced`. */
 export function mockViewport(initialWidth: number, options: { reduced?: boolean } = {}) {
@@ -22,6 +26,7 @@ export function mockViewport(initialWidth: number, options: { reduced?: boolean 
     return false
   }
   const previous = window.matchMedia
+  restoreStack.push(() => { window.matchMedia = previous })
   window.matchMedia = vi.fn((query: string) => {
     const entry = { query, listeners: new Set<Listener>() }
     lists.add(entry)
@@ -47,13 +52,14 @@ export function mockViewport(initialWidth: number, options: { reduced?: boolean 
 
 export interface OpenHelpOptions {
   query?: Record<string, string>
+  hash?: string
   width?: number
   mode?: UiMode
   role?: 'socio' | 'colaborador'
 }
 
 /** Mounts the Help view on `/app/ayuda` with the routes the return button can reach. */
-export async function openHelp({ query = {}, width = 1280, mode = 'venta', role = 'socio' }: OpenHelpOptions = {}) {
+export async function openHelp({ query = {}, hash = '', width = 1280, mode = 'venta', role = 'socio' }: OpenHelpOptions = {}) {
   const viewport = mockViewport(width)
   const pinia = createPinia()
   useUiModeStore(pinia).setMode(mode)
@@ -67,11 +73,14 @@ export async function openHelp({ query = {}, width = 1280, mode = 'venta', role 
     { path: '/app/finanzas/jornadas', name: 'WorkShifts', component: stub },
     { path: '/app/reportes', name: 'Reports', component: stub, meta: { requiresSocio: true, requiresGestion: true } },
   ] })
-  await router.push({ name: 'Help', query })
+  await router.push({ name: 'Help', query, hash })
   await router.isReady()
+  // Navigations after the initial one, to prove redirects happen once and never loop.
+  const navigations: string[] = []
+  router.afterEach((to) => { navigations.push(to.fullPath) })
   const wrapper = mount(HelpView, { attachTo: document.body, global: { plugins: [pinia, router] } })
   await flushPromises()
-  return { wrapper, router, viewport, pinia }
+  return { wrapper, router, viewport, pinia, navigations }
 }
 
 /** Ids of every `<article>` currently in the document. */
