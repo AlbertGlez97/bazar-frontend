@@ -75,8 +75,8 @@ onMounted(() => emit('ready'))
 .help-topic { display: flex; flex-direction: column; gap: var(--spacing-lg); min-width: 0; }
 .help-topic__header { max-width: 70ch; }
 .help-topic__title { font-size: var(--font-size-xl); overflow-wrap: anywhere; }
-.help-topic__title:focus { outline: none; }
-.help-topic__title:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; border-radius: var(--radius-sm); }
+.help-topic__title:focus,
+.help-topic__title:focus-visible { outline: none; } /* programmatic, non-interactive target: no ring */
 .help-topic__description { margin-top: var(--spacing-xs); color: var(--color-text-muted); overflow-wrap: anywhere; }
 .help-topic__related { max-width: 70ch; }
 .help-topic__related-title { font-size: var(--font-size-md); margin-bottom: var(--spacing-sm); }

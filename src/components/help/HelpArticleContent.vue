@@ -95,8 +95,8 @@ const titleId = computed(() => `${props.domId ?? props.article.id}-title`)
 .help-article { max-width: 70ch; width: 100%; min-width: 0; }
 .help-article__header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs) var(--spacing-sm); margin-bottom: var(--spacing-sm); }
 .help-article__title { font-size: var(--font-size-lg); margin: 0; overflow-wrap: anywhere; }
-.help-article__title:focus { outline: none; }
-.help-article__title:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; border-radius: var(--radius-sm); }
+.help-article__title:focus,
+.help-article__title:focus-visible { outline: none; } /* programmatic, non-interactive target: no ring */
 .help-article p, .help-article li, .help-article dd { line-height: 1.6; overflow-wrap: anywhere; }
 .help-article ol { list-style: decimal; padding-left: var(--spacing-lg); margin: var(--spacing-sm) 0; }
 .help-article li + li { margin-top: var(--spacing-sm); }

@@ -70,8 +70,8 @@ onMounted(() => emit('ready'))
 <style scoped>
 .help-home { display: flex; flex-direction: column; gap: var(--spacing-lg); max-width: 70ch; min-width: 0; }
 .help-home__title { font-size: var(--font-size-xl); margin-bottom: var(--spacing-sm); }
-.help-home__title:focus { outline: none; }
-.help-home__title:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; border-radius: var(--radius-sm); }
+.help-home__title:focus,
+.help-home__title:focus-visible { outline: none; } /* programmatic, non-interactive target: no ring */
 .help-home__intro p { line-height: 1.6; margin-top: var(--spacing-sm); overflow-wrap: anywhere; }
 .help-home__suggested-title { font-size: var(--font-size-md); margin-bottom: var(--spacing-sm); }
 </style>

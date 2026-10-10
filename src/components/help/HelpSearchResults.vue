@@ -92,8 +92,8 @@ onMounted(() => emit('ready'))
 <style scoped>
 .help-results { display: flex; flex-direction: column; gap: var(--spacing-md); max-width: 70ch; min-width: 0; }
 .help-results__title { font-size: var(--font-size-lg); overflow-wrap: anywhere; }
-.help-results__title:focus { outline: none; }
-.help-results__title:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; border-radius: var(--radius-sm); }
+.help-results__title:focus,
+.help-results__title:focus-visible { outline: none; } /* programmatic, non-interactive target: no ring */
 .help-results__list { display: flex; flex-direction: column; border-top: 1px solid var(--color-border); }
 .help-results__list li { border-bottom: 1px solid var(--color-border); }
 .help-results__link {

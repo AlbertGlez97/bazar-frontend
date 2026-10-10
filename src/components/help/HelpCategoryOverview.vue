@@ -45,7 +45,7 @@ onMounted(() => emit('ready'))
 <style scoped>
 .help-category { display: flex; flex-direction: column; gap: var(--spacing-md); max-width: 70ch; min-width: 0; }
 .help-category__title { font-size: var(--font-size-xl); overflow-wrap: anywhere; }
-.help-category__title:focus { outline: none; }
-.help-category__title:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; border-radius: var(--radius-sm); }
+.help-category__title:focus,
+.help-category__title:focus-visible { outline: none; } /* programmatic, non-interactive target: no ring */
 .help-category__description { margin-top: var(--spacing-xs); color: var(--color-text-muted); }
 </style>

@@ -73,8 +73,28 @@ describe('help presentation under the global reset', () => {
   it('does not remove the global focus ring', () => {
     const css = readFileSync('src/assets/main.css', 'utf8')
     expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*3px solid/)
-    for (const file of ['HelpCenter', 'HelpSidebar', 'HelpTopicPanel', 'HelpLinkList']) {
-      expect(readFileSync(`src/components/help/${file}.vue`, 'utf8')).not.toMatch(/:focus-visible\s*\{[^}]*outline:\s*(none|0)/)
+    expect(css).not.toMatch(/:focus(-visible)?\s*\{[^}]*outline:\s*(none|0)/)
+  })
+
+  it('removes the outline only from programmatic heading targets, never from interactive controls', () => {
+    const headingFiles = ['HelpTopicPanel', 'HelpCategoryOverview', 'HelpHome', 'HelpSearchResults', 'HelpArticleContent']
+    for (const file of headingFiles) {
+      const source = readFileSync(`src/components/help/${file}.vue`, 'utf8')
+      expect(source, file).toMatch(/__title:focus,\s*\.[\w-]+__title:focus-visible\s*\{\s*outline:\s*none/)
+    }
+    // Headings that receive focus from code are non-interactive and tabindex="-1".
+    expect(readFileSync('src/components/help/HelpTopicPanel.vue', 'utf8')).toMatch(/tabindex="-1"\s+data-help-heading/)
+
+    const interactive = [
+      'src/components/help/HelpCenter.vue', 'src/components/help/HelpSidebar.vue', 'src/components/help/HelpLinkList.vue',
+      'src/components/help/HelpLink.vue', 'src/components/help/HelpBreadcrumb.vue', 'src/components/help/HelpSearch.vue',
+      'src/components/help/HelpDrawer.vue', 'src/components/ui/molecules/AppAccordion.vue',
+      'src/layouts/AppLayout.vue',
+    ]
+    // AppDrawer is left out on purpose: its only rule is on the tabindex=-1 dialog container, not a control.
+    for (const file of interactive) {
+      const style = readFileSync(file, 'utf8')
+      expect(style, file).not.toMatch(/:focus(-visible)?\s*\{[^}]*outline:\s*(none|0)\b(?![^}]*3px)/)
     }
   })
 })
