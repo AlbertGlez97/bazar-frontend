@@ -75,7 +75,7 @@ describe('audited help content', () => {
     expect(fix.tips.join(' ')).toContain('no mueve dinero ni inventario')
   })
 
-  it('explains work shifts in plain language without money, and states that correcting is not available', () => {
+  it('explains work shifts in plain language without money, including how to void, correct and work offline', () => {
     const guide = HELP_ARTICLES.find((article) => article.id === 'jornadas')!
     const faq = HELP_ARTICLES.find((article) => article.id === 'jornadas-preguntas')!
     for (const article of [guide, faq]) {
@@ -87,7 +87,20 @@ describe('audited help content', () => {
       expect(steps).toContain(label)
     expect(steps).toContain('deja los dos campos vacíos')
     expect(guide.intro).toContain('no es una venta ni un pago')
-    expect(guide.tips.join(' ')).toContain('todavía no está disponible')
+    expect(steps).toContain('pulsa Anular')
+    expect(steps).toContain('pulsa Corregir')
+    expect(steps).toContain('Motivo')
+    expect(steps).toContain('Guardar corrección')
+    expect(steps).toContain('Anulada')
+    expect(steps).toContain('Corregida')
+    const tips = guide.tips.join(' ')
+    expect(tips).toContain('no se edita ni se borra')
+    expect(tips).toContain('se conserva')
+    expect(tips).toContain('Sin conexión')
+    expect(tips).toContain('Pendiente')
+    expect(tips).toContain('Requiere revisión')
+    expect(tips).toContain('Reintentar corrección')
+    expect(tips).not.toContain('todavía no está disponible')
     const answers = Object.fromEntries((faq.questions ?? []).map((q) => [q.question, q.answer]))
     expect(Object.keys(answers)).toEqual(expect.arrayContaining([
       '¿Por qué puedo registrar una jornada sin horas?',
@@ -97,7 +110,12 @@ describe('audited help content', () => {
     expect(answers['¿Por qué puedo registrar una jornada sin horas?']).toContain('Duración no registrada')
     expect(answers['¿Por qué puedo registrar una jornada sin horas?']).toContain('no se guarda como cero horas')
     expect(answers['¿Registrar una jornada genera un pago?']).toMatch(/^No\./)
-    expect(answers['¿Puedo corregir o anular una jornada?']).toMatch(/^Todavía no/)
+    expect(answers['¿Puedo corregir o anular una jornada?']).toMatch(/^Sí./)
+    expect(answers['¿Por qué una jornada no se edita directamente?']).toContain('no se cambia')
+    expect(answers['¿Por qué una jornada no se edita directamente?']).toContain('Nada se borra')
+    expect(answers['¿Qué pasa con la jornada original cuando la anulo o la corrijo?']).toContain('deja de contar')
+    expect(answers['¿Puedo anular o corregir una jornada sin conexión?']).toContain('la app la envía primero')
+    expect(answers['¿Quién puede anular o corregir una jornada?']).toContain('Solo las personas socias')
     // Not a payment feature: no amounts, percentages or distribution wording as capabilities.
     const text = JSON.stringify([guide, faq])
     expect(text).not.toMatch(/\$\d|%|comisi[oó]n|reparto|sueldo|salario|lo que te toca/i)
