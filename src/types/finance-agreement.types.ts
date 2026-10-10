@@ -1,4 +1,5 @@
 import type { DistributionSimulation, DistributionSimulationRequest } from './finance-distribution.types'
+import type { AgreementPaymentSummary } from './finance-payment.types'
 
 export type AgreementStatus = 'active' | 'voided'
 export interface AgreementReference { id: string; folio: string }
@@ -45,6 +46,8 @@ export interface DistributionAgreement extends Omit<DistributionSimulation, 'sim
   createdBy: { memberId: string; name: string; accountId: string; deviceId: string }
   reversal: AgreementReversal | null
   replacedBy: AgreementReference | null
+  /** Live payment progress; present on the detail read, absent on creation receipts and replays. */
+  paymentSummary?: AgreementPaymentSummary
 }
 export interface AgreementReversalReceipt extends AgreementReversal {
   contextId: string

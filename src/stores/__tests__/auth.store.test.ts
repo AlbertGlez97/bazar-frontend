@@ -7,6 +7,8 @@ import { useSessionStore } from '../session.store'
 import { useFinanceOverviewStore } from '../finance-overview.store'
 import { useFinanceReservesStore } from '../finance-reserves.store'
 import { useFinanceDistributionStore } from '../finance-distribution.store'
+import { useFinancePaymentsStore } from '../finance-payments.store'
+import { paymentFixture } from '@/services/__tests__/finance-payments.fixture'
 import { simulationFixture } from '@/services/__tests__/finance-distribution.fixture'
 import { FinanceOverviewService } from '@/services/finance-overview.service'
 import { overviewFixture } from '@/services/__tests__/finance-overview.fixture'
@@ -172,6 +174,17 @@ it('clears Phase4 singleton data on logout without a mounted view', () => {
   expect(overview.overview).toBeNull()
   expect(reserves.items).toEqual([])
 })
+it('clears the memory-only payments store on logout and on session replacement', () => {
+  const auth = useAuthStore()
+  const payments = useFinancePaymentsStore()
+  payments.items = [paymentFixture()]
+  auth.logout()
+  expect(payments.items).toEqual([])
+  payments.items = [paymentFixture()]
+  auth.token = 'replacement'
+  expect(payments.items).toEqual([])
+})
+
 it('clears Phase4 data on account or device context replacement', () => {
   const auth = useAuthStore()
   const overview = useFinanceOverviewStore()

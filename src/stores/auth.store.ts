@@ -4,6 +4,7 @@ import AuthService from '@/services/auth.service'
 import { useToastStore } from '@/stores/toast.store'
 import { useFinanceDistributionStore } from '@/stores/finance-distribution.store'
 import { useFinanceOverviewStore } from '@/stores/finance-overview.store'
+import { useFinancePaymentsStore } from '@/stores/finance-payments.store'
 import { useFinanceReservesStore } from '@/stores/finance-reserves.store'
 import { useSessionStore } from '@/stores/session.store'
 import type { AccountBinding, LoginPayload } from '@/types/auth.types'
@@ -127,6 +128,7 @@ export const useAuthStore = defineStore('auth', () => {
     useFinanceOverviewStore().reset()
     useFinanceReservesStore().reset()
     useFinanceDistributionStore().reset()
+    useFinancePaymentsStore().reset()
   }
   watch(
     [token, () => activeSession.owner?.accountId, () => activeSession.owner?.apiBase,
