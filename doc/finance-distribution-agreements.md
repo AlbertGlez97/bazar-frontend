@@ -30,21 +30,11 @@ The PDF includes folio, title/note, original dates and period, financial base/st
 
 Export always refreshes live detail. If refresh fails or the selection/session changes while generation is pending, no stale active PDF is downloaded. A local PDF represents status at the successful detail read, not future reversals; externally saved copies cannot update automatically. The document is not a payment, withdrawal, transfer or legal-contract promise. Legal effect depends on context and applicable law; this feature offers no legal advice.
 
-## Local evidence and integrated checklist
+## Verification status
 
-Fixture PDFs and unit tests do not establish real backend integration or legal effect.
+Phase 5.5 is closed. The real integrated checklist (create, drift, replay, void and replace, PDF export, keyboard and responsive checks, tenant isolation) was completed and is recorded in `finance-distribution-agreements-close.md`, including which proofs were observed directly and which were user-attested. Fixture PDFs and unit tests alone do not establish backend integration or legal effect.
 
-Local final checks passed: 224 Vitest files / 4,037 tests, production build and ESLint (temporary QA harness has formatting warnings). Fixture-based browser inspection of the real history/detail/create/void components at 320/390/768/1280 found no document horizontal overflow. Representative rasterized active/voided/partial and 22-page long PDFs were visually inspected without clipping, missing glyphs or truncated signatures; voided totals can span two pages. These checks do not close the real integrated checklist below or prove exhaustive keyboard behavior.
-
-Temporary QA artifacts remain untracked under `tmp/agreements-qa` and `tmp/pdfs/agreements` because cleanup was denied. They and the temporary Python raster helper are excluded from commits and native candidate review; no application dependency was added.
-
-- [ ] Real authorized test: simulate, confirm, list/detail and export without source financial changes.
-- [ ] Change source data after simulation: observe drift, no creation, recalculate/reconfirm.
-- [ ] Lose a create/reversal response: exact manual retry returns the original identity/folio.
-- [ ] Void and replace: authoritative status/reason and bidirectional references; allocations unchanged.
-- [ ] Export active, voided, partial and long documents; inspect all pages, accents, headers and signatures.
-- [ ] Verify keyboard focus, offline/session restrictions and layouts at 320/390/768/1280 pixels.
-- [ ] Confirm PDF Blob/URL is not persisted and no payment/withdrawal/transfer is created.
+The temporary QA harness and PDF renders used during verification were local-only and have been removed. `tmp/` is ignored by Git, and the PDF render test writes samples there only when `AGREEMENT_PDF_SAMPLES` is set.
 
 ## Review and rollback boundary
 
