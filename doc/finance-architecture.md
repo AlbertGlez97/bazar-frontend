@@ -8,7 +8,7 @@ Entry point for the Finanzas screens. Per-feature details live in the linked doc
 | --- | --- | --- |
 | 1 | Aportaciones | CLOSED |
 | 2 | Gastos | CLOSED |
-| 3 | Jornadas | CLOSED (see the Jornadas limitation below) |
+| 3 | Jornadas | CLOSED. Gap de UI detectado post-cierre de Fase 3 y corregido antes de Fase 6: Anular y Corregir jornadas (ver `finance-work-shifts.md`). Esto no reabre la Fase 3. |
 | 4 | Resumen operativo + Reservas | CLOSED |
 | 5 | Simulador | CLOSED |
 | 5.5 | Acuerdos + PDF | CLOSED |
@@ -36,7 +36,7 @@ Finanzas lives in Gestión, so it is socio-only and recommended on a laptop (pho
 | --- | --- |
 | Aportaciones | Offline durable: persist to IndexedDB first, then sync idempotently by client UUIDv7 |
 | Gastos | Offline durable, same pattern |
-| Jornadas | Offline durable, same pattern |
+| Jornadas | Offline durable, same pattern, including queued annulments and corrections (`kind: reverse`), like Gastos |
 | Resumen | Online only; shows server-confirmed data and does not include local pending records |
 | Reservas | Online only; uncertain create or cancel keeps its identity for an exact retry |
 | Simulador | Ephemeral and online; nothing is persisted and results are never stored |
@@ -44,7 +44,7 @@ Finanzas lives in Gestión, so it is socio-only and recommended on a laptop (pho
 
 ## IndexedDB
 
-Database `la-marchanta`, version 4 (`DB_VERSION` in `src/services/local-db.ts`). Stores added per phase: contributions v2 (`pending-contributions`, `contribution-history`, `finance-references`), expenses v3 (`pending-expenses`, `expense-history`), work shifts v4 (`pending-work-shifts`, `work-shift-history`). Phases 4, 5 and 5.5 added no stores. See `finance-contributions.md`, `finance-expenses.md` and `finance-work-shifts.md`.
+Database `la-marchanta`, version 4 (unchanged by the work shift reversal UI: `pending-work-shifts` already holds `kind: reverse` records) (`DB_VERSION` in `src/services/local-db.ts`). Stores added per phase: contributions v2 (`pending-contributions`, `contribution-history`, `finance-references`), expenses v3 (`pending-expenses`, `expense-history`), work shifts v4 (`pending-work-shifts`, `work-shift-history`). Phases 4, 5 and 5.5 added no stores. See `finance-contributions.md`, `finance-expenses.md` and `finance-work-shifts.md`.
 
 ## Session and ownership
 
@@ -64,7 +64,6 @@ In-app articles (`src/config/help-content.ts`, category Finanzas) cover Gastos, 
 
 ## Known limitations
 
-- Jornadas: the screen creates and lists work shifts and shows Anulada or Corregida for records the backend reversed, but it has no correction or void action. The backend supports reversals; the frontend task WS-F6 in `odd/tasks/finance-work-shifts.md` was never implemented.
 - Agreements and the simulator are not available offline.
 
 ## What does not exist
