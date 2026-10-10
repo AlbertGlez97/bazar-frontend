@@ -1,5 +1,7 @@
 # In-app help grounded in shipped workflows
 
+> Superseded in part by Contextual Help 2.0 (`odd/tasks/contextual-help-v2.md`, `doc/help-system.md`): the single scrolling page with an anchor index and hash navigation described below was replaced by a Help Center with category/topic/article navigation, a `?` drawer and URL query state. This document is kept as historical evidence.
+
 Provide a searchable Spanish help manual inside La Marchanta, available to both roles and modes, with contextual cash guidance that does not interrupt an active sale.
 
 ## Authorization and delivery

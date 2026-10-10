@@ -67,7 +67,7 @@ A payment records that money was really paid, outside the system, to one frozen 
 
 ## Help
 
-In-app articles (`src/config/help-content.ts`, category Finanzas) cover Gastos, Jornadas, Resumen, Reservas and Simulador, including how to create an agreement and how to register, annul and understand payments of an agreement.
+In-app articles (`src/config/help-content.ts`, category Finanzas, grouped into topics in `src/config/help-structure.ts`; see `doc/help-system.md`) cover Gastos, Jornadas, Resumen, Reservas and Simulador, including how to create an agreement and how to register, annul and understand payments of an agreement.
 
 ## Known limitations
 
