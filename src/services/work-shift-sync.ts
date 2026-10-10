@@ -229,6 +229,18 @@ function validReceipt(
     : v.replacementWorkShiftId === null && v.replacement === null
 }
 
+/** Clear Spanish reasons for the reversal endpoint's 403/404/409; other failures keep the shared text. */
+function reversalFailure(error: unknown, fallback: string): string {
+  const status = (error as { response?: { status?: number } })?.response?.status
+  if (status === 409)
+    return 'La jornada ya fue anulada o corregida, o el registro cambió. Revisa la lista; no se modificó nada.'
+  if (status === 404)
+    return 'El servidor no encontró la jornada original. Actualiza la lista; no se modificó nada.'
+  if (status === 403)
+    return 'El servidor no autorizó la corrección (por ejemplo, la persona ya no está activa). Confirma el origen y reintenta; no se modificó nada.'
+  return fallback
+}
+
 const running = new Set<string>()
 
 /** Sends pending work shifts: creates before reversals, each under its own UUID. */
@@ -295,7 +307,7 @@ export async function syncWorkShifts(
         await updateWorkShiftAttempt(
           record,
           state,
-          message,
+          record.kind === 'reverse' ? reversalFailure(error, message) : message,
           options.now?.() ?? Date.now(),
         )
         if (state !== 'needs_review') break

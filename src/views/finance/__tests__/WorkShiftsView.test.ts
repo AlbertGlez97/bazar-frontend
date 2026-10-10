@@ -368,8 +368,9 @@ describe('work shifts screen: list', () => {
     const text = w.text()
     expect(text).toContain('Anulada')
     expect(text).toContain('Corregida')
-    // No correction controls exist yet.
-    expect(w.findAll('button').some((b) => /Anular|Corregir/.test(b.text()))).toBe(false)
+    // Already annulled/corrected rows offer no action; only the active one does.
+    const actions = w.findAll('[data-test="work-shift-row"]').map((r) => r.findAll('button').filter((b) => /Anular|Corregir/.test(b.text())).length)
+    expect(actions.filter((n) => n > 0)).toHaveLength(1)
   })
 
   it('shows an empty state without rows', async () => {

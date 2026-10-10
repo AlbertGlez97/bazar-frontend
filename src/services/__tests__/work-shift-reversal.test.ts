@@ -329,4 +329,20 @@ describe('work shift reversal synchronization', () => {
     const send = vi.fn().mockResolvedValue(reversalReceipt(reversal, p))
     expect(await syncWorkShifts(origin, send)).toBe(1)
   })
+
+  it.each([
+    [409, 'needs_review', 'ya fue anulada o corregida'],
+    [404, 'needs_review', 'no encontró la jornada original'],
+    [403, 'paused', 'no autorizó la corrección'],
+  ])('explains a %i from the reversal endpoint in Spanish and keeps the record', async (status, state, text) => {
+    const p = payload()
+    await enqueueWorkShift(origin, { kind: 'create', payload: p })
+    await syncWorkShifts(origin, vi.fn().mockResolvedValue(receipt(p)))
+    await queueReverse(p.id)
+    await syncWorkShifts(origin, vi.fn().mockRejectedValue({ response: { status } }))
+    const snapshot = await workShiftSnapshot(origin)
+    expect(snapshot.pending[0]).toMatchObject({ state, attempts: 1 })
+    expect(snapshot.pending[0]?.lastError).toContain(text)
+    expect(snapshot.history[0]?.reversal).toBeFalsy()
+  })
 })

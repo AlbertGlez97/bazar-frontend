@@ -210,11 +210,25 @@
             >
               {{ row.reversal.replacementWorkShiftId ? 'Corregida' : 'Anulada' }}
             </AppBadge>
+            <p v-if="row.reversal?.reason">
+              Motivo: {{ row.reversal.reason }}
+            </p>
+            <p v-if="row.replacementOf">
+              Jornada de reemplazo pendiente de sincronizar.
+            </p>
+            <p v-if="row.correction">
+              {{ row.correction.payload.replacement ? 'Corrección' : 'Anulación' }}
+              {{
+                row.correction.state === 'pending'
+                  ? 'pendiente'
+                  : 'requiere revisión'
+              }}: {{ row.correction.payload.reason }}
+            </p>
             <p
-              v-if="row.pending?.lastError"
+              v-if="statusError(row)"
               role="status"
             >
-              {{ row.pending.lastError }}
+              {{ statusError(row) }}
             </p>
             <AppButton
               v-if="row.pending && row.pending.state !== 'pending'"
@@ -224,6 +238,32 @@
             >
               Reintentar con el origen original
             </AppButton>
+            <AppButton
+              v-if="row.correction && row.correction.state !== 'pending'"
+              variant="ghost"
+              :disabled="saving"
+              @click="retry(row.correction)"
+            >
+              Reintentar corrección
+            </AppButton>
+            <template v-if="canAct(row)">
+              <AppButton
+                variant="ghost"
+                size="sm"
+                :aria-label="`Corregir jornada de ${memberName(row)} del ${formatDateKey(row.workDate)}`"
+                @click="openCorrection(row, true)"
+              >
+                Corregir
+              </AppButton>
+              <AppButton
+                variant="ghost"
+                size="sm"
+                :aria-label="`Anular jornada de ${memberName(row)} del ${formatDateKey(row.workDate)}`"
+                @click="openCorrection(row, false)"
+              >
+                Anular
+              </AppButton>
+            </template>
           </div>
         </li>
       </ul>
@@ -236,6 +276,92 @@
         Cargar más
       </AppButton>
     </AppCard>
+
+    <AppModal
+      v-model="correctionOpen"
+      manage-focus
+      :title="replace ? 'Corregir jornada' : 'Anular jornada'"
+      subtitle="La jornada original se conserva. No se calcula ni se mueve dinero."
+      :hide-close="saving"
+      :close-on-backdrop="!saving"
+    >
+      <form
+        id="correction-form"
+        class="finance-form"
+        @submit.prevent="submitCorrection"
+      >
+        <AppTextarea
+          id="correction-reason"
+          v-model="reason"
+          class="finance-form__wide"
+          label="Motivo"
+          maxlength="1000"
+          required
+          :disabled="saving"
+        />
+        <template v-if="replace">
+          <AppSelect
+            id="correction-member"
+            v-model="correctionForm.memberId"
+            label="Quién trabajó"
+            placeholder="Selecciona a la persona"
+            :disabled="saving || !finance.workers.length"
+            required
+          >
+            <option
+              v-for="member in finance.workers"
+              :key="member.id"
+              :value="member.id"
+            >
+              {{ member.name }}
+            </option>
+          </AppSelect>
+          <AppInput
+            id="correction-date"
+            v-model="correctionForm.workDate"
+            label="Fecha"
+            type="date"
+            :disabled="saving"
+            required
+          />
+          <DurationInput
+            v-model:hours="correctionForm.hours"
+            v-model:minutes="correctionForm.minutes"
+            id-prefix="correction-duration"
+            :disabled="saving"
+          />
+          <AppTextarea
+            id="correction-note"
+            v-model="correctionForm.note"
+            class="finance-form__wide"
+            label="Nota (opcional)"
+            :maxlength="WORK_SHIFT_NOTE_MAX"
+            :disabled="saving"
+          />
+        </template>
+        <p
+          v-if="correctionError"
+          role="alert"
+        >
+          {{ correctionError }}
+        </p>
+      </form>
+      <template #footer>
+        <AppButton
+          variant="ghost"
+          :disabled="saving"
+          @click="correctionOpen = false"
+        >
+          Cancelar
+        </AppButton><AppButton
+          type="submit"
+          form="correction-form"
+          :loading="saving"
+        >
+          {{ replace ? 'Guardar corrección' : 'Anular jornada' }}
+        </AppButton>
+      </template>
+    </AppModal>
   </section>
   <p v-else>
     Solo socios pueden administrar jornadas en Gestión.
@@ -249,6 +375,7 @@ import {
   AppButton,
   AppCard,
   AppInput,
+  AppModal,
   AppSelect,
   AppStatCard,
   AppTextarea,
@@ -350,7 +477,12 @@ type Row = WorkShiftPayload & {
   member?: WorkShift['member']
   reversal?: WorkShift['reversal']
   pending?: PendingWorkShift
+  /** Queued annulment/correction of this shift. */
+  correction?: ReverseRecord
+  /** Set on the not-yet-synced replacement of a queued correction. */
+  replacementOf?: ReverseRecord
 }
+type ReverseRecord = Extract<PendingWorkShift, { kind: 'reverse' }>
 const allRows = computed<Row[]>(() => {
   if (!allowed.value) return []
   const map = new Map<string, Row>(finance.history.map((r) => [r.id, { ...r }]))
@@ -359,6 +491,14 @@ const allRows = computed<Row[]>(() => {
     const existing = map.get(op.id)
     if (existing) existing.pending = op
     else map.set(op.id, { ...op.payload, pending: op })
+  }
+  for (const op of finance.pending) {
+    if (op.kind !== 'reverse') continue
+    const row = map.get(op.workShiftId)
+    if (row) row.correction = op
+    const replacement = op.payload.replacement
+    if (replacement && !map.has(replacement.id))
+      map.set(replacement.id, { ...replacement, replacementOf: op })
   }
   return [...map.values()].sort(
     (a, b) => b.workDate.localeCompare(a.workDate) || b.id.localeCompare(a.id),
@@ -380,7 +520,9 @@ const rows = computed(() =>
 // ── Summary: server figures when online, local ones only if consistent ────
 const summaryView = computed(() => {
   const fromServer = finance.summary
-  const queued = rows.value.filter((r) => r.pending?.state === 'pending').length
+  const queued = rows.value.filter(
+    (r) => r.pending?.state === 'pending' || r.correction?.state === 'pending',
+  ).length
   if (
     fromServer &&
     fromServer.from === range.from &&
@@ -400,8 +542,11 @@ const summaryView = computed(() => {
       memberId: r.memberId,
       workDate: r.workDate,
       minutes: r.minutes,
-      reversed: !!r.reversal,
-      uncertain: !!r.pending && r.pending.state !== 'pending',
+      // A queued annulment/correction already takes the original out of the totals.
+      reversed: !!r.reversal || !!r.correction,
+      uncertain: [r.pending, r.correction, r.replacementOf].some(
+        (op) => !!op && op.state !== 'pending',
+      ),
     })),
     range.from,
     toExclusive.value,
@@ -434,15 +579,38 @@ function shorten(text: string) {
   return text.length > 120 ? `${text.slice(0, 119)}…` : text
 }
 function statusLabel(row: Row) {
-  if (!row.pending) return 'Sincronizada'
-  return row.pending.state === 'pending'
+  const op = row.pending ?? row.replacementOf
+  if (!op) return 'Sincronizada'
+  return op.state === 'pending'
     ? 'Pendiente'
-    : row.pending.state === 'paused'
+    : op.state === 'paused'
       ? 'En pausa'
       : 'Requiere revisión'
 }
 function statusColor(row: Row) {
-  return !row.pending ? 'green' : row.pending.state === 'pending' ? 'amber' : 'red'
+  const op = row.pending ?? row.replacementOf
+  return !op ? 'green' : op.state === 'pending' ? 'amber' : 'red'
+}
+function statusError(row: Row) {
+  return (
+    row.pending?.lastError ||
+    row.correction?.lastError ||
+    row.replacementOf?.lastError ||
+    ''
+  )
+}
+/**
+ * Already annulled/corrected shifts, shifts with a queued correction and the
+ * queued replacement itself offer no action; a still-queued original does
+ * (the reversal waits for it) unless it needs review.
+ */
+function canAct(row: Row) {
+  return (
+    !row.reversal &&
+    !row.correction &&
+    !row.replacementOf &&
+    (!row.pending || row.pending.state === 'pending')
+  )
 }
 /** Only from the real receipt: a list never carries it, so nothing is inferred. */
 function sameDayWarning(row: Row) {
@@ -509,6 +677,67 @@ async function fetchHistory(more = false) {
     loading.value = false
   }
 }
+// ── Correction (annul or replace) ──────────────────────────────────────────
+const correctionOpen = ref(false),
+  replace = ref(false),
+  selectedId = ref(''),
+  reason = ref(''),
+  correctionForm = ref<WorkShiftFormState>(emptyWorkShiftForm(today.value)),
+  correctionError = ref('')
+/** Pre-fills the creation form from the original; unknown duration stays empty. */
+function formFromRow(row: Row): WorkShiftFormState {
+  const total = row.minutes ?? 0
+  const hours = Math.floor(total / 60),
+    rest = total % 60
+  return {
+    memberId: row.memberId,
+    workDate: row.workDate,
+    hours: hours ? String(hours) : '',
+    minutes: rest ? String(rest) : '',
+    note: row.note ?? '',
+  }
+}
+function openCorrection(row: Row, replacement: boolean) {
+  selectedId.value = row.id
+  replace.value = replacement
+  reason.value = ''
+  correctionForm.value = formFromRow(row)
+  correctionError.value = ''
+  correctionOpen.value = true
+}
+function correctionFailure(e: unknown) {
+  if (e instanceof WorkShiftFormError) return e.message
+  const text = e instanceof Error ? e.message : ''
+  if (text.includes('already has a correction'))
+    return 'Esta jornada ya tiene una anulación o corrección guardada.'
+  if (text.includes('available locally'))
+    return 'La jornada debe estar guardada en este dispositivo antes de corregirse. Actualiza la lista.'
+  return 'No se pudo guardar la corrección. No se registró éxito; conserva los datos e intenta nuevamente.'
+}
+async function submitCorrection() {
+  if (saving.value || !allowed.value) return
+  saving.value = true
+  correctionError.value = ''
+  message.value = ''
+  try {
+    const text = reason.value.trim()
+    if (!text || text.length > 1000)
+      throw new WorkShiftFormError('Indica un motivo válido, de hasta 1000 caracteres.')
+    // A deactivated worker is not selectable: the server only accepts active members.
+    const replacement = replace.value
+      ? workShiftFieldsFromForm(correctionForm.value, finance.workers)
+      : undefined
+    await finance.reverse(selectedId.value, text, replacement)
+    correctionOpen.value = false
+    message.value = replacement
+      ? 'Corrección guardada en este dispositivo. La jornada original se conserva y se sincronizará con su origen original.'
+      : 'Anulación guardada en este dispositivo. La jornada original se conserva y se sincronizará con su origen original.'
+  } catch (e) {
+    correctionError.value = correctionFailure(e)
+  } finally {
+    saving.value = false
+  }
+}
 async function retry(record: PendingWorkShift) {
   error.value = ''
   try {
@@ -521,6 +750,7 @@ async function retry(record: PendingWorkShift) {
 
 watch(allowed, (value) => {
   if (!value) {
+    correctionOpen.value = false
     message.value = ''
     error.value = ''
   }
