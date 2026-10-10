@@ -26,7 +26,7 @@ Replace the single long help page (index plus anchors plus scroll) with a contex
 
 ## Tasks
 - [x] CH1 Content structure (categories/topics/articles), HELP_ROUTE_CONTEXT, search upgrade, useHelp composable, router/back-whitelist/routeTitles fixes, data-layer tests
-- [ ] CH2 AppAccordion, AppDrawer, HelpCenter (desktop sidebar, mobile levels, breadcrumb), search results UI, `?` button and drawer integration in AppLayout, motion and reduced-motion, a11y, UI tests
+- [x] CH2 AppAccordion, AppDrawer, HelpCenter (desktop sidebar, mobile levels, breadcrumb), search results UI, `?` button and drawer integration in AppLayout, motion and reduced-motion, a11y, UI tests
 - [ ] CH3 Real browser validation (context per route, drawer, Center, search, refresh, responsive 320/390/768/1280, animations, reduced motion, keyboard)
 - [ ] CH4 Docs (`doc/help-system.md`, README/finance docs), full suites, merge to main, push
 
@@ -41,3 +41,11 @@ CH1 (data layer) done by writer 1, route: delegated direct.
 - Migrated assertion: AppLayout.work-shifts titles Jornadas as "Jornadas" (was "Finanzas"), as the plan requires.
 - Verification: npx vitest run 236 files / 4385 tests passed; npm run lint clean; npx vue-tsc -b clean; npm run build ok; git diff --check clean.
 - Router: Help route and scrollBehavior unchanged (query-only selection needs no change; a topic/article change scrolls to top).
+
+CH2 (UI) done by writer 2, route: delegated direct.
+- Commits: c33ccc3 accordion, drawer, motion tokens and composables; f94948e Help Center redesign; 0e30e5b contextual help drawer and AppLayout `?` button; 94d41b0 motion contract test; docs(help) commit for doc/help-system.md.
+- Components: AppAccordion, AppDrawer (ui); HelpCenter, HelpSidebar, HelpBreadcrumb, HelpHome, HelpCategoryOverview, HelpTopicPanel, HelpArticleList, HelpArticleContent, HelpSearch, HelpSearchResults, HelpLinkList, HelpLink, HelpDrawer (help); useMediaQuery, usePrefersReducedMotion (composables).
+- Decisions: two columns from 900 px; `?` is a button and is not rendered on the Help route; accordion state is local (the URL carries topic/article/q/from); the stock RouterLink was replaced by HelpLink because it marks every link to the single Help route as aria-current=page; AppModal untouched (focus trap duplicated in AppDrawer on purpose).
+- Test-first: AppAccordion and AppDrawer tests failed (component missing) before the components; the Center, layout and motion tests were written after the implementation (no RED claimed); the composable test was written after its implementation.
+- Verification: npx vitest run 241 files / 4528 tests passed; npm run lint clean; npx vue-tsc -b clean; npm run build ok; git diff --check clean.
+- Covered only by jsdom (CH3 must validate in real Chrome): responsive layout at 320/390/768/900/1280, drawer and accordion animation, reduced motion, real keyboard and focus order, sticky sidebar, safe scroll after navigation (router scrollBehavior still resets to top on every query change, including each search keystroke).
