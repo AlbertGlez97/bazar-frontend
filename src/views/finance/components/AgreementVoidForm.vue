@@ -16,6 +16,20 @@
     >
       <p>Vas a anular {{ folio }}. El documento y sus montos se conservarán sin cambios. No registra pagos ni modifica aportaciones, gastos, jornadas o reservas.</p>
       <p
+        v-if="payments === 'yes'"
+        role="note"
+        data-test="void-payments-warning"
+      >
+        Este acuerdo tiene pagos registrados. Si lo anulas, esos pagos no se borran ni se revierten: se conservan como historial.
+      </p>
+      <p
+        v-else-if="payments === 'unknown'"
+        role="note"
+        data-test="void-payments-unknown"
+      >
+        No pudimos comprobar si este acuerdo tiene pagos registrados. Si los tiene, se conservarán como historial.
+      </p>
+      <p
         v-if="pending"
         role="status"
       >
@@ -88,7 +102,11 @@ import { nextTick, ref, watch } from 'vue'
 import { AppButton, AppModal, AppTextarea } from '@/components'
 import { agreementReason, agreementErrorMessage } from '@/utils/finance-agreements'
 import type { ReverseAgreementPayload } from '@/types/finance-agreement.types'
-const props = defineProps<{ modelValue: boolean; folio: string; allowed: boolean; busy: boolean; error: string; pending: ReverseAgreementPayload | null }>()
+const props = withDefaults(defineProps<{
+  modelValue: boolean; folio: string; allowed: boolean; busy: boolean; error: string; pending: ReverseAgreementPayload | null
+  /** Whether payments are linked to the agreement; the void itself is unchanged and payments are always kept. */
+  payments?: 'yes' | 'no' | 'unknown'
+}>(), { payments: 'no' })
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; confirm: [reason: string]; retry: [] }>()
 const reason = ref(''), formError = ref(''), errorBox = ref<HTMLElement | null>(null)
 watch(() => props.modelValue, open => { if (open) { reason.value = props.pending?.reason ?? ''; formError.value = '' } }, { immediate: true })

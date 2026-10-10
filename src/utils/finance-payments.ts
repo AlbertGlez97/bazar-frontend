@@ -54,14 +54,17 @@ export function exceedsPendingNumbers(error: unknown): { agreedMinor: number; pa
     ? { agreedMinor: agreedMinor as number, paidMinor: paidMinor as number, pendingMinor: pendingMinor as number } : null
 }
 
+/** Same wording for the server rejection and for the client-side mirror of it. */
+export const overpaymentMessage = (agreedMinor: number, paidMinor: number, pendingMinor: number): string =>
+  `El monto supera lo que falta por pagar. Acordado: ${formatMinorMoney(agreedMinor)}. Ya pagado: ${formatMinorMoney(paidMinor)}. Pendiente: ${formatMinorMoney(pendingMinor)}.`
+
 /** Messages never imply a write was confirmed when its response was lost. */
 export function paymentErrorMessage(error: unknown): string {
   if (error instanceof PaymentFormError) return error.message
   if (error instanceof FinancePaymentContractError)
     return 'La respuesta del pago tiene un formato inesperado. No pudimos confirmar el resultado; reintenta el mismo intento.'
   const numbers = exceedsPendingNumbers(error)
-  if (numbers) return `El monto supera lo que falta por pagar. Acordado: ${formatMinorMoney(numbers.agreedMinor)}. ` +
-    `Ya pagado: ${formatMinorMoney(numbers.paidMinor)}. Pendiente: ${formatMinorMoney(numbers.pendingMinor)}.`
+  if (numbers) return overpaymentMessage(numbers.agreedMinor, numbers.paidMinor, numbers.pendingMinor)
   switch (agreementErrorCode(error)) {
     case 'FINANCE_PAYMENT_EXCEEDS_PENDING': return 'El monto supera lo que falta por pagar. Actualiza los totales y revisa el pendiente.'
     case 'FINANCE_PAYMENT_NOTHING_AGREED': return 'Esta persona no tiene un monto acordado, así que no se puede registrar un pago.'

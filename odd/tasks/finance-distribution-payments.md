@@ -16,7 +16,7 @@ Record real payments against the frozen participants of a distribution agreement
 ## Tasks
 
 - [x] P6-F1 — Payments service, store and session reset. Types, defensive guards (`src/utils/finance-payment-guards.ts`), error mapping and money/time helpers (`src/utils/finance-payments.ts`), `FinancePaymentsService`, memory-only `finance-payments.store.ts` registered in `auth.store.ts` `resetPhase4()`. Route: delegated writer (this single frontend writer); the contract, store pattern and guards are non-trivial files in one coherent boundary.
-- [ ] P6-F2 — Payments section, register dialog, history and reversal dialog inside the agreement detail, void-agreement warning, voided-agreement notice.
+- [x] P6-F2 — Payments section (`AgreementPayments.vue`), register dialog (`AgreementPaymentForm.vue`), history with ANULADO, reversal dialog (`AgreementPaymentReverseForm.vue`) inside the agreement detail, void-agreement payments warning, voided-agreement notice. Route: delegated (same single writer); several non-trivial Vue files plus tests.
 - [ ] P6-F3 — Help articles in Spanish and documentation (`doc/finance-architecture.md`, `doc/finance-distribution-agreements.md`).
 
 ## Verification
@@ -27,3 +27,5 @@ Vitest + Vue Test Utils, meaningful deterministic RED before GREEN for behavior.
 
 - P6-F1 RED observed: the service test and the store test were run before any implementation existed and failed with `Failed to resolve import` (module missing). After implementation: service 49 tests, store 41 tests, utils 21 tests, auth store reset test GREEN.
 - Deviation: `src/services/finance-agreements.service.ts` is outside the allowed edit surface, so `validAgreement` keeps ignoring the optional `paymentSummary` of the agreement detail. The view validates it separately (`validPaymentSummary`) before using it and prefers the summary returned by `GET .../payments`.
+- P6-F2 tests: 33 view/component tests (summary per participant unpaid/partial/paid/not due, separate agreement badge, dialog prefill, Usar pendiente, validation, backend overpayment numbers, uncertain retry, history/ANULADO, reverse, voided agreement, void warning, collaborator/403/401, offline, focus/Escape/Tab) plus 4 regression tests (DB_VERSION 4, PDF definition identical with paymentSummary, no storage APIs in payment modules). The UI tests were written after the components, so no RED was observed for them; instead two deliberate mutations (drop the overpayment check, show the register button on voided agreements) were applied and made 2 tests fail, then reverted.
+- Void warning source: the live `GET .../payments` summary, falling back to a validated `paymentSummary` of the agreement detail; when neither is available the void dialog says it could not check for payments.

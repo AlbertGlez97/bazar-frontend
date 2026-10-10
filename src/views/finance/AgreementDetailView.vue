@@ -89,6 +89,7 @@
       :allowed="canVoid"
       :busy="store.reversing"
       :error="store.reverseError"
+      :payments="paymentsState"
       :pending="store.pendingReversal?.agreementId === id ? store.pendingReversal.payload : null"
       @confirm="confirmVoid"
       @retry="retryVoid"
@@ -235,6 +236,14 @@
         </p>
         <p>Sin asignar: {{ formatMinorMoney(document.totals.undistributedMinor) }}</p>
       </AppCard>
+      <AgreementPayments
+        :agreement-id="document.id"
+        :agreement-status="document.status"
+        :summary="paymentSummary"
+        :online="online"
+        @reload="reloadPayments"
+        @changed="refreshDetailQuietly"
+      />
       <AppCard v-if="document.warnings.length">
         <h2>Avisos conservados</h2>
         <ul data-test="agreement-warnings">
@@ -258,6 +267,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { AppAlert, AppBadge, AppButton, AppCard, TabNav } from '@/components'
 import { useFinanceAgreementsStore } from '@/stores/finance-agreements.store'
+import { useFinancePaymentsStore } from '@/stores/finance-payments.store'
+import { validPaymentSummary } from '@/utils/finance-payment-guards'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
@@ -265,14 +276,19 @@ import { formatReservePeriod } from '@/utils/finance-reserves'
 import { ruleSummary } from '@/utils/finance-distribution'
 import { formatMinorMoney } from '@/utils/money'
 import { AGREEMENT_ACCESS_COPY, agreementWarningText, formatAgreementInstant, isAgreementId } from '@/utils/finance-agreements'
+import AgreementPayments from './components/AgreementPayments.vue'
 import AgreementVoidForm from './components/AgreementVoidForm.vue'
 import { FINANCE_TABS } from './finance-tabs'
 
-const route = useRoute(), store = useFinanceAgreementsStore(), auth = useAuthStore(), session = useSessionStore(), mode = useUiModeStore()
+const route = useRoute(), store = useFinanceAgreementsStore(), payments = useFinancePaymentsStore(), auth = useAuthStore(), session = useSessionStore(), mode = useUiModeStore()
 const allowed = computed(() => !!auth.token && session.member?.role === 'socio' && session.member.active === true && mode.currentMode === 'gestion')
 const id = computed(() => typeof route.params.id === 'string' ? route.params.id : '')
 const document = computed(() => store.detail?.id === id.value ? store.detail : null)
 const viewActive = ref(true)
+// Prefer the live summary of the payments read; the detail copy is only a validated fallback.
+const paymentSummary = computed(() => payments.agreementId === id.value && payments.summary ? payments.summary :
+  validPaymentSummary(document.value?.paymentSummary) ? document.value.paymentSummary : null)
+const paymentsState = computed<'yes' | 'no' | 'unknown'>(() => !paymentSummary.value ? 'unknown' : paymentSummary.value.hasPayments ? 'yes' : 'no')
 const voidOpen = ref(false), voidFolio = ref(''), mutationNotice = ref('')
 const canVoid = computed(() => allowed.value && online.value && !store.saving && !store.reversing && !store.pdfLoading && !store.pendingCreate &&
   (!store.pendingReversal || store.pendingReversal.agreementId === id.value) &&
@@ -315,9 +331,18 @@ async function refresh() {
     store.detailError = 'El identificador del acuerdo no es válido.'
     return
   }
+  void reloadPayments()
   if (!online.value) return
   const result = await store.loadDetail(id.value)
   if (result && allowed.value) { await nextTick(); heading.value?.focus() }
+}
+async function reloadPayments() {
+  if (allowed.value && isAgreementId(id.value)) await payments.load(id.value)
+}
+/** After a payment change the agreement detail is re-read from the server without moving focus. */
+async function refreshDetailQuietly() {
+  const selectedId = id.value
+  if (allowed.value && online.value && isAgreementId(selectedId)) await store.loadDetail(selectedId)
 }
 function onOnline() { online.value = true; if (!store.detailLoading) void refresh() }
 function onOffline() { online.value = false }

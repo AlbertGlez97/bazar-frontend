@@ -4,9 +4,12 @@ import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { useFinanceAgreementsStore } from '@/stores/finance-agreements.store'
 import AgreementDetailView from '../AgreementDetailView.vue'
+import { paymentSummaryFixture } from '@/services/__tests__/finance-payments.fixture'
 import { AGREEMENT_ID, agreementFixture, agreementOrigin, reversalFixture } from '@/services/__tests__/finance-agreements.fixture'
 const mocks = vi.hoisted(() => ({ list: vi.fn(), get: vi.fn(), create: vi.fn(), reverse: vi.fn() }))
 vi.mock('@/services/finance-agreements.service', () => ({ FinanceAgreementsService: mocks }))
+const paymentMocks = vi.hoisted(() => ({ list: vi.fn(), create: vi.fn(), reverse: vi.fn(), get: vi.fn() }))
+vi.mock('@/services/finance-payments.service', () => ({ FinancePaymentsService: paymentMocks }))
 const fresh = () => ({ token: 'token-a', member: { role: 'socio', active: true }, owner: { accountId: agreementOrigin.accountId, apiBase: '/api/v1' }, memberId: agreementOrigin.memberId, deviceId: agreementOrigin.deviceId, deviceToken: 'device-token', mode: 'gestion' })
 const access = reactive(fresh()), route = reactive({ params: { id: AGREEMENT_ID } })
 vi.mock('vue-router', async (importOriginal) => ({ ...(await importOriginal<object>()), useRoute: () => route }))
@@ -14,7 +17,7 @@ vi.mock('@/stores/auth.store', () => ({ useAuthStore: () => ({ get token() { ret
 vi.mock('@/stores/session.store', () => ({ useSessionStore: () => access }))
 vi.mock('@/stores/uiMode.store', () => ({ useUiModeStore: () => ({ get currentMode() { return access.mode } }) }))
 vi.mock('@/services/queue-origin', async (importOriginal) => ({ ...(await importOriginal<object>()), currentQueueOrigin: () => ({ ...access.owner, memberId: access.memberId, deviceId: access.deviceId }) }))
-beforeEach(() => { setActivePinia(createPinia()); Object.assign(access, fresh()); route.params.id = AGREEMENT_ID; vi.clearAllMocks(); mocks.get.mockResolvedValue(agreementFixture()); mocks.reverse.mockResolvedValue(reversalFixture()) })
+beforeEach(() => { setActivePinia(createPinia()); Object.assign(access, fresh()); route.params.id = AGREEMENT_ID; vi.clearAllMocks(); paymentMocks.list.mockResolvedValue({ items: [], paymentSummary: paymentSummaryFixture() }); mocks.get.mockResolvedValue(agreementFixture()); mocks.reverse.mockResolvedValue(reversalFixture()) })
 const mounted = async () => { const w = mount(AgreementDetailView, { attachTo: document.body, global: { stubs: { RouterLink: RouterLinkStub } } }); await flushPromises(); return w }
 describe('immutable agreement detail', () => {
   it('shows only server-frozen names, roles, amounts, work units, rule, notice and dates', async () => {
