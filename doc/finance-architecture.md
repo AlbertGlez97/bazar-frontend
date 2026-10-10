@@ -1,4 +1,4 @@
-# Finanzas frontend: architecture and status through Phase 6 (payments, pending closure)
+# Finanzas frontend: architecture and status through Phase 6
 
 Entry point for the Finanzas screens. Per-feature details live in the linked documents. The backend contract lives in `../bazar-api/doc/finance-architecture.md`.
 
@@ -12,9 +12,9 @@ Entry point for the Finanzas screens. Per-feature details live in the linked doc
 | 4 | Resumen operativo + Reservas | CLOSED |
 | 5 | Simulador | CLOSED |
 | 5.5 | Acuerdos + PDF | CLOSED |
-| 6 | Pagos reales de acuerdos (inside the agreement detail) | NOT CLOSED. Implemented in the frontend and covered by Vitest; real integration against bazar-api and the browser checks are pending. |
+| 6 | Pagos reales de acuerdos (inside the agreement detail, online only) | CLOSED |
 
-Future improvement, not blocking: attach or retain a signed or scanned PDF.
+Future improvements, not blocking: attach or retain a signed or scanned PDF, and payment receipts.
 
 ## Routes and tabs
 
@@ -72,7 +72,8 @@ In-app articles (`src/config/help-content.ts`, category Finanzas) cover Gastos, 
 ## Known limitations
 
 - Agreements, payments and the simulator are not available offline.
-- The payments list is unpaginated by design (bounded by participants times corrections).
+- The payments list is unpaginated by design; it grows with corrections (annul, then register again).
+- After a server rejection that proves the local snapshot is stale (overpayment, voided agreement or payment), the screen reloads the agreement and payments from the server; uncertain failures keep the exact attempt for a manual retry.
 
 ## What does not exist
 
