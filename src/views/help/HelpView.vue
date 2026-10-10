@@ -149,7 +149,7 @@ import AppButton from '@/components/ui/atoms/AppButton.vue'
 import AppInput from '@/components/ui/molecules/AppInput.vue'
 import { HELP_ARTICLES } from '@/config/help-content'
 import { searchHelp } from '@/utils/help-search'
-import { landingFor } from '@/router/landing'
+import { safeHelpReturnTarget } from '@/utils/help-return'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
 
@@ -171,19 +171,11 @@ onMounted(() => {
 })
 onUnmounted(() => desktopQuery?.removeEventListener('change', adaptIndex))
 
-const returnTarget = computed(() => {
-  const from = route.query.from
-  // Resolve only known local operational routes. Never use browser back, which
-  // may leave the app, or allow a forged hint to bypass role/mode restrictions.
-  if (typeof from === 'string' && from.startsWith('/app') && !from.startsWith('//')) {
-    const target = router.resolve(from)
-    const names = ['AppHome', 'ProductCatalog', 'Sale', 'Reports', 'CodigosQr', 'Incidencias', 'Deudas', 'Settings', 'ChangePassword', 'Team', 'DevicesAdmin']
-    if (typeof target.name === 'string' && names.includes(target.name)
-      && (!target.meta.requiresSocio || session.member?.role === 'socio')
-      && (!target.meta.requiresGestion || mode.currentMode === 'gestion')) return target.fullPath
-  }
-  return landingFor(mode.currentMode)
-})
+const returnTarget = computed(() => safeHelpReturnTarget(route.query.from, {
+  router,
+  isSocio: session.member?.role === 'socio',
+  mode: mode.currentMode,
+}))
 
 async function focusArticle(id: string) {
   if (!HELP_ARTICLES.some((article) => article.id === id)) return
