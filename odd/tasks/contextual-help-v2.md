@@ -27,8 +27,8 @@ Replace the single long help page (index plus anchors plus scroll) with a contex
 ## Tasks
 - [x] CH1 Content structure (categories/topics/articles), HELP_ROUTE_CONTEXT, search upgrade, useHelp composable, router/back-whitelist/routeTitles fixes, data-layer tests
 - [x] CH2 AppAccordion, AppDrawer, HelpCenter (desktop sidebar, mobile levels, breadcrumb), search results UI, `?` button and drawer integration in AppLayout, motion and reduced-motion, a11y, UI tests
-- [ ] CH3 Real browser validation (context per route, drawer, Center, search, refresh, responsive 320/390/768/1280, animations, reduced motion, keyboard)
-- [ ] CH4 Docs (`doc/help-system.md`, README/finance docs), full suites, merge to main, push
+- [x] CH3 Real browser validation (context per route, drawer, Center, search, refresh, responsive 320/390/768/1280, animations, reduced motion, keyboard)
+- [x] CH4 Docs (`doc/help-system.md`, README/finance docs), full suites, merge to main, push
 
 ## Route
 Delegated direct: two sequential writers (CH1 data layer, CH2 UI); parent runs real browser validation and final verification.
@@ -50,3 +50,15 @@ CH2 (UI) done by writer 2, route: delegated direct.
 - Verification: npx vitest run 241 files / 4528 tests passed; npm run lint clean; npx vue-tsc -b clean; npm run build ok; git diff --check clean.
 - Covered only by jsdom (CH3 must validate in real Chrome): responsive layout at 320/390/768/900/1280, drawer and accordion animation, reduced motion, real keyboard and focus order, sticky sidebar, safe scroll after navigation (router scrollBehavior still resets to top on every query change, including each search keystroke).
 - Polish from real Chrome validation: programmatic focus on the non-interactive headings (`data-help-heading`, article titles, tabindex=-1) drew a heavy outline; their `:focus`/`:focus-visible` outline is now removed in the help components only. The global `:focus-visible` and every control keep their ring (guarded by a test).
+
+### Real browser validation (parent, Chrome, isolated local stack; Chrome window in the foreground)
+- Context per route: the `?` opens the drawer with the right topic on 17 routes (home -> Primeros pasos, venta, productos, deudas, reportes, codigos-qr, resumen, aportaciones, gastos, jornadas, reservas, simulador, acuerdos, acuerdos/:id, equipo, dispositivos, incidencias). The `?` is a button (aria-expanded updates) and is not rendered on the Help page.
+- Drawer: opens with a real pointer click, focus moves inside, Escape closes and returns focus to the `?`; "Ver toda la ayuda" opens `/app/ayuda?topic=finanzas.jornadas&from=...` with the same topic.
+- Center: sidebar tree with the selected category expanded; selecting Gastos after Jornadas replaces the panel (Jornadas article text absent from the DOM, scrollY 0, finite page height), URL `topic=finanzas.gastos`, aria-current on the sidebar item and the last breadcrumb item.
+- Search "corregir jornada": 2 results with "Finanzas > Jornadas" and a count; opening one navigates to topic+article with that accordion expanded and focus on its trigger; reload keeps topic and article.
+- Responsive (iframes at 320/390/768/899/1280): no horizontal overflow at any width; no topic sidebar below 900 px (levels categories -> topics -> content with a working back control, verified visually at 390 px); sidebar from 900 px; drawer full-screen at 320/390 and a 448 px right panel at 768/1280.
+- Motion: drawer slides 32 px with opacity 0 -> 1 in about 210 ms (37 sampled frames). With the real prefers-reduced-motion rules applied the drawer does not move (constant x) and the accordion transition is about 0 s. The OS preference itself could not be switched from the automation, so the media block was applied manually.
+- Keyboard with real keys: Tab order search -> categories -> topics, Enter on Gastos navigates and moves focus to the new panel heading, Space toggles the accordion (aria-expanded, aria-controls, closed panels inert).
+- Polish found and fixed (48b8bc3): programmatically focused headings drew a heavy outline; verified outline none on the heading after the fix.
+- Observations kept as follow-ups: the search shows both a native clear (X) and a "Limpiar busqueda" button; a hidden/background Chrome tab freezes transitions and screenshots (environment issue, not a product defect).
+- Audience behavior preserved (all articles visible with the "Solo socios" badge, no role filtering). Native review: pending at the time of writing; see the closing report.
