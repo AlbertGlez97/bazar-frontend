@@ -6,7 +6,7 @@ on:
 
 jobs:
   test:
-    runs-on: self-hosted
+    runs-on: host
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node 24
@@ -22,7 +22,7 @@ jobs:
 
   sonar:
     needs: test
-    runs-on: self-hosted
+    runs-on: host
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,7 +41,7 @@ jobs:
 
   deploy:
     needs: sonar
-    runs-on: self-hosted
+    runs-on: host
     steps:
       - name: Deploy al LXC 108
         env:
