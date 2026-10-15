@@ -28,7 +28,8 @@ export default defineConfig({
     // Cobertura vía V8 (nativa, sin instrumentation extra)
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      // lcov es el reporte que lee SonarQube (ver sonar-project.properties).
+      reporter: ['text', 'html', 'lcov'],
       // Umbrales mínimos — el comando falla con exit code 1 si bajan del 80%
       thresholds: {
         statements: 80,
