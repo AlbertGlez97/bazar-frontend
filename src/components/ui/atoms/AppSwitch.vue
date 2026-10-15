@@ -40,6 +40,7 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
 <style scoped>
 /* Mobile-first: switch 44×24 cumple Apple HIG. Desktop vuelve a 36×20. */
 .app-switch {
+  position:    relative;
   display:     inline-flex;
   align-items: center;
   gap:         0.625rem;
@@ -50,7 +51,24 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
 }
 .app-switch--disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
 
-.app-switch__input { display: none; }
+/* Oculto a la vista pero NO con display:none: así sigue en el orden de
+   tabulación y se puede enfocar y activar con el teclado. */
+.app-switch__input {
+  position: absolute;
+  width:    1px;
+  height:   1px;
+  margin:   -1px;
+  padding:  0;
+  border:   0;
+  overflow: hidden;
+  clip:     rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.app-switch__input:focus-visible ~ .app-switch__track {
+  outline:        3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
 
 /* Track */
 .app-switch__track {

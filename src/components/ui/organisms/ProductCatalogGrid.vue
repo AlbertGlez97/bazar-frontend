@@ -14,15 +14,9 @@
           @update:model-value="handleSearchInput"
         />
       </div>
-      <!-- Solo socios y solo en gestión: el backend ignora includeInactive
-           para colaboradores, y en venta lo inactivo no es asunto del mostrador -->
-      <AppSwitch
-        v-if="showInactiveToggle && !isVenta"
-        :model-value="includeInactive"
-        @update:model-value="$emit('update:includeInactive', $event)"
-      >
-        Mostrar inactivos
-      </AppSwitch>
+      <!-- Botón "Filtros" (y su panel): lo pone la vista; el organismo solo le
+           da lugar junto al buscador. En venta la vista no lo ofrece. -->
+      <slot name="filters" />
 
       <!-- Vista: cuadrícula o lista. Solo en gestión (venta tiene su propio
            selector en SaleCatalogPicker, con su propia preferencia guardada). -->
@@ -53,6 +47,14 @@
           Lista
         </button>
       </div>
+    </div>
+
+    <!-- Chips de los filtros activos, debajo del buscador -->
+    <div
+      v-if="$slots['active-filters']"
+      class="product-catalog-grid__active-filters"
+    >
+      <slot name="active-filters" />
     </div>
 
     <p
@@ -103,7 +105,6 @@ import type { ManageCatalogView } from '@/types/manage-catalog-view.types'
 import type { Product } from '@/types/product.types'
 import type { UiMode } from '@/types/ui-mode.types'
 import AppInput from '../molecules/AppInput.vue'
-import AppSwitch from '../atoms/AppSwitch.vue'
 import ProductCard from '../organisms/ProductCard.vue'
 import AppPagination from '../molecules/AppPagination.vue'
 
@@ -113,17 +114,14 @@ const props = withDefaults(defineProps<{
   totalPages: number
   loading?: boolean
   showActions?: boolean
-  /** Muestra el interruptor "Mostrar inactivos" (solo socios) */
-  showInactiveToggle?: boolean
-  includeInactive?: boolean
   /** ms de debounce antes de emitir "search" — evita disparar una petición por cada tecla */
   debounceMs?: number
   /**
    * Presentación del catálogo. `gestion` (por defecto) es la vista de
    * administración de siempre. `venta` es la vista de mostrador: tarjetas y
    * buscador grandes, objetivos táctiles de 44 px y sin acciones de gestión
-   * (editar, desactivar, reactivar) ni "Mostrar inactivos", aunque el padre
-   * las habilite. El organismo solo presenta: el modo lo decide el contenedor.
+   * (editar, desactivar, reactivar), aunque el padre las habilite. El
+   * organismo solo presenta: el modo lo decide el contenedor.
    */
   mode?: UiMode
   /**
@@ -138,8 +136,6 @@ const props = withDefaults(defineProps<{
 }>(), {
   loading: false,
   showActions: false,
-  showInactiveToggle: false,
-  includeInactive: false,
   debounceMs: 350,
   mode: 'gestion',
   selectionMode: false,
@@ -154,7 +150,6 @@ const selectedSet = computed(() => new Set(props.selectedIds))
 const emit = defineEmits<{
   search: [term: string]
   'update:page': [page: number]
-  'update:includeInactive': [value: boolean]
   edit: [product: Product]
   deactivate: [product: Product]
   reactivate: [product: Product]

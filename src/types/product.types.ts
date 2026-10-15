@@ -28,6 +28,12 @@ export interface ProductListParams {
   includeInactive?: boolean
   /** "Poca existencia": solo productos con stock <= umbral. Ausente = sin filtro. */
   umbral?: number
+  /** Solo productos con stock 0. Ausente = sin filtro (el servidor trata `false` igual). */
+  agotados?: boolean
+  /** Solo productos sin costo de compra. Ausente = sin filtro. */
+  sinCosto?: boolean
+  /** Solo productos de este tipo. Ausente = ambos. */
+  tipo?: 'unica' | 'cantidad'
 }
 
 export interface ProductListResponse {

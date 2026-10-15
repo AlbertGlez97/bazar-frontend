@@ -8,8 +8,9 @@ import type {
   UpdateProductPayload,
 } from '@/types/product.types'
 
-/** Mismo umbral por defecto que usa el resumen del dashboard para "poca existencia" (stock <= umbral). */
-export const LOW_STOCK_UMBRAL = 2
+// El umbral vive en `config` (para que la UI y los utils no dependan del store);
+// se sigue exportando desde aquí para quien ya lo importaba de este módulo.
+export { LOW_STOCK_UMBRAL } from '@/config/catalog'
 
 export const useProductsStore = defineStore('products', () => {
   const items = ref<Product[]>([])
@@ -22,6 +23,11 @@ export const useProductsStore = defineStore('products', () => {
   // productos con stock <= umbral. Se guarda como filtro activo, igual que
   // includeInactive: paginar o buscar de nuevo lo mantiene sin repetirlo.
   const umbral = ref<number | undefined>(undefined)
+  // Mismo criterio para los demás filtros del panel: persisten al paginar o
+  // buscar y se apagan pasando `undefined` explícito.
+  const agotados = ref(false)
+  const sinCosto = ref(false)
+  const tipo = ref<ProductListParams['tipo']>(undefined)
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -39,6 +45,9 @@ export const useProductsStore = defineStore('products', () => {
     // `'umbral' in params` (no `!== undefined`) para poder apagar el filtro
     // pasando `{ umbral: undefined }` explícito, distinto de no mencionarlo.
     if ('umbral' in params) umbral.value = params.umbral
+    if ('agotados' in params) agotados.value = params.agotados === true
+    if ('sinCosto' in params) sinCosto.value = params.sinCosto === true
+    if ('tipo' in params) tipo.value = params.tipo
 
     loading.value = true
     error.value = null
@@ -49,6 +58,9 @@ export const useProductsStore = defineStore('products', () => {
         search: search.value || undefined,
         includeInactive: includeInactive.value || undefined,
         umbral: umbral.value,
+        agotados: agotados.value || undefined,
+        sinCosto: sinCosto.value || undefined,
+        tipo: tipo.value,
       })
       let response = await query(page.value)
 
@@ -104,7 +116,7 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   return {
-    items, total, page, limit, search, includeInactive, umbral, loading, error, totalPages,
+    items, total, page, limit, search, includeInactive, umbral, agotados, sinCosto, tipo, loading, error, totalPages,
     fetchProducts, createProduct, updateProduct, uploadProductImage,
     deactivateProduct, reactivateProduct,
   }

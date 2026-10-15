@@ -79,19 +79,52 @@ describe('ProductCatalogGrid', () => {
     expect(wrapper.emitted('update:page')?.[0]).toEqual([2])
   })
 
-  it('no muestra el interruptor "Mostrar inactivos" por defecto', () => {
+  it('ya no lleva interruptores propios: los filtros viven en el panel que la vista le pasa por slot', () => {
     const wrapper = mount(ProductCatalogGrid, { props: { products: [], page: 1, totalPages: 1 } })
     expect(wrapper.text()).not.toContain('Mostrar inactivos')
+    expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
   })
 
-  it('muestra el interruptor "Mostrar inactivos" y emite update:includeInactive al activarlo', async () => {
-    const wrapper = mount(ProductCatalogGrid, {
-      props: { products: [], page: 1, totalPages: 1, showInactiveToggle: true },
-    })
-    expect(wrapper.text()).toContain('Mostrar inactivos')
+  describe('slots de filtros', () => {
+    const slots = {
+      filters: '<button type="button" class="slot-filters">Filtros</button>',
+      'active-filters': '<ul class="slot-chips"><li>Agotados</li></ul>',
+    }
 
-    await wrapper.find('input[type="checkbox"]').setValue(true)
-    expect(wrapper.emitted('update:includeInactive')?.[0]).toEqual([true])
+    it('el slot "filters" queda en la barra, junto al buscador y antes del selector de vista', () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [], page: 1, totalPages: 1 }, slots })
+      const toolbar = wrapper.get('.product-catalog-grid__toolbar').element
+      const order = Array.from(toolbar.children).map((child) => child.className)
+
+      expect(toolbar.querySelector('.slot-filters')).not.toBeNull()
+      const search = order.findIndex((name) => name.includes('product-catalog-grid__search'))
+      const filters = order.findIndex((name) => name.includes('slot-filters'))
+      const view = order.findIndex((name) => name.includes('product-catalog-grid__view'))
+      expect(search).toBeLessThan(filters)
+      expect(filters).toBeLessThan(view)
+    })
+
+    it('el slot "active-filters" va debajo de la barra y encima del catálogo', () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [product()], page: 1, totalPages: 1 }, slots })
+      const children = Array.from(wrapper.get('.product-catalog-grid').element.children)
+      const toolbar = children.findIndex((c) => c.classList.contains('product-catalog-grid__toolbar'))
+      const chips = children.findIndex((c) => c.querySelector('.slot-chips') !== null)
+      const list = children.findIndex((c) => c.classList.contains('product-catalog-grid__grid'))
+
+      expect(chips).toBeGreaterThan(toolbar)
+      expect(chips).toBeLessThan(list)
+    })
+
+    it('sin slots no deja contenedores vacíos', () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [], page: 1, totalPages: 1 } })
+      expect(wrapper.find('.product-catalog-grid__active-filters').exists()).toBe(false)
+    })
+
+    it('el buscador y el selector Cuadrícula/Lista siguen en la barra aunque haya panel', () => {
+      const wrapper = mount(ProductCatalogGrid, { props: { products: [], page: 1, totalPages: 1 }, slots })
+      expect(wrapper.find('input[placeholder="Buscar productos..."]').exists()).toBe(true)
+      expect(wrapper.find('button[data-view="grid"]').exists()).toBe(true)
+    })
   })
 
   describe('modo (mode)', () => {
@@ -101,31 +134,27 @@ describe('ProductCatalogGrid', () => {
       page: 1,
       totalPages: 3,
       showActions: true,
-      showInactiveToggle: true,
     }
     const buttonTexts = (wrapper: ReturnType<typeof mount>) => wrapper.findAll('button').map((b) => b.text())
 
-    it('por defecto es gestión: tarjetas normales, acciones y toggle de inactivos', () => {
+    it('por defecto es gestión: tarjetas normales y acciones', () => {
       const wrapper = mount(ProductCatalogGrid, { props: fullProps })
       expect(wrapper.get('.product-catalog-grid').classes()).toContain('product-catalog-grid--gestion')
       expect(wrapper.findAll('.product-card--default')).toHaveLength(2)
       expect(wrapper.find('.product-card--large').exists()).toBe(false)
       expect(buttonTexts(wrapper)).toEqual(expect.arrayContaining(['Editar', 'Desactivar', 'Reactivar']))
-      expect(wrapper.text()).toContain('Mostrar inactivos')
     })
 
     it('gestión explícita se comporta igual que el valor por defecto', () => {
       const wrapper = mount(ProductCatalogGrid, { props: { ...fullProps, mode: 'gestion' } })
       expect(wrapper.findAll('.product-card__footer')).toHaveLength(2)
-      expect(wrapper.text()).toContain('Mostrar inactivos')
     })
 
     it('gestión mantiene la regla de colaborador: sin acciones si showActions es false', () => {
       const wrapper = mount(ProductCatalogGrid, {
-        props: { ...fullProps, mode: 'gestion', showActions: false, showInactiveToggle: false },
+        props: { ...fullProps, mode: 'gestion', showActions: false },
       })
       expect(wrapper.find('.product-card__footer').exists()).toBe(false)
-      expect(wrapper.text()).not.toContain('Mostrar inactivos')
     })
 
     it('venta usa tarjetas grandes', () => {
@@ -144,11 +173,6 @@ describe('ProductCatalogGrid', () => {
       expect(texts).not.toContain('Reactivar')
     })
 
-    it('venta oculta "Mostrar inactivos" aunque el padre lo habilite', () => {
-      const wrapper = mount(ProductCatalogGrid, { props: { ...fullProps, mode: 'venta' } })
-      expect(wrapper.text()).not.toContain('Mostrar inactivos')
-      expect(wrapper.find('input[type="checkbox"]').exists()).toBe(false)
-    })
 
     it('venta agranda el buscador (size lg) y lo mantiene visible y funcional', async () => {
       const wrapper = mount(ProductCatalogGrid, { props: { ...fullProps, mode: 'venta' } })

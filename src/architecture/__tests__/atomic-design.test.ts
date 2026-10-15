@@ -7,10 +7,14 @@ const src = resolve(process.cwd(), 'src')
 const ui = resolve(src, 'components/ui')
 const compoundControls = [
   'AppInput', 'AppSelect', 'AppTextarea', 'AppImageUpload', 'QuantityStepper', 'AppStatCard',
+  // Filtros de Productos: contenedor desplegable genérico, fila de filtro y chips son moléculas.
+  'AppDropdownPanel', 'FilterSwitchRow', 'ActiveFilterChips',
 ]
 const completeSections = [
   'BusinessRegistrationForm', 'ChangePasswordForm', 'DeviceCreateForm', 'DeviceIdentifyForm',
   'MemberCreateForm', 'ProductForm', 'DeviceList', 'TeamMemberList', 'ProductCard',
+  // Sección completa de filtros del catálogo: el botón, su insignia y el panel.
+  'ProductFiltersPanel',
 ]
 
 function imports(source: string): string[] {
@@ -61,6 +65,22 @@ describe('Atomic Design boundaries', () => {
       const dependency = resolveImport(file, specifier)
       return /\/components\/ui\/organisms\//.test(dependency)
         || /\/(stores|services|templates|views|pages|layouts)\//.test(dependency)
+        || /\/components(?:\/index(?:\.ts)?)?$/.test(dependency)
+    })
+    expect(violations).toEqual([])
+  })
+
+  // El panel de filtros solo presenta (props -> eventos): la orquestación (URL,
+  // peticiones) vive en el composable y la vista, nunca en la UI ni en los
+  // módulos de los que depende para calcular (utils/config).
+  it.each([
+    resolve(ui, 'organisms/ProductFiltersPanel.vue'),
+    resolve(src, 'utils/product-filters.ts'),
+  ])('%s no depende de stores, servicios, vistas ni del barrel público', (file) => {
+    const violations = imports(readFileSync(file, 'utf8')).filter((specifier) => {
+      if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return false
+      const dependency = resolveImport(file, specifier)
+      return /\/(stores|services|templates|views|pages|layouts)\//.test(dependency)
         || /\/components(?:\/index(?:\.ts)?)?$/.test(dependency)
     })
     expect(violations).toEqual([])

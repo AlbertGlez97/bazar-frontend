@@ -44,6 +44,24 @@ function setMember(role: 'socio' | 'colaborador') {
   useSessionStore().setMember({ id: 'm-1', name: 'Ana', role, active: true })
 }
 
+type ViewWrapper = ReturnType<typeof mount>
+
+/** El botón "Filtros" (disparador del panel desplegable); no existe en Modo Venta. */
+const filtersButton = (wrapper: ViewWrapper) => wrapper.find('button[aria-haspopup="dialog"]')
+
+/** Abre el panel de filtros (si no está abierto) y devuelve el wrapper. */
+async function openFilters(wrapper: ViewWrapper) {
+  if (!wrapper.find('[role="dialog"]').exists()) await filtersButton(wrapper).trigger('click')
+  return wrapper
+}
+
+/** El interruptor de una fila del panel de filtros, por su etiqueta. */
+function filterSwitch(wrapper: ViewWrapper, label: string) {
+  const row = wrapper.findAll('.filter-switch-row').find((r) => r.text() === label)
+  if (!row) throw new Error(`No hay fila de filtro "${label}"`)
+  return row.get('input[type="checkbox"]')
+}
+
 beforeEach(() => {
   // El modo de interfaz se persiste: sin limpiar, un test dejaría "venta" al siguiente.
   localStorage.clear()
@@ -67,6 +85,8 @@ describe('ProductCatalogView según el modo de interfaz', () => {
       expect(wrapper.find('.product-card--default').exists()).toBe(true)
       expect(wrapper.find('.product-card--large').exists()).toBe(false)
       expect(buttonTexts(wrapper)).toEqual(expect.arrayContaining(['Editar', 'Desactivar']))
+      expect(filtersButton(wrapper).exists()).toBe(true)
+      await openFilters(wrapper)
       expect(wrapper.text()).toContain('Mostrar inactivos')
       expect(wrapper.text()).toContain('Nuevo producto')
     })
@@ -75,6 +95,7 @@ describe('ProductCatalogView según el modo de interfaz', () => {
       setMember('colaborador')
       const wrapper = mount(ProductCatalogView, mountOptions)
       await vi.waitFor(() => expect(wrapper.text()).toContain('Producto'))
+      await openFilters(wrapper)
 
       expect(wrapper.find('.product-card--default').exists()).toBe(true)
       expect(wrapper.find('.product-card__footer').exists()).toBe(false)
@@ -97,6 +118,7 @@ describe('ProductCatalogView según el modo de interfaz', () => {
       expect(texts).not.toContain('Editar')
       expect(texts).not.toContain('Desactivar')
       expect(texts).not.toContain('Reactivar')
+      expect(filtersButton(wrapper).exists()).toBe(false)
       expect(wrapper.text()).not.toContain('Mostrar inactivos')
       expect(wrapper.text()).not.toContain('Nuevo producto')
     })
@@ -107,7 +129,7 @@ describe('ProductCatalogView según el modo de interfaz', () => {
       await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
 
       expect(wrapper.find('.product-card__footer').exists()).toBe(false)
-      expect(wrapper.text()).not.toContain('Mostrar inactivos')
+      expect(filtersButton(wrapper).exists()).toBe(false)
       expect(wrapper.text()).not.toContain('Nuevo producto')
     })
 
@@ -136,7 +158,8 @@ describe('ProductCatalogView según el modo de interfaz', () => {
       const wrapper = mount(ProductCatalogView, mountOptions)
       await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
 
-      await wrapper.find('input[type="checkbox"]').setValue(true)
+      await openFilters(wrapper)
+      await filterSwitch(wrapper, 'Mostrar inactivos').setValue(true)
       await vi.waitFor(() => expect(lastListCall()?.includeInactive).toBe(true))
       vi.mocked(ProductsService.listProducts).mockClear()
 
@@ -148,6 +171,25 @@ describe('ProductCatalogView según el modo de interfaz', () => {
       await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
       expect(wrapper.text()).not.toContain('Nuevo producto')
       expect(wrapper.text()).not.toContain('Desactivar')
+      expect(filtersButton(wrapper).exists()).toBe(false)
+    })
+
+    it('gestión → venta con filtros activos recarga una sola vez sin ninguno, y al volver a gestión se conservan', async () => {
+      setMember('socio')
+      const wrapper = mount(ProductCatalogView, mountOptions)
+      await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+      await openFilters(wrapper)
+      await filterSwitch(wrapper, 'Agotados').setValue(true)
+      await vi.waitFor(() => expect(lastListCall()?.agotados).toBe(true))
+      vi.mocked(ProductsService.listProducts).mockClear()
+
+      useUiModeStore().setMode('venta')
+
+      await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalledTimes(1))
+      expect(lastListCall()?.agotados).toBeUndefined()
+
+      useUiModeStore().setMode('gestion')
+      await vi.waitFor(() => expect(lastListCall()?.agotados).toBe(true))
     })
 
     it('gestión → venta sin filtro de inactivos no recarga', async () => {
@@ -172,7 +214,7 @@ describe('ProductCatalogView según el modo de interfaz', () => {
 
       await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
       expect(wrapper.text()).toContain('Nuevo producto')
-      expect(wrapper.text()).toContain('Mostrar inactivos')
+      expect(filtersButton(wrapper).exists()).toBe(true)
     })
 
     it('venta → gestión no da acciones a un colaborador', async () => {
@@ -208,16 +250,14 @@ describe('ProductCatalogView — vista de cuadrícula/lista (Gestión)', () => {
 })
 
 describe('ProductCatalogView — filtro de poca existencia (umbral)', () => {
-  function lowStockInput(wrapper: ReturnType<typeof mount>) {
-    const label = wrapper.findAll('label').find((l) => l.text().includes('Poca existencia'))
-    return label!.find('input[type="checkbox"]')
-  }
+  const lowStockInput = (wrapper: ViewWrapper) => filterSwitch(wrapper, 'Poca existencia')
   const lastListCall = () => vi.mocked(ProductsService.listProducts).mock.calls.at(-1)?.[0]
 
   it('el interruptor está apagado por defecto y no manda "umbral"', async () => {
     setMember('socio')
     const wrapper = mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+    await openFilters(wrapper)
     expect(wrapper.text()).toContain('Poca existencia')
     expect((lowStockInput(wrapper).element as HTMLInputElement).checked).toBe(false)
     expect(lastListCall()?.umbral).toBeUndefined()
@@ -227,7 +267,8 @@ describe('ProductCatalogView — filtro de poca existencia (umbral)', () => {
     setMember('socio')
     vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [product()], total: 50, page: 3, limit: 20 })
     const wrapper = mount(ProductCatalogView, mountOptions)
-    await vi.waitFor(() => expect(wrapper.text()).toContain('Poca existencia'))
+    await vi.waitFor(() => expect(filtersButton(wrapper).exists()).toBe(true))
+    await openFilters(wrapper)
 
     await lowStockInput(wrapper).setValue(true)
 
@@ -239,7 +280,8 @@ describe('ProductCatalogView — filtro de poca existencia (umbral)', () => {
   it('apagarlo vuelve a pedir sin "umbral"', async () => {
     setMember('socio')
     const wrapper = mount(ProductCatalogView, mountOptions)
-    await vi.waitFor(() => expect(wrapper.text()).toContain('Poca existencia'))
+    await vi.waitFor(() => expect(filtersButton(wrapper).exists()).toBe(true))
+    await openFilters(wrapper)
     await lowStockInput(wrapper).setValue(true)
     await vi.waitFor(() => expect(lastListCall()?.umbral).toBe(2))
 
@@ -252,6 +294,7 @@ describe('ProductCatalogView — filtro de poca existencia (umbral)', () => {
     setMember('colaborador')
     const wrapper = mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+    await openFilters(wrapper)
     expect(wrapper.text()).toContain('Poca existencia')
   })
 
@@ -260,6 +303,7 @@ describe('ProductCatalogView — filtro de poca existencia (umbral)', () => {
     useUiModeStore().setMode('venta')
     const wrapper = mount(ProductCatalogView, mountOptions)
     await vi.waitFor(() => expect(wrapper.find('.product-card--large').exists()).toBe(true))
+    expect(filtersButton(wrapper).exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Poca existencia')
   })
 
@@ -279,6 +323,10 @@ describe('ProductCatalogView — filtro de poca existencia (umbral)', () => {
       const wrapper = await mountWithQuery({ pocaExistencia: '1' })
       await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
       expect(lastListCall()?.umbral).toBe(2)
+      // …y se refleja en el botón (insignia), en los chips y en el interruptor
+      expect(filtersButton(wrapper).attributes('aria-label')).toBe('Filtros, 1 filtro activo')
+      expect(wrapper.get('[aria-label="Filtros activos"]').text()).toContain('Poca existencia')
+      await openFilters(wrapper)
       expect((lowStockInput(wrapper).element as HTMLInputElement).checked).toBe(true)
     })
 
@@ -462,6 +510,7 @@ describe('ProductCatalogView', () => {
       setMember('socio')
       const wrapper = mount(ProductCatalogView, mountOptions)
       await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      await openFilters(wrapper)
       expect(wrapper.text()).toContain('Mostrar inactivos')
     })
 
@@ -469,6 +518,7 @@ describe('ProductCatalogView', () => {
       setMember('colaborador')
       const wrapper = mount(ProductCatalogView, mountOptions)
       await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenCalled())
+      await openFilters(wrapper)
       expect(wrapper.text()).not.toContain('Mostrar inactivos')
     })
 
@@ -476,10 +526,10 @@ describe('ProductCatalogView', () => {
       setMember('socio')
       vi.mocked(ProductsService.listProducts).mockResolvedValue({ items: [product()], total: 100, page: 3, limit: 20 })
       const wrapper = mount(ProductCatalogView, mountOptions)
-      await vi.waitFor(() => expect(wrapper.text()).toContain('Mostrar inactivos'))
       await vi.waitFor(() => expect(wrapper.text()).toContain('Desactivar'))
+      await openFilters(wrapper)
 
-      await wrapper.find('input[type="checkbox"]').setValue(true)
+      await filterSwitch(wrapper, 'Mostrar inactivos').setValue(true)
 
       await vi.waitFor(() => expect(ProductsService.listProducts).toHaveBeenLastCalledWith(
         expect.objectContaining({ page: 1, includeInactive: true }),

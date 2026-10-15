@@ -252,6 +252,28 @@ export const VOICE = {
     totalIngresadoHint: 'Ventas de contado + abonos reales del periodo.',
   },
   /** Inicio de Modo Gestión (solo socios): resumen del día (`GET /dashboard/summary`). */
+  /** Panel "Filtros" del catálogo de Productos (Modo Gestión). */
+  productFilters: {
+    button: 'Filtros',
+    panelTitle: 'Filtros',
+    close: 'Cerrar filtros',
+    clear: 'Limpiar filtros',
+    activeLabel: 'Filtros activos',
+    removeChip: (label: string) => `Quitar filtro ${label}`,
+    countLabel: (count: number) => (count === 1 ? '1 filtro activo' : `${count} filtros activos`),
+    groups: {
+      existencia: 'Existencia',
+      estado: 'Estado',
+      tipo: 'Tipo',
+      costo: 'Costo',
+    },
+    lowStock: 'Poca existencia',
+    soldOut: 'Agotados',
+    inactive: 'Mostrar inactivos',
+    unica: 'Única',
+    cantidad: 'Por cantidad',
+    noCost: 'Sin costo de compra',
+  },
   dashboard: {
     title: 'Inicio',
     lead: 'Un vistazo rápido a cómo va tu negocio hoy.',

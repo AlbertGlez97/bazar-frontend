@@ -99,7 +99,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       'En Productos identifica la tarjeta o fila correcta y toca Editar. Revisa nombre, precio y los campos editables antes de guardar.',
       'El tipo y la existencia inicial no se modifican después de crear el producto. No uses el formulario para simular una entrada de mercancía.',
       'Para dejar de ofrecerlo, usa Desactivar y revisa el resultado. Un producto inactivo se distingue por su estado.',
-      'Activa Mostrar inactivos para encontrarlo de nuevo; usa Reactivar si debe volver a ofrecerse.',
+      'Abre Filtros y activa Mostrar inactivos para encontrarlo de nuevo; usa Reactivar si debe volver a ofrecerse.',
       'Al cambiar el precio, comprueba el catálogo actualizado antes de comenzar otra venta.',
     ],
     tips: ['No hay ajuste de existencia, merma ni reversión de ventas desde Editar. Resolver una incidencia tampoco repone stock.'],

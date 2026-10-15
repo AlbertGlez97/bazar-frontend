@@ -60,6 +60,45 @@ describe('products.store', () => {
     expect(store.includeInactive).toBe(true)
   })
 
+  it('fetchProducts guarda agotados/sinCosto/tipo y los manda al servidor (el catálogo pagina allá)', async () => {
+    const store = useProductsStore()
+
+    await store.fetchProducts({ page: 1, agotados: true, sinCosto: true, tipo: 'unica' })
+
+    expect(ProductsService.listProducts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ agotados: true, sinCosto: true, tipo: 'unica' }),
+    )
+    expect(store.agotados).toBe(true)
+    expect(store.sinCosto).toBe(true)
+    expect(store.tipo).toBe('unica')
+  })
+
+  it('los filtros nuevos se conservan al paginar o buscar sin repetirlos', async () => {
+    const store = useProductsStore()
+    await store.fetchProducts({ agotados: true, sinCosto: true, tipo: 'cantidad' })
+
+    await store.fetchProducts({ page: 2 })
+
+    expect(ProductsService.listProducts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 2, agotados: true, sinCosto: true, tipo: 'cantidad' }),
+    )
+  })
+
+  it('pasar undefined explícito apaga cada filtro nuevo (y no manda `false`)', async () => {
+    const store = useProductsStore()
+    await store.fetchProducts({ agotados: true, sinCosto: true, tipo: 'unica' })
+
+    await store.fetchProducts({ agotados: undefined, sinCosto: undefined, tipo: undefined })
+
+    const sent = vi.mocked(ProductsService.listProducts).mock.calls.at(-1)![0]!
+    expect(sent.agotados).toBeUndefined()
+    expect(sent.sinCosto).toBeUndefined()
+    expect(sent.tipo).toBeUndefined()
+    expect(store.agotados).toBe(false)
+    expect(store.sinCosto).toBe(false)
+    expect(store.tipo).toBeUndefined()
+  })
+
   it('fetchProducts expone un error legible y relanza la excepción', async () => {
     vi.mocked(ProductsService.listProducts).mockRejectedValue(new Error('network'))
     const store = useProductsStore()

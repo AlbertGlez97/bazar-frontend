@@ -65,36 +65,43 @@
       :loading="store.loading"
       :mode="uiMode.currentMode"
       :show-actions="isSocio"
-      :show-inactive-toggle="isSocio"
-      :include-inactive="store.includeInactive"
       :selection-mode="selection.active"
       :selected-ids="selectedIds"
       :view="catalogView.view"
       @toggle-select="selection.toggle($event)"
       @search="handleSearch"
-      @update:include-inactive="handleIncludeInactive"
       @update:page="handlePageChange"
       @update:view="catalogView.setView"
       @edit="openEditModal"
       @deactivate="openDeactivateConfirm"
       @reactivate="handleReactivate"
-    />
-
-    <!-- "Poca existencia" (D1): solo productos con stock <= umbral (mismo
-         umbral por defecto que el resumen del dashboard). Después del grid,
-         no antes: así "Mostrar inactivos" (dentro del grid) sigue siendo la
-         primera casilla de la pantalla, como ya asumen otras pruebas. No es
-         cosa de socios: cualquier persona autenticada puede consultarlo. Va
-         por el query `umbral` al backend (el catálogo pagina del lado del
-         servidor), nunca como `.filter()` sobre lo ya cargado. -->
-    <AppSwitch
-      v-if="!isVenta"
-      class="product-catalog-view__low-stock"
-      :model-value="lowStockActive"
-      @update:model-value="handleLowStock"
     >
-      Poca existencia
-    </AppSwitch>
+      <!-- Filtros del catálogo: botón junto al buscador y chips debajo. Es
+           gestión: en Modo Venta el mostrador no los ofrece. Cada filtro viaja
+           como query al backend (el catálogo pagina del lado del servidor),
+           nunca como `.filter()` sobre lo ya cargado. -->
+      <template
+        v-if="!isVenta"
+        #filters
+      >
+        <ProductFiltersPanel
+          :filters="filters"
+          :show-inactive="isSocio"
+          @update:filters="setFilters"
+        />
+      </template>
+      <template
+        v-if="!isVenta"
+        #active-filters
+      >
+        <ActiveFilterChips
+          :chips="chips"
+          :label="VOICE.productFilters.activeLabel"
+          :remove-label="VOICE.productFilters.removeChip"
+          @remove="removeFilter"
+        />
+      </template>
+    </ProductCatalogGrid>
 
     <ProductFormModal
       v-model="isFormModalOpen"
@@ -130,28 +137,27 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { AppAlert, AppButton, AppModal, AppSwitch, LabelPrintDialog, ProductCatalogGrid, ProductFormModal, ProductSelectionBar } from '@/components'
+import { useRouter } from 'vue-router'
+import { ActiveFilterChips, AppAlert, AppButton, AppModal, LabelPrintDialog, ProductCatalogGrid, ProductFiltersPanel, ProductFormModal, ProductSelectionBar } from '@/components'
 import { VOICE } from '@/config/voice'
 import { useLabelPrinting } from '@/composables/useLabelPrinting'
+import { useProductFilters } from '@/composables/useProductFilters'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
 import { useManageCatalogViewStore } from '@/stores/manageCatalogView.store'
 import { useProductSelectionStore } from '@/stores/product-selection.store'
-import { LOW_STOCK_UMBRAL, useProductsStore } from '@/stores/products.store'
+import { useProductsStore } from '@/stores/products.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import type { Product, ProductFormSubmitPayload } from '@/types/product.types'
 import { describeFailure } from '@/utils/api-error'
+import { emptyProductFilters, toProductListParams } from '@/utils/product-filters'
 
 const store = useProductsStore()
 const session = useSessionStore()
 const toast = useToastStore()
 const uiMode = useUiModeStore()
 const router = useRouter()
-// `useRoute()` sin router instalado (varios tests montan la vista sola, sin
-// plugin de router) da `undefined`: se lee con `?.`, nunca se asume presente.
-const route = useRoute()
 // Cuadrícula o lista: preferencia del dispositivo para Gestión, guardada en localStorage.
 const catalogView = useManageCatalogViewStore()
 
@@ -214,40 +220,33 @@ const isSubmitting = ref(false)
 const isConfirmModalOpen = ref(false)
 const productPendingDeactivation = ref<Product | null>(null)
 
-// "Poca existencia" (D1): la tarjeta de Inicio llega con `?pocaExistencia=1`
-// para preactivar el filtro; sin el query param arranca apagado, como siempre.
-const QUERY_LOW_STOCK = 'pocaExistencia'
-const lowStockActive = computed(() => store.umbral !== undefined)
+// ── Filtros del catálogo (panel "Filtros") ───────────────────────────────
+// La URL es la fuente de verdad (?pocaExistencia=1&tipo=unica…): los filtros
+// sobreviven a recargar y la tarjeta "Poca existencia" de Inicio solo navega con
+// su query. "Mostrar inactivos" es de socios (el servidor lo ignora para el resto).
+const { filters: urlFilters, filtersKey: urlFiltersKey, chips, setFilters, removeFilter } =
+  useProductFilters({ allowInactive: isSocio })
+
+// En Modo Venta no hay filtros: lo inactivo, lo agotado o lo que no tiene costo
+// no es asunto del mostrador, así que no se aplican aunque la URL los traiga. Al
+// volver a Gestión reaparecen, porque siguen en la URL.
+const filters = computed(() => (isVenta.value ? emptyProductFilters() : urlFilters.value))
+const appliedKey = computed(() => (isVenta.value ? '{}' : urlFiltersKey.value))
 
 onMounted(() => {
-  // El store sobrevive al cierre de sesión: un colaborador que entra después
-  // de un socio no debe heredar "Mostrar inactivos" (no tendría cómo apagarlo).
-  // En Modo Venta tampoco: lo inactivo es cosa de gestión y nunca se ofrece
-  // para vender, así que se pide el catálogo solo con productos activos.
-  const includeInactive = isSocio.value && !isVenta.value && store.includeInactive
-  const initialLowStock = route?.query[QUERY_LOW_STOCK] === '1'
-  store.fetchProducts({ includeInactive, umbral: initialLowStock ? LOW_STOCK_UMBRAL : undefined })
+  // El store sobrevive al cierre de sesión: `toProductListParams` manda todos
+  // los filtros de forma explícita (también los apagados), así un colaborador
+  // que entra después de un socio no hereda los de este.
+  store.fetchProducts(toProductListParams(filters.value))
     .catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
 })
 
-// Cambiar a Modo Venta con "Mostrar inactivos" encendido: se apaga el filtro y
-// se recarga para que los inactivos desaparezcan. Volver a gestión no necesita
-// recargar (el listado ya es de activos y el interruptor queda apagado).
-watch(isVenta, (venta) => {
-  if (venta && store.includeInactive) handleIncludeInactive(false)
-})
-
-// Cambiar el filtro invalida la paginación actual: se vuelve a la página 1.
-function handleIncludeInactive(value: boolean) {
-  store.fetchProducts({ page: 1, includeInactive: value }).catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
-}
-
-// Mismo criterio que "Mostrar inactivos": cambiar el filtro vuelve a la página 1.
-// `umbral: undefined` explícito apaga el filtro (distinto de no mandarlo).
-function handleLowStock(value: boolean) {
-  store.fetchProducts({ page: 1, umbral: value ? LOW_STOCK_UMBRAL : undefined })
+// Cambiar un filtro invalida la paginación actual: se vuelve a la página 1.
+// Pasar a Modo Venta con filtros puestos los apaga (y recarga) por la misma vía.
+watch(appliedKey, () => {
+  store.fetchProducts({ page: 1, ...toProductListParams(filters.value) })
     .catch((error) => reportFailure(VOICE.apiErrors.catalog.load, error))
-}
+})
 
 function handleSearch(term: string) {
   store.fetchProducts({ page: 1, search: term }).catch((error) => reportFailure(VOICE.apiErrors.catalog.search, error))
