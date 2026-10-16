@@ -1,11 +1,15 @@
 <template>
-  <!-- Layout principal con sidebar lateral y área de contenido -->
+  <!-- Layout principal con sidebar lateral y área de contenido. Bajo 900 px
+       (SMALL_SCREEN_MAX_WIDTH) no hay barra lateral: barra superior + cajón. -->
   <div
     class="app-layout"
-    :class="{ 'app-layout--collapsed': sidebarCollapsed }"
+    :class="{ 'app-layout--collapsed': sidebarCollapsed && !isCompact, 'app-layout--compact': isCompact }"
   >
     <!-- ── Sidebar ──────────────────────────────────────────────── -->
-    <aside class="sidebar">
+    <aside
+      v-if="!isCompact"
+      class="sidebar"
+    >
       <!-- Cabecera del sidebar -->
       <div class="sidebar__header">
         <!-- Logo: vuelve al inicio de la app. Colapsado solo muestra el isotipo,
@@ -117,8 +121,45 @@
 
     <!-- ── Contenido principal ─────────────────────────────────── -->
     <main class="app-main">
-      <!-- Encabezado superior -->
-      <header class="app-header">
+      <!-- Celular / tablet vertical: barra superior con título y "Ayuda". El socio
+           trae el menú a la izquierda; el colaborador solo "Salir". -->
+      <AppTopBar
+        v-if="isCompact"
+        ref="topBar"
+        :title="currentRouteTitle"
+        :show-menu="isSocio"
+        :menu-open="navDrawerOpen"
+        :show-help="!isHelpRoute"
+        :help-open="helpDrawerOpen"
+        :show-logout="!isSocio"
+        @menu="navDrawerOpen = true"
+        @help="openHelpDrawer()"
+        @logout="handleLogout"
+      />
+      <div
+        v-if="isCompact"
+        class="app-sync-row"
+      >
+        <p
+          v-if="salesQueue.incompatibleCount > 0"
+          role="status"
+        >
+          Hay fiados/apartados guardados de otra sesión. Vuelve a la cuenta y dispositivo originales para sincronizarlos.
+        </p>
+        <SyncStatusIndicator
+          :pending-count="salesQueue.pendingCount"
+          :needs-review-count="salesQueue.needsReviewCount"
+          :is-syncing="salesQueue.isSyncing"
+          :records="salesQueue.needsReviewRecords"
+          @dismiss="dismissReview"
+        />
+      </div>
+
+      <!-- Encabezado superior (pantalla ancha) -->
+      <header
+        v-else
+        class="app-header"
+      >
         <div class="app-header__heading">
           <h2 class="app-header__title">
             {{ currentRouteTitle }}
@@ -172,8 +213,20 @@
       </div>
     </main>
 
+    <!-- Menú del socio en pantalla pequeña: cajón por la izquierda -->
+    <AppNavDrawer
+      v-if="isCompact && isSocio"
+      v-model="navDrawerOpen"
+      :items="navItems"
+      :mode="uiMode.currentMode"
+      :account-name="authStore.username ?? 'Usuario'"
+      :return-focus="topBar?.menuEl ?? null"
+      @update:mode="uiMode.setMode"
+      @logout="handleLogout"
+    />
+
     <!-- Ayuda rápida: una sola instancia para todas las pantallas de /app -->
-    <HelpDrawer :return-focus="helpButton" />
+    <HelpDrawer :return-focus="isCompact ? (topBar?.helpEl ?? null) : helpButton" />
   </div>
 </template>
 
@@ -188,6 +241,10 @@ import { useExpensesStore } from '@/stores/expenses.store'
 import { useWorkShiftsStore } from '@/stores/work-shifts.store'
 import { useSalesQueueStore } from '@/stores/sales-queue.store'
 import { AppBadge, AppButton, AppAvatar, InstallAppButton, UiModeSwitch, SyncStatusIndicator } from '@/components'
+// Directos (no por el barrel): los tests del layout reemplazan el barrel por una lista corta.
+import AppTopBar from '@/components/ui/molecules/AppTopBar.vue'
+import AppNavDrawer from '@/components/ui/organisms/AppNavDrawer.vue'
+import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 import { APP_NAME } from '@/config/app'
 import { landingFor } from '@/router/landing'
@@ -211,6 +268,15 @@ const route     = useRoute()
 const { openHelpDrawer, helpDrawerOpen } = useHelp()
 const helpButton = ref<HTMLButtonElement | null>(null)
 const isHelpRoute = computed(() => route.name === 'Help')
+
+// Pantalla pequeña (bajo 900 px, por ancho): sin barra lateral. El umbral es el
+// de useDeviceCapabilities, el mismo que usa la venta; no hay otro propio.
+const { isSmallScreen: isCompact } = useDeviceCapabilities()
+const isSocio = computed(() => session.member?.role === 'socio')
+const navDrawerOpen = ref(false)
+const topBar = ref<InstanceType<typeof AppTopBar> | null>(null)
+// Si la pantalla crece (girar la tablet) con el cajón abierto, se cierra solo.
+watch(isCompact, (compact) => { if (!compact) navDrawerOpen.value = false })
 
 // Colapso del sidebar. En un celular (menos de 768 px) arranca colapsado: la
 // barra de 240 px se comería el contenido; se puede expandir cuando se necesite
@@ -580,4 +646,16 @@ function handleLogout() {
   .app-header__date { display: none; }
   .app-content { padding: var(--spacing-md) var(--spacing-sm); }
 }
+
+/* ── Pantalla pequeña (bajo 900 px): sin barra lateral ────────────────────
+   Una sola columna. Las barras fijas de las vistas (cobro) leen
+   --app-sidebar-offset y aquí arrancan en el borde izquierdo. Doble clase para
+   ganarle al bloque de 767 px de arriba. */
+.app-layout.app-layout--compact {
+  grid-template-columns: minmax(0, 1fr);
+  --app-sidebar-offset: 0px;
+}
+.app-layout.app-layout--compact .app-main { grid-column: 1; min-width: 0; }
+.app-layout--compact .app-content { padding: var(--spacing-md) var(--spacing-sm); }
+.app-sync-row { padding: 0 var(--spacing-md); }
 </style>

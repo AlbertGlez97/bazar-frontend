@@ -168,3 +168,42 @@ describe('AppDrawer', () => {
     expect(source).toMatch(/@media \(prefers-reduced-motion: reduce\)/)
   })
 })
+
+describe('AppDrawer — lado izquierdo', () => {
+  it('con side="left" se ancla a la izquierda y lo marca con una clase', async () => {
+    const open = ref(true)
+    // eslint-disable-next-line vue/one-component-per-file -- anfitrión mínimo de esta prueba
+    const Host = defineComponent({
+      setup: () => () => h(AppDrawer, { modelValue: open.value, title: 'Menú', side: 'left' }, { default: () => h('a', { href: '#a' }, 'Uno') }),
+    })
+    const wrapper = mount(Host, { attachTo: document.body })
+    await nextTick()
+
+    expect(document.body.querySelector('.app-drawer-root--left')).not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('por defecto sigue a la derecha', async () => {
+    const { wrapper } = await openIt()
+
+    expect(document.body.querySelector('.app-drawer-root--left')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('no roba el foco de otro diálogo modal abierto encima (p. ej. el aviso de modo)', async () => {
+    const { wrapper } = await openIt()
+    const other = document.createElement('div')
+    other.setAttribute('role', 'dialog')
+    other.setAttribute('aria-modal', 'true')
+    other.innerHTML = '<button id="other-btn">Otro</button>'
+    document.body.appendChild(other)
+    const otherBtn = document.getElementById('other-btn')!
+    otherBtn.focus()
+
+    const event = press('Tab')
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(document.activeElement).toBe(otherBtn)
+    wrapper.unmount()
+  })
+})

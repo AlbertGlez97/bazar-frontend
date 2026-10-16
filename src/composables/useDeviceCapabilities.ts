@@ -57,6 +57,23 @@ export function suggestUiMode({ isTouchDevice, isSmallScreen }: DeviceCapabiliti
   return isTouchDevice && isSmallScreen ? 'venta' : 'gestion'
 }
 
+/**
+ * Escucha los cambios de una consulta. Safari anterior a 14 solo trae el
+ * `addListener` viejo y algunos entornos ni eso: sin ninguno, la lectura
+ * inicial sigue valiendo y nada falla.
+ */
+function subscribe(mql: MediaQueryList, listener: () => void): () => void {
+  if (typeof mql.addEventListener === 'function') {
+    mql.addEventListener('change', listener)
+    return () => mql.removeEventListener('change', listener)
+  }
+  if (typeof mql.addListener === 'function') {
+    mql.addListener(listener)
+    return () => mql.removeListener(listener)
+  }
+  return () => {}
+}
+
 export function useDeviceCapabilities(): { isTouchDevice: Ref<boolean>; isSmallScreen: Ref<boolean> } {
   const initial = detectDeviceCapabilities()
   const isTouchDevice = ref(initial.isTouchDevice)
@@ -72,11 +89,11 @@ export function useDeviceCapabilities(): { isTouchDevice: Ref<boolean>; isSmallS
       isSmallScreen.value = current.isSmallScreen
     }
 
-    queries.forEach((mql) => mql.addEventListener('change', refresh))
+    const unsubscribers = queries.map((mql) => subscribe(mql, refresh))
 
     // Se limpia al desmontar el componente (o al parar el scope que lo usa).
     if (getCurrentScope()) {
-      onScopeDispose(() => queries.forEach((mql) => mql.removeEventListener('change', refresh)))
+      onScopeDispose(() => unsubscribers.forEach((stop) => stop()))
     }
   }
 

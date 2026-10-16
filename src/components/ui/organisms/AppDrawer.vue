@@ -1,5 +1,6 @@
 <template>
-  <!-- Organismo: cajón lateral derecho (hoja a pantalla completa en celular).
+  <!-- Organismo: cajón lateral (derecha por defecto; `side="left"` para el menú de
+       navegación). Hoja a pantalla completa en celular cuando va a la derecha.
        Teleport a body, diálogo modal, trampa de foco, Escape, retorno de foco y
        bloqueo del scroll del documento. -->
   <Teleport to="body">
@@ -7,6 +8,7 @@
       <div
         v-if="modelValue"
         class="app-drawer-root"
+        :class="{ 'app-drawer-root--left': side === 'left' }"
       >
         <div
           class="app-drawer__backdrop"
@@ -70,9 +72,12 @@ const props = withDefaults(defineProps<{
    * focus when it opened; pass the opener for browsers that do not focus buttons on click.
    */
   returnFocus?: HTMLElement | null
+  /** Lado del que entra. El menú de navegación entra por la izquierda. */
+  side?: 'right' | 'left'
 }>(), {
   closeLabel: 'Cerrar',
   returnFocus: null,
+  side: 'right',
 })
 
 const emit = defineEmits<{ 'update:modelValue': [open: boolean] }>()
@@ -132,6 +137,9 @@ function onKeydown(event: KeyboardEvent) {
     return
   }
   if (event.key !== 'Tab') return
+  // Otro diálogo modal abierto encima (p. ej. el aviso al cambiar de modo) manda: no se le roba el foco.
+  const active0 = document.activeElement
+  if (active0 && !panel.value?.contains(active0) && active0.closest('[aria-modal="true"]')) return
   const targets = focusable()
   const first = targets[0]
   const last = targets.at(-1)
@@ -154,6 +162,7 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .app-drawer-root { position: fixed; inset: 0; z-index: 1000; display: flex; justify-content: flex-end; }
+.app-drawer-root--left { justify-content: flex-start; }
 .app-drawer__backdrop { position: absolute; inset: 0; background: var(--color-overlay); }
 
 .app-drawer {
@@ -168,6 +177,7 @@ onBeforeUnmount(() => {
   border-left: 1px solid var(--color-border);
 }
 .app-drawer:focus { outline: none; }
+.app-drawer-root--left .app-drawer { border-left: none; border-right: 1px solid var(--color-border); width: min(20rem, 88vw); }
 
 .app-drawer__header {
   display: flex;
@@ -207,10 +217,12 @@ onBeforeUnmount(() => {
 }
 .app-drawer-enter-from, .app-drawer-leave-to { opacity: 0; }
 .app-drawer-enter-from .app-drawer, .app-drawer-leave-to .app-drawer { transform: translateX(2rem); opacity: 0; }
+.app-drawer-root--left.app-drawer-enter-from .app-drawer, .app-drawer-root--left.app-drawer-leave-to .app-drawer { transform: translateX(-2rem); }
 
 /* Celular: hoja a pantalla completa. */
 @media (max-width: 767px) {
   .app-drawer { width: 100%; border-left: none; }
+  .app-drawer-root--left .app-drawer { width: min(20rem, 88vw); }
 }
 
 @media (prefers-reduced-motion: reduce) {

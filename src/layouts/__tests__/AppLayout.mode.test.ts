@@ -27,7 +27,21 @@ vi.mock('@/components', async () => ({
 
 let device: MockDevice | null = null
 
-beforeEach(() => localStorage.clear())
+const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
+
+beforeEach(() => {
+  localStorage.clear()
+  sessionStorage.clear()
+})
+
+/** Un socio con sesión en este dispositivo (el menú del celular es solo de socios). */
+function loginAsSocio() {
+  localStorage.setItem('access_token', TEST_IDENTITY)
+  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
+}
 afterEach(() => {
   device?.restore()
   device = null
@@ -57,6 +71,8 @@ async function mountLayout() {
 
 const indicator = (wrapper: Awaited<ReturnType<typeof mountLayout>>['wrapper']) =>
   wrapper.get('.app-header__mode').text()
+const drawerModeButton = (wrapper: Awaited<ReturnType<typeof mountLayout>>['wrapper'], name: string) =>
+  wrapper.get(`.app-nav-drawer button[aria-label="${name}"]`)
 const modeButton = (wrapper: Awaited<ReturnType<typeof mountLayout>>['wrapper'], name: string) =>
   wrapper.get(`.sidebar__mode button[aria-label="${name}"]`)
 
@@ -74,18 +90,26 @@ describe('AppLayout — selector e indicador de modo', () => {
     expect(modeButton(wrapper, 'Modo Gestión').attributes('aria-pressed')).toBe('true')
   })
 
-  it('el indicador dice "Modo Venta" cuando el dispositivo lo sugiere (táctil + pantalla pequeña)', async () => {
+  it('el modo es Venta cuando el dispositivo lo sugiere (táctil + pantalla pequeña) y el cajón lo marca', async () => {
     device = mockDevice({ touch: true, small: true })
-    const { wrapper } = await mountLayout()
-    expect(indicator(wrapper)).toBe('Modo Venta')
-    expect(modeButton(wrapper, 'Modo Venta').attributes('aria-pressed')).toBe('true')
+    loginAsSocio()
+    const { wrapper, store } = await mountLayout()
+    expect(store.currentMode).toBe('venta')
+
+    await wrapper.get('.app-top-bar__menu').trigger('click')
+    expect(drawerModeButton(wrapper, 'Modo Venta').attributes('aria-pressed')).toBe('true')
+    expect(drawerModeButton(wrapper, 'Modo Gestión').attributes('aria-pressed')).toBe('false')
   })
 
   it('respeta una preferencia guardada sobre la sugerencia del dispositivo', async () => {
     device = mockDevice({ touch: true, small: true })
+    loginAsSocio()
     localStorage.setItem(UI_MODE_STORAGE_KEY, 'gestion')
-    const { wrapper } = await mountLayout()
-    expect(indicator(wrapper)).toBe('Modo Gestión')
+    const { wrapper, store } = await mountLayout()
+    expect(store.currentMode).toBe('gestion')
+
+    await wrapper.get('.app-top-bar__menu').trigger('click')
+    expect(drawerModeButton(wrapper, 'Modo Gestión').attributes('aria-pressed')).toBe('true')
   })
 
   it('cambiar de modo desde el selector actualiza el store, el indicador y lo guarda', async () => {
@@ -99,20 +123,29 @@ describe('AppLayout — selector e indicador de modo', () => {
     expect(localStorage.getItem(UI_MODE_STORAGE_KEY)).toBe('venta')
   })
 
-  it('en táctil + pantalla pequeña, ir a Gestión avisa y solo cambia al confirmar', async () => {
+  it('en táctil + pantalla pequeña, ir a Gestión desde el cajón avisa y solo cambia al confirmar', async () => {
     device = mockDevice({ touch: true, small: true })
+    loginAsSocio()
     const { wrapper, store } = await mountLayout()
     expect(store.currentMode).toBe('venta')
 
-    await modeButton(wrapper, 'Modo Gestión').trigger('click')
+    await wrapper.get('.app-top-bar__menu').trigger('click')
+    await drawerModeButton(wrapper, 'Modo Gestión').trigger('click')
     expect(wrapper.text()).toContain('¿Seguro que quieres entrar a Gestión?')
     expect(store.currentMode).toBe('venta')
-    expect(indicator(wrapper)).toBe('Modo Venta')
 
     const confirm = wrapper.findAll('button').find((b) => b.text() === 'Entiendo, quiero seguir')
     await confirm?.trigger('click')
     expect(store.currentMode).toBe('gestion')
-    expect(indicator(wrapper)).toBe('Modo Gestión')
+  })
+
+  it('en pantalla pequeña no hay barra lateral ni indicador en la cabecera: el cajón es el selector', async () => {
+    device = mockDevice({ touch: true, small: true })
+    loginAsSocio()
+    const { wrapper } = await mountLayout()
+
+    expect(wrapper.find('.sidebar').exists()).toBe(false)
+    expect(wrapper.find('.app-header__mode').exists()).toBe(false)
   })
 
   it('con el sidebar colapsado el selector sigue disponible, compacto y con nombres accesibles', async () => {

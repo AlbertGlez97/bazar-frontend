@@ -119,6 +119,39 @@ describe('useDeviceCapabilities', () => {
     expect(device.listenerCount()).toBe(0)
   })
 
+  it('con un MediaQueryList sin addEventListener (Safari viejo) usa addListener y no falla', () => {
+    const added: Array<() => void> = []
+    const removed: Array<() => void> = []
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: (query: string) => ({
+        matches: query === SMALL_SCREEN_QUERY,
+        media: query,
+        addListener: (listener: () => void) => { added.push(listener) },
+        removeListener: (listener: () => void) => { removed.push(listener) },
+      }),
+    })
+    const { isSmallScreen, wrapper } = mountWithComposable()
+
+    expect(isSmallScreen.value).toBe(true)
+    expect(added).toHaveLength(2)
+    wrapper.unmount()
+    expect(removed).toHaveLength(2)
+    Reflect.deleteProperty(window, 'matchMedia')
+  })
+
+  it('con un MediaQueryList mínimo (solo matches y media) tampoco falla', () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: (query: string) => ({ matches: false, media: query }),
+    })
+
+    expect(() => mountWithComposable().wrapper.unmount()).not.toThrow()
+    Reflect.deleteProperty(window, 'matchMedia')
+  })
+
   it('sin matchMedia no falla y deja ambos en false', () => {
     const { isTouchDevice, isSmallScreen, wrapper } = mountWithComposable()
     expect(isTouchDevice.value).toBe(false)
