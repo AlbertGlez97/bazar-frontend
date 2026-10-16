@@ -7,8 +7,7 @@ import {
   saleChargeHint,
   salesSyncingMessage,
   isNetworkError,
-  saleScanAddedMessage,
-  saleScanUnknownMessage,
+  saleScanNoticeDetail,
   saleConflictMessage,
   saleSavedOfflineMessage,
   saleSuccessMessage,
@@ -381,16 +380,15 @@ describe('copy del lector de QR (VOICE.scan)', () => {
   it('un código desconocido cae en el mensaje genérico de cámara', () => {
     expect(cameraErrorMessage('lo-que-sea' as never)).toBe(cameraErrorMessage('unknown'))
   })
-
-  it('un QR que no es de un producto se explica sin culpar y ofrece salida', () => {
-    const text = saleScanUnknownMessage()
-    expect(text).toMatch(/No reconocemos ese código/)
-    expect(text).toMatch(/nombre/)
-    expect(text).not.toMatch(/error|inválido|invalido/i)
+  it('el aviso de un código que no es de un producto es corto, sin culpar y sin la palabra error', () => {
+    expect(VOICE.scan.noticeUnknown).toBe('No encontré este producto')
+    expect(VOICE.scan.noticeUnknown).not.toMatch(/error|inválido|invalido/i)
   })
 
-  it('confirma con el nombre del producto', () => {
-    expect(saleScanAddedMessage('Café de olla')).toBe('Café de olla: agregado a tu venta.')
+  it('el aviso de agregado es "Agregado ✓" y el detalle lleva el nombre, con ×N desde la segunda pieza', () => {
+    expect(VOICE.scan.noticeAdded).toBe('Agregado ✓')
+    expect(saleScanNoticeDetail('Vaso azul', 1)).toBe('Vaso azul')
+    expect(saleScanNoticeDetail('  Vaso azul ', 2)).toBe('Vaso azul ×2')
   })
 
   it('los textos fijos de la pantalla de escaneo están en español y sin exclamaciones de relleno', () => {

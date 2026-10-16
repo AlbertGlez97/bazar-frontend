@@ -131,7 +131,7 @@
 
     <QrScannerModal
       v-model="scanOpen"
-      :feedback="scanFeedback"
+      :notice="scanNotice.current.value"
       @scan="onScan"
     />
 
@@ -155,6 +155,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AppButton, QrScannerModal, RegistrarDeudaModal, SaleCart, SaleCatalogPicker, SaleResult } from '@/components'
 import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
+import { useScanNotice } from '@/composables/useScanNotice'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import { useCheckoutStore } from '@/stores/checkout.store'
@@ -162,7 +163,7 @@ import { useSaleCatalogStore } from '@/stores/sale-catalog.store'
 import { useSaleCatalogViewStore } from '@/stores/saleCatalogView.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
-import { saleCartRefusalMessage, saleScanAddedMessage, saleScanUnknownMessage } from '@/config/voice'
+import { saleCartRefusalMessage } from '@/config/voice'
 import { formatMinorMoney, minorToDisplay, parseCashInput } from '@/utils/money'
 import type { Product } from '@/types/product.types'
 import type { DeudaType } from '@/types/deuda.types'
@@ -317,23 +318,28 @@ watch(() => cart.paymentMethod, () => {
 
 // ── QR ───────────────────────────────────────────────────────────────────
 const scanOpen = ref(false)
-const scanFeedback = ref<{ kind: 'success' | 'warning'; text: string } | null>(null)
+// El escáner sigue abierto para leer más productos: cada lectura deja un aviso
+// flotante (y una vibración) y nada más. El catálogo es el local, así que
+// también funciona sin conexión.
+const scanNotice = useScanNotice()
 
 function openScanner() {
-  scanFeedback.value = null
+  scanNotice.clear()
   scanOpen.value = true
 }
 
 function onScan(text: string) {
   const product = catalog.findByScannedText(text)
   if (!product) {
-    scanFeedback.value = { kind: 'warning', text: saleScanUnknownMessage() }
+    scanNotice.unknown()
     return
   }
   const result = cart.add(product)
-  scanFeedback.value = result.ok
-    ? { kind: 'success', text: saleScanAddedMessage(product.name) }
-    : { kind: 'warning', text: saleCartRefusalMessage(result.reason, product.name) }
+  if (!result.ok) {
+    scanNotice.rejected(saleCartRefusalMessage(result.reason, product.name))
+    return
+  }
+  scanNotice.added(product.name, cartQuantities.value[product.id] ?? 1)
 }
 
 // ── Cobro y resultado ────────────────────────────────────────────────────

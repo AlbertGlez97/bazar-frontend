@@ -351,6 +351,9 @@ export const VOICE = {
     loading: 'Abriendo la cámara…',
     done: 'Listo',
     retry: 'Intentar de nuevo',
+    /** Aviso flotante tras cada lectura (ver ScanToast). */
+    noticeAdded: 'Agregado ✓',
+    noticeUnknown: 'No encontré este producto',
   },
   /** Código QR de un producto (se genera aquí mismo, sin servidor). */
   qr: {
@@ -587,14 +590,10 @@ export function cameraErrorMessage(failure: CameraFailure): string {
   return CAMERA_MESSAGES[failure] ?? CAMERA_MESSAGES.unknown
 }
 
-/** QR leído que no corresponde a ningún producto del catálogo: sin culpar y con salida. */
-export function saleScanUnknownMessage(): string {
-  return 'No reconocemos ese código. Prueba con otro producto o búscalo por su nombre.'
-}
-
-/** Confirmación al agregar un producto leído con la cámara. */
-export function saleScanAddedMessage(productName: string): string {
-  return `${productName.trim()}: agregado a tu venta.`
+/** Detalle del aviso del escáner: el nombre, con "×N" desde la segunda pieza del mismo producto. */
+export function saleScanNoticeDetail(productName: string, quantity: number): string {
+  const name = productName.trim()
+  return quantity > 1 ? `${name} ×${quantity}` : name
 }
 
 /** Sin `response` de Axios la petición nunca obtuvo respuesta: es un problema de red. */

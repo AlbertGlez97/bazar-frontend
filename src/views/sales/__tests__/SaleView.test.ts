@@ -358,7 +358,15 @@ describe('SaleView — lector de QR', () => {
     await flushPromises()
     return { read: async (text: string) => { onDecode(text); await flushPromises() } }
   }
-  const feedback = (w: Wrapper) => w.get('.qr-scanner__feedback').text()
+  const toast = (w: Wrapper) => w.find('.scan-toast')
+  const toastText = (w: Wrapper) => w.get('.scan-toast .scan-toast__text').text()
+
+  const vibrate = vi.fn(() => true)
+  beforeEach(() => {
+    vibrate.mockClear()
+    Object.defineProperty(navigator, 'vibrate', { configurable: true, writable: true, value: vibrate })
+  })
+  afterEach(() => { delete (navigator as unknown as Record<string, unknown>).vibrate })
 
   it('"Escanear" abre la cámara', async () => {
     const { wrapper } = await mountSale()
@@ -367,7 +375,7 @@ describe('SaleView — lector de QR', () => {
     expect(wrapper.text()).toContain('Escanear producto')
   })
 
-  it('un QR con el id de un producto lo agrega y lo confirma con su nombre', async () => {
+  it('un QR con el id de un producto lo agrega, lo confirma con su nombre y vibra una vez', async () => {
     const { wrapper } = await mountSale()
     const scanner = await openScanner(wrapper)
 
@@ -375,7 +383,31 @@ describe('SaleView — lector de QR', () => {
 
     expect(lines(wrapper)).toHaveLength(1)
     expect(wrapper.get('.cart-line__name').text()).toBe('Café de olla')
-    expect(feedback(wrapper)).toBe('Café de olla: agregado a tu venta.')
+    expect(toastText(wrapper)).toContain('Agregado ✓')
+    expect(toastText(wrapper)).toContain('Café de olla')
+    expect(vibrate).toHaveBeenCalledTimes(1)
+  })
+
+  it('el escáner sigue abierto tras agregar: no salta a Cobrar', async () => {
+    const { wrapper, router } = await mountSale()
+    const scanner = await openScanner(wrapper)
+
+    await scanner.read(CAFE.id)
+
+    expect(wrapper.text()).toContain('Escanear producto')
+    expect(router.currentRoute.value.query.paso).toBeUndefined()
+  })
+
+  it('el mismo producto otra vez actualiza el aviso con ×2, un solo aviso', async () => {
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+
+    await scanner.read(CAFE.id)
+    await scanner.read(`https://tienda.example/p/${CAFE.id}`)
+
+    expect(wrapper.findAll('.scan-toast')).toHaveLength(1)
+    expect(toastText(wrapper)).toContain('Café de olla ×2')
+    expect(wrapper.get('.cart-line .quantity-stepper__value').text()).toBe('2')
   })
 
   it('un QR con una URL que trae el id también funciona', async () => {
@@ -385,32 +417,56 @@ describe('SaleView — lector de QR', () => {
     expect(lines(wrapper)).toHaveLength(1)
   })
 
-  it('un QR desconocido avisa con un mensaje amable y no toca la venta', async () => {
+  it('un QR desconocido avisa en rojo, vibra doble y no toca la venta', async () => {
     const { wrapper } = await mountSale()
     const scanner = await openScanner(wrapper)
 
     await scanner.read('https://cualquier-cosa.example/qr')
 
     expect(lines(wrapper)).toHaveLength(0)
-    expect(feedback(wrapper)).toBe('No reconocemos ese código. Prueba con otro producto o búscalo por su nombre.')
-    expect(feedback(wrapper)).not.toMatch(/error|undefined|null/i)
+    expect(toastText(wrapper)).toBe('No encontré este producto')
+    expect(toast(wrapper)!.classes()).toContain('scan-toast--error')
+    expect(vibrate).toHaveBeenCalledWith([40, 60, 40])
   })
 
-  it('escanear un producto agotado explica que está agotado', async () => {
+  it('escanear un producto agotado explica que está agotado, en rojo', async () => {
     const { wrapper } = await mountSale()
     const scanner = await openScanner(wrapper)
     await scanner.read(JARRITO.id)
     expect(lines(wrapper)).toHaveLength(0)
-    expect(feedback(wrapper)).toBe('Jarrito está agotado.')
+    expect(toastText(wrapper)).toBe('Jarrito está agotado.')
+    expect(toast(wrapper)!.classes()).toContain('scan-toast--error')
   })
 
-  it('escanear una pieza única que ya está en la venta lo explica', async () => {
+  it('escanear una pieza única que ya está en la venta lo explica y el stock la sigue frenando', async () => {
     const { wrapper } = await mountSale()
     const scanner = await openScanner(wrapper)
     await scanner.read(RADIO.id)
     await scanner.read(`otro-${RADIO.id}`)
     expect(lines(wrapper)).toHaveLength(1)
-    expect(feedback(wrapper)).toBe('Radio vintage es una pieza única y ya está en tu venta.')
+    expect(toastText(wrapper)).toBe('Radio vintage es una pieza única y ya está en tu venta.')
+  })
+
+  it('funciona sin conexión: el catálogo es el local', async () => {
+    setOnline(false)
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+
+    await scanner.read(CAFE.id)
+
+    expect(lines(wrapper)).toHaveLength(1)
+    expect(toastText(wrapper)).toContain('Agregado ✓')
+  })
+
+  it('sin soporte de vibración (iOS) agrega igual y no falla', async () => {
+    delete (navigator as unknown as Record<string, unknown>).vibrate
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+
+    await scanner.read(CAFE.id)
+
+    expect(lines(wrapper)).toHaveLength(1)
+    expect(toastText(wrapper)).toContain('Agregado ✓')
   })
 
   it('cerrar con "Listo" apaga la cámara', async () => {
@@ -432,7 +488,7 @@ describe('SaleView — lector de QR', () => {
     await scanner.read('desconocido')
     await wrapper.findAll('button').find((b) => b.text() === 'Listo')!.trigger('click')
     await openScanner(wrapper)
-    expect(feedback(wrapper)).toBe('')
+    expect(toast(wrapper).exists()).toBe(false)
   })
 })
 

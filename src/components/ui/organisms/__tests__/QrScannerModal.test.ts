@@ -32,7 +32,7 @@ function cameraWorks() {
   })
 }
 
-function mountModal(props: { modelValue?: boolean; feedback?: { kind: 'success' | 'warning'; text: string } | null } = {}) {
+function mountModal(props: { modelValue?: boolean; notice?: { kind: 'success' | 'error'; title: string; detail?: string } | null } = {}) {
   return mount(QrScannerModal, {
     props: { modelValue: true, ...props },
     global: { stubs: { teleport: true } },
@@ -184,30 +184,41 @@ describe('QrScannerModal — lecturas', () => {
     expect(wrapper.emitted('scan')).toHaveLength(2)
   })
 
-  it('muestra la respuesta del contenedor (agregado / no reconocido) en una región viva', async () => {
-    const wrapper = mountModal({ feedback: null })
+  it('muestra el aviso flotante del contenedor (agregado / no encontrado), no una franja dentro del modal', async () => {
+    const wrapper = mountModal({ notice: null })
     await flushPromises()
-    const live = () => wrapper.get('[role="status"][aria-live="polite"]')
-    expect(live().text()).toBe('')
+    expect(wrapper.find('.scan-toast').exists()).toBe(false)
+    expect(wrapper.find('.qr-scanner__feedback').exists()).toBe(false)
 
-    await wrapper.setProps({ feedback: { kind: 'success', text: 'Café de olla: agregado a tu venta.' } })
-    expect(live().text()).toContain('Café de olla: agregado a tu venta.')
-    expect(live().classes()).toContain('qr-scanner__feedback--success')
+    await wrapper.setProps({ notice: { kind: 'success', title: 'Agregado ✓', detail: 'Café de olla' } })
+    expect(wrapper.get('.scan-toast').text()).toContain('Agregado ✓')
+    expect(wrapper.get('.scan-toast').text()).toContain('Café de olla')
+    expect(wrapper.get('.scan-toast').classes()).toContain('scan-toast--success')
 
-    await wrapper.setProps({ feedback: { kind: 'warning', text: 'No reconocemos ese código.' } })
-    expect(live().text()).toContain('No reconocemos ese código.')
-    expect(live().classes()).toContain('qr-scanner__feedback--warning')
+    await wrapper.setProps({ notice: { kind: 'error', title: 'No encontré este producto' } })
+    expect(wrapper.get('.scan-toast').text()).toContain('No encontré este producto')
+    expect(wrapper.get('.scan-toast').classes()).toContain('scan-toast--error')
+  })
+
+  it('el escáner sigue abierto y escaneando después de un aviso (no cierra solo)', async () => {
+    const wrapper = mountModal({ notice: null })
+    await flushPromises()
+
+    await wrapper.setProps({ notice: { kind: 'success', title: 'Agregado ✓', detail: 'Café de olla' } })
+
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined()
+    expect(sessions[0]!.stop).not.toHaveBeenCalled()
   })
 })
 
 describe('QrScannerModal — región viva', () => {
-  it('con Teleport real la región viva es el mismo nodo al cambiar el mensaje (si se reemplazara, el lector de pantalla no lo anunciaría)', async () => {
-    const wrapper = mount(QrScannerModal, { props: { modelValue: true, feedback: null }, attachTo: document.body })
+  it('con Teleport real la región viva del aviso es el mismo nodo al cambiar el mensaje (si se reemplazara, el lector de pantalla no lo anunciaría)', async () => {
+    const wrapper = mount(QrScannerModal, { props: { modelValue: true, notice: null }, attachTo: document.body })
     await flushPromises()
-    const region = () => document.body.querySelector('.qr-scanner__feedback')!
+    const region = () => document.body.querySelector('.scan-toast-region')!
     const before = region()
 
-    await wrapper.setProps({ feedback: { kind: 'success', text: 'Listo.' } })
+    await wrapper.setProps({ notice: { kind: 'success', title: 'Listo.' } })
 
     expect(region()).toBe(before)
     expect(before.textContent).toContain('Listo.')

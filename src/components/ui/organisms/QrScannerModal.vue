@@ -1,8 +1,8 @@
 <template>
   <!-- Organismo: lector de QR en un modal. Es organismo porque incluye AppModal.
        Presentacional: no lee stores. Recibe si está abierto (v-model) y la
-       respuesta que dio quien lo usa a la última lectura (`feedback`); emite
-       `scan(texto)` UNA vez por lectura distinta. La cámara vive detrás del
+       aviso que dio quien lo usa a la última lectura (`notice`, flotante y por
+       encima de la cámara); emite `scan(texto)` UNA vez por lectura distinta. La cámara vive detrás del
        adaptador `services/qr-scanner` (aquí solo se controla su ciclo de vida). -->
   <AppModal
     :model-value="modelValue"
@@ -67,17 +67,10 @@
       >
         {{ VOICE.scan.hint }}
       </p>
-
-      <!-- Región viva: lo que pasó con la última lectura (agregado / no reconocido) -->
-      <p
-        class="qr-scanner__feedback"
-        :class="feedback ? `qr-scanner__feedback--${feedback.kind}` : ''"
-        role="status"
-        aria-live="polite"
-      >
-        {{ feedback?.text }}
-      </p>
     </div>
+
+    <!-- Lo que pasó con la última lectura (agregado / no encontrado): flotante, sin tapar la cámara -->
+    <ScanToast :notice="notice" />
 
     <template #footer>
       <AppButton
@@ -103,13 +96,14 @@ import {
 } from '@/services/qr-scanner'
 import { VOICE, cameraErrorMessage, type CameraFailure } from '@/config/voice'
 import AppButton from '../atoms/AppButton.vue'
+import ScanToast from '../molecules/ScanToast.vue'
 import AppModal from './AppModal.vue'
 
 const props = defineProps<{
   /** Abierto (v-model). Abierto = cámara encendida; cerrado o desmontado = apagada. */
   modelValue: boolean
   /** Qué pasó con la última lectura; lo decide quien usa el modal. */
-  feedback?: { kind: 'success' | 'warning'; text: string } | null
+  notice?: { kind: 'success' | 'error'; title: string; detail?: string } | null
 }>()
 
 const emit = defineEmits<{
@@ -245,22 +239,6 @@ onBeforeUnmount(stopCamera)
   text-align: center;
 }
 .qr-scanner__error-icon { font-size: 2.5rem; line-height: 1; }
-
-/* Respuesta a la última lectura: reserva su alto para que el video no salte */
-.qr-scanner__feedback {
-  margin: 0;
-  min-height: 3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 var(--spacing-md);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-md);
-  font-weight: 600;
-  text-align: center;
-}
-.qr-scanner__feedback--success { background: var(--color-success-soft); color: var(--color-success); }
-.qr-scanner__feedback--warning { background: var(--color-warning-soft); color: var(--color-warning); }
 
 /* Objetivo táctil grande (56 px): el botón "Listo" y el de reintentar */
 .qr-scanner__action { min-height: 3.5rem; font-size: var(--font-size-md); font-weight: 700; }
