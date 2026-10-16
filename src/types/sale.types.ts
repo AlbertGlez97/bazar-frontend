@@ -3,6 +3,8 @@
 // `requestFingerprint` llegan en las respuestas pero son internos: se declaran
 // opcionales y el frontend no debe usarlos ni enviarlos (enviar `contextId` es 400).
 
+import type { PaymentMethod } from './payment.types'
+
 export type SaleStatus = 'completada' | 'rechazada_por_conflicto'
 
 export type SaleSortOrder = 'asc' | 'desc'
@@ -32,8 +34,11 @@ export interface Sale {
   status: SaleStatus
   /** `null` si la venta quedó rechazada por conflicto. */
   totalMinor: number | null
-  cashReceivedMinor: number
-  /** `null` si la venta quedó rechazada por conflicto. */
+  /** Cómo se pagó. Las ventas anteriores a esta versión son EFECTIVO. */
+  paymentMethod: PaymentMethod
+  /** Efectivo recibido; `null` si se pagó con transferencia o tarjeta (no aplica: no es 0). */
+  cashReceivedMinor: number | null
+  /** `null` si la venta quedó rechazada por conflicto o no se pagó en efectivo. */
   changeMinor: number | null
   /** Solo en rechazadas (texto técnico del servidor, en español). */
   conflictReason: string | null
@@ -66,8 +71,13 @@ export interface CreateSalePayload {
   /** Instante ISO 8601 completo (con `Z`). Se congela al primer intento. */
   occurredAt: string
   currency: 'MXN'
-  /** Entero 0..2147483647. */
-  cashReceivedMinor: number
+  /** Siempre explícito. Ausente (cola anterior a esta versión) el servidor lo toma como EFECTIVO. */
+  paymentMethod?: PaymentMethod
+  /**
+   * Entero 0..2147483647. Solo con EFECTIVO; con transferencia/tarjeta se cobra el
+   * total y el campo NO se manda (enviarlo, incluso 0, es 400).
+   */
+  cashReceivedMinor?: number
   /** 1..500 partidas. */
   items: CreateSaleItemPayload[]
 }

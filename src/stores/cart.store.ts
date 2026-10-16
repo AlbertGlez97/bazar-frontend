@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { changeDueMinor, multiplyMinor, parseCashInput, shortfallMinor, sumMinor } from '@/utils/money'
+import { DEFAULT_PAYMENT_METHOD, PAYMENT_METHODS, isCashPayment } from '@/utils/payment-method'
+import type { PaymentMethod } from '@/types/payment.types'
 import type { Product, ProductType } from '@/types/product.types'
 
 /**
@@ -51,9 +53,14 @@ function lineCap(line: CartLine): number {
 
 export const useCartStore = defineStore('cart', () => {
   const lines = ref<CartLine[]>([])
-  const cashReceivedMinor = ref(0)
-  /** El texto de efectivo capturado es ambiguo o no es un monto: el cobro se bloquea. */
-  const cashInvalid = ref(false)
+  /** Cómo se paga: Efectivo por defecto. */
+  const paymentMethod = ref<PaymentMethod>(DEFAULT_PAYMENT_METHOD)
+  /** Lo que la persona escribió en el campo de monto (centavos). Ver `amountMinor`. */
+  const typedMinor = ref(0)
+  /** ¿La persona ya tocó el monto? Mientras no, transferencia/tarjeta siguen al total. */
+  const amountTouched = ref(false)
+  /** El texto de monto capturado es ambiguo o no es un monto: el cobro se bloquea. */
+  const amountInvalid = ref(false)
 
   function find(productId: string): CartLine | undefined {
     return lines.value.find((line) => line.productId === productId)
@@ -78,27 +85,48 @@ export const useCartStore = defineStore('cart', () => {
     }
   })
 
-  /** Cambio a devolver; nunca negativo. */
-  const changeMinor = computed(() => changeDueMinor(cashReceivedMinor.value, totalMinor.value))
+  /**
+   * El monto del cobro, un solo campo para los tres métodos:
+   * - EFECTIVO: lo que dieron (puede superar el total; vacío = 0).
+   * - TRANSFERENCIA / TARJETA: lo cobrado. Viene precargado con el total (y lo
+   *   sigue mientras nadie lo toque) y nunca lo supera.
+   */
+  const amountMinor = computed(() => {
+    if (isCashPayment(paymentMethod.value)) return typedMinor.value
+    return amountTouched.value ? Math.min(typedMinor.value, totalMinor.value) : totalMinor.value
+  })
 
-  /** Cuánto efectivo falta para cubrir el total; 0 si ya alcanza. */
-  const missingMinor = computed(() => shortfallMinor(cashReceivedMinor.value, totalMinor.value))
+  /** Cambio a devolver; nunca negativo y solo en efectivo. */
+  const changeMinor = computed(() =>
+    isCashPayment(paymentMethod.value) ? changeDueMinor(amountMinor.value, totalMinor.value) : 0)
+
+  /** Cuánto falta para cubrir el total; 0 si ya alcanza. */
+  const missingMinor = computed(() => shortfallMinor(amountMinor.value, totalMinor.value))
 
   /**
-   * Se puede cobrar con carrito no vacío y efectivo suficiente. Un total que
-   * no cabe en el máximo de efectivo del contrato nunca alcanza, así que
-   * queda fuera solo. Un efectivo ambiguo (`cashInvalid`) también bloquea:
-   * no se cobra con un monto que hubo que adivinar.
+   * ¿El monto no alcanza el total? Es lo que habilita fiado/apartado, con
+   * cualquier método (el abono usa el método elegido). Un carrito vacío o un
+   * monto ambiguo no cuentan: ahí el problema no es que falte dinero.
    */
-  const canCharge = computed(
-    () => !isEmpty.value
-      && !cashInvalid.value
-      && totalMinor.value <= MAX_MINOR_UNITS
-      && cashReceivedMinor.value >= totalMinor.value,
+  const isPartial = computed(
+    () => !isEmpty.value && !amountInvalid.value && totalMinor.value <= MAX_MINOR_UNITS && missingMinor.value > 0,
   )
 
   /**
-   * Huella del contenido que viaja al servidor: efectivo + `{productId,
+   * Se puede cobrar con carrito no vacío y monto suficiente. Un total que
+   * no cabe en el máximo del contrato nunca alcanza, así que queda fuera
+   * solo. Un monto ambiguo (`amountInvalid`) también bloquea: no se cobra
+   * con un monto que hubo que adivinar.
+   */
+  const canCharge = computed(
+    () => !isEmpty.value
+      && !amountInvalid.value
+      && totalMinor.value <= MAX_MINOR_UNITS
+      && amountMinor.value >= totalMinor.value,
+  )
+
+  /**
+   * Huella del contenido que viaja al servidor: método + monto + `{productId,
    * quantity}` sin importar el orden (es lo que compara la idempotencia,
    * §1.6). El cobro la usa para saber si el carrito cambió y hace falta un id
    * de venta nuevo.
@@ -108,7 +136,7 @@ export const useCartStore = defineStore('cart', () => {
       .map((line) => `${line.productId}:${line.quantity}`)
       .sort()
       .join(',')
-    return `${cashReceivedMinor.value}|${items}`
+    return `${paymentMethod.value}|${amountMinor.value}|${items}`
   })
 
   // ── Acciones ───────────────────────────────────────────────────────────
@@ -177,39 +205,56 @@ export const useCartStore = defineStore('cart', () => {
     return OK
   }
 
-  /** Efectivo en centavos: entero, nunca negativo, tope del contrato. */
-  function setCashMinor(minor: number): void {
+  /** Monto en centavos: entero, nunca negativo, tope del contrato. */
+  function setAmountMinor(minor: number): void {
     const whole = Number.isFinite(minor) ? Math.trunc(minor) : 0
-    cashReceivedMinor.value = Math.min(MAX_MINOR_UNITS, Math.max(0, whole))
-    cashInvalid.value = false
+    typedMinor.value = Math.min(MAX_MINOR_UNITS, Math.max(0, whole))
+    amountTouched.value = true
+    amountInvalid.value = false
   }
 
   /**
-   * Efectivo desde lo que la persona escribió, con la convención de México:
+   * Monto desde lo que la persona escribió, con la convención de México:
    * coma = miles, punto = decimal ("1,000", "1,000.50", "100.5"). Si el texto
-   * es ambiguo o no es un monto ("100,50", "abc") NO se adivina: el efectivo
-   * queda en 0 y `cashInvalid` bloquea el cobro hasta que se corrija.
+   * es ambiguo o no es un monto ("100,50", "abc") NO se adivina: el monto
+   * queda en 0 y `amountInvalid` bloquea el cobro hasta que se corrija.
    */
-  function setCashFromDisplay(text: string): void {
+  function setAmountFromDisplay(text: string): void {
     const minor = parseCashInput(text)
     if (minor === null) {
-      cashReceivedMinor.value = 0
-      cashInvalid.value = true
+      typedMinor.value = 0
+      amountTouched.value = true
+      amountInvalid.value = true
       return
     }
-    setCashMinor(minor)
+    setAmountMinor(minor)
   }
 
-  /** Venta nueva: vacía el carrito y el efectivo. */
+  /**
+   * Cambia el método. Al cambiar de verdad el monto se reinicia: efectivo
+   * arranca vacío ("¿Cuánto te dan?") y transferencia/tarjeta vuelven a venir
+   * con el total. Elegir el que ya está puesto no borra lo escrito.
+   */
+  function setPaymentMethod(method: PaymentMethod): void {
+    if (!PAYMENT_METHODS.includes(method) || method === paymentMethod.value) return
+    paymentMethod.value = method
+    typedMinor.value = 0
+    amountTouched.value = false
+    amountInvalid.value = false
+  }
+
+  /** Venta nueva: vacía el carrito y vuelve a Efectivo con el monto vacío. */
   function clear(): void {
     lines.value = []
-    cashReceivedMinor.value = 0
-    cashInvalid.value = false
+    paymentMethod.value = DEFAULT_PAYMENT_METHOD
+    typedMinor.value = 0
+    amountTouched.value = false
+    amountInvalid.value = false
   }
 
   return {
-    lines, cashReceivedMinor, cashInvalid,
-    isEmpty, itemCount, totalMinor, changeMinor, missingMinor, canCharge, signature,
-    add, increment, decrement, setQuantity, remove, setCashMinor, setCashFromDisplay, clear,
+    lines, paymentMethod, amountInvalid,
+    isEmpty, itemCount, totalMinor, amountMinor, changeMinor, missingMinor, isPartial, canCharge, signature,
+    add, increment, decrement, setQuantity, remove, setAmountMinor, setAmountFromDisplay, setPaymentMethod, clear,
   }
 })

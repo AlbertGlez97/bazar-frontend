@@ -9,7 +9,9 @@
  * al sincronizar la cola.
  */
 import { v7 as uuidv7 } from 'uuid'
+import type { PaymentMethod } from '@/types/payment.types'
 import type { CreateSaleItemPayload, CreateSalePayload } from '@/types/sale.types'
+import { DEFAULT_PAYMENT_METHOD, PAYMENT_METHODS, isCashPayment } from '@/utils/payment-method'
 
 /** Límites del contrato (§6). */
 const MAX_MINOR_UNITS = 2147483647
@@ -37,7 +39,10 @@ export interface BuildSalePayloadInput {
   deviceId: string
   /** Instante de la venta; un `Date` se serializa como ISO 8601 UTC con `Z`. */
   occurredAt: string | Date
-  cashReceivedMinor: number
+  /** Ausente = EFECTIVO. */
+  paymentMethod?: PaymentMethod
+  /** Solo con EFECTIVO (obligatorio ahí). Con transferencia/tarjeta no debe darse. */
+  cashReceivedMinor?: number
   lines: SaleLineInput[]
 }
 
@@ -68,7 +73,19 @@ function toIsoInstant(value: string | Date): string {
  * cada producto se conserva como trazabilidad.
  */
 export function buildSalePayload(input: BuildSalePayloadInput): CreateSalePayload {
-  assertMinor(input.cashReceivedMinor, 'cashReceivedMinor')
+  const paymentMethod = input.paymentMethod ?? DEFAULT_PAYMENT_METHOD
+  if (!PAYMENT_METHODS.includes(paymentMethod)) {
+    throw new RangeError('paymentMethod debe ser EFECTIVO, TRANSFERENCIA o TARJETA')
+  }
+  // Transferencia y tarjeta cobran el total: no hay efectivo recibido y el
+  // servidor responde 400 si el campo llega (incluso en 0). Es un error de
+  // programación, así que falla aquí y no como un 400 tardío al sincronizar.
+  if (isCashPayment(paymentMethod)) {
+    if (input.cashReceivedMinor === undefined) throw new RangeError('Una venta en EFECTIVO necesita cashReceivedMinor')
+    assertMinor(input.cashReceivedMinor, 'cashReceivedMinor')
+  } else if (input.cashReceivedMinor !== undefined) {
+    throw new RangeError(`${paymentMethod} cobra el total: cashReceivedMinor no aplica`)
+  }
   const occurredAt = toIsoInstant(input.occurredAt)
 
   if (input.lines.length === 0) {
@@ -105,7 +122,8 @@ export function buildSalePayload(input: BuildSalePayloadInput): CreateSalePayloa
     deviceId: input.deviceId,
     occurredAt,
     currency: 'MXN',
-    cashReceivedMinor: input.cashReceivedMinor,
+    paymentMethod,
+    ...(isCashPayment(paymentMethod) ? { cashReceivedMinor: input.cashReceivedMinor } : {}),
     items: [...merged.values()],
   }
 }

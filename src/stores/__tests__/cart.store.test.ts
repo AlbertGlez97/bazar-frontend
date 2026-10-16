@@ -147,12 +147,12 @@ describe('cart.store — cantidades', () => {
   it('clear vacía las líneas y el efectivo (venta nueva)', () => {
     const cart = useCartStore()
     cart.add(product())
-    cart.setCashFromDisplay('100')
+    cart.setAmountFromDisplay('100')
 
     cart.clear()
 
     expect(cart.lines).toEqual([])
-    expect(cart.cashReceivedMinor).toBe(0)
+    expect(cart.amountMinor).toBe(0)
     expect(cart.isEmpty).toBe(true)
   })
 })
@@ -196,9 +196,9 @@ describe('cart.store — dinero exacto (enteros en centavos)', () => {
     const cart = useCartStore()
     cart.add(product({ unitPriceMinor: 1999, stock: 10 }))
     cart.setQuantity('p-1', 3)
-    cart.setCashFromDisplay('100')
+    cart.setAmountFromDisplay('100')
 
-    expect(cart.cashReceivedMinor).toBe(10000)
+    expect(cart.amountMinor).toBe(10000)
     expect(cart.changeMinor).toBe(4003)
     expect(cart.missingMinor).toBe(0)
     expect(cart.canCharge).toBe(true)
@@ -207,7 +207,7 @@ describe('cart.store — dinero exacto (enteros en centavos)', () => {
   it('efectivo insuficiente: faltan centavos exactos y no se puede cobrar', () => {
     const cart = useCartStore()
     cart.add(product({ unitPriceMinor: 1999 }))
-    cart.setCashFromDisplay('19.98')
+    cart.setAmountFromDisplay('19.98')
 
     expect(cart.missingMinor).toBe(1)
     expect(cart.changeMinor).toBe(0)
@@ -217,7 +217,7 @@ describe('cart.store — dinero exacto (enteros en centavos)', () => {
   it('efectivo exacto: cambio 0 y se puede cobrar', () => {
     const cart = useCartStore()
     cart.add(product({ unitPriceMinor: 1999 }))
-    cart.setCashFromDisplay('19.99')
+    cart.setAmountFromDisplay('19.99')
 
     expect(cart.changeMinor).toBe(0)
     expect(cart.missingMinor).toBe(0)
@@ -229,14 +229,14 @@ describe('cart.store — dinero exacto (enteros en centavos)', () => {
     cart.add(product({ unitPriceMinor: 0 }))
 
     expect(cart.totalMinor).toBe(0)
-    expect(cart.cashReceivedMinor).toBe(0)
+    expect(cart.amountMinor).toBe(0)
     expect(cart.canCharge).toBe(true)
   })
 
   it('carrito vacío no se puede cobrar aunque el efectivo sea cualquiera', () => {
     const cart = useCartStore()
     expect(cart.canCharge).toBe(false)
-    cart.setCashFromDisplay('500')
+    cart.setAmountFromDisplay('500')
     expect(cart.canCharge).toBe(false)
     expect(cart.totalMinor).toBe(0)
     expect(cart.itemCount).toBe(0)
@@ -246,14 +246,14 @@ describe('cart.store — dinero exacto (enteros en centavos)', () => {
     const cart = useCartStore()
     cart.add(product({ unitPriceMinor: 2147483647, stock: 10 }))
     cart.setQuantity('p-1', 2)
-    cart.setCashMinor(2147483647)
+    cart.setAmountMinor(2147483647)
     expect(cart.canCharge).toBe(false)
   })
 
   it('500 pagados por una compra de 299.50: el cambio es 200.50 exacto', () => {
     const cart = useCartStore()
     cart.add(product({ unitPriceMinor: 29950 }))
-    cart.setCashFromDisplay('500')
+    cart.setAmountFromDisplay('500')
 
     expect(cart.totalMinor).toBe(29950)
     expect(cart.changeMinor).toBe(20050)
@@ -264,7 +264,7 @@ describe('cart.store — dinero exacto (enteros en centavos)', () => {
   it('el faltante también es exacto: 299.50 con 100 pagados faltan 199.50', () => {
     const cart = useCartStore()
     cart.add(product({ unitPriceMinor: 29950 }))
-    cart.setCashFromDisplay('100')
+    cart.setAmountFromDisplay('100')
 
     expect(cart.missingMinor).toBe(19950)
     expect(cart.changeMinor).toBe(0)
@@ -314,19 +314,19 @@ describe('cart.store — efectivo capturado como texto', () => {
     ['', 0],
   ])('setCashFromDisplay(%j) -> %i centavos y es un monto válido', (text, expected) => {
     const cart = useCartStore()
-    cart.setCashFromDisplay(text)
-    expect(cart.cashReceivedMinor).toBe(expected)
-    expect(cart.cashInvalid).toBe(false)
+    cart.setAmountFromDisplay(text)
+    expect(cart.amountMinor).toBe(expected)
+    expect(cart.amountInvalid).toBe(false)
   })
 
   it.each(['abc', '1e5', '-20', '100,50', '1,5', '1.2.3', '1.000,50', '10.005'])(
     'setCashFromDisplay(%j) es ambiguo o inválido: efectivo 0 y marcado como inválido',
     (text) => {
       const cart = useCartStore()
-      cart.setCashMinor(5000)
-      cart.setCashFromDisplay(text)
-      expect(cart.cashReceivedMinor).toBe(0)
-      expect(cart.cashInvalid).toBe(true)
+      cart.setAmountMinor(5000)
+      cart.setAmountFromDisplay(text)
+      expect(cart.amountMinor).toBe(0)
+      expect(cart.amountInvalid).toBe(true)
     },
   )
 
@@ -335,15 +335,15 @@ describe('cart.store — efectivo capturado como texto', () => {
     cart.add(product({ unitPriceMinor: 0 }))
     expect(cart.canCharge).toBe(true)
 
-    cart.setCashFromDisplay('1,5')
+    cart.setAmountFromDisplay('1,5')
     expect(cart.canCharge).toBe(false)
   })
 
   it('"1,000" alcanza para un total de $1,000.00 (la coma agrupa miles)', () => {
     const cart = useCartStore()
     cart.add(product({ unitPriceMinor: 100000 }))
-    cart.setCashFromDisplay('1,000')
-    expect(cart.cashReceivedMinor).toBe(100000)
+    cart.setAmountFromDisplay('1,000')
+    expect(cart.amountMinor).toBe(100000)
     expect(cart.canCharge).toBe(true)
     expect(cart.changeMinor).toBe(0)
   })
@@ -351,40 +351,40 @@ describe('cart.store — efectivo capturado como texto', () => {
   it('corregir el texto vuelve a permitir el cobro', () => {
     const cart = useCartStore()
     cart.add(product({ unitPriceMinor: 5000 }))
-    cart.setCashFromDisplay('100,50')
+    cart.setAmountFromDisplay('100,50')
     expect(cart.canCharge).toBe(false)
-    cart.setCashFromDisplay('100.50')
-    expect(cart.cashInvalid).toBe(false)
+    cart.setAmountFromDisplay('100.50')
+    expect(cart.amountInvalid).toBe(false)
     expect(cart.canCharge).toBe(true)
   })
 
   it('fijar el efectivo en centavos o vaciar la venta limpia el estado de inválido', () => {
     const cart = useCartStore()
-    cart.setCashFromDisplay('1,5')
-    expect(cart.cashInvalid).toBe(true)
-    cart.setCashMinor(2000)
-    expect(cart.cashInvalid).toBe(false)
+    cart.setAmountFromDisplay('1,5')
+    expect(cart.amountInvalid).toBe(true)
+    cart.setAmountMinor(2000)
+    expect(cart.amountInvalid).toBe(false)
 
-    cart.setCashFromDisplay('abc')
-    expect(cart.cashInvalid).toBe(true)
+    cart.setAmountFromDisplay('abc')
+    expect(cart.amountInvalid).toBe(true)
     cart.clear()
-    expect(cart.cashInvalid).toBe(false)
+    expect(cart.amountInvalid).toBe(false)
   })
 
   it('topa el efectivo en el máximo del contrato (entero de 32 bits)', () => {
     const cart = useCartStore()
-    cart.setCashFromDisplay('99999999999')
-    expect(cart.cashReceivedMinor).toBe(2147483647)
+    cart.setAmountFromDisplay('99999999999')
+    expect(cart.amountMinor).toBe(2147483647)
   })
 
   it('setCashMinor acepta enteros y sanea negativos y decimales', () => {
     const cart = useCartStore()
-    cart.setCashMinor(5000)
-    expect(cart.cashReceivedMinor).toBe(5000)
-    cart.setCashMinor(-1)
-    expect(cart.cashReceivedMinor).toBe(0)
-    cart.setCashMinor(10.7)
-    expect(cart.cashReceivedMinor).toBe(10)
+    cart.setAmountMinor(5000)
+    expect(cart.amountMinor).toBe(5000)
+    cart.setAmountMinor(-1)
+    expect(cart.amountMinor).toBe(0)
+    cart.setAmountMinor(10.7)
+    expect(cart.amountMinor).toBe(10)
   })
 })
 
@@ -393,13 +393,13 @@ describe('cart.store — signature (detecta cambios que exigen un id nuevo)', ()
     const one = useCartStore()
     one.add(product({ id: 'a' }))
     one.add(product({ id: 'b' }))
-    one.setCashMinor(5000)
+    one.setAmountMinor(5000)
     const first = one.signature
 
     one.clear()
     one.add(product({ id: 'b' }))
     one.add(product({ id: 'a' }))
-    one.setCashMinor(5000)
+    one.setAmountMinor(5000)
 
     expect(one.signature).toBe(first)
   })
@@ -407,7 +407,7 @@ describe('cart.store — signature (detecta cambios que exigen un id nuevo)', ()
   it('cambia con la cantidad, con los productos y con el efectivo', () => {
     const cart = useCartStore()
     cart.add(product({ id: 'a' }))
-    cart.setCashMinor(5000)
+    cart.setAmountMinor(5000)
     const base = cart.signature
 
     cart.increment('a')
@@ -418,7 +418,7 @@ describe('cart.store — signature (detecta cambios que exigen un id nuevo)', ()
     const withOther = cart.signature
     expect(withOther).not.toBe(withQty)
 
-    cart.setCashMinor(6000)
+    cart.setAmountMinor(6000)
     expect(cart.signature).not.toBe(withOther)
   })
 })

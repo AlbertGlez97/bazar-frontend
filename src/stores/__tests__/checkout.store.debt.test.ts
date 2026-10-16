@@ -2,7 +2,7 @@ const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // registerDebt: fiado/apartado desde el cobro (D3: solo con una línea en el
 // carrito). D1 (BE-15): el abono inicial es un campo EXPLÍCITO del input —
 // va DENTRO de POST /deudas (transacción atómica del servidor), nunca una
-// llamada aparte a createAbono ni algo inferido de cart.cashReceivedMinor.
+// llamada aparte a createAbono ni algo inferido de cart.amountMinor.
 import 'fake-indexeddb/auto'
 import { IDBFactory } from 'fake-indexeddb'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -127,9 +127,9 @@ describe('checkout.store.registerDebt — solo con una línea (D3)', () => {
 })
 
 describe('checkout.store.registerDebt — POST /deudas (D1: abonoInicialMinor explícito, nunca del carrito)', () => {
-  it('manda type, productId, cantidad, deudor y abonoInicialMinor tal cual el input — NUNCA lee cart.cashReceivedMinor', async () => {
+  it('manda type, productId, cantidad, deudor y abonoInicialMinor tal cual el input — NUNCA lee cart.amountMinor', async () => {
     const { cart, checkout } = await ready()
-    cart.setCashFromDisplay('999') // efectivo ya escrito en el carrito: debe ser IGNORADO por completo
+    cart.setAmountFromDisplay('999') // efectivo ya escrito en el carrito: debe ser IGNORADO por completo
 
     await checkout.registerDebt({ ...DEUDOR_INPUT, abonoInicialMinor: 1500 })
 
@@ -217,6 +217,7 @@ describe('checkout.store.registerDebt — resultado con el abono inicial ya incl
       totalMinor: 5997,
       pendingMinor: 5997,
       initialAbonoMinor: 0,
+      paymentMethod: 'EFECTIVO',
     })
     expect(checkout.lastResult).toEqual(result)
   })
@@ -239,6 +240,7 @@ describe('checkout.store.registerDebt — resultado con el abono inicial ya incl
       totalMinor: 5997,
       pendingMinor: 3997,
       initialAbonoMinor: 2000,
+      paymentMethod: 'EFECTIVO',
     })
   })
 

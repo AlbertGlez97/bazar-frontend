@@ -49,6 +49,7 @@ describe('buildSalePayload', () => {
       deviceId: DEVICE,
       occurredAt: '2026-09-23T12:00:00.000Z',
       currency: 'MXN',
+      paymentMethod: 'EFECTIVO',
       cashReceivedMinor: 250000,
       items: [
         { productId: P1, quantity: 1, unitPriceMinor: 125000 },
@@ -65,7 +66,7 @@ describe('buildSalePayload', () => {
     })
 
     expect(Object.keys(payload).sort()).toEqual(
-      ['cashReceivedMinor', 'currency', 'deviceId', 'id', 'items', 'memberId', 'occurredAt'],
+      ['cashReceivedMinor', 'currency', 'deviceId', 'id', 'items', 'memberId', 'occurredAt', 'paymentMethod'],
     )
     expect(Object.keys(payload.items[0]).sort()).toEqual(['productId', 'quantity', 'unitPriceMinor'])
     expect(payload).not.toHaveProperty('contextId')
@@ -140,5 +141,44 @@ describe('buildSalePayload', () => {
       quantity: 1,
     }))
     expect(() => buildSalePayload({ ...base, lines })).toThrow()
+  })
+})
+
+describe('buildSalePayload — método de pago', () => {
+  const lines = [{ productId: P1, quantity: 1 }]
+  const { cashReceivedMinor: _cash, ...baseNoCash } = base
+
+  it('EFECTIVO: manda el método y el efectivo recibido', () => {
+    const payload = buildSalePayload({ ...base, paymentMethod: 'EFECTIVO', lines })
+
+    expect(payload).toMatchObject({ paymentMethod: 'EFECTIVO', cashReceivedMinor: 250000 })
+  })
+
+  it('sin método se arma como EFECTIVO (siempre manda el método explícito)', () => {
+    const payload = buildSalePayload({ ...base, lines })
+
+    expect(payload.paymentMethod).toBe('EFECTIVO')
+    expect(payload.cashReceivedMinor).toBe(250000)
+  })
+
+  it.each(['TRANSFERENCIA', 'TARJETA'] as const)('%s: manda el método y NO manda efectivo (el servidor responde 400 si lo hay)', (paymentMethod) => {
+    const payload = buildSalePayload({ ...baseNoCash, paymentMethod, lines })
+
+    expect(payload.paymentMethod).toBe(paymentMethod)
+    expect(payload).not.toHaveProperty('cashReceivedMinor')
+    expect(Object.keys(payload).sort()).toEqual(['currency', 'deviceId', 'id', 'items', 'memberId', 'occurredAt', 'paymentMethod'])
+  })
+
+  it.each(['TRANSFERENCIA', 'TARJETA'] as const)('%s con efectivo es un error de programación: falla al construir', (paymentMethod) => {
+    expect(() => buildSalePayload({ ...base, paymentMethod, lines })).toThrow(RangeError)
+    expect(() => buildSalePayload({ ...base, cashReceivedMinor: 0, paymentMethod, lines })).toThrow(RangeError)
+  })
+
+  it('EFECTIVO sin efectivo recibido también falla', () => {
+    expect(() => buildSalePayload({ ...baseNoCash, paymentMethod: 'EFECTIVO', lines })).toThrow(RangeError)
+  })
+
+  it('un método desconocido falla en vez de mandarse', () => {
+    expect(() => buildSalePayload({ ...base, paymentMethod: 'CHEQUE' as never, lines })).toThrow(RangeError)
   })
 })

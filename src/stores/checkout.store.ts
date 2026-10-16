@@ -11,6 +11,8 @@ import { friendlyDeudaErrorMessage } from '@/services/deuda-errors'
 import { VOICE, saleConflictMessage } from '@/config/voice'
 import { buildSalePayload, newSaleId } from '@/utils/sale'
 import { subtractMinor, sumMinor } from '@/utils/money'
+import { isCashPayment, resolvePaymentMethod } from '@/utils/payment-method'
+import type { PaymentMethod } from '@/types/payment.types'
 import type { CreateSalePayload, Sale } from '@/types/sale.types'
 import { currentQueueOrigin, canSendDebt } from '@/services/queue-origin'
 import type { QueueOrigin } from '@/services/queue-origin'
@@ -43,15 +45,15 @@ export type CheckoutBlockedReason = 'empty-cart' | 'cash-insufficient' | 'missin
 
 export type CheckoutResult =
   /** Venta cobrada. Totales del SERVIDOR. Stock local descontado. */
-  | { kind: 'success'; sale: Sale; totalMinor: number; changeMinor: number }
+  | { kind: 'success'; sale: Sale; paymentMethod: PaymentMethod; totalMinor: number; changeMinor: number }
   /** 201/200 `rechazada_por_conflicto`: NO se cobró (nunca pintar como éxito). Stock local intacto. */
   | { kind: 'conflict'; sale: Sale; reason: string }
   /** Guardada en el dispositivo; se enviará sola. Totales locales. Debe sentirse como éxito. */
-  | { kind: 'saved-offline'; pendingId: string; totalMinor: number; changeMinor: number }
+  | { kind: 'saved-offline'; pendingId: string; paymentMethod: PaymentMethod; totalMinor: number; changeMinor: number }
   /** 400/409 en línea: el servidor no la aceptó. Nada quedó en cola; el carrito se conserva. */
   | { kind: 'rejected'; reasonMessage: string; canFix: true }
   /** 401/403 en línea: la venta está a salvo en la cola; hay que volver a iniciar sesión. */
-  | { kind: 'auth-needed'; pendingId: string; totalMinor: number; changeMinor: number; message: string }
+  | { kind: 'auth-needed'; pendingId: string; paymentMethod: PaymentMethod; totalMinor: number; changeMinor: number; message: string }
   /** Ni siquiera se pudo guardar en el dispositivo (IndexedDB no disponible): conservar el carrito. */
   | { kind: 'failed-to-save'; message: string; operation?: 'debt' }
   /** No se intentó: falta algo para poder cobrar. */
@@ -73,6 +75,8 @@ export type CheckoutResult =
       totalMinor: number
       pendingMinor: number
       initialAbonoMinor: number
+      /** Método con el que se pagó el abono inicial. */
+      paymentMethod: PaymentMethod
     }
 
 /** El intento en curso: todo lo que debe repetirse idéntico en un reintento. */
@@ -82,7 +86,9 @@ interface Attempt {
   memberId: string
   deviceId: string
   sellerName: string
+  paymentMethod: PaymentMethod
   totalMinor: number
+  /** Solo en efectivo; 0 con transferencia o tarjeta. */
   changeMinor: number
   /** ¿Hay una copia de este id en la cola? */
   enqueued: boolean
@@ -137,13 +143,16 @@ export const useCheckoutStore = defineStore('checkout', () => {
         memberId,
         deviceId,
         occurredAt: new Date(),
-        cashReceivedMinor: cart.cashReceivedMinor,
+        paymentMethod: cart.paymentMethod,
+        // Transferencia y tarjeta cobran el total: el efectivo no se manda.
+        ...(isCashPayment(cart.paymentMethod) ? { cashReceivedMinor: cart.amountMinor } : {}),
         lines: cart.lines.map(({ productId, quantity, unitPriceMinor }) => ({ productId, quantity, unitPriceMinor })),
       }),
       signature: cart.signature,
       memberId,
       deviceId,
       sellerName: session.member?.name ?? '',
+      paymentMethod: cart.paymentMethod,
       totalMinor: cart.totalMinor,
       changeMinor: cart.changeMinor,
       enqueued: false,
@@ -196,6 +205,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     return {
       kind: 'saved-offline',
       pendingId: current.payload.id,
+      paymentMethod: current.paymentMethod,
       totalMinor: current.totalMinor,
       changeMinor: current.changeMinor,
     }
@@ -246,8 +256,9 @@ export const useCheckoutStore = defineStore('checkout', () => {
     return {
       kind: 'success',
       sale: response.sale,
+      paymentMethod: current.paymentMethod,
       totalMinor: response.sale.totalMinor ?? current.totalMinor,
-      changeMinor: response.sale.changeMinor ?? current.changeMinor,
+      changeMinor: isCashPayment(current.paymentMethod) ? (response.sale.changeMinor ?? current.changeMinor) : 0,
     }
   }
 
@@ -289,6 +300,8 @@ export const useCheckoutStore = defineStore('checkout', () => {
       type: DeudaType
       deudor: { nombre: string; telefono?: string; notas?: string }
       abonoInicialMinor: number
+      /** Método del abono inicial; ausente = EFECTIVO. */
+      abonoInicialPaymentMethod?: PaymentMethod
       cuotasPlaneadas?: { fechaEsperada: string; montoEsperadoMinor: number }[]
     },
   ): Promise<CheckoutResult> {
@@ -299,6 +312,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     const body = {
       type: input.type, productId: line.productId, cantidad: line.quantity,
       deudor: input.deudor, abonoInicialMinor: input.abonoInicialMinor,
+      abonoInicialPaymentMethod: resolvePaymentMethod(input.abonoInicialPaymentMethod),
       ...(input.cuotasPlaneadas?.length ? { cuotasPlaneadas: input.cuotasPlaneadas } : {}),
     }
     const signature = JSON.stringify({ body, price: line.unitPriceMinor, origin })
@@ -326,7 +340,8 @@ export const useCheckoutStore = defineStore('checkout', () => {
       await applyStock()
       return { kind: 'debt-saved-offline', deudaId: current.payload.id, debtType: current.payload.type,
         totalMinor: current.totalMinor, pendingMinor: subtractMinor(current.totalMinor, current.payload.abonoInicialMinor),
-        initialAbonoMinor: current.payload.abonoInicialMinor, ...(authNeeded ? { authNeeded: true } : {}) }
+        initialAbonoMinor: current.payload.abonoInicialMinor,
+        paymentMethod: resolvePaymentMethod(current.payload.abonoInicialPaymentMethod), ...(authNeeded ? { authNeeded: true } : {}) }
     }
     if (!isOnline()) return save()
     let deuda
@@ -345,6 +360,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     return {
       kind: 'debt-registered', deudaId: deuda.id, debtType: deuda.type, totalMinor: deuda.totalMinor,
       pendingMinor: subtractMinor(deuda.totalMinor, abonadoMinor), initialAbonoMinor: abonadoMinor,
+      paymentMethod: resolvePaymentMethod(current.payload.abonoInicialPaymentMethod),
     }
   }
 
@@ -357,6 +373,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
       type: DeudaType
       deudor: { nombre: string; telefono?: string; notas?: string }
       abonoInicialMinor: number
+      abonoInicialPaymentMethod?: PaymentMethod
       cuotasPlaneadas?: { fechaEsperada: string; montoEsperadoMinor: number }[]
     },
   ): Promise<CheckoutResult> {
@@ -384,6 +401,7 @@ export const useCheckoutStore = defineStore('checkout', () => {
     const payload = debtAttempt.payload
     return registerDebt({
       type: payload.type, deudor: payload.deudor!, abonoInicialMinor: payload.abonoInicialMinor,
+      abonoInicialPaymentMethod: payload.abonoInicialPaymentMethod,
       cuotasPlaneadas: payload.cuotasPlaneadas,
     })
   }

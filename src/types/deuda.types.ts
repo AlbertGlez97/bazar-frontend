@@ -4,6 +4,8 @@
 // SOLO producto y cantidad — nunca un carrito. `fiado` y `apartado` se tratan
 // idéntico en el servidor (ambos descuentan stock de inmediato al crearse);
 // es solo una etiqueta para el socio.
+import type { PaymentMethod } from './payment.types'
+
 export type DeudaType = 'fiado' | 'apartado'
 export type DeudaStatus = 'pendiente' | 'saldada'
 export type DeudaOrderBy = 'createdAt' | 'saldoPendiente' | 'cuotaVencida'
@@ -16,6 +18,8 @@ export interface Abono {
   /** Interno, ignorable. */
   contextId: string
   montoMinor: number
+  /** Cómo se pagó el abono. Los anteriores a esta versión son EFECTIVO; no se edita. */
+  paymentMethod: PaymentMethod
   receivedByMemberId: string
   receivedAt: string
   nota: string | null
@@ -107,6 +111,8 @@ export interface CreateDeudaPayload {
   }
   /** BE-15, requerido; entero 0..2147483647. `0` = sin abono inicial. */
   abonoInicialMinor: number
+  /** Método del abono inicial; ausente = EFECTIVO. Se ignora si `abonoInicialMinor` es 0. */
+  abonoInicialPaymentMethod?: PaymentMethod
   /** BE-15, opcional; calendario informativo creado en la misma transacción. */
   cuotasPlaneadas?: CuotaPlaneadaInput[]
 }
@@ -116,6 +122,8 @@ export interface CreateAbonoPayload {
   /** Entero en centavos, `Min(1)`. */
   montoMinor: number
   nota?: string
+  /** Ausente = EFECTIVO. No cambia el saldo y no se edita después. */
+  paymentMethod?: PaymentMethod
 }
 
 /** Body de `PATCH /deudas/:id/cuotas/:cuotaId`: ambos campos opcionales (edición parcial). */

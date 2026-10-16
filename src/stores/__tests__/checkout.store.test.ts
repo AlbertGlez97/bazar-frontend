@@ -74,7 +74,7 @@ async function readySale() {
   const cart = useCartStore()
   cart.add(catalog.getById(TAZA.id)!)
   cart.setQuantity(TAZA.id, 3)
-  cart.setCashFromDisplay('100')
+  cart.setAmountFromDisplay('100')
 
   return { session, catalog, cart, checkout: useCheckoutStore() }
 }
@@ -115,7 +115,7 @@ describe('checkout.store — cobro bloqueado', () => {
 
   it('con efectivo insuficiente no cobra', async () => {
     const { cart, checkout } = await readySale()
-    cart.setCashFromDisplay('10')
+    cart.setAmountFromDisplay('10')
 
     expect(await checkout.charge()).toEqual({ kind: 'blocked', reason: 'cash-insufficient' })
     expect(createSale).not.toHaveBeenCalled()
@@ -175,6 +175,7 @@ describe('checkout.store — cobro en línea', () => {
       deviceId: DEVICE.deviceId,
       occurredAt: '2026-09-25T12:00:00.000Z',
       currency: 'MXN',
+      paymentMethod: 'EFECTIVO',
       cashReceivedMinor: 10000,
       items: [{ productId: TAZA.id, quantity: 3, unitPriceMinor: 1999 }],
     })
@@ -393,9 +394,9 @@ describe('checkout.store — id y occurredAt congelados', () => {
     cart.decrement(TAZA.id)
     await checkout.charge()
     cart.add(catalog.getById(SARAPE.id)!)
-    cart.setCashFromDisplay('2000')
+    cart.setAmountFromDisplay('2000')
     await checkout.charge()
-    cart.setCashFromDisplay('2001')
+    cart.setAmountFromDisplay('2001')
     await checkout.charge()
 
     const ids = createSale.mock.calls.map(([payload]) => payload.id)
@@ -436,12 +437,12 @@ describe('checkout.store — id y occurredAt congelados', () => {
     checkout.startNewSale()
 
     expect(cart.lines).toEqual([])
-    expect(cart.cashReceivedMinor).toBe(0)
+    expect(cart.amountMinor).toBe(0)
     expect(checkout.lastResult).toBeNull()
 
     cart.add(catalog.getById(TAZA.id)!)
     cart.setQuantity(TAZA.id, 3)
-    cart.setCashFromDisplay('100')
+    cart.setAmountFromDisplay('100')
     await checkout.charge()
     expect(createSale.mock.calls[1][0].id).not.toBe(firstId)
   })
@@ -457,7 +458,7 @@ describe('checkout.store — id y occurredAt congelados', () => {
 
     expect(checkout.lastResult).toBeNull()
     expect(cart.lines).toHaveLength(1)
-    expect(cart.cashReceivedMinor).toBe(10000)
+    expect(cart.amountMinor).toBe(10000)
     // El intento sigue congelado: reintentar sin cambios manda el MISMO id (idempotencia).
     await checkout.charge()
     expect(createSale.mock.calls[1][0].id).toBe(firstId)
