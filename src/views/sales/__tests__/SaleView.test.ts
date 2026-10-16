@@ -1851,6 +1851,13 @@ describe('SaleView — contador y pista en el catálogo del celular', () => {
       expect(hint(wrapper).text()).toContain('Toca un producto para agregarlo. Usa − para quitar uno.')
     })
 
+    it('si la pantalla se abre con productos ya en la venta, la pista no se ve', async () => {
+      useCartStore().add(PAN)
+      const { wrapper } = await mountNarrow()
+
+      expect(hint(wrapper).exists()).toBe(false)
+    })
+
     it('no se ve en pantalla ancha', async () => {
       const { wrapper } = await mountSale()
 

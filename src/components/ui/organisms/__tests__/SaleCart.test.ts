@@ -397,8 +397,14 @@ describe('SaleCart — modo prominente (Paso 2 del cobro en celular)', () => {
     })
 
     it('en escritorio "Cobrar" va en el flujo (ni sticky ni fijo): nunca queda encima del campo de monto', () => {
-      const actions = rule('.sale-cart__actions')
-      expect(actions).not.toMatch(/position:\s*(sticky|fixed|absolute)/)
+      // Regla con ESE selector exacto (no una que solo lo contenga, como la del Paso 2).
+      const css = style.replace(/\/\*[\s\S]*?\*\//g, '')
+      const exact = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+        .filter(([, selectors]) => selectors!.split(',').map((part) => part.trim()).includes('.sale-cart__actions'))
+        .map(([, , body]) => body)
+        .join(';')
+      expect(exact).not.toBe('')
+      expect(exact).not.toMatch(/position:\s*(sticky|fixed|absolute)/)
     })
 
     it('en escritorio, si no caben los productos, solo LA LISTA se desplaza: total, método, monto, cambio y Cobrar quedan a la vista', () => {

@@ -306,7 +306,8 @@ describe('help: escáner (vibra, aviso, sigue abierto) y carrito (quitar con −
 
   it('escanear: dice que el teléfono vibra y que aparece un aviso con el nombre del producto', () => {
     const text = textOf('escanear')
-    expect(text).toContain('vibra')
+    expect(text).toContain('vibra una vez')
+    expect(text).toContain('vibra dos veces')
     expect(text).toContain('aviso')
     expect(text).toContain('Agregado ✓')
   })
