@@ -30,3 +30,33 @@ anotada en algún lado:
 producto y cantidad por deuda (no un carrito completo), solo un socio puede autorizarla, cualquier Member
 puede registrar abonos, y no hay endpoint para editarla ni cancelarla — ver el contrato citado arriba antes
 de diseñar la UI, para no inventar una forma que el backend no soporta.
+
+## Métodos de pago: lo que el backend ya soporta y la interfaz debe conectar
+
+**El backend registra desde hoy tres métodos de pago (`EFECTIVO`, `TRANSFERENCIA`, `TARJETA`) en ventas y
+abonos de fiado/apartado.** La regla del dominio vive en `bazar-api/doc/reglas-de-negocio.md` (sección
+"Métodos de pago") y el contrato en `doc/api-contract-for-frontend.md`; aquí solo queda lo que le toca al
+frontend. Mientras la interfaz no lo conecte, todo sigue siendo efectivo (el backend toma un método ausente
+como `EFECTIVO`), así que nada se rompe al desplegar solo el backend.
+
+Reglas que la interfaz debe respetar al construirlo:
+
+- **Orden de despliegue**: el backend va primero. `POST /sales` y `POST /deudas` rechazan con 400 los campos
+  desconocidos; el frontend no debe mandar `paymentMethod`/`abonoInicialPaymentMethod` antes de que el
+  backend que los acepta esté en producción.
+- **Efectivo**: se conserva el flujo de hoy (efectivo recibido, "Justo", cambio). `cashReceivedMinor` solo se
+  manda con `EFECTIVO`.
+- **Transferencia y tarjeta**: se cobra el total completo. **No se pide efectivo recibido ni se muestra
+  cambio, y `cashReceivedMinor` no se manda** (enviarlo, incluso `0`, es 400). La respuesta trae
+  `cashReceivedMinor` y `changeMinor` en `null`: el comprobante no debe pintarlos como `$0.00`.
+- **Cola offline**: las ventas ya encoladas por una versión anterior no traen el campo y se reenvían igual
+  (el backend las toma como `EFECTIVO` y un reenvío nunca da 409). Una venta nueva encolada con
+  `TRANSFERENCIA`/`TARJETA` debe guardar su método en la cola para reenviarlo idéntico; cambiar el método de
+  una venta ya encolada es otro payload (409 si ya llegó al servidor).
+- **Abonos**: el abono inicial de `POST /deudas` usa `abonoInicialPaymentMethod` y cada
+  `POST /deudas/:id/abonos` usa `paymentMethod` (ambos opcionales, por defecto `EFECTIVO`). El método no
+  cambia saldo ni estado y **no se edita después**.
+- **Reporte**: `GET /reports/sales-by-period` devuelve `porMetodoPago` con las tres llaves siempre. La suma de
+  los tres `totalMinor` es `totalIngresadoMinor`; sirve para mostrar dónde está el dinero (caja, cuenta
+  bancaria, terminal). Comisiones y ganancia no dependen del método.
+- **No hay folio ni referencia de la terminal**: la interfaz no debe pedirlos.

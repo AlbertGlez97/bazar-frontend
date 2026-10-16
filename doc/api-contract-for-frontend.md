@@ -6,7 +6,8 @@ Referencia de todos los endpoints del backend `bazar-api`, pensada para quien co
 - Base de código: rama `feat/backend-e0-be11-multitenancy`, commit `1b1e449` ("fix(api): address the two advisory findings of the prefix review"), árbol de trabajo limpio.
 - Actualización posterior (2026-09-24): el flujo de aprobación de negocios cambió en los commits `73c7411` (escape de HTML en las páginas de estado) y `3399370` (la aprobación crea la cuenta y el dispositivo inicial y envía las credenciales por correo). Las secciones [1.3](#f-auth), [2](#mod-auth), [4](#mod-devices), [11](#mod-business-registration) y el [Apéndice B](#apendice-b-aclaraciones) reflejan ese cambio; los números de línea de las referencias `Fuente:` de esas secciones se actualizaron, el resto corresponde al commit base. Un cambio posterior añade el respaldo al aprobador cuando Resend (modo de prueba) rechaza el correo del socio, con un plazo total de 10 s para el correo, y documenta que el identificador de dispositivo es un secreto compartido (secciones 4, 11 y B.4); los números de línea de sus `Fuente:` no se recalcularon. Otro cambio posterior reemplaza `nombreSocio`/`contactoSocio` del formulario por `nombre`, `apellidos`, `correo` (validado solo por formato, sin verificar que el buzón exista) y `telefono` opcional (sección 11).
 - **Actualización BE-12 (2026-09-25, rama `feat/backend-e0-be12-team-devices`)**: gestión de equipo y de dispositivos. Cambia el contrato en cuatro frentes: (1) `POST /devices/identify` ahora puede devolver `{ deviceId, deviceToken }` y `409` si el identificador ya se usó; (2) `ContextGuard` exige `x-device-token` a los dispositivos activados con el flujo nuevo y ata a una persona las cuentas que crea `POST /members`; (3) rutas nuevas: `POST /members`, `POST /auth/change-password`, `GET /devices`, `POST /devices`, `PATCH /devices/:id/revoke` y `PATCH /devices/:id/reissue`; (4) CORS permite el header `x-device-token`. Las secciones [1.3](#f-auth), [1.10](#f-cors), [2](#mod-auth), [3](#mod-members), [4](#mod-devices), [11](#mod-business-registration) y los apéndices reflejan ese cambio; **las referencias `Fuente:` de esas secciones nuevas apuntan a archivos y funciones (sin número de línea) y los números de línea de las `Fuente:` antiguas no se recalcularon**. Lista de migración para el frontend: [4.6](#dev-migracion).
-- Alcance: 44 rutas de negocio bajo `/api/v1` (índice completo en el [Apéndice A](#apendice-a-indice-de-rutas)) más los montajes fuera del prefijo (`/docs*`, `/uploads/products/...`).
+- **Actualización de seguridad BE-12 (2026-09-25)**: nueva ruta [`GET /auth/me`](#ep-auth-me) (solo `AuthGuard`). Dice a qué persona está atada la cuenta autenticada (`memberId` y `member`, o `null` en la cuenta compartida). **La UI no debe mostrar el selector de persona cuando `memberId` no es `null`**: una cuenta atada solo puede actuar como esa persona y `ContextGuard` rechaza (403) cualquier otro `x-member-id`. Antes el login no exponía el vínculo y el selector dejaba a un colaborador elegir "socio" en la pantalla (las llamadas de datos ya daban 403).
+- Alcance: 46 rutas de negocio bajo `/api/v1` (índice completo en el [Apéndice A](#apendice-a-indice-de-rutas)) más los montajes fuera del prefijo (`/docs*`, `/uploads/products/...`).
 - **Actualización BE-13 (2026-09-28)**: `purchaseCostMinor` pasa a ser **obligatorio** al crear un producto (antes opcional) y ya no se puede "vaciar" con `PATCH` una vez que el producto tiene un costo; cada `SaleItem` guarda ahora un snapshot de costo (`unitCostMinor`) que nunca se recalcula; rutas nuevas: `GET /reports/sales-detail` (ganancia por producto/vendedor) y `GET /dashboard/summary` (resumen para la pantalla de Gestión). Las secciones [5](#mod-products) y [9](#mod-reports) reflejan ese cambio.
 - Los ejemplos usan valores ficticios (`eyJ...` para tokens, `socio@example.test` como usuario). Los identificadores `bf030001-...` son los socios sembrados por `prisma/seed-data.ts`; el resto de UUID de los ejemplos son ficticios (mismos valores que `src/docs/bazaar-examples.ts`). Cuando un ejemplo no proviene de un test, se indica "ejemplo construido a partir del DTO".
 - Cada endpoint termina con una línea **Fuente:** con referencias `archivo:línea` para auditar la afirmación.
@@ -126,9 +127,9 @@ Orden de rechazo: primero 401 (`AuthGuard`), luego 403 (selección), luego 403 (
 | Nivel | Endpoints |
 |---|---|
 | Ninguno (públicos) | `GET /api/v1`, `POST /api/v1/auth/login`, `POST /api/v1/business-registration`, `GET /api/v1/business-registration/approve`, `GET /api/v1/business-registration/reject` |
-| Solo `AuthGuard` (basta el token; los headers `x-member-id`/`x-device-id` **no** se exigen) | `GET /api/v1/members`, `POST /api/v1/auth/change-password`, `POST /api/v1/devices/identify`, `GET /api/v1/products`, `GET /api/v1/products/:id`, `GET /api/v1/products/:id/audit`, `GET /api/v1/sales/:id` |
+| Solo `AuthGuard` (basta el token; los headers `x-member-id`/`x-device-id` **no** se exigen) | `GET /api/v1/members`, `GET /api/v1/auth/me`, `POST /api/v1/auth/change-password`, `POST /api/v1/devices/identify`, `GET /api/v1/products`, `GET /api/v1/products/:id`, `GET /api/v1/products/:id/audit`, `GET /api/v1/sales/:id` |
 | `ContextGuard` (token + member + device; cualquier Member activo, socio o colaborador) | `POST /api/v1/sales`, `POST /api/v1/deudas/:id/abonos` |
-| `SocioGuard` (token + member socio + device) | `POST /api/v1/members`, `GET /api/v1/devices`, `POST /api/v1/devices`, `PATCH /api/v1/devices/:id/revoke`, `PATCH /api/v1/devices/:id/reissue`, `POST /api/v1/products`, `PATCH /api/v1/products/:id`, `POST /api/v1/products/:id/image`, `DELETE /api/v1/products/:id`, `PATCH /api/v1/products/:id/reactivate`, `PATCH /api/v1/members/:id`, `DELETE /api/v1/members/:id`, `PATCH /api/v1/members/:id/reactivate`, `PATCH /api/v1/members/:id/commission-rate`, `GET /api/v1/sales`, `GET /api/v1/incidencias`, `GET /api/v1/incidencias/:id`, `PATCH /api/v1/incidencias/:id/resolver`, `GET /api/v1/commissions`, `PATCH /api/v1/settings/commission-rate`, `GET /api/v1/reports/sales-by-period`, `GET /api/v1/reports/sales-by-member`, `GET /api/v1/reports/sales-detail`, `GET /api/v1/dashboard/summary`, `POST /api/v1/deudas`, `GET /api/v1/deudas`, `GET /api/v1/deudas/:id`, `POST /api/v1/deudas/:id/cuotas` (BE-15), `PATCH /api/v1/deudas/:id/cuotas/:cuotaId` (BE-15), `DELETE /api/v1/deudas/:id/cuotas/:cuotaId` (BE-15) |
+| `SocioGuard` (token + member socio + device) | `POST /api/v1/members`, `GET /api/v1/devices`, `POST /api/v1/devices`, `PATCH /api/v1/devices/:id/revoke`, `PATCH /api/v1/devices/:id/reissue`, `POST /api/v1/products`, `PATCH /api/v1/products/:id`, `POST /api/v1/products/:id/image`, `POST /api/v1/products/:id/restock`, `DELETE /api/v1/products/:id`, `PATCH /api/v1/products/:id/reactivate`, `PATCH /api/v1/members/:id`, `DELETE /api/v1/members/:id`, `PATCH /api/v1/members/:id/reactivate`, `PATCH /api/v1/members/:id/commission-rate`, `GET /api/v1/sales`, `GET /api/v1/incidencias`, `GET /api/v1/incidencias/:id`, `PATCH /api/v1/incidencias/:id/resolver`, `GET /api/v1/commissions`, `PATCH /api/v1/settings/commission-rate`, `GET /api/v1/reports/sales-by-period`, `GET /api/v1/reports/sales-by-member`, `GET /api/v1/reports/sales-detail`, `GET /api/v1/dashboard/summary`, `POST /api/v1/deudas`, `GET /api/v1/deudas`, `GET /api/v1/deudas/:id`, `POST /api/v1/deudas/:id/cuotas` (BE-15), `PATCH /api/v1/deudas/:id/cuotas/:cuotaId` (BE-15), `DELETE /api/v1/deudas/:id/cuotas/:cuotaId` (BE-15) |
 
 Matiz sobre los endpoints "solo `AuthGuard`": únicamente `GET /members` y `GET /products` leen `x-member-id` de forma **opcional** (para decidir si se respeta `includeInactive`, ver sus secciones); ninguno de los endpoints de este grupo exige ni lee `x-device-id`.
 
@@ -165,7 +166,7 @@ Parámetros por endpoint (todos en query string; `page`/`limit` son enteros, cua
 
 | Endpoint | `page` | `limit` | Otros parámetros | Orden |
 |---|---|---|---|---|
-| `GET /api/v1/products` | 1..1000000, def. 1 | 1..100, def. 20 | `search` (0..200 car., busca en el nombre, sin distinguir mayúsculas), `includeInactive` (bool, def. `false`), `umbral` (integer, 0..100000, **sin default**; ver más abajo) | `createdAt` asc, `id` asc (fijo) |
+| `GET /api/v1/products` | 1..1000000, def. 1 | 1..100, def. 20 | `search` (0..200 car., busca en el nombre, sin distinguir mayúsculas), `includeInactive` (bool, def. `false`), `umbral` (integer, 0..100000, **sin default**; ver más abajo), `agotados` (bool), `sinCosto` (bool), `tipo` (`unica`/`cantidad`) | `createdAt` asc, `id` asc (fijo) |
 | `GET /api/v1/products/:id/audit` | 1..1000000, def. 1 | 1..100, def. 20 | acepta `search`, `includeInactive` y `umbral` (mismo DTO) pero los **ignora** | `changedAt` asc, `id` asc (fijo) |
 | `GET /api/v1/sales` | 1..1000000, def. 1 | 1..100, def. 20 | `status`, `search` (0..200, nombre del vendedor), `sort` (`asc`/`desc`, def. `desc`) | `receivedAt` según `sort`, `id` asc |
 | `GET /api/v1/incidencias` | 1..1000000, def. 1 | 1..100, def. 20 | `type`, `resolutionStatus`, `search` (0..200, nombre del vendedor de la venta), `sort` (def. `desc`) | `detectedAt` según `sort`, `id` asc |
@@ -198,7 +199,7 @@ Consecuencias para el cliente:
 - Un stock ya agotado al llegar la venta (p. ej. al sincronizar una cola offline) da **400**, **no** un conflicto persistido. Solo la carrera concurrente produce el 201 con conflicto. El cliente no debe reintentar indefinidamente una venta que devuelve 400.
 - No se resuelve automáticamente ningún conflicto (reembolso, reasignación de stock): la revisión es humana desde `GET /api/v1/incidencias`.
 
-**Idempotencia**: no hay header de idempotencia. La clave es el campo **`id` del cuerpo** (UUID generado por el cliente antes de enviar; se recomienda UUIDv7). Reintentar tras un timeout o una respuesta perdida: reenviar **exactamente el mismo `id` y el mismo payload**. Se considera "mismo payload" si coinciden `memberId`, `deviceId`, `currency`, `cashReceivedMinor`, `occurredAt` (comparado como instante) y el conjunto de `{productId, quantity}` (sin importar el orden); el `unitPriceMinor` opcional de cada partida **no** cuenta. Si dudas del resultado, `GET /api/v1/sales/:id` devuelve lo persistido (404 si no llegó a guardarse).
+**Idempotencia**: no hay header de idempotencia. La clave es el campo **`id` del cuerpo** (UUID generado por el cliente antes de enviar; se recomienda UUIDv7). Reintentar tras un timeout o una respuesta perdida: reenviar **exactamente el mismo `id` y el mismo payload**. Se considera "mismo payload" si coinciden `memberId`, `deviceId`, `currency`, `cashReceivedMinor`, `occurredAt` (comparado como instante) y el conjunto de `{productId, quantity}` (sin importar el orden); el `unitPriceMinor` opcional de cada partida **no** cuenta. **`paymentMethod` ausente y `EFECTIVO` comparan igual**, y reenviar una venta guardada antes de existir el campo responde 200 (nunca 409); reenviar el mismo `id` con otro método sí es 409. Si dudas del resultado, `GET /api/v1/sales/:id` devuelve lo persistido (404 si no llegó a guardarse).
 
 Fuente: `src/sales/sales.controller.ts:50-65`, `src/sales/sales.service.ts:135-173,279-507`, `test/sales-conflict.e2e-spec.ts:112-260`, `doc/reglas-de-negocio.md:73-78,151-153`.
 
@@ -308,7 +309,7 @@ Los servicios devuelven el registro de Prisma tal cual, sin capa de DTO de respu
 <a id="mod-auth"></a>
 ## 2. Auth
 
-Dos endpoints: el login de la **cuenta** (público) y el cambio de la contraseña propia (con sesión). Una cuenta puede ser **compartida** por la tablet del negocio (la del socio fundador y las de antes de BE-12: cualquiera elige su nombre en el selector) o estar **atada a una persona** (las que crea `POST /members`: solo pueden actuar como esa persona, ver [1.3](#f-auth)). El login solo emite el JWT; elegir quién atiende y desde qué dispositivo es un paso aparte (ver [1.3](#f-auth)). Las cuentas se crean fuera de banda o por otros endpoints: el seed en el negocio de desarrollo, la **aprobación** de una solicitud de registro (la cuenta del socio fundador llega por correo con una contraseña temporal, ver [Business Registration](#mod-business-registration)) y, desde BE-12, un socio con [`POST /members`](#ep-members-create); **no existe endpoint de registro libre de cuentas**. Ante credenciales inválidas, cuenta desactivada o usuario inexistente el login responde exactamente igual (no revela si el usuario existe).
+Tres endpoints: el login de la **cuenta** (público), `GET /auth/me` (a qué persona está atada la cuenta) y el cambio de la contraseña propia (con sesión). Una cuenta puede ser **compartida** por la tablet del negocio (la del socio fundador y las de antes de BE-12: cualquiera elige su nombre en el selector) o estar **atada a una persona** (las que crea `POST /members`: solo pueden actuar como esa persona, ver [1.3](#f-auth)). El login solo emite el JWT; elegir quién atiende y desde qué dispositivo es un paso aparte (ver [1.3](#f-auth)). Las cuentas se crean fuera de banda o por otros endpoints: el seed en el negocio de desarrollo, la **aprobación** de una solicitud de registro (la cuenta del socio fundador llega por correo con una contraseña temporal, ver [Business Registration](#mod-business-registration)) y, desde BE-12, un socio con [`POST /members`](#ep-members-create); **no existe endpoint de registro libre de cuentas**. Ante credenciales inválidas, cuenta desactivada o usuario inexistente el login responde exactamente igual (no revela si el usuario existe).
 
 <a id="ep-auth-login"></a>
 ### `POST /api/v1/auth/login`
@@ -352,6 +353,49 @@ Dos endpoints: el login de la **cuenta** (público) y el cambio de la contraseñ
 ```
 
 Fuente: `src/auth/auth.controller.ts:14-38` (DTO `LoginDto` L14-17, `@HttpCode(200)` L25), `src/auth/auth.service.ts:40-58`, `src/auth/jwt.constants.ts:7`, `test/auth.e2e-spec.ts:150-186`.
+
+<a id="ep-auth-me"></a>
+### `GET /api/v1/auth/me`
+
+Dice **quién** inició sesión y a **qué persona está atada** la cuenta. Se llama justo después del login, antes de elegir dispositivo o persona, por eso solo pide el token (no `x-member-id` ni `x-device-id`; si se mandan se ignoran).
+
+| | |
+|---|---|
+| Audiencia | Cuenta autenticada (solo `AuthGuard`) |
+| Headers | `Authorization`. `x-member-id`/`x-device-id` **no** requeridos |
+| Éxito | **200** |
+
+**Respuesta 200** (exactamente estas claves; nunca el contexto, el id de la cuenta ni ninguna credencial):
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `username` | string | el usuario con el que se inició sesión |
+| `memberId` | string (uuid) \| `null` | la persona a la que está atada la cuenta; `null` en la **cuenta compartida** del negocio |
+| `member` | objeto \| `null` | `{ id, name, role: "socio" \| "colaborador", active }` de esa persona; `null` si la cuenta no está atada, **o** si está atada pero esa persona no se puede leer desde el negocio de la cuenta (ver "Estado degradado" abajo) |
+
+**Qué debe hacer la UI**: si `memberId` **no** es `null`, **no mostrar el selector de persona**: guardar ese `member` como la persona activa y seguir (a identificar el dispositivo si hace falta, o directo a la app si ya está identificado). Una cuenta atada **solo puede actuar como esa persona**; cualquier otro `x-member-id` recibe 403 (`"Selection is not authorized for this context"`), así que el selector nunca puede ofrecerle a otra. El selector es solo para la cuenta compartida (`memberId: null`). Si `member.active` es `false` la persona fue desactivada: explicarlo y no dejar operar (el backend ya la rechaza).
+
+**Estado degradado: `memberId` no nulo y `member: null`.** Significa que la cuenta apunta a una persona que no se puede leer desde el negocio de la cuenta (por ejemplo, una persona de otro negocio). El esquema no impide ese estado, pero **`POST /members` nunca lo produce**: solo aparece si alguien edita los datos a mano. La UI debe tratarlo como una **cuenta inutilizable**: no mostrar el selector (la cuenta **no** es compartida), no dejar operar y explicar que la cuenta no tiene una persona válida, con la opción de cerrar sesión. El backend ya rechaza (403) cualquier operación de esa cuenta. Por regla general, la UI debe fallar cerrado ante cualquier combinación que no sea `memberId: null` con `member: null` (cuenta compartida) o `memberId` con `member` presente (cuenta atada).
+
+**Errores**
+
+| HTTP | Situación | `message` |
+|---|---|---|
+| 401 | Sin token, token inválido/caducado o cuenta desactivada | `"Unauthorized"` |
+
+**Ejemplos**
+
+```json
+{ "username": "carlos@example.com", "memberId": "0d6f3a52-2b7e-4b0e-8f7a-5f3a9b1c2d4e", "member": { "id": "0d6f3a52-2b7e-4b0e-8f7a-5f3a9b1c2d4e", "name": "Carlos", "role": "colaborador", "active": true } }
+```
+
+Cuenta compartida:
+
+```json
+{ "username": "alberto", "memberId": null, "member": null }
+```
+
+Fuente: `src/auth/auth.controller.ts` (`me`, `AuthGuard`), `src/auth/auth.service.ts` (`me`), `test/auth-me.e2e-spec.ts`, `test/impersonation-matrix.e2e-spec.ts`.
 
 <a id="ep-auth-change-password"></a>
 ### `POST /api/v1/auth/change-password`
@@ -880,7 +924,8 @@ Lo que el frontend debe cambiar para operar con dispositivos activados con el fl
 5. **Un dispositivo revocado o reemitido recibe 403 en todo** (`"Selection is not authorized for this context"`) y hoy **no hay una ruta de recuperación implementada**: habría que limpiar la identificación guardada y volver a la pantalla de identificar. Ojo: ese mismo 403 también aparece por otras causas (p. ej. un colaborador en una ruta de socio), así que no basta un manejador global de 403.
 6. **Mostrar el código una sola vez** al socio que registra o reemite un dispositivo (o decir que se envió por correo) y avisar que dejará de servir al activarse.
 7. **Contraseña propia**: usar `POST /auth/change-password` y tratar su 403 como error del campo, **no** como sesión caducada (ver [2](#ep-auth-change-password)).
-8. **Personas nuevas** (`POST /members`): mostrar `username` y decir adónde fueron las credenciales según `credentialsEmail`; nunca esperar ni mostrar una contraseña.
+8. **Saltar el selector de persona para una cuenta atada**: tras el login llamar a [`GET /auth/me`](#ep-auth-me); si `memberId` no es `null`, usar ese `member` como persona activa y **no mostrar el selector** (una cuenta atada solo puede actuar como esa persona; el selector solo es para la cuenta compartida, `memberId: null`).
+9. **Personas nuevas** (`POST /members`): mostrar `username` y decir adónde fueron las credenciales según `credentialsEmail`; nunca esperar ni mostrar una contraseña.
 
 ---
 
@@ -991,9 +1036,9 @@ Fuente: `src/products/products.controller.ts:56-64`, `src/products/dto/product.d
 | Headers | `Authorization`. `x-member-id` **opcional** (solo para `includeInactive`); `x-device-id` no requerido |
 | Éxito | **200**, `{ items, total, page, limit }` |
 
-**Query** (desconocidos = 400): `search` (0..200; coincidencia parcial sin distinguir mayúsculas en `name`), `includeInactive` (`true`/`false`, def. `false`), `umbral` (integer, 0..100000; **sin default** — mismo nombre y semántica que el `umbral` de `GET /dashboard/summary`, `stock <= umbral`, pero aquí ausente significa "sin filtro", nunca el default 2 del dashboard; solo el frontend decide enviarlo cuando su toggle de "poca existencia" está activo), `page` (1..1000000, def. 1), `limit` (1..100, def. 20). Orden fijo: `createdAt` asc, `id` asc. Por defecto solo productos `active: true`; los de `stock: 0` **sí** aparecen (y, con `umbral` presente, cuentan si `0 <= umbral`).
+**Query** (desconocidos = 400): `search` (0..200; coincidencia parcial sin distinguir mayúsculas en `name`), `includeInactive` (`true`/`false`, def. `false`), `umbral` (integer, 0..100000; **sin default** — mismo nombre y semántica que el `umbral` de [`GET /dashboard/summary`](#ep-dashboard-summary), `stock <= umbral`, pero aquí ausente significa "sin filtro", nunca el default 2 del dashboard; solo el frontend decide enviarlo cuando su toggle de "poca existencia" está activo), `agotados` (`true`/`false`; `true` = solo `stock = 0`; **sin default**, `false` o ausente = sin filtro, nunca "solo con existencia"), `sinCosto` (`true`/`false`; `true` = solo productos sin `purchaseCostMinor`; mismo criterio de ausente/`false`), `tipo` (`unica` o `cantidad`; ausente = ambos), `page` (1..1000000, def. 1), `limit` (1..100, def. 20). Los filtros se combinan con AND y se aplican en la base de datos (`total` y la paginación siguen siendo correctos); `agotados` junto con `umbral` equivale a `stock = 0`. Orden fijo: `createdAt` asc, `id` asc. Por defecto solo productos `active: true`; los de `stock: 0` **sí** aparecen (y, con `umbral` presente, cuentan si `0 <= umbral`).
 
-**Errores**: 400 (`page`/`limit` no enteros o fuera de rango, p. ej. `limit=101`; `umbral` no entero, negativo o mayor a 100000; parámetro desconocido); 401.
+**Errores**: 400 (`page`/`limit` no enteros o fuera de rango, p. ej. `limit=101`; `umbral` no entero, negativo o mayor a 100000; `agotados`/`sinCosto` distintos de `true`/`false`; `tipo` distinto de `unica`/`cantidad`; parámetro desconocido); 401.
 
 **Ejemplo**
 
@@ -1150,6 +1195,74 @@ Cada elemento (registro crudo):
 
 Fuente: `src/products/products.controller.ts:100-109`, `src/products/products.service.ts:28-41,110-130,372-389`.
 
+<a id="ep-products-restock"></a>
+### `POST /api/v1/products/:id/restock`
+
+| | |
+|---|---|
+| Audiencia | Solo socios (`SocioGuard`) |
+| Headers | `Authorization`, `x-member-id` (un socio), `x-device-id` |
+| Éxito | **201**, `{ "product": <producto actualizado>, "movement": <movimiento> }` |
+
+Registra una **reposición**: suma piezas a la existencia de un producto **por cantidad**. Los productos `unica` no se reponen (400). La operación es atómica (`stock = stock + n` en la base de datos, dentro de una transacción), así que dos reposiciones simultáneas suman ambas. En la misma transacción se escribe un `StockMovement` (solo se agrega, nunca se modifica ni se borra) y una fila de auditoría del producto (`GET /products/:id/audit`, con `stock` y `purchaseCostMinor` antes y después).
+
+**Body**
+
+| Campo | Tipo | Reglas |
+|---|---|---|
+| `quantity` | integer | **Obligatorio**. 1..2147483647. Es lo que se **suma**, no la nueva existencia |
+| `unitCostMinor` | integer \| null | Opcional. 0..2147483647. Costo unitario **de esta compra**, en centavos |
+| `note` | string \| null | Opcional. 1..1000 (se recorta; vacío = sin nota) |
+
+Cualquier otro campo (`stock`, `contextId`, `type`…) = **400**.
+
+**Costo del producto** (`purchaseCostMinor`, promedio ponderado, en centavos enteros):
+
+| Situación | Resultado |
+|---|---|
+| `unitCostMinor` vacío | el costo del producto no se toca |
+| existencia anterior = 0 | el costo del producto pasa a ser `unitCostMinor` |
+| existencia anterior > 0 y costo actual conocido | `(existencia × costo actual + quantity × unitCostMinor) / (existencia + quantity)`, redondeado **half-up** a centavos (`x.5` sube) |
+| existencia anterior > 0 y costo actual `null` | no se toca (desconocido no es cero); el costo de la compra queda igual en el movimiento |
+
+Las ventas ya hechas conservan su costo unitario (`unitCostMinor` de la línea), así que ningún caso altera el pasado.
+
+**Movimiento** (`movement`)
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID | |
+| `productId`, `memberId` | UUID | producto y socio que lo registró |
+| `type` | `"REPOSICION"` | hoy es el único valor |
+| `quantity` | integer | piezas sumadas |
+| `stockBefore`, `stockAfter` | integer | `stockAfter = stockBefore + quantity` |
+| `unitCostMinor` | integer \| null | costo de esa compra |
+| `note` | string \| null | |
+| `createdAt` | ISO 8601 | |
+| `contextId` | string | |
+
+**Errores**
+
+| HTTP | Situación | `message` |
+|---|---|---|
+| 400 | `:id` no UUID | `"Validation failed (uuid is expected)"` |
+| 400 | `quantity` ausente, 0, negativa, decimal o texto; costo negativo o decimal; campo desconocido | array de validación |
+| 400 | producto `unica` | `"Only products sold by quantity can be restocked"` |
+| 400 | producto desactivado | `"A deactivated product cannot be restocked; reactivate it first"` |
+| 400 | la existencia resultante superaría 2147483647 | `"The resulting stock would exceed the maximum allowed"` |
+| 401 / 403 | ver [1.3](#f-auth) (un colaborador recibe 403) | |
+| 404 | Producto inexistente en este negocio (también si es de otro negocio) | `"Not Found"` |
+
+**Ejemplo**
+
+```json
+{ "quantity": 2, "unitCostMinor": 1100, "note": "Compra del sábado" }
+```
+
+Con existencia 3 y costo 1000 responde `product.stock: 5`, `product.purchaseCostMinor: 1040` y `movement` con `stockBefore: 3`, `stockAfter: 5`, `unitCostMinor: 1100`.
+
+Fuente: `src/products/products.controller.ts`, `src/products/products.service.ts` (`restock`), `src/products/restock-cost.ts`, `src/products/dto/product.dto.ts` (`RestockProductDto`), `test/products-restock.e2e-spec.ts`.
+
 <a id="ep-products-image"></a>
 ### `POST /api/v1/products/:id/image`
 
@@ -1162,7 +1275,7 @@ Fuente: `src/products/products.controller.ts:100-109`, `src/products/products.se
 **Body multipart**: exactamente **un** archivo en el campo llamado **`image`** y **ningún otro campo** (el servidor rechaza cualquier campo de formulario adicional). Reglas de archivo:
 
 - Tamaño máximo **5 MiB** (5 242 880 bytes).
-- Formatos aceptados: PNG, JPEG o WebP reales. El `Content-Type` declarado de la parte (`image/png`, `image/jpeg`, `image/webp`) debe coincidir con el formato real de los bytes (se valida firma y decodificación); SVG, HTML, GIF animado o un archivo renombrado se rechazan.
+- Formatos aceptados: PNG, JPEG o WebP reales. El `Content-Type` declarado de la parte (`image/png`, `image/jpeg`, `image/webp`) debe coincidir con el formato real de los bytes (se valida firma y decodificación); SVG, HTML, GIF animado o un archivo renombrado se rechazan. **HEIC/HEIF no está soportado** (la build de sharp instalada no trae decodificador HEVC) y se rechaza con un mensaje específico antes de intentar decodificar.
 - Imagen de un solo fotograma y hasta 16 millones de píxeles decodificados.
 - El servidor **reencoda siempre a PNG** con un nombre aleatorio; el nombre de archivo enviado se descarta.
 - Reemplazar la imagen crea una nueva URL; el archivo anterior **no se borra** y sigue accesible por su URL vieja (lo muestra `test/products.e2e-spec.ts:404`). Cada subida escribe una fila de auditoría.
@@ -1173,8 +1286,11 @@ Fuente: `src/products/products.controller.ts:100-109`, `src/products/products.se
 |---|---|---|
 | 400 | `:id` no UUID | `"Validation failed (uuid is expected)"` |
 | 400 | No se envió el archivo | `"Image is required"` |
-| 400 | Firma de bytes no soportada (SVG, HTML, truncado) | `"Unsupported image signature"` |
-| 400 | Decodificación fallida, MIME declarado distinto del real, animada, > 16 M píxeles o resultado > 5 MiB | `"Invalid, unsupported or oversized decoded image"` |
+| 400 | Firma de bytes HEIC/HEIF (foto "alta eficiencia" de celular/tablet) | `"HEIC/HEIF images are not supported. Please export or share the photo as JPEG, PNG or WebP (on iPhone: Settings > Camera > Formats > Most Compatible) and try again."` |
+| 400 | Firma de bytes no soportada y no-HEIC (SVG, HTML, truncado) | `"Unsupported image format. Only PNG, JPEG or WebP images are accepted."` |
+| 400 | Decodificación OK pero MIME declarado distinto del real, animada o formato decodificado fuera de PNG/JPEG/WebP | `"Unsupported image format. Only PNG, JPEG or WebP images are accepted."` |
+| 400 | Decodifica pero excede 16 M píxeles, o el resultado reencodado a PNG supera 5 MiB | `"Image is too large after processing (over 5 MB once decoded). Try a smaller or lower-resolution photo."` |
+| 400 | Fallo de decodificación genuino (archivo corrupto/no reconocido por sharp) | `"Invalid, unsupported or oversized decoded image"` |
 | 400 | Campo de archivo con otro nombre distinto de `image` (verificado en vivo con `foto`) | `"Unexpected file field - foto"` |
 | 400 | Campo de formulario extra además del archivo | `"Too many fields"` |
 | 400 | Más de un archivo | `"Too many files"` |
@@ -1272,8 +1388,9 @@ Forma de una venta en las respuestas (`POST /sales`, `GET /sales`, `GET /sales/:
 | `currency` | string | `"MXN"` |
 | `status` | `"completada"` \| `"rechazada_por_conflicto"` | **leerlo siempre** |
 | `totalMinor` | integer \| null | `null` si está rechazada |
-| `cashReceivedMinor` | integer | |
-| `changeMinor` | integer \| null | cambio; `null` si está rechazada |
+| `paymentMethod` | `"EFECTIVO"` \| `"TRANSFERENCIA"` \| `"TARJETA"` | cómo se pagó. Las ventas anteriores a esta versión son `EFECTIVO` |
+| `cashReceivedMinor` | integer \| null | efectivo recibido; `null` si se pagó con `TRANSFERENCIA`/`TARJETA` (no aplica; **no** es `0`) |
+| `changeMinor` | integer \| null | cambio; `null` si está rechazada o si no se pagó en efectivo |
 | `requestFingerprint` | string \| null | hash interno, ignorable |
 | `conflictReason` | string \| null | solo en rechazadas, p. ej. `"stock insuficiente al sincronizar: producto <id>, solicitado 1, disponible 0"` |
 | `conflictDetectedAt` | string \| null | solo en rechazadas |
@@ -1297,7 +1414,8 @@ Forma de una venta en las respuestas (`POST /sales`, `GET /sales`, `GET /sales/:
 | `deviceId` | string (UUID) | requerido; igual a `x-device-id` |
 | `occurredAt` | string | requerido; ISO 8601 estricto. Envía el instante completo (`2026-09-23T12:00:00.000Z`). Una fecha simple (`2026-09-23`) también se acepta y se guarda como `2026-09-23T00:00:00.000Z` (verificado en vivo) |
 | `currency` | string | requerido; solo `"MXN"` |
-| `cashReceivedMinor` | integer | requerido; 0..2147483647 (centavos) |
+| `paymentMethod` | string | opcional; `EFECTIVO` \| `TRANSFERENCIA` \| `TARJETA`. **Ausente (o `null`) = `EFECTIVO`**: así siguen funcionando los dispositivos y las ventas de la cola offline que no traen el campo. Cualquier otro valor (incluido `efectivo` en minúsculas) = 400 |
+| `cashReceivedMinor` | integer | **requerido solo con `EFECTIVO`** (o sin `paymentMethod`); 0..2147483647 (centavos). Con `TRANSFERENCIA`/`TARJETA` se cobra el total completo: el campo **no aplica y debe omitirse** (enviarlo, incluso `0`, es 400) |
 | `items` | array | requerido; 1..500 elementos |
 | `items[].productId` | string (UUID) | requerido |
 | `items[].quantity` | integer | requerido; 1..100000 |
@@ -1311,7 +1429,8 @@ Forma de una venta en las respuestas (`POST /sales`, `GET /sales`, `GET /sales/:
 | 400 | Un `productId` no existe en el negocio (o es de otro negocio) | `"Product <id> does not exist in this context"` |
 | 400 | Producto desactivado | `"Product <id> is deactivated and cannot be sold"` |
 | 400 | `quantity` mayor al stock ya visible al inicio (para `unica`, cualquier cantidad > 1) | `"Insufficient stock for product <id>"` |
-| 400 | `cashReceivedMinor` menor al total calculado | `"Cash received is insufficient for the calculated total"` |
+| 400 | `cashReceivedMinor` menor al total calculado (solo `EFECTIVO`) | `"Cash received is insufficient for the calculated total"` |
+| 400 | `paymentMethod` desconocido, `cashReceivedMinor` enviado con `TRANSFERENCIA`/`TARJETA`, o ausente con `EFECTIVO` | array de validación |
 | 401 | Token ausente/inválido/expirado | `"Unauthorized"` |
 | 403 | Faltan/son inválidos los headers, o el Member/Device no está autorizado en el negocio | `"Valid member and device selection required"` / `"Selection is not authorized for this context"` |
 | 403 | `memberId`/`deviceId` del body distinto de los headers | `"Sale attribution must match the authenticated selection"` |
@@ -1323,6 +1442,7 @@ Notas de comportamiento:
 - **200** solo en reenvío idempotente; el cuerpo es el registro ya guardado.
 - El 403 por atribución se evalúa **antes** de la comprobación de idempotencia: reenviar con otros headers es 403, no 200.
 - Cuando el total es `0` (producto con precio 0) y `cashReceivedMinor` es `0`, la venta es válida.
+- **Método de pago**: solo registra el medio (no hay folio ni referencia de la terminal). **No** cambia el inventario, el total ni la comisión. Con `TRANSFERENCIA`/`TARJETA` la respuesta trae `cashReceivedMinor: null` y `changeMinor: null`. Una venta que pierde la carrera de stock conserva su `paymentMethod`.
 
 **Ejemplo de request** (fixtures de `src/docs/bazaar-examples.ts`, coherentes con `test/sales-conflict.e2e-spec.ts`)
 
@@ -1769,16 +1889,17 @@ Tres reportes de solo lectura más el dashboard de resumen (`GET /dashboard/summ
 
 **Query** (ambos requeridos; desconocidos = 400): `from`, `to` (fecha `YYYY-MM-DD` o ISO 8601).
 
-**Respuesta 200**: `{ from, to, totalSoldMinor, saleCount, abonosRecibidos, abonosRecibidosMinor, deudasLiquidadas, totalIngresadoMinor }` — extendido en BE-15 (D7) con dos tablas de deudas y un total combinado, en vez de crear un endpoint nuevo (ver `doc/reglas-de-negocio.md`, sección "Abono inicial, cuotas planeadas..." para por qué se extendió este endpoint y no otro).
+**Respuesta 200**: `{ from, to, totalSoldMinor, saleCount, abonosRecibidos, abonosRecibidosMinor, deudasLiquidadas, totalIngresadoMinor, porMetodoPago }` — extendido en BE-15 (D7) con dos tablas de deudas y un total combinado, en vez de crear un endpoint nuevo (ver `doc/reglas-de-negocio.md`, sección "Abono inicial, cuotas planeadas..." para por qué se extendió este endpoint y no otro).
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `totalSoldMinor` | integer | suma de `totalMinor` de las ventas completadas del periodo, de cualquier vendedor; `0` si no hubo |
 | `saleCount` | integer | |
-| `abonosRecibidos` | array | **BE-15**. Todo `Abono` real con `receivedAt` en el periodo, sea su Deuda activa o ya saldada. Cada uno: `{ fecha: string (ISO 8601, = receivedAt), deudor: string, montoMinor: integer, type: "fiado" \| "apartado" }` |
+| `abonosRecibidos` | array | **BE-15**. Todo `Abono` real con `receivedAt` en el periodo, sea su Deuda activa o ya saldada. Cada uno: `{ fecha: string (ISO 8601, = receivedAt), deudor: string, montoMinor: integer, paymentMethod: "EFECTIVO" \| "TRANSFERENCIA" \| "TARJETA", type: "fiado" \| "apartado" }` |
 | `abonosRecibidosMinor` | integer | **BE-15**. Suma de `abonosRecibidos[].montoMinor`; `0` si no hubo |
 | `deudasLiquidadas` | array | **BE-15**. Deudas cuyo `saldadaAt` cae en el periodo (no `createdAt`). Cada una: `{ id, type, deudor: string, totalMinor: integer, saldadaAt: string, gananciaMinor: integer \| null, gananciaDisponible: boolean }`. `gananciaMinor = totalMinor - unitCostMinor × cantidad` solo si `unitCostMinor` no es null; si no, `gananciaDisponible: false` y `gananciaMinor: null` (nunca estimado, mismo criterio que `sales-detail`) |
 | `totalIngresadoMinor` | integer | **BE-15**. `totalSoldMinor + abonosRecibidosMinor`, ya sumado — "dinero total ingresado en el periodo" (ventas de contado + abonos reales) |
+| `porMetodoPago` | object | **Métodos de pago**. Dónde está el dinero: `{ EFECTIVO, TRANSFERENCIA, TARJETA }`, **siempre las tres llaves** (en `0` si no hubo), cada una `{ ventasMinor, abonosMinor, totalMinor }`: ventas completadas + abonos recibidos con el **mismo criterio de fechas** de arriba (`receivedAt`). La suma de los tres `totalMinor` es siempre `totalIngresadoMinor` (y las sumas de `ventasMinor` y `abonosMinor` son `totalSoldMinor` y `abonosRecibidosMinor`). Las ventas rechazadas por conflicto no cuentan. Comisiones, ganancia y totales por vendedor **no** dependen del método |
 
 **Errores**: 400 (falta `from` o `to`, valor que no es una fecha ISO 8601, parámetro desconocido; mensaje del tipo `"from must be a valid ISO 8601 date string"`), 401, 403. No se valida `from` <= `to`: con el orden invertido responde **200** con todos los totales en `0` (verificado en vivo). Los formatos ISO 8601 raros (semana u ordinal) responden 400 con el `message` como **string** `"Invalid date: <valor>"`, no como array.
 
@@ -1799,6 +1920,7 @@ GET /api/v1/reports/sales-by-period?from=2026-09-20&to=2026-09-26 HTTP/1.1
       "fecha": "2026-09-22T15:30:00.000Z",
       "deudor": "Lucía (example customer)",
       "montoMinor": 20000,
+      "paymentMethod": "TRANSFERENCIA",
       "type": "apartado"
     }
   ],
@@ -1814,7 +1936,12 @@ GET /api/v1/reports/sales-by-period?from=2026-09-20&to=2026-09-26 HTTP/1.1
       "gananciaDisponible": true
     }
   ],
-  "totalIngresadoMinor": 230000
+  "totalIngresadoMinor": 230000,
+  "porMetodoPago": {
+    "EFECTIVO": { "ventasMinor": 210000, "abonosMinor": 0, "totalMinor": 210000 },
+    "TRANSFERENCIA": { "ventasMinor": 0, "abonosMinor": 20000, "totalMinor": 20000 },
+    "TARJETA": { "ventasMinor": 0, "abonosMinor": 0, "totalMinor": 0 }
+  }
 }
 ```
 
@@ -1976,10 +2103,6 @@ Fuente: `src/dashboard/dashboard.controller.ts`, `src/dashboard/dashboard.servic
 <a id="mod-deudas"></a>
 ## 10. Deudas
 
-> **Pendiente en el frontend**: este contrato está listo desde BE-09, pero el flujo de venta (`SaleView`/
-> `cart.store`/`checkout.store`) todavía no lo consume — no existe ninguna opción de fiado/apartado en la
-> UI hoy. Ver `doc/reglas-de-negocio.md` para que quede explícito y no se pierda.
-
 Un solo concepto **Deuda** con dos tipos: `fiado` (el producto ya se entregó) y `apartado` (el producto se reserva). Reglas:
 
 - **Solo un socio puede crear una deuda** (autorizar crédito/apartado) y solo los socios listan/consultan deudas. **Cualquier Member activo** (también un colaborador) puede **registrar un abono** (`ContextGuard`).
@@ -2011,7 +2134,7 @@ Forma de una deuda (registro crudo; `deudor`, `abonos` y `cuotasPlaneadas` segú
 | `saldadaAt` | string (ISO 8601) \| null | BE-15; instante exacto de liquidación, `null` si no liquidada (o si se liquidó antes de BE-15) |
 | `createdByMemberId` | string | socio que la creó |
 | `createdAt` | string (ISO 8601) | |
-| `abonos` | array | cada uno `{ id, deudaId, contextId, montoMinor, receivedByMemberId, receivedAt, nota }` |
+| `abonos` | array | cada uno `{ id, deudaId, contextId, montoMinor, paymentMethod, receivedByMemberId, receivedAt, nota }`. `paymentMethod`: `"EFECTIVO"` \| `"TRANSFERENCIA"` \| `"TARJETA"` (los abonos anteriores a esta versión son `EFECTIVO`); no se edita después |
 | `deudor` | objeto | `{ id, nombre, telefono, notas, contextId, createdAt }`. **No** viene en la respuesta de `POST /deudas`; sí en el listado, el detalle y el abono |
 | `cuotasPlaneadas` | array | BE-15; cada una `{ id, deudaId, contextId, fechaEsperada, montoEsperadoMinor, createdAt }`. Presente en todas las respuestas que incluyen `abonos` |
 
@@ -2037,6 +2160,7 @@ Forma de una deuda (registro crudo; `deudor`, `abonos` y `cuotasPlaneadas` segú
 | `deudor.telefono` | string | opcional; 1..50 |
 | `deudor.notas` | string | opcional; 0..2000 |
 | `abonoInicialMinor` | integer | **requerido (BE-15)**, 0..2147483647. `0` = sin abono inicial. `> 0` crea el primer `Abono` (fecha de hoy) en la misma transacción; si por sí solo cubre `totalMinor`, la deuda nace `saldada` |
+| `abonoInicialPaymentMethod` | string | opcional; `EFECTIVO` \| `TRANSFERENCIA` \| `TARJETA`. Ausente (o `null`) = `EFECTIVO`. Es el método del abono inicial; se ignora si `abonoInicialMinor` es `0`. No cambia inventario ni saldo. Otro valor = 400. **Reenviar una deuda con el mismo `id`**: método ausente y `EFECTIVO` comparan igual (una deuda guardada antes de existir el campo responde el mismo recibo, nunca 409); otro método = 409 |
 | `cuotasPlaneadas` | array | opcional (BE-15); calendario informativo, creado en la misma transacción. **Nunca** afecta el saldo/`status` |
 | `cuotasPlaneadas[].fechaEsperada` | string (YYYY-MM-DD, fecha real) | requerida dentro de cada cuota |
 | `cuotasPlaneadas[].montoEsperadoMinor` | integer | requerido dentro de cada cuota; 1..2147483647 |
@@ -2205,6 +2329,7 @@ Registra un pago contra la deuda. Quien recibe el abono queda como `receivedByMe
 |---|---|---|
 | `montoMinor` | integer | requerido; 1..2147483647 (centavos) |
 | `nota` | string | opcional; 0..2000 |
+| `paymentMethod` | string | opcional; `EFECTIVO` \| `TRANSFERENCIA` \| `TARJETA`. Ausente (o `null`) = `EFECTIVO`. No cambia el saldo, el estado ni el inventario y **no se edita después**. Otro valor = 400 |
 
 **Errores**
 
@@ -2451,12 +2576,13 @@ Fuente: `src/business-registration/business-registration.controller.ts:68-77`, `
 <a id="apendice-a-indice-de-rutas"></a>
 ## Apéndice A: índice de rutas
 
-44 rutas de negocio, todas bajo el prefijo `/api/v1`. "Audiencia": **Pública** = sin token; **Cuenta** = solo `Authorization` (`AuthGuard`); **Member** = `Authorization` + `x-member-id` + `x-device-id` con cualquier Member activo (`ContextGuard`); **Socio** = lo mismo con un Member `socio` (`SocioGuard`); **Registro de negocio** = pública, limitada a ese flujo.
+46 rutas de negocio, todas bajo el prefijo `/api/v1`. "Audiencia": **Pública** = sin token; **Cuenta** = solo `Authorization` (`AuthGuard`); **Member** = `Authorization` + `x-member-id` + `x-device-id` con cualquier Member activo (`ContextGuard`); **Socio** = lo mismo con un Member `socio` (`SocioGuard`); **Registro de negocio** = pública, limitada a ese flujo.
 
 | Método | Ruta | Audiencia | Sección |
 |---|---|---|---|
 | `GET` | `/api/v1` | Pública | [Hello World](#f-montajes) |
 | `POST` | `/api/v1/auth/login` | Pública | [Auth](#ep-auth-login) |
+| `GET` | `/api/v1/auth/me` | Cuenta | [Auth](#ep-auth-me) |
 | `POST` | `/api/v1/auth/change-password` | Cuenta | [Auth](#ep-auth-change-password) |
 | `GET` | `/api/v1/members` | Cuenta | [Members](#ep-members-list) |
 | `POST` | `/api/v1/members` | Socio | [Members](#ep-members-create) |
@@ -2475,6 +2601,7 @@ Fuente: `src/business-registration/business-registration.controller.ts:68-77`, `
 | `PATCH` | `/api/v1/products/:id` | Socio | [Products](#ep-products-patch) |
 | `GET` | `/api/v1/products/:id/audit` | Cuenta | [Products](#ep-products-audit) |
 | `POST` | `/api/v1/products/:id/image` | Socio | [Products](#ep-products-image) |
+| `POST` | `/api/v1/products/:id/restock` | Socio | [Products](#ep-products-restock) |
 | `DELETE` | `/api/v1/products/:id` | Socio | [Products](#ep-products-delete) |
 | `PATCH` | `/api/v1/products/:id/reactivate` | Socio | [Products](#ep-products-reactivate) |
 | `POST` | `/api/v1/sales` | Member | [Sales](#ep-sales-create) |
@@ -2564,7 +2691,7 @@ Esto no cambia el contrato de arriba, pero conviene saberlo al construir el fron
 - **Un socio puede revocar o reemitir el dispositivo que está usando** y quedarse sin acceso desde él; no se impide.
 - **El correo con las credenciales (persona nueva, activación de dispositivo, aprobación de negocio) se envía antes de confirmar la transacción.** Si la confirmación falla justo después de un envío exitoso, o Resend entrega tras agotarse la espera, quien lo recibe tiene credenciales de una cuenta que se revirtió: no sirven para entrar, y el reintento envía un juego nuevo.
 - **Los dispositivos heredados siguen siendo un secreto compartido**, no atados a un navegador ni a un aparato: quien tenga su `identifier` + `name` exacto (y una sesión del negocio) se identifica como ese dispositivo desde cualquier lugar (verificado en vivo antes de BE-12: otro perfil de navegador con el mismo par obtuvo 200 y el mismo `deviceId`; otro `identifier`, 403). Es una convención operativa, no seguridad fuerte; los dispositivos con token sí son un secreto por aparato, una vez activados. El camino heredado está previsto para retirarse; ver [Devices](#mod-devices).
-- **Resend sigue en modo de prueba** (sin dominio verificado, remitente `onboarding@resend.dev`): solo entrega al correo de su dueño. Las credenciales de un socio con otro correo llegan al aprobador como reenvío de respaldo y este debe hacérselas llegar; ver [Business Registration](#mod-business-registration). La aprobación del `POST /business-registration` (correo al aprobador) no se ve afectada porque el aprobador es el dueño de la cuenta.
+- **Resend sigue en modo de prueba** (dominio en verificación, remitente `notificaciones@albertogdlc.org`): solo entrega al correo de su dueño hasta que la verificación del dominio termine. Las credenciales de un socio con otro correo llegan al aprobador como reenvío de respaldo y este debe hacérselas llegar; ver [Business Registration](#mod-business-registration). La aprobación del `POST /business-registration` (correo al aprobador) no se ve afectada porque el aprobador es el dueño de la cuenta.
 
 <a id="b-resueltos"></a>
 ### B.5 Resueltos (corregidos en la rama)
@@ -2581,4 +2708,4 @@ Antes figuraban en B.4 y ya no aplican:
 
 ### Planned installment calendar days (date/time correction)
 
-Installments use YYYY-MM-DD in requests/responses and PostgreSQL DATE. Only calendar days strictly before today in the established UTC-06:00 business timezone are overdue. The v14 picker uses timeConfig.enableTimePicker=false and formats.input/preview. Render calendar keys without converting to device-zone instants; Abono dates remain instants. Update API and frontend together; older datetime payloads are rejected.
+Planned installment dates are PostgreSQL DATE values exposed as YYYY-MM-DD, not instants. Invalid dates and datetime inputs are rejected for creation and editing. A cuota is overdue only when its calendar day is strictly before today in the established UTC-06:00 business timezone; today's cuotas are not overdue. Abono timestamps and balance rules are unchanged. The additive migration preserves historical UTC days because the previous editor encoded selected days at UTC midnight. Deploy the API and frontend together; older clients sending datetime values must be updated.
