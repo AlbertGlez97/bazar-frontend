@@ -89,7 +89,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       'Captura Costo de compra: es obligatorio en productos nuevos y admite 0. Categoría, Proveedor y Notas son opcionales. El costo ayuda a interpretar la utilidad en Reportes.',
       'Puedes añadir una imagen. Revisa todos los datos, toca Crear producto y comprueba que aparece en el catálogo.',
     ],
-    tips: ['No crees una cantidad con existencia cero para reponerla después: la app no ofrece un ajuste o reposición manual de existencias.'],
+    tips: ['Cuando se te acabe un producto por cantidad, súmale lo que compraste con Reponer en su tarjeta. Las piezas únicas no se reponen: si vuelve una, créala como producto nuevo.'],
   },
   {
     id: 'editar-producto', topic: 'productos.catalogo', title: 'Editar, desactivar y reactivar productos', category: 'Productos', audience: 'socio',
@@ -97,12 +97,13 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     intro: 'Editar corrige los datos permitidos del catálogo. Desactivar retira un producto de la oferta sin tratarlo como una venta.',
     steps: [
       'En Productos identifica la tarjeta o fila correcta y toca Editar. Revisa nombre, precio y los campos editables antes de guardar.',
-      'El tipo y la existencia inicial no se modifican después de crear el producto. No uses el formulario para simular una entrada de mercancía.',
+      'El tipo y la existencia inicial no se modifican después de crear el producto. Para sumar piezas que compraste usa Reponer existencia, no el formulario de edición.',
+      'Para sumar piezas que compraste, toca Reponer en la tarjeta (o Reponer existencia dentro de Editar): escribe cuántas piezas son y, si quieres, su costo por pieza y una nota. Solo en productos por cantidad.',
       'Para dejar de ofrecerlo, usa Desactivar y revisa el resultado. Un producto inactivo se distingue por su estado.',
       'Abre Filtros y activa Mostrar inactivos para encontrarlo de nuevo; usa Reactivar si debe volver a ofrecerse.',
       'Al cambiar el precio, comprueba el catálogo actualizado antes de comenzar otra venta.',
     ],
-    tips: ['No hay ajuste de existencia, merma ni reversión de ventas desde Editar. Resolver una incidencia tampoco repone stock.'],
+    tips: ['Desde Editar no se corrige la existencia, ni se registra una merma, ni se revierte una venta. Resolver una incidencia tampoco repone stock.'],
   },
   {
     id: 'fotos', topic: 'productos.catalogo', title: 'Añadir o cambiar la foto de un producto', category: 'Productos', audience: 'socio',
