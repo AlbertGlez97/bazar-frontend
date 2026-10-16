@@ -40,6 +40,17 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/business/RegisterBusinessView.vue'),
       },
       {
+        // Textos legales: públicos (con o sin sesión) y con su propio pie. Ver src/legal.
+        path: '/privacidad',
+        name: 'Privacy',
+        component: () => import('@/views/legal/PrivacyView.vue'),
+      },
+      {
+        path: '/terminos',
+        name: 'Terms',
+        component: () => import('@/views/legal/TermsView.vue'),
+      },
+      {
         // Pantalla intermedia obligatoria tras el login: identificar el
         // dispositivo (una sola vez por tablet) y elegir quién atiende (en cada
         // sesión). Requiere sesión válida, pero NO deviceId/memberId todavía —
@@ -239,7 +250,12 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
     history,
     routes,
     // Help owns accessible article focus/scroll after rendering the target.
-    scrollBehavior: (to) => to.name === 'Help' && to.hash ? false : { top: 0 },
+    // Las anclas del índice de los textos legales llevan a su sección, no arriba.
+    scrollBehavior: (to) => {
+      if (to.name === 'Help' && to.hash) return false
+      if ((to.name === 'Privacy' || to.name === 'Terms') && to.hash) return { el: to.hash }
+      return { top: 0 }
+    },
   })
 
   let watchingRecovery = false
