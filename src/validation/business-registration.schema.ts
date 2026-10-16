@@ -62,6 +62,7 @@ const optionalText = (max: number) =>
     .transform((v) => (v === '' ? undefined : v))
 
 
+export const PHONE_INVALID_MESSAGE = 'Escribe un número de 10 dígitos, por ejemplo 55 1234 5678.'
 export const EMAIL_INVALID_MESSAGE = 'Ese correo no se ve bien. Revisa que tenga la forma nombre@dominio.com.'
 
 export const businessRegistrationSchema = z.object({
@@ -105,7 +106,7 @@ export const businessRegistrationSchema = z.object({
     .trim()
     .min(1, 'Escribe tu número de WhatsApp.')
     .max(30, 'Ese número es muy largo.')
-    .refine(isValidMxPhone, 'Escribe un número de 10 dígitos, por ejemplo 55 1234 5678.')
+    .refine(isValidMxPhone, PHONE_INVALID_MESSAGE)
     .transform(normalizeMxPhone),
   aceptaLegal: z.literal(true, { errorMap: () => ({ message: 'Para continuar, acepta el Aviso de privacidad y los Términos.' }) }),
 })

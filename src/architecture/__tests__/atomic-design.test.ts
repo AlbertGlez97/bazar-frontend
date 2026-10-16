@@ -11,7 +11,7 @@ const compoundControls = [
   'AppDropdownPanel', 'FilterSwitchRow', 'ActiveFilterChips',
 ]
 const completeSections = [
-  'BusinessRegistrationForm', 'ChangePasswordForm', 'DeviceCreateForm', 'DeviceIdentifyForm',
+  'BusinessRegistrationForm', 'CheckEmailNotice', 'ChangePasswordForm', 'DeviceCreateForm', 'DeviceIdentifyForm',
   'MemberCreateForm', 'ProductForm', 'DeviceList', 'TeamMemberList', 'ProductCard',
   // Sección completa de filtros del catálogo: el botón, su insignia y el panel.
   'ProductFiltersPanel',
