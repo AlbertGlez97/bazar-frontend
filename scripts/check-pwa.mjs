@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // Verifica desde fuera (sin credenciales) que una instalación sea instalable como PWA.
 //   node scripts/check-pwa.mjs https://marchanta.albertogdlc.org
 // Sale con código 1 si algo falla. Sin dependencias (Node 18+, fetch global).
