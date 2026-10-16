@@ -17,7 +17,7 @@
         <AppInput
           type="search"
           size="lg"
-          placeholder="Buscar producto"
+          :placeholder="compact ? 'Buscar' : 'Buscar producto'"
           aria-label="Buscar producto"
           autocomplete="off"
           enterkeyhint="search"
@@ -128,7 +128,7 @@
          "agotado no se elige", mismo evento. Cambia solo cómo se ve por dentro. -->
     <ul
       v-else
-      :class="view === 'list' ? 'sale-picker__list' : 'sale-picker__grid'"
+      :class="view === 'list' ? 'sale-picker__list' : ['sale-picker__grid', { 'sale-picker__grid--compact': compact }]"
     >
       <li
         v-for="product in products"
@@ -148,11 +148,13 @@
         >
           <ProductCard
             :product="product"
-            :size="view === 'list' ? 'list' : 'large'"
+            :size="view === 'list' ? 'list' : compact ? 'compact' : 'large'"
+            :quantity="compact ? (quantities[product.id] ?? 0) : 0"
             simplified-availability
           />
+          <!-- Pantalla ancha: la marca de siempre. En celular la reemplaza "×N" sobre la foto. -->
           <span
-            v-if="inCart.has(product.id)"
+            v-if="inCart.has(product.id) && !compact"
             class="sale-picker__mark"
           >En tu venta</span>
         </button>
@@ -163,6 +165,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
 import { minorToDisplay } from '@/utils/money'
 import { isProductAvailable } from '@/utils/product-status'
 import { catalogSnapshotMessage } from '@/config/voice'
@@ -189,11 +192,18 @@ const props = withDefaults(defineProps<{
   snapshotSavedAt: string | null
   /** Ids de productos que ya están en la venta ("En tu venta") */
   inCartIds: string[]
+  /** Piezas por producto en la venta, para la insignia "×N" del celular. */
+  quantities?: Record<string, number>
   /** Cómo se ve el catálogo: tarjetas (por defecto) o filas compactas. Lo guarda quien lo usa. */
   view?: SaleCatalogView
 }>(), {
   view: 'grid',
+  quantities: () => ({}),
 })
+
+// Bajo 900 px (teléfono, tablet vertical): cuadrícula de 2 columnas compactas. El
+// umbral es el de useDeviceCapabilities, el mismo de la barra superior y la venta.
+const { isSmallScreen: compact } = useDeviceCapabilities()
 
 const emit = defineEmits<{
   'update:search': [text: string]
@@ -278,6 +288,8 @@ function onSelect(product: Product) {
   padding: 0;
   list-style: none;
 }
+/* Celular: exactamente 2 columnas iguales (minmax(0, 1fr) evita que un nombre largo las ensanche) */
+.sale-picker__grid--compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); }
 .sale-picker__cell { min-width: 0; }
 /* Stretch through the interactive wrappers, without affecting list rows. */
 .sale-picker__grid .sale-picker__cell { display: flex; }
@@ -336,6 +348,7 @@ function onSelect(product: Product) {
   border-radius: var(--radius-lg);
   cursor: pointer;
   touch-action: manipulation;
+  min-height: 2.75rem;
 }
 .sale-picker__item:hover:not(.sale-picker__item--sold-out) :deep(.product-card) { box-shadow: var(--shadow-md); }
 .sale-picker__item:active:not(.sale-picker__item--sold-out) { transform: scale(0.98); }

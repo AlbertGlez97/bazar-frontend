@@ -981,6 +981,27 @@ describe('SaleView — flujo de dos pasos en pantalla angosta', () => {
       expect(bar(wrapper).text()).toContain('$36.99') // 850 × 2 + 1999 = 3699 centavos
     })
 
+    it('la barra es una sola línea "N piezas · total" con "Cobrar →" al lado, y el total lleva miles', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Café de olla')
+      await tap(wrapper, 'Café de olla')
+
+      const info = bar(wrapper).get('.sale-view__bar-info')
+      expect(info.text().replace(/\s+/g, ' ')).toBe('2 piezas · $39.98')
+      expect(bar(wrapper).findAll('button')).toHaveLength(1)
+    })
+
+    it('cada producto en la venta muestra "×N" sobre su foto (y la marca de pantalla ancha no)', async () => {
+      const { wrapper } = await mountNarrow()
+      await tap(wrapper, 'Pan dulce')
+      await tap(wrapper, 'Pan dulce')
+      await tap(wrapper, 'Café de olla')
+
+      const badges = wrapper.findAll('.product-card__qty').map((badge) => badge.text()).sort()
+      expect(badges).toEqual(['×1', '×2'])
+      expect(wrapper.find('.sale-picker__mark').exists()).toBe(false)
+    })
+
     it('el botón de la barra dice "Cobrar →" y está habilitado', async () => {
       const { wrapper } = await mountNarrow()
       await tap(wrapper, 'Pan dulce')

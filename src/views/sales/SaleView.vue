@@ -50,6 +50,7 @@
           :from-snapshot="catalog.isFromSnapshot"
           :snapshot-saved-at="catalog.lastLoadedAt"
           :in-cart-ids="inCartIds"
+          :quantities="cartQuantities"
           :view="catalogView.view"
           @update:view="catalogView.setView"
           @update:search="catalog.setSearch"
@@ -109,6 +110,10 @@
       >
         <p class="sale-view__bar-info">
           <span class="sale-view__bar-count">{{ barCount }}</span>
+          <span
+            class="sale-view__bar-sep"
+            aria-hidden="true"
+          > · </span>
           <strong class="sale-view__bar-total">{{ formatMinorMoney(cart.totalMinor) }}</strong>
         </p>
         <AppButton
@@ -180,6 +185,8 @@ const route = useRoute()
 onMounted(() => { void catalog.load() })
 
 const inCartIds = computed(() => cart.lines.map((line) => line.productId))
+/** Piezas por producto, para la insignia "×N" del catálogo en celular. */
+const cartQuantities = computed(() => Object.fromEntries(cart.lines.map((line) => [line.productId, line.quantity])))
 
 // ── Dos pasos en pantalla angosta ────────────────────────────────────────
 // Umbral: el de "pantalla pequeña" de `useDeviceCapabilities` (menos de 900 px:
@@ -417,7 +424,7 @@ async function goToLogin() {
    espacio abajo para que nunca tape la última fila del catálogo (ni la zona
    segura de los teléfonos con barra de gestos). */
 .sale-view--narrow .sale-view__cart { display: none; }
-.sale-view--narrow.sale-view--has-bar { padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px)); }
+.sale-view--narrow.sale-view--has-bar { padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); }
 
 /* Paso 2: la venta entera cubre el área de contenido (respeta la barra lateral) */
 .sale-view--narrow .sale-view__cart--checkout {
@@ -451,15 +458,19 @@ async function goToLogin() {
   border-top: 2px solid var(--color-border-strong);
   box-shadow: var(--shadow-lg);
 }
-.sale-view__bar-info { display: flex; flex-direction: column; flex: 0 0 auto; margin: 0; }
+/* "N piezas · $total" en una sola línea; si el total es enorme el texto se ajusta, no se sale */
+.sale-view__bar-info { display: flex; align-items: baseline; flex: 1 1 auto; min-width: 0; margin: 0; white-space: nowrap; overflow: hidden; }
 .sale-view__bar-count { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.sale-view__bar-sep { color: var(--color-text-muted); white-space: pre; }
 .sale-view__bar-total {
+  min-width: 0;
+  overflow: hidden;
   font-family: var(--font-display);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   line-height: 1.1;
-  white-space: nowrap;
+  text-overflow: ellipsis;
   color: var(--color-text);
 }
-/* El botón de la barra: 56 px, el más grande a mano */
-.sale-view .sale-view__bar-button { min-height: 3.5rem; font-size: var(--font-size-md); font-weight: 800; flex: 1 1 auto; min-width: 0; padding-inline: var(--spacing-sm); }
+/* El botón de la barra: 48 px de alto (zona táctil cómoda sin comerse la pantalla) */
+.sale-view .sale-view__bar-button { min-height: 3rem; font-size: var(--font-size-md); font-weight: 800; flex: 0 0 auto; padding-inline: var(--spacing-md); }
 </style>

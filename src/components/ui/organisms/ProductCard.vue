@@ -52,6 +52,11 @@
       >
         Inactivo
       </AppBadge>
+      <!-- Piezas de este producto en la venta, sobre la foto (cuadrícula) -->
+      <span
+        v-if="quantity > 0 && size !== 'list'"
+        class="product-card__qty"
+      >×{{ quantity }}</span>
     </div>
 
     <div class="product-card__body">
@@ -64,6 +69,10 @@
       <AppBadge :color="stockBadgeColor">
         {{ stockLabel }}
       </AppBadge>
+      <span
+        v-if="quantity > 0 && size === 'list'"
+        class="product-card__qty"
+      >×{{ quantity }}</span>
     </div>
 
     <div
@@ -129,8 +138,10 @@ const props = withDefaults(defineProps<{
    * `list` es la Vista de Lista de Gestión: fila compacta estilo "explorador
    * de archivos" (miniatura fija, nombre truncado, precio alineado). Solo
    * cambia la presentación (CSS); el contenido y las acciones son los mismos.
+   * `compact` es la tarjeta de Modo Venta en celular (bajo 900 px): dos por fila,
+   * foto cuadrada y disponibilidad simplificada.
    */
-  size?: 'default' | 'large' | 'list'
+  size?: 'default' | 'large' | 'list' | 'compact'
   /**
    * Fuerza la disponibilidad simplificada (Disponible/Agotado) aunque el
    * tamaño no sea `large`. La usa SaleCatalogPicker (Modo Venta) en su vista
@@ -143,12 +154,15 @@ const props = withDefaults(defineProps<{
   /** Modo selección (imprimir códigos QR): muestra la casilla. */
   selectable?: boolean
   selected?: boolean
+  /** Piezas de este producto en la venta en curso; con más de 0 se ve la insignia "×N". */
+  quantity?: number
 }>(), {
   showActions: false,
   size: 'default',
   simplifiedAvailability: false,
   selectable: false,
   selected: false,
+  quantity: 0,
 })
 
 defineEmits<{
@@ -165,7 +179,7 @@ const restockable = computed(() => canRestock(props.product))
 // muestra el número real de existencias. En tamaño grande (venta) solo importa
 // saber si se puede vender: Disponible / Agotado.
 const stockLabel = computed(() => {
-  if (props.product.tipo === 'unica' || props.size === 'large' || props.simplifiedAvailability) {
+  if (props.product.tipo === 'unica' || props.size === 'large' || props.size === 'compact' || props.simplifiedAvailability) {
     return isProductAvailable(props.product) ? 'Disponible' : 'Agotado'
   }
   return `${props.product.stock} en existencia`
@@ -233,6 +247,35 @@ const stockBadgeColor = computed(() => (isProductAvailable(props.product) ? 'gre
   border-top: 1px solid var(--color-border);
   flex-wrap: wrap;
 }
+
+/* Insignia "×N": piezas de este producto en la venta. Sobre la foto en la
+   cuadrícula; dentro de la fila en la lista. Con borde y texto, no solo color. */
+.product-card__qty {
+  position: absolute;
+  top: var(--spacing-xs);
+  left: var(--spacing-xs);
+  min-width: 2rem;
+  padding: 0.15rem 0.5rem;
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--color-on-primary);
+  background: var(--color-success);
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-sm);
+}
+.product-card--list .product-card__qty { position: static; flex: 0 0 auto; border-width: 1px; box-shadow: none; }
+
+/* Tamaño compacto (Modo Venta en celular): foto cuadrada recortada, textos
+   chicos y poco aire, para ver varias a la vez en dos columnas. */
+.product-card--compact .product-card__media { aspect-ratio: 1 / 1; }
+.product-card--compact .product-card__placeholder { font-size: 2.5rem; }
+.product-card--compact .product-card__body { padding: var(--spacing-sm); gap: 0.15rem; }
+.product-card--compact .product-card__name { font-size: var(--font-size-sm); line-height: 1.25; }
+.product-card--compact .product-card__price { font-family: var(--font-display); font-size: var(--font-size-lg); line-height: 1.1; }
+.product-card--compact :deep(.app-badge) { align-self: flex-start; font-size: var(--font-size-xs, 0.75rem); padding: 0.1rem 0.5rem; }
 
 /* Tamaño grande (Modo Venta): más aire, imagen 4:3 y tipografía de marca en
    nombre y precio para leerlos de un vistazo. */
