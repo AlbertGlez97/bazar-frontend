@@ -294,3 +294,56 @@ describe('help content v2', () => {
     expect(JSON.stringify(article)).not.toMatch(/reparto|comisi[oó]n|sueldo|salario|propiedad de/i)
   })
 })
+
+describe('help: escáner (vibra, aviso, sigue abierto) y carrito (quitar con −)', () => {
+  const article = (id: string) => HELP_ARTICLES.find((item) => item.id === id)!
+  const textOf = (id: string) => {
+    const item = article(id)
+    return [item.intro, ...item.steps, ...item.tips].join(' ')
+  }
+  const sentences = (id: string) =>
+    textOf(id).split(/(?<=[.!?])\s+/).map((sentence) => sentence.trim()).filter(Boolean)
+
+  it('escanear: dice que el teléfono vibra y que aparece un aviso con el nombre del producto', () => {
+    const text = textOf('escanear')
+    expect(text).toContain('vibra')
+    expect(text).toContain('aviso')
+    expect(text).toContain('Agregado ✓')
+  })
+
+  it('escanear: se puede seguir escaneando sin cerrar el lector', () => {
+    expect(textOf('escanear')).toContain('Sigue escaneando')
+    expect(textOf('escanear')).toContain('Listo')
+  })
+
+  it('escanear: el mismo producto actualiza el aviso con ×2 y un código que no existe sale en rojo', () => {
+    const text = textOf('escanear')
+    expect(text).toContain('×2')
+    expect(text).toContain('No encontré este producto')
+    expect(text).toContain('rojo')
+  })
+
+  it('escanear: avisa que algunos teléfonos no vibran y que no hay sonido', () => {
+    const text = textOf('escanear')
+    expect(text).toContain('no vibran')
+    expect(text).toContain('ningún sonido')
+  })
+
+  it('carrito: explica quitar una pieza con −, que con 1 sale del catálogo y que Quitar saca el producto', () => {
+    const text = textOf('carrito')
+    expect(text).toContain('toca −')
+    expect(text).toContain('Con 1 pieza')
+    expect(text).toContain('Quitar')
+    expect(text).toContain('− 2 +')
+  })
+
+  it('carrito: la pieza única se quita tocándola otra vez en el celular', () => {
+    expect(textOf('carrito')).toContain('tócala otra vez para quitarla')
+  })
+
+  it.each(['escanear', 'carrito'])('%s: frases cortas (20 palabras o menos)', (id) => {
+    for (const sentence of sentences(id)) {
+      expect(sentence.split(/\s+/).length, sentence).toBeLessThanOrEqual(20)
+    }
+  })
+})
