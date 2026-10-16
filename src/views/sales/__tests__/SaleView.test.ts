@@ -1047,14 +1047,14 @@ describe('SaleView — flujo de dos pasos en pantalla angosta', () => {
       expect(bar(wrapper).findAll('button')).toHaveLength(1)
     })
 
-    it('cada producto en la venta muestra "×N" sobre su foto (y la marca de pantalla ancha no)', async () => {
+    it('cada producto en la venta muestra su contador "− N +" (y la marca de pantalla ancha no)', async () => {
       const { wrapper } = await mountNarrow()
       await tap(wrapper, 'Pan dulce')
       await tap(wrapper, 'Pan dulce')
       await tap(wrapper, 'Café de olla')
 
-      const badges = wrapper.findAll('.product-card__qty').map((badge) => badge.text()).sort()
-      expect(badges).toEqual(['×1', '×2'])
+      const counts = wrapper.findAll('.sale-picker__counter output').map((out) => out.text()).sort()
+      expect(counts).toEqual(['1', '2'])
       expect(wrapper.find('.sale-picker__mark').exists()).toBe(false)
     })
 
@@ -1725,4 +1725,197 @@ it('retry after debt storage failure remains a debt, never a cash charge', async
   expect((await salesQueue.list())[0]).toMatchObject({ kind: 'debt', payload: { deudor: { nombre: 'Ana' } } })
   expect(createSale).not.toHaveBeenCalled()
   wrapper.unmount()
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// Celular: corregir errores desde el catálogo. Lo que está en la venta trae un
+// contador "− N +" (por cantidad) o se quita al tocarlo de nuevo (pieza única); y una
+// pista de uso, una sola vez por dispositivo.
+// ─────────────────────────────────────────────────────────────────────────
+describe('SaleView — contador y pista en el catálogo del celular', () => {
+  let device: MockDevice | null = null
+  afterEach(() => {
+    device?.restore()
+    device = null
+    vi.restoreAllMocks()
+  })
+
+  async function mountNarrow() {
+    device = mockDevice({ touch: true, small: true })
+    return mountSale()
+  }
+  const counterOf = (w: Wrapper, name: string) =>
+    w.findAll('li.sale-picker__cell').find((cell) => cell.text().includes(name))!.get('.sale-picker__counter')
+  const minusOf = (w: Wrapper, name: string) => counterOf(w, name).get('button[data-action="decrement"]')
+  const plusOf = (w: Wrapper, name: string) => counterOf(w, name).get('button[data-action="increment"]')
+  const qtyInCart = (w: Wrapper, name: string) => {
+    const line = useCartStore().lines.find((l) => l.name === name)
+    return line ? line.quantity : 0
+  }
+  const hint = (w: Wrapper) => w.find('.dismissible-hint')
+  const HINT_KEY = 'la-marchanta-sale-catalog-hint-dismissed'
+
+  it('"−" baja de 3 a 2', async () => {
+    const { wrapper } = await mountNarrow()
+    await tap(wrapper, 'Pan dulce')
+    await tap(wrapper, 'Pan dulce')
+    await tap(wrapper, 'Pan dulce')
+    expect(counterOf(wrapper, 'Pan dulce').get('output').text()).toBe('3')
+
+    await minusOf(wrapper, 'Pan dulce').trigger('click')
+
+    expect(counterOf(wrapper, 'Pan dulce').get('output').text()).toBe('2')
+    expect(qtyInCart(wrapper, 'Pan dulce')).toBe(2)
+  })
+
+  it('"−" de 1 a 0 lo saca de la venta y el contador desaparece', async () => {
+    const { wrapper } = await mountNarrow()
+    await tap(wrapper, 'Pan dulce')
+
+    await minusOf(wrapper, 'Pan dulce').trigger('click')
+
+    expect(useCartStore().lines).toHaveLength(0)
+    expect(wrapper.find('.sale-picker__counter').exists()).toBe(false)
+    expect(toasts()).toEqual([])
+  })
+
+  it('tocar "−" NO suma (la venta solo baja)', async () => {
+    const { wrapper } = await mountNarrow()
+    await tap(wrapper, 'Pan dulce')
+    await tap(wrapper, 'Pan dulce')
+
+    await minusOf(wrapper, 'Pan dulce').trigger('click')
+
+    expect(qtyInCart(wrapper, 'Pan dulce')).toBe(1)
+  })
+
+  it('"+" suma uno y respeta el máximo de existencia (avisa y no pasa)', async () => {
+    const { wrapper } = await mountNarrow()
+    for (let i = 0; i < 5; i += 1) await tap(wrapper, 'Café de olla') // stock 5
+    expect(counterOf(wrapper, 'Café de olla').get('output').text()).toBe('5')
+    expect(plusOf(wrapper, 'Café de olla').attributes('aria-disabled')).toBe('true')
+
+    await plusOf(wrapper, 'Café de olla').trigger('click')
+
+    expect(qtyInCart(wrapper, 'Café de olla')).toBe(5)
+    expect(toasts().length).toBe(1)
+  })
+
+  it('"+" agrega una pieza si todavía hay', async () => {
+    const { wrapper } = await mountNarrow()
+    await tap(wrapper, 'Pan dulce')
+
+    await plusOf(wrapper, 'Pan dulce').trigger('click')
+
+    expect(qtyInCart(wrapper, 'Pan dulce')).toBe(2)
+  })
+
+  it('una pieza única se quita al tocarla de nuevo (sin aviso de "ya está en tu venta")', async () => {
+    const { wrapper } = await mountNarrow()
+    await tap(wrapper, 'Radio vintage')
+    expect(card(wrapper, 'Radio vintage').text()).toContain('En tu venta ✓')
+    expect(wrapper.find('.sale-picker__counter').exists()).toBe(false)
+
+    await tap(wrapper, 'Radio vintage')
+
+    expect(useCartStore().lines).toHaveLength(0)
+    expect(card(wrapper, 'Radio vintage').text()).not.toContain('En tu venta')
+    expect(toasts()).toEqual([])
+  })
+
+  it('en la vista Lista el contador funciona igual', async () => {
+    localStorage.setItem('la-marchanta-sale-catalog-view', 'list')
+    const { wrapper } = await mountNarrow()
+    await tap(wrapper, 'Pan dulce')
+    await tap(wrapper, 'Pan dulce')
+
+    await minusOf(wrapper, 'Pan dulce').trigger('click')
+
+    expect(qtyInCart(wrapper, 'Pan dulce')).toBe(1)
+  })
+
+  it('en pantalla ancha tocar una pieza única repetida sigue avisando, sin quitarla', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Radio vintage')
+    await tap(wrapper, 'Radio vintage')
+
+    expect(useCartStore().lines).toHaveLength(1)
+    expect(toasts()).toEqual(['Radio vintage es una pieza única y ya está en tu venta.'])
+    expect(wrapper.find('.sale-picker__counter').exists()).toBe(false)
+  })
+
+  describe('pista de uso', () => {
+    it('se ve al inicio, en celular', async () => {
+      const { wrapper } = await mountNarrow()
+
+      expect(hint(wrapper).text()).toContain('Toca un producto para agregarlo. Usa − para quitar uno.')
+    })
+
+    it('no se ve en pantalla ancha', async () => {
+      const { wrapper } = await mountSale()
+
+      expect(hint(wrapper).exists()).toBe(false)
+    })
+
+    it('desaparece al agregar el primer producto y no vuelve aunque se vacíe la venta', async () => {
+      const { wrapper } = await mountNarrow()
+
+      await tap(wrapper, 'Pan dulce')
+      expect(hint(wrapper).exists()).toBe(false)
+
+      await minusOf(wrapper, 'Pan dulce').trigger('click')
+      expect(useCartStore().lines).toHaveLength(0)
+      expect(hint(wrapper).exists()).toBe(false)
+    })
+
+    it('desaparece al cerrarla con la ✕ (aria-label "Cerrar aviso")', async () => {
+      const { wrapper } = await mountNarrow()
+
+      await hint(wrapper).get('button[aria-label="Cerrar aviso"]').trigger('click')
+
+      expect(hint(wrapper).exists()).toBe(false)
+    })
+
+    it('se recuerda por dispositivo: no reaparece al recargar (remontar la pantalla)', async () => {
+      const first = await mountNarrow()
+      await hint(first.wrapper).get('button').trigger('click')
+      expect(localStorage.getItem(HINT_KEY)).toBe('1')
+      first.wrapper.unmount()
+
+      const second = await mountSale()
+
+      expect(hint(second.wrapper).exists()).toBe(false)
+    })
+
+    it('también se recuerda cuando se descarta agregando el primer producto', async () => {
+      const first = await mountNarrow()
+      await tap(first.wrapper, 'Pan dulce')
+      first.wrapper.unmount()
+      useCartStore().clear()
+
+      const second = await mountSale()
+
+      expect(hint(second.wrapper).exists()).toBe(false)
+    })
+
+    it('si localStorage falla, la pista se ve y se puede cerrar sin romper nada', async () => {
+      // Solo la pista falla; el resto de la app sigue leyendo y escribiendo normal.
+      const realGet = Storage.prototype.getItem
+      const realSet = Storage.prototype.setItem
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key: string) {
+        if (key === HINT_KEY) throw new Error('blocked')
+        return realGet.call(this, key)
+      })
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key: string, value: string) {
+        if (key === HINT_KEY) throw new Error('blocked')
+        realSet.call(this, key, value)
+      })
+      const { wrapper } = await mountNarrow()
+      expect(hint(wrapper).exists()).toBe(true)
+
+      await hint(wrapper).get('button').trigger('click')
+
+      expect(hint(wrapper).exists()).toBe(false)
+    })
+  })
 })

@@ -52,10 +52,16 @@
           :in-cart-ids="inCartIds"
           :quantities="cartQuantities"
           :view="catalogView.view"
+          :show-hint="showHint"
           @update:view="catalogView.setView"
           @update:search="catalog.setSearch"
           @update:category="catalog.setCategory"
           @select="onSelect"
+          @increment="onCatalogIncrement"
+          @decrement="onCatalogDecrement"
+          @remove="onCatalogRemove"
+          @limit="onCatalogLimit"
+          @dismiss-hint="hint.dismiss"
           @scan="openScanner"
           @retry="catalog.load()"
         />
@@ -155,6 +161,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AppButton, QrScannerModal, RegistrarDeudaModal, SaleCart, SaleCatalogPicker, SaleResult } from '@/components'
 import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
+import { useDismissedHint } from '@/composables/useDismissedHint'
 import { useScanNotice } from '@/composables/useScanNotice'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
@@ -281,6 +288,35 @@ function onLimit(productId: string, which: 'min' | 'max') {
 function onRemove(productId: string) {
   cart.remove(productId)
 }
+
+// ── Contador del catálogo (celular) ──────────────────────────────────────
+function onCatalogIncrement(product: Product) {
+  onIncrement(product.id)
+}
+
+/** "−" con una sola pieza la saca de la venta (llega a 0); con más, baja una. */
+function onCatalogDecrement(product: Product) {
+  if ((cartQuantities.value[product.id] ?? 0) <= 1) cart.remove(product.id)
+  else onDecrement(product.id)
+}
+
+/** Una pieza única que ya estaba en la venta se tocó de nuevo: se quita. */
+function onCatalogRemove(product: Product) {
+  cart.remove(product.id)
+}
+
+function onCatalogLimit(product: Product, which: 'min' | 'max') {
+  onLimit(product.id, which)
+}
+
+// ── Pista de uso (celular) ───────────────────────────────────────────────
+// Se ve con la venta vacía, hasta que se cierra o se agrega el primer producto; se
+// recuerda por dispositivo.
+const hint = useDismissedHint('la-marchanta-sale-catalog-hint-dismissed')
+const showHint = computed(() => !hint.dismissed.value && cart.isEmpty)
+watch(() => cart.isEmpty, (empty) => {
+  if (!empty && isSmallScreen.value) hint.dismiss()
+})
 
 function clearCart() {
   cart.clear()

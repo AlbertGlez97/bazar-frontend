@@ -66,23 +66,23 @@ describe('SaleCatalogPicker — pantalla pequeña (bajo 900 px)', () => {
     expect(wrapper.emitted('update:category')).toEqual([['Tecnología']])
   })
 
-  it('un producto en la venta muestra "×N" sobre la foto, no la marca "En tu venta"', () => {
+  it('un producto en la venta muestra su contador "− N +" (que reemplaza al "×N"), no la marca "En tu venta"', () => {
     device = mockDevice({ small: true })
     const wrapper = mountPicker({ products: [cafe, pan], inCartIds: [cafe.id], quantities: { [cafe.id]: 3 } })
 
-    const items = wrapper.findAll('button.sale-picker__item')
-    expect(items[0]!.get('.product-card__media .product-card__qty').text()).toBe('×3')
-    expect(items[1]!.find('.product-card__qty').exists()).toBe(false)
+    const cells = wrapper.findAll('li.sale-picker__cell')
+    expect(cells[0]!.get('.sale-picker__counter output').text()).toBe('3')
+    expect(cells[1]!.find('.sale-picker__counter').exists()).toBe(false)
+    expect(wrapper.find('.product-card__qty').exists()).toBe(false)
     expect(wrapper.find('.sale-picker__mark').exists()).toBe(false)
   })
 
-  it('en la vista Lista la insignia va dentro de la fila', () => {
+  it('en la vista Lista el contador también va dentro de la fila', () => {
     device = mockDevice({ small: true })
     const wrapper = mountPicker({ products: [cafe], inCartIds: [cafe.id], quantities: { [cafe.id]: 2 }, view: 'list' })
 
-    const row = wrapper.get('button.sale-picker__item')
-    expect(row.get('.product-card__qty').text()).toBe('×2')
-    expect(row.find('.product-card__media .product-card__qty').exists()).toBe(false)
+    expect(wrapper.get('li.sale-picker__cell .sale-picker__counter output').text()).toBe('2')
+    expect(wrapper.find('.product-card__qty').exists()).toBe(false)
   })
 
   it('la cuadrícula compacta sigue una sola opción por producto: tocar agrega', async () => {

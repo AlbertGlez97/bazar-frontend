@@ -175,6 +175,11 @@ export const VOICE = {
     blockedDebtInvalidCart: 'Esta opción solo está disponible con un producto a la vez en el carrito.',
   },
   /** Pantalla de cobro de Venta: frases cortas, para quien usa poco la tecnología. */
+  /** Catálogo de la pantalla de venta (celular). */
+  saleCatalog: {
+    hint: 'Toca un producto para agregarlo. Usa − para quitar uno.',
+    inSaleMark: 'En tu venta ✓',
+  },
   cobro: {
     itemsToggle: (count: number) => (count === 1 ? '1 producto' : `${count} productos`),
     methodLabel: '¿Cómo pagan?',

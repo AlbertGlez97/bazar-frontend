@@ -12,6 +12,13 @@
     class="sale-picker"
     aria-label="Catálogo de productos"
   >
+    <!-- Solo en celular, arriba del catálogo; quien la usa decide cuándo mostrarla y qué recordar -->
+    <DismissibleHint
+      v-if="compact && showHint"
+      :text="VOICE.saleCatalog.hint"
+      @dismiss="emit('dismiss-hint')"
+    />
+
     <div class="sale-picker__toolbar">
       <div class="sale-picker__search">
         <AppInput
@@ -134,6 +141,7 @@
         v-for="product in products"
         :key="product.id"
         class="sale-picker__cell"
+        :class="{ 'sale-picker__cell--counter': hasCounter(product) || removesOnTap(product) }"
       >
         <button
           type="button"
@@ -152,13 +160,31 @@
             :quantity="showQuantity ? quantityOf(product.id) : 0"
             simplified-availability
           />
-          <!-- Cuadrícula en pantalla ancha: la marca de siempre. En celular y en la lista
-               la reemplaza "×N" (sobre la foto, o dentro de la fila). -->
+          <!-- Cuadrícula en pantalla ancha: la marca de siempre. En la lista de escritorio la
+               reemplaza "×N" dentro de la fila; en celular, el contador (o esta marca con ✓
+               para una pieza única, que se quita al tocarla otra vez). -->
           <span
-            v-if="inCart.has(product.id) && !compact && view !== 'list'"
+            v-if="markText(product)"
             class="sale-picker__mark"
-          >En tu venta</span>
+          >{{ markText(product) }}</span>
         </button>
+
+        <!-- Celular: contador "− N +" de lo que ya está en la venta. Es HERMANO del botón de
+             la tarjeta (un botón dentro de otro no es HTML válido) y su toque no sube a la
+             tarjeta, así que "−" nunca suma. Al llegar a 0 el contenedor la saca de la venta. -->
+        <QuantityStepper
+          v-if="hasCounter(product)"
+          class="sale-picker__counter"
+          size="touch"
+          :quantity="quantityOf(product.id)"
+          :min="0"
+          :max="product.stock"
+          :product-name="product.name"
+          @click.stop
+          @increment="emit('increment', product)"
+          @decrement="emit('decrement', product)"
+          @limit="emit('limit', product, $event)"
+        />
       </li>
     </ul>
   </section>
@@ -169,12 +195,14 @@ import { computed } from 'vue'
 import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
 import { minorToDisplay } from '@/utils/money'
 import { isProductAvailable } from '@/utils/product-status'
-import { catalogSnapshotMessage } from '@/config/voice'
+import { VOICE, catalogSnapshotMessage } from '@/config/voice'
 import type { Product } from '@/types/product.types'
 import type { SaleCatalogView } from '@/types/sale-catalog-view.types'
 import AppButton from '../atoms/AppButton.vue'
 import AppInput from '../molecules/AppInput.vue'
 import CategoryQuickFilter from '../molecules/CategoryQuickFilter.vue'
+import DismissibleHint from '../molecules/DismissibleHint.vue'
+import QuantityStepper from '../molecules/QuantityStepper.vue'
 import ProductCard from '../organisms/ProductCard.vue'
 
 const props = withDefaults(defineProps<{
@@ -197,7 +225,10 @@ const props = withDefaults(defineProps<{
   quantities?: Record<string, number>
   /** Cómo se ve el catálogo: tarjetas (por defecto) o filas compactas. Lo guarda quien lo usa. */
   view?: SaleCatalogView
+  /** Mostrar la pista de uso (solo se dibuja en celular). Quien la usa decide cuándo y qué recordar. */
+  showHint?: boolean
 }>(), {
+  showHint: false,
   view: 'grid',
   quantities: () => ({}),
 })
@@ -211,6 +242,15 @@ const emit = defineEmits<{
   'update:category': [category: string]
   'update:view': [view: SaleCatalogView]
   select: [product: Product]
+  /** Celular: "+" del contador de un producto que ya está en la venta. */
+  increment: [product: Product]
+  /** Celular: "−" del contador. Con 1 pieza, quien lo usa la saca de la venta. */
+  decrement: [product: Product]
+  /** Celular: una pieza única que ya estaba en la venta se tocó de nuevo: se quita. */
+  remove: [product: Product]
+  /** El contador está en su tope de existencia. */
+  limit: [product: Product, which: 'min' | 'max']
+  'dismiss-hint': []
   scan: []
   retry: []
 }>()
@@ -221,8 +261,19 @@ function setView(next: SaleCatalogView) {
 }
 
 const inCart = computed(() => new Set(props.inCartIds))
-/** "×N" en vez de la marca: en celular (los dos modos) y en la lista de escritorio. */
-const showQuantity = computed(() => compact.value || props.view === 'list')
+/** "×N" solo en la lista de escritorio; en celular lo reemplaza el contador. */
+const showQuantity = computed(() => !compact.value && props.view === 'list')
+const isUnique = (product: Product) => product.tipo === 'unica'
+/** Celular: lo que está en la venta y es por cantidad lleva contador. */
+const hasCounter = (product: Product) => compact.value && inCart.value.has(product.id) && !isUnique(product)
+/** Celular: una pieza única en la venta se quita al tocarla de nuevo. */
+const removesOnTap = (product: Product) => compact.value && inCart.value.has(product.id) && isUnique(product)
+/** Marca de texto sobre la tarjeta: la de siempre en la cuadrícula ancha; con ✓ para la pieza única en celular. */
+function markText(product: Product): string {
+  if (!inCart.value.has(product.id)) return ''
+  if (removesOnTap(product)) return VOICE.saleCatalog.inSaleMark
+  return !compact.value && props.view !== 'list' ? 'En tu venta' : ''
+}
 /** Piezas en la venta; si el contenedor no manda cantidades, lo que está en la venta cuenta como 1. */
 const quantityOf = (productId: string) => props.quantities[productId] ?? (inCart.value.has(productId) ? 1 : 0)
 const hasFilter = computed(() => props.search.trim() !== '' || props.category !== '')
@@ -235,12 +286,17 @@ const snapshotText = computed(() =>
 const isSoldOut = (product: Product) => !isProductAvailable(product)
 
 function itemLabel(product: Product): string {
+  if (removesOnTap(product)) return `Quitar ${product.name} de tu venta`
   if (isSoldOut(product)) return `${product.name}, agotado`
   const base = `Agregar ${product.name}, $${minorToDisplay(product.unitPriceMinor)}`
   return inCart.value.has(product.id) ? `${base}, ya está en tu venta` : base
 }
 
 function onSelect(product: Product) {
+  if (removesOnTap(product)) {
+    emit('remove', product)
+    return
+  }
   // Un agotado no se elige: el botón se ve apagado y no hace nada.
   if (isSoldOut(product)) return
   emit('select', product)
@@ -295,7 +351,7 @@ function onSelect(product: Product) {
 }
 /* Celular: exactamente 2 columnas iguales (minmax(0, 1fr) evita que un nombre largo las ensanche) */
 .sale-picker__grid--compact { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-sm); }
-.sale-picker__cell { min-width: 0; }
+.sale-picker__cell { position: relative; min-width: 0; }
 /* Stretch through the interactive wrappers, without affecting list rows. */
 .sale-picker__grid .sale-picker__cell { display: flex; }
 .sale-picker__grid .sale-picker__item { display: flex; }
@@ -336,8 +392,9 @@ function onSelect(product: Product) {
    solo necesita dejarlo ocupar todo el ancho; el hover ya lo cubre la sombra
    compartida de :deep(.product-card) más abajo. */
 .sale-picker__list { display: flex; flex-direction: column; gap: var(--spacing-xs); margin: 0; padding: 0; list-style: none; }
-/* En la fila la marca "En tu venta" va en la línea de estado, no flotando sobre una foto */
-.sale-picker__item--row .sale-picker__mark { position: static; padding: 0.1rem 0.5rem; box-shadow: none; }
+/* En la fila de la lista (celular, pieza única) la marca va dentro de la fila, abajo a la derecha:
+   el mismo lugar del contador, y la fila reserva ese espacio (ver más abajo). */
+.sale-picker__item--row .sale-picker__mark { top: auto; right: var(--spacing-sm); bottom: var(--spacing-sm); left: auto; padding: 0.1rem 0.5rem; box-shadow: none; }
 
 /* Toda la tarjeta es el botón: tocar en cualquier parte agrega */
 .sale-picker__item {
@@ -359,6 +416,18 @@ function onSelect(product: Product) {
 .sale-picker__item:active:not(.sale-picker__item--sold-out) { transform: scale(0.98); }
 .sale-picker__item:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 3px; }
 .sale-picker__item--sold-out { cursor: not-allowed; opacity: 0.55; }
+
+/* Contador "− N +" (celular): sobre la foto, arriba a la izquierda, donde antes iba el "×N".
+   En la fila de la lista va abajo a la derecha y la fila reserva ese espacio. */
+.sale-picker__counter {
+  position: absolute;
+  top: var(--spacing-xs);
+  left: var(--spacing-xs);
+  z-index: 1;
+  box-shadow: var(--shadow-md);
+}
+.sale-picker__list .sale-picker__counter { top: auto; bottom: var(--spacing-xs); right: var(--spacing-sm); left: auto; }
+.sale-picker__list .sale-picker__cell--counter .sale-picker__item :deep(.product-card) { padding-bottom: 3.5rem; }
 
 /* Marca con texto y borde, no solo color */
 .sale-picker__mark {
