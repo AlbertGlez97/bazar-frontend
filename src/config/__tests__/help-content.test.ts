@@ -269,11 +269,11 @@ const ORIGINAL_IDS = [
 ]
 
 describe('help content v2', () => {
-  it('keeps all 40 original articles and adds only the contributions article', () => {
+  it('keeps all 40 original articles and adds only the contributions and data articles', () => {
     expect(ORIGINAL_IDS).toHaveLength(40)
     expect(HELP_ARTICLES.map((article) => article.id)).toEqual(expect.arrayContaining(ORIGINAL_IDS))
-    expect(HELP_ARTICLES).toHaveLength(41)
-    expect(HELP_ARTICLES.filter((article) => !ORIGINAL_IDS.includes(article.id)).map((article) => article.id)).toEqual(['aportaciones'])
+    expect(HELP_ARTICLES).toHaveLength(42)
+    expect(HELP_ARTICLES.filter((article) => !ORIGINAL_IDS.includes(article.id)).map((article) => article.id).sort()).toEqual(['aportaciones', 'tus-datos'])
   })
   it('gives every article a topic', () => {
     for (const article of HELP_ARTICLES) expect(article.topic, article.id).toMatch(/^[a-z-]+(\.[a-z-]+)?$/)
@@ -385,6 +385,50 @@ describe('help: instalar la app (Android y iPhone)', () => {
   })
 
   it('sigue teniendo al menos 3 pasos y su evidencia', () => {
+    expect(article.steps.length).toBeGreaterThanOrEqual(3)
+  })
+})
+
+describe('help: tus datos y los de tus clientes', () => {
+  const article = HELP_ARTICLES.find((item) => item.id === 'tus-datos')!
+  const text = [article?.intro, ...(article?.steps ?? []), ...(article?.tips ?? [])].join(' ')
+  const sentences = text.split(/(?<=[.!?])\s+/).map((sentence) => sentence.trim()).filter(Boolean)
+
+  it('existe con el título "Tus datos y los de tus clientes", en Primeros pasos y para todos', () => {
+    expect(article).toBeDefined()
+    expect(article.title).toBe('Tus datos y los de tus clientes')
+    expect(article.category).toBe('Primeros pasos')
+    expect(article.audience).toBe('all')
+    expect(article.topic).toBe('primeros-pasos.datos')
+  })
+
+  it('explica que el negocio es el responsable de los datos de sus clientes y que La Marchanta solo los procesa', () => {
+    expect(text.toLowerCase()).toContain('tu negocio es el responsable')
+    expect(text).toContain('La Marchanta solo los procesa')
+  })
+
+  it('pide no escribir datos sensibles en las notas', () => {
+    expect(text).toContain('No escribas datos sensibles')
+    expect(text).toContain('notas')
+  })
+
+  it('trae un ejemplo de aviso breve para quien fía o aparta algo', () => {
+    expect(text).toContain('Ejemplo de aviso')
+    expect(text).toMatch(/Anotamos tu nombre/)
+    expect(text).toContain('fiado')
+    expect(text).toContain('apartado')
+  })
+
+  it('enlaza el aviso de privacidad y los términos por su nombre', () => {
+    expect(text).toContain('Aviso de privacidad')
+    expect(text).toContain('Términos y condiciones')
+  })
+
+  it('frases cortas (20 palabras o menos)', () => {
+    for (const sentence of sentences) expect(sentence.split(/\s+/).length, sentence).toBeLessThanOrEqual(20)
+  })
+
+  it('tiene al menos 3 pasos y su evidencia', () => {
     expect(article.steps.length).toBeGreaterThanOrEqual(3)
   })
 })

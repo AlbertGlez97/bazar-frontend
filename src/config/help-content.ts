@@ -421,6 +421,20 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Si ya instalaste la app, el botón Instalar app no aparece.', 'Instalar no significa que todo funcione sin internet.'],
   },
   {
+    id: 'tus-datos', topic: 'primeros-pasos.datos', title: 'Tus datos y los de tus clientes', category: 'Primeros pasos', audience: 'all',
+    keywords: ['datos', 'privacidad', 'aviso', 'clientes', 'deudor', 'fiado', 'apartado', 'notas', 'sensibles', 'términos'],
+    intro: 'Tu negocio es el responsable de los datos de sus clientes. La Marchanta solo los procesa por su cuenta.',
+    steps: [
+      'Pide solo los datos que necesitas, como el nombre y un teléfono.',
+      'No escribas datos sensibles en las notas. Son datos de salud, creencias, política o vida íntima.',
+      'Avisa a la persona antes de anotarla en un fiado o un apartado.',
+      'Ejemplo de aviso: Anotamos tu nombre y tu teléfono para llevar tu fiado o apartado. Solo los usamos para avisarte de tu saldo y de tus pagos. No los compartimos ni los vendemos. Si quieres verlos, corregirlos o borrarlos, pídelo aquí.',
+      'Si un cliente pide ver, corregir o borrar sus datos, atiéndelo tú. Tu negocio decide sobre ellos.',
+      'Lee el Aviso de privacidad y los Términos y condiciones en Ajustes, en el Menú o en Mi cuenta.',
+    ],
+    tips: ['Si registras datos de un cliente, tú respondes ante él por ese uso.', 'Puedes mostrar el ejemplo de aviso en voz alta o impreso en tu puesto.'],
+  },
+  {
     id: 'preguntas', topic: 'primeros-pasos.preguntas', title: 'Preguntas frecuentes y límites actuales', category: 'Primeros pasos', audience: 'all',
     keywords: ['no aparece', 'permiso', 'precio', 'ajustar', 'devolución', 'cancelar', 'historial'],
     intro: 'Cuando no encuentres una acción, verifica primero el modo, el rol y el estado de la operación. No todas las tareas de un negocio están implementadas.',
@@ -729,6 +743,7 @@ export const HELP_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
   equipo: ['src/views/settings/TeamView.vue'],
   dispositivos: ['src/views/settings/DevicesView.vue'],
   contrasena: ['src/views/settings/ChangePasswordView.vue'],
+  'tus-datos': ['src/legal/privacy-notice.ts', 'src/legal/terms.ts', 'src/views/settings/SettingsView.vue'],
   instalar: ['src/components/ui/molecules/InstallAppButton.vue', 'src/composables/usePwaInstall.ts', 'src/components/ui/organisms/AppNavDrawer.vue', 'src/components/ui/molecules/AccountMenu.vue'],
   preguntas: ['src/router/index.ts', 'src/components/ui/organisms/SaleCart.vue'],
   acceso: ['src/views/SelectContextView.vue', 'src/stores/auth.store.ts'],
