@@ -142,6 +142,61 @@ describe('checkout.store — cobro por método', () => {
   })
 })
 
+describe('checkout.store — efectivo tecleado y luego otro método', () => {
+  it.each(['TRANSFERENCIA', 'TARJETA'] as const)('en línea: tecleó efectivo y cambió a %s -> el payload no lleva efectivo ni cambio', async (method) => {
+    const { cart, checkout } = await ready()
+    cart.setAmountFromDisplay('1,500')
+    cart.setPaymentMethod(method)
+
+    await checkout.charge()
+
+    const payload = createSale.mock.calls[0]![0]
+    expect(payload.paymentMethod).toBe(method)
+    expect(payload).not.toHaveProperty('cashReceivedMinor')
+    expect(payload).not.toHaveProperty('changeMinor')
+  })
+
+  it.each(['TRANSFERENCIA', 'TARJETA'] as const)('sin conexión: tecleó efectivo y cambió a %s -> la cola no guarda efectivo ni cambio', async (method) => {
+    const { cart, checkout } = await ready()
+    cart.setAmountFromDisplay('1,500')
+    cart.setPaymentMethod(method)
+    setOnline(false)
+
+    const result = await checkout.charge()
+
+    expect(result).toMatchObject({ kind: 'saved-offline', paymentMethod: method, changeMinor: 0 })
+    const [queued] = await salesQueue.list()
+    if (queued!.kind === 'debt') throw new Error('expected a sale')
+    expect(queued!.payload.paymentMethod).toBe(method)
+    expect(queued!.payload).not.toHaveProperty('cashReceivedMinor')
+    expect(queued!.payload).not.toHaveProperty('changeMinor')
+  })
+
+  it('cambió a tarjeta y volvió a efectivo: el efectivo anterior no reaparece', async () => {
+    const { cart, checkout } = await ready()
+    cart.setAmountFromDisplay('1,500')
+    cart.setPaymentMethod('TARJETA')
+    cart.setPaymentMethod('EFECTIVO')
+
+    expect(cart.amountMinor).toBe(0)
+    expect(await checkout.charge()).toMatchObject({ kind: 'blocked' })
+    expect(createSale).not.toHaveBeenCalled()
+  })
+
+  it('el servidor responde sin efectivo ni cambio (null): el resultado dice cambio 0', async () => {
+    const { cart, checkout } = await ready()
+    cart.setPaymentMethod('TRANSFERENCIA')
+    createSale.mockImplementationOnce(async (payload) => {
+      const done = await completed(payload)
+      return { ...done, sale: { ...done.sale, cashReceivedMinor: null, changeMinor: null } }
+    })
+
+    const result = await checkout.charge()
+
+    expect(result).toMatchObject({ kind: 'success', paymentMethod: 'TRANSFERENCIA', changeMinor: 0 })
+  })
+})
+
 describe('checkout.store — sin conexión: el método viaja en la cola', () => {
   it.each(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA'] as const)('%s queda guardado en la venta encolada', async (method) => {
     const { cart, checkout } = await ready()

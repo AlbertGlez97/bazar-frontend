@@ -112,3 +112,17 @@ describe('describeCheckoutResult', () => {
     expect(view).toMatchObject({ kind: 'debt-registered', pendingMinor: 5997, initialAbonoMinor: 0 })
   })
 })
+
+describe('describeCheckoutResult — respuestas sin efectivo ni cambio (null)', () => {
+  it('un cobro por tarjeta cuyo Sale trae null sigue describiéndose con cambio 0 y su método', () => {
+    const view = describeCheckoutResult({
+      kind: 'success',
+      sale: sale({ cashReceivedMinor: null, changeMinor: null, paymentMethod: 'TARJETA' }),
+      paymentMethod: 'TARJETA',
+      totalMinor: 25000,
+      changeMinor: 0,
+    })
+
+    expect(view).toMatchObject({ kind: 'success', paymentMethod: 'TARJETA', totalMinor: 25000, changeMinor: 0 })
+  })
+})

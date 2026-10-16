@@ -334,3 +334,14 @@ describe('buildPdfDefinition — dinero por método', () => {
     expect(texts(def.content)).toContain('Dinero por método')
   })
 })
+
+describe('buildPdfDefinition — ventas sin efectivo (null)', () => {
+  it('no falla y muestra el método de una venta por transferencia', () => {
+    const noCash: Sale = { ...sale('s-9', 'm-ana', '2026-09-24T18:00:00.000Z', 5000, 0, [1]), cashReceivedMinor: null, changeMinor: null, paymentMethod: 'TRANSFERENCIA' }
+    const def = buildPdfDefinition(makeReport({ sales: [noCash] }))
+    const table = findTable(def, 'Fecha')
+
+    expect(rowTexts(table.body[1])).toEqual(['24/09/2026 12:00', 'Ana', 'Transferencia', '1', '$50.00'])
+    expect(JSON.stringify(def)).not.toMatch(/NaN|null/)
+  })
+})

@@ -410,3 +410,13 @@ describe('buildExcelData — dinero por método', () => {
     expect(sum).toBeCloseTo(total as number, 2)
   })
 })
+
+describe('buildWorkbook — ventas sin efectivo (null)', () => {
+  it('escribe el método y no rompe con efectivo/cambio en null', async () => {
+    const noCash: Sale = { ...sale('s-9', 'm-ana', '2026-09-24T18:00:00.000Z', 5000, 0, [1]), cashReceivedMinor: null, changeMinor: null, paymentMethod: 'TARJETA' }
+    const ws = (await buildWorkbook(makeReport([noCash]))).getWorksheet('Ventas')!
+
+    expect(ws.getCell('C2').value).toBe('Tarjeta')
+    expect(ws.getCell('E2').value).toBe(50)
+  })
+})

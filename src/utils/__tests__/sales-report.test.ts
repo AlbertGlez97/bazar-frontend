@@ -374,3 +374,20 @@ describe('buildSalesReport — header data', () => {
     expect(build([], { truncated: true }).truncated).toBe(true)
   })
 })
+
+describe('buildSalesReport — ventas sin efectivo (cashReceivedMinor y changeMinor en null)', () => {
+  const transfer = () => sale({ totalMinor: 5000, cashReceivedMinor: null, changeMinor: null, paymentMethod: 'TRANSFERENCIA' })
+
+  it('la fila conserva null en efectivo, cambio 0 y el método', () => {
+    const report = build([transfer()])
+
+    expect(report.rows[0]).toMatchObject({ cashReceivedMinor: null, changeMinor: 0, paymentMethod: 'TRANSFERENCIA', totalMinor: 5000 })
+  })
+
+  it('los totales no se vuelven NaN: el efectivo null cuenta como 0', () => {
+    const report = build([transfer(), sale({ totalMinor: 2000, cashReceivedMinor: 3000, changeMinor: 1000 })])
+
+    expect(report.totals).toMatchObject({ totalMinor: 7000, cashReceivedMinor: 3000, changeMinor: 1000 })
+    expect(Number.isNaN(report.totals.cashReceivedMinor)).toBe(false)
+  })
+})
