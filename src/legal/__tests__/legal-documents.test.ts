@@ -8,7 +8,12 @@ import type { LegalDocumentData } from '../types'
 const plain = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 const privacy = plain(documentText(PRIVACY_NOTICE))
 const terms = plain(documentText(TERMS))
+/** Texto (sin acentos ni mayúsculas) de UNA sección: el resumen de arriba no cuenta. */
+const sectionText = (id: string, doc: LegalDocumentData = PRIVACY_NOTICE) =>
+  plain(documentText({ ...doc, title: '', summary: [], sections: doc.sections.filter((section) => section.id === id) }))
 const docs: [string, LegalDocumentData][] = [['aviso de privacidad', PRIVACY_NOTICE], ['términos', TERMS]]
+// Lo que el aviso dice que se RECABA (solo esa sección: una frase suelta en otra parte no cuenta)
+const collected = sectionText('que-datos-recabamos')
 
 describe.each(docs)('estructura: %s', (_name, doc) => {
   it('trae un resumen de exactamente 5 puntos', () => {
@@ -77,13 +82,13 @@ describe('Aviso de Privacidad: contenido mínimo', () => {
     ['productos, costos, ventas y deudas', /productos, costos, ventas y deudas/],
     ['nombre, teléfono y notas de deudores', /nombre, telefono y notas/],
   ])('cubre el dato: %s', (_label, pattern) => {
-    expect(privacy).toMatch(pattern)
+    expect(collected).toMatch(pattern)
   })
 
   it('aclara que NO se piden datos sensibles y pide no escribirlos en las notas', () => {
-    expect(privacy).toMatch(/no pedimos datos sensibles/)
-    expect(privacy).toMatch(/no los escribas|no escribas/)
-    expect(privacy).toContain('notas')
+    expect(collected).toMatch(/no pedimos datos sensibles/)
+    expect(collected).toMatch(/no los escribas|no escribas/)
+    expect(collected).toContain('notas')
   })
 
   it('separa finalidades necesarias y voluntarias en dos listas', () => {
@@ -106,7 +111,7 @@ describe('Aviso de Privacidad: contenido mínimo', () => {
   })
 
   it('explica los derechos ARCO, cómo ejercerlos, qué incluir y los plazos de la ley', () => {
-    const arco = plain(documentText({ ...PRIVACY_NOTICE, sections: PRIVACY_NOTICE.sections.filter((s) => s.id === 'derechos-arco') }))
+    const arco = sectionText('derechos-arco')
     for (const right of ['acceso', 'rectificacion', 'cancelacion', 'oposicion']) expect(arco).toContain(right)
     expect(arco).toContain(plain(LEGAL_CONTACT_EMAIL))
     expect(arco).toContain(`${ARCO.responseDays} dias`)
@@ -121,7 +126,7 @@ describe('Aviso de Privacidad: contenido mínimo', () => {
   })
 
   it('los plazos de conservación salen de la configuración', () => {
-    const retention = plain(documentText({ ...PRIVACY_NOTICE, sections: PRIVACY_NOTICE.sections.filter((s) => s.id === 'cuanto-tiempo-guardamos-tus-datos') }))
+    const retention = sectionText('cuanto-tiempo-guardamos-tus-datos')
     expect(retention).toContain(`${RETENTION.unconfirmedRegistrationDays} dias`)
     expect(retention).toContain(`${RETENTION.rejectedOrExpiredRegistrationDays} dias`)
     expect(retention).toMatch(/mientras (la cuenta )?este activa/)
@@ -130,7 +135,7 @@ describe('Aviso de Privacidad: contenido mínimo', () => {
   })
 
   it('describe la seguridad con honestidad: lo que hay y lo que no se promete', () => {
-    const security = plain(documentText({ ...PRIVACY_NOTICE, sections: PRIVACY_NOTICE.sections.filter((s) => s.id === 'como-cuidamos-tus-datos') }))
+    const security = sectionText('como-cuidamos-tus-datos')
     expect(security).toMatch(/argon2|no guardamos tu contrasena/)
     expect(security).toMatch(/https/)
     expect(security).toMatch(/cada negocio|entre negocios/)
@@ -138,12 +143,12 @@ describe('Aviso de Privacidad: contenido mínimo', () => {
   })
 
   it('explica el almacenamiento del navegador: localStorage, sessionStorage, IndexedDB y cookies', () => {
-    const storage = plain(documentText({ ...PRIVACY_NOTICE, sections: PRIVACY_NOTICE.sections.filter((s) => s.id === 'almacenamiento-del-navegador') }))
+    const storage = sectionText('almacenamiento-del-navegador')
     for (const word of ['localstorage', 'sessionstorage', 'indexeddb', 'cookies', 'sin conexion']) expect(storage).toContain(word)
   })
 
   it('explica los cambios al aviso: fecha, versión y nuevo consentimiento si cambian las finalidades', () => {
-    const changes = plain(documentText({ ...PRIVACY_NOTICE, sections: PRIVACY_NOTICE.sections.filter((s) => s.id === 'cambios-al-aviso') }))
+    const changes = sectionText('cambios-al-aviso')
     expect(changes).toContain('version')
     expect(changes).toContain('fecha')
     expect(changes).toMatch(/finalidades/)
@@ -157,7 +162,7 @@ describe('Aviso de Privacidad: contenido mínimo', () => {
   it('tiene la sección "Datos de tus clientes": el negocio es el responsable y La Marchanta procesa por su cuenta', () => {
     const section = PRIVACY_NOTICE.sections.find((s) => s.id === 'datos-de-tus-clientes')
     expect(section).toBeDefined()
-    const text = plain(documentText({ ...PRIVACY_NOTICE, sections: [section!] }))
+    const text = sectionText('datos-de-tus-clientes')
     expect(text).toMatch(/tu negocio es (el )?responsable/)
     expect(text).toMatch(/por su cuenta|por cuenta de tu negocio/)
     expect(text).toMatch(/fiado|apartado/)
