@@ -37,6 +37,9 @@ export default defineConfig({
         display:           'standalone',
         orientation:       'portrait',
         lang:              'es',
+        // Identidad de la app. Es el mismo valor que el navegador calcula hoy a partir de
+        // start_url, así que declararlo no cambia la identidad de las instalaciones existentes.
+        id:                '/',
         scope:             '/',
         start_url:         '/',
         categories:        ['business', 'productivity'],

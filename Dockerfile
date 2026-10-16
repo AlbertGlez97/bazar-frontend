@@ -15,6 +15,13 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# nginx corre como usuario sin privilegios: lo que sirve debe ser legible por todos
+# sin depender del umask del host. Si el checkout llega en modo 600/700 (umask 077 del
+# usuario de deploy), Vite copia public/ (favicon, íconos) conservando ese modo y nginx
+# respondía 403 en esos archivos: Chrome no podía bajar los íconos del manifest y la app
+# dejaba de ser instalable.
+RUN chmod -R a+rX /app/dist
+
 # ---- runtime ----
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
