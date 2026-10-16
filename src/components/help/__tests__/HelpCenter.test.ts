@@ -279,6 +279,18 @@ describe('Help Center: search', () => {
     wrapper.unmount()
   })
 
+  it('the search example only names terms that find something today', async () => {
+    const { wrapper } = await openHelp()
+    const placeholder = wrapper.get('input[type="search"]').attributes('placeholder')!
+    expect(placeholder).toBe('Ej. cobrar, cambio, fiado, abonos')
+    expect(placeholder).not.toMatch(/billetes/i)
+    for (const term of placeholder.replace('Ej. ', '').split(', ')) {
+      await search(wrapper, term)
+      expect(wrapper.findAll('.help-results__link').length, term).toBeGreaterThan(0)
+    }
+    wrapper.unmount()
+  })
+
   it('matches without caring about accents or case', async () => {
     const { wrapper } = await openHelp()
     await search(wrapper, 'TRANSFERENCIA cobrár')

@@ -8,7 +8,7 @@
       :model-value="modelValue"
       type="search"
       label="Buscar en la ayuda"
-      placeholder="Ej. cambio, billetes, abonos, etiquetas"
+      placeholder="Ej. cobrar, cambio, fiado, abonos"
       autocomplete="off"
       :aria-describedby="statusId"
       size="lg"
