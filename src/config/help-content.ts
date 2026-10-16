@@ -1,25 +1,27 @@
 import type { HelpArticle } from '@/types/help.types'
 
-export const CASH_HELP: HelpArticle = {
+/** Cobrar una venta: método de pago, monto, cambio y fiado. Frases cortas, sin billetes ni monedas. */
+export const COBRO_HELP: HelpArticle = {
   id: 'efectivo',
   topic: 'ventas.efectivo',
-  title: 'Recibir efectivo, combinar billetes y dar cambio',
+  title: 'Cobrar una venta: efectivo, transferencia o tarjeta',
   category: 'Ventas',
   audience: 'all',
-  keywords: ['cobrar', 'dinero', 'selección', 'billetes', 'monedas', 'justo'],
-  intro: 'Efectivo recibido es el dinero que entrega el cliente, no el precio de la venta. La app calcula cuánto falta o cuánto cambio debes entregar.',
+  keywords: ['cobrar', 'dinero', 'efectivo', 'transferencia', 'tarjeta', 'cambio', 'método', 'fiado'],
+  intro: 'Elige cómo pagan, escribe el monto y toca Cobrar. La app calcula el cambio.',
   steps: [
-    'Revisa el total antes de capturar el dinero. Si el cliente entrega exactamente ese importe, toca Justo.',
-    'Puedes escribir el importe en Efectivo recibido, o tocar los billetes de $20, $50, $100, $200, $500 y $1,000 y las monedas de $1, $2, $5 y $10.',
-    'Cada toque agrega una pieza a su propia selección. Por ejemplo: dos toques en $100 y uno en $50 suman $250. Los contadores muestran cuántas piezas elegiste.',
-    'El selector no suma sobre el importe escrito manualmente: al empezar a tocar billetes, el importe corresponde a las piezas seleccionadas. Escribir otro importe o usar Justo puede limpiar esos contadores.',
-    'Limpiar selección borra el efectivo y los contadores de billetes y monedas; no quita productos del carrito.',
-    'Cuando el efectivo cubra el total, revisa el cambio y toca Cobrar una sola vez. Espera el resultado antes de iniciar otra venta.',
+    'Revisa el total. Es el número grande de arriba.',
+    'Elige cómo pagan: Efectivo, Transferencia o Tarjeta. Efectivo ya viene elegido.',
+    'En efectivo, escribe cuánto te dan. La app muestra el Cambio en verde, o cuánto falta.',
+    'Con Transferencia o Tarjeta el monto ya trae el total. No hay cambio y no puede ser mayor al total.',
+    'Cuando todo esté bien, toca Cobrar una sola vez. Espera la pantalla Venta guardada.',
   ],
   tips: [
-    'Ejemplo de importe exacto: total $500, efectivo $500, cambio $0. Ejemplo con cambio: total $430, efectivo $500, cambio $70.',
+    'Ejemplo: total $430, te dan $500, cambio $70.',
     'Usa punto para centavos: 125.50. La coma sirve para miles: 1,250.50. No uses 125,50: es ambiguo y bloquea el cobro.',
-    'Si el efectivo es insuficiente, revisa cuánto falta. No cambies el precio del producto para cuadrar el dinero recibido.',
+    'Si el monto es menor al total y hay un solo producto, puedes dejarlo como fiado o apartado. Lo que escribiste queda como abono, con el método elegido.',
+    'Con dos o más productos no se puede fiar todavía. Cobra completo o quita productos.',
+    'Sin conexión la venta se guarda en el dispositivo y se sincroniza sola. Si no habías elegido método, se cuenta como efectivo.',
   ],
 }
 
@@ -72,12 +74,12 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       'Para un producto por cantidad, vuelve a tocarlo en el catálogo o usa el control de aumentar cantidad del carrito.',
       'No puedes superar la existencia disponible. Un producto de pieza única se agrega una sola vez.',
       'Usa el control de disminuir para corregir la cantidad. El mínimo es una pieza; para retirar el producto por completo, toca Quitar.',
-      'En pantallas pequeñas puedes abrir Ver productos para comprobar las líneas sin perder de vista el cobro.',
-      'Vaciar pide confirmación y elimina todos los productos y el efectivo capturado. Cancela la confirmación si solo querías corregir una línea.',
+      'En pantallas pequeñas toca N productos para ver u ocultar las líneas sin perder de vista el total.',
+      'Vaciar pide confirmación y elimina todos los productos y el monto capturado. Cancela la confirmación si solo querías corregir una línea.',
     ],
-    tips: ['Limpiar selección en el efectivo no equivale a Vaciar: conserva los productos.'],
+    tips: ['Cambiar el método de pago no quita productos; solo reinicia el monto.'],
   },
-  CASH_HELP,
+  COBRO_HELP,
   {
     id: 'crear-producto', topic: 'productos.catalogo', title: 'Crear un producto: pieza única o por cantidad', category: 'Productos', audience: 'socio',
     keywords: ['nuevo', 'nombre', 'precio', 'costo', 'stock', 'existencia'],
@@ -717,7 +719,7 @@ export const HELP_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
   modos: ['src/layouts/AppLayout.vue', 'src/layouts/nav-items.ts'],
   'primera-venta': ['src/views/sales/SaleView.vue', 'src/components/ui/organisms/SaleCatalogPicker.vue'],
   carrito: ['src/components/ui/organisms/SaleCart.vue', 'src/stores/cart.store.ts'],
-  efectivo: ['src/components/ui/molecules/CashInput.vue', 'src/components/ui/molecules/CashDenominationPad.vue', 'src/utils/money.ts'],
+  efectivo: ['src/components/ui/molecules/AmountInput.vue', 'src/components/ui/molecules/PaymentMethodPicker.vue', 'src/components/ui/molecules/PaymentChange.vue', 'src/utils/money.ts'],
   escanear: ['src/views/sales/SaleView.vue'],
   'sin-conexion': ['src/stores/sales-queue.store.ts', 'src/services/sales-sync.ts'],
 }

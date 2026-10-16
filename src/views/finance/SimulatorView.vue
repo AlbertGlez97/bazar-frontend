@@ -137,11 +137,10 @@
             <h2 id="sim-amount-title">
               Cuánto quiero simular
             </h2>
-            <CashInput
+            <AmountInput
               id="sim-amount"
               v-model="amountText"
               label="Monto a simular"
-              :show-pad="false"
               :description-id="maxMinor !== null ? 'sim-amount-hint' : undefined"
               :disabled="store.simulating"
             />
@@ -453,7 +452,7 @@
 import { useRoute } from 'vue-router'
 import { isAgreementId } from '@/utils/finance-agreements'
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { AppAlert, AppButton, AppCard, CashInput, ReportRangePicker, TabNav } from '@/components'
+import { AmountInput, AppAlert, AppButton, AppCard, ReportRangePicker, TabNav } from '@/components'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useAuthStore } from '@/stores/auth.store'
@@ -546,7 +545,7 @@ const baseForPeriod = computed(() => {
 /** UI convenience only: the server decides whether the amount is allowed. */
 const maxMinor = computed(() => (baseForPeriod.value ? Math.max(0, baseForPeriod.value.potentiallyAvailableMinor) : null))
 const amount = computed(() => amountState(amountText.value, maxMinor.value))
-/** CashInput already explains text it cannot read; this covers the rest. */
+/** AmountInput already explains text it cannot read; this covers the rest. */
 const amountMessage = computed(() =>
   amount.value.error && parseMoneyText(amountText.value) !== null ? amount.value.error : '',
 )

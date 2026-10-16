@@ -90,12 +90,65 @@ describe('DeudaDetailModal — indicador liquidada/activa', () => {
   })
 
   it('una deuda saldada muestra "Liquidada" y NO ofrece registrar abono', async () => {
-    getDeuda.mockResolvedValue(deuda({ status: 'saldada', abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 65000, receivedByMemberId: 'm-1', receivedAt: '2026-09-24T00:00:00.000Z', nota: null }] }))
+    getDeuda.mockResolvedValue(deuda({ status: 'saldada', abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 65000, receivedByMemberId: 'm-1', receivedAt: '2026-09-24T00:00:00.000Z', nota: null, paymentMethod: 'EFECTIVO' }] }))
     const wrapper = mountModal()
     await flushPromises()
 
     expect(wrapper.text()).toContain('Liquidada')
     expect(wrapper.find('[data-action="submit-abono"]').exists()).toBe(false)
+  })
+})
+
+describe('DeudaDetailModal — método de pago del abono', () => {
+  const method = (w: ReturnType<typeof mountModal>, value: string) => w.get(`.payment-method-picker [data-value="${value}"]`)
+
+  it('el abono nuevo pide el método y Efectivo viene elegido', async () => {
+    const wrapper = mountModal()
+    await flushPromises()
+
+    expect(method(wrapper, 'EFECTIVO').attributes('aria-pressed')).toBe('true')
+    expect(method(wrapper, 'TRANSFERENCIA').attributes('aria-pressed')).toBe('false')
+    expect(method(wrapper, 'TARJETA').attributes('aria-pressed')).toBe('false')
+  })
+
+  it.each(['TRANSFERENCIA', 'TARJETA'] as const)('un abono con %s manda ese método', async (paymentMethod) => {
+    const wrapper = mountModal()
+    await flushPromises()
+    createAbono.mockResolvedValue(deuda())
+
+    await method(wrapper, paymentMethod).trigger('click')
+    await wrapper.get('input[inputmode="decimal"]').setValue('50.00')
+    await wrapper.get('[data-action="submit-abono"]').trigger('click')
+    await flushPromises()
+
+    expect(createAbono).toHaveBeenCalledExactlyOnceWith('d-1', { montoMinor: 5000, paymentMethod })
+  })
+
+  it('tras registrar un abono el método vuelve a Efectivo', async () => {
+    const wrapper = mountModal()
+    await flushPromises()
+    createAbono.mockResolvedValue(deuda())
+    await method(wrapper, 'TARJETA').trigger('click')
+    await wrapper.get('input[inputmode="decimal"]').setValue('50.00')
+    await wrapper.get('[data-action="submit-abono"]').trigger('click')
+    await flushPromises()
+
+    expect(method(wrapper, 'EFECTIVO').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('el historial muestra con qué se pagó cada abono', async () => {
+    getDeuda.mockResolvedValue(deuda({
+      abonos: [
+        { id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 20000, receivedByMemberId: 'm-1', receivedAt: '2026-09-24T00:00:00.000Z', nota: null, paymentMethod: 'TRANSFERENCIA' },
+        { id: 'a-2', deudaId: 'd-1', contextId: 'ctx', montoMinor: 5000, receivedByMemberId: 'm-1', receivedAt: '2026-09-25T00:00:00.000Z', nota: null, paymentMethod: 'EFECTIVO' },
+      ],
+    }))
+    const wrapper = mountModal()
+    await flushPromises()
+
+    const items = wrapper.findAll('.deuda-detail-modal__list li').map((li) => li.text())
+    expect(items[0]).toContain('Transferencia')
+    expect(items[1]).toContain('Efectivo')
   })
 })
 
@@ -108,7 +161,7 @@ describe('DeudaDetailModal — historial de abonos y cuotas', () => {
 
   it('con abonos, lista cada uno', async () => {
     getDeuda.mockResolvedValue(deuda({
-      abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 20000, receivedByMemberId: 'm-1', receivedAt: '2026-09-24T00:00:00.000Z', nota: 'Primer pago' }],
+      abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 20000, receivedByMemberId: 'm-1', receivedAt: '2026-09-24T00:00:00.000Z', nota: 'Primer pago', paymentMethod: 'EFECTIVO' }],
     }))
     const wrapper = mountModal()
     await flushPromises()
@@ -139,14 +192,14 @@ describe('DeudaDetailModal — registrar abono nuevo', () => {
   it('un monto válido llama POST /deudas/:id/abonos y refresca el detalle', async () => {
     const wrapper = mountModal()
     await flushPromises()
-    const updated = deuda({ abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 10000, receivedByMemberId: 'm-1', receivedAt: '2026-09-25T00:00:00.000Z', nota: null }] })
+    const updated = deuda({ abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 10000, receivedByMemberId: 'm-1', receivedAt: '2026-09-25T00:00:00.000Z', nota: null, paymentMethod: 'EFECTIVO' }] })
     createAbono.mockResolvedValue(updated)
 
     await wrapper.get('input[inputmode="decimal"]').setValue('100.00')
     await wrapper.get('[data-action="submit-abono"]').trigger('click')
     await flushPromises()
 
-    expect(createAbono).toHaveBeenCalledExactlyOnceWith('d-1', { montoMinor: 10000 })
+    expect(createAbono).toHaveBeenCalledExactlyOnceWith('d-1', { montoMinor: 10000, paymentMethod: 'EFECTIVO' })
     expect(wrapper.emitted('abono-registrado')?.[0]).toEqual([updated])
     expect(wrapper.text()).toContain('$100.00')
   })

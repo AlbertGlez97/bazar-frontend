@@ -7,15 +7,15 @@ function mountResult(result: SaleResultView) {
   return mount(SaleResult, { props: { result }, attachTo: document.body })
 }
 
-const success: SaleResultView = { kind: 'success', totalMinor: 25000, changeMinor: 5000, summary: 'Venta anotada: $250.00. Cambio: $50.00. Quedó a nombre de Carlos.' }
-const saved: SaleResultView = { kind: 'saved-offline', totalMinor: 19990, changeMinor: 10 }
+const success: SaleResultView = { kind: 'success', paymentMethod: 'EFECTIVO', totalMinor: 25000, changeMinor: 5000, summary: 'Venta anotada: $250.00. Cambio: $50.00. Quedó a nombre de Carlos.' }
+const saved: SaleResultView = { kind: 'saved-offline', paymentMethod: 'EFECTIVO', totalMinor: 19990, changeMinor: 10 }
 const conflict: SaleResultView = {
   kind: 'conflict',
   message: 'Otra venta se llevó la última pieza de un producto justo antes que esta, así que no se cobró. Un socio la revisará en incidencias.',
   detail: 'stock insuficiente al sincronizar: producto p, solicitado 1, disponible 0',
 }
 const rejected: SaleResultView = { kind: 'rejected', message: 'Ya no hay suficientes piezas de uno de los productos. Baja la cantidad o quítalo del carrito e intenta de nuevo.' }
-const authNeeded: SaleResultView = { kind: 'auth-needed', message: 'Tu sesión ya no es válida, pero la venta sigue guardada en este dispositivo. Inicia sesión de nuevo para enviarla.', totalMinor: 5000, changeMinor: 0 }
+const authNeeded: SaleResultView = { kind: 'auth-needed', paymentMethod: 'EFECTIVO', message: 'Tu sesión ya no es válida, pero la venta sigue guardada en este dispositivo. Inicia sesión de nuevo para enviarla.', totalMinor: 5000, changeMinor: 0 }
 const failedToSave: SaleResultView = { kind: 'failed-to-save', message: 'No pudimos guardar esta venta en el dispositivo. Anótala aparte y conserva el carrito hasta tener internet.' }
 const blocked: SaleResultView = { kind: 'blocked', message: 'La venta está vacía. Agrega un producto para poder cobrar.' }
 
@@ -67,7 +67,7 @@ describe('SaleResult — cada pantalla tiene UN botón principal', () => {
 describe('SaleResult — venta cobrada', () => {
   it('título de hecho, total y cambio grandes con dinero exacto', () => {
     const wrapper = mountResult(success)
-    expect(heading(wrapper)).toBe('Venta registrada')
+    expect(heading(wrapper)).toBe('Venta guardada ✓')
     expect(wrapper.get('.sale-result__total').text()).toContain('$250.00')
     expect(wrapper.get('.sale-result__change').text()).toContain('$50.00')
     expect(wrapper.get('.sale-result__change').text()).toContain('Cambio a entregar')
@@ -76,9 +76,26 @@ describe('SaleResult — venta cobrada', () => {
   })
 
   it('sin cambio lo dice con palabras', () => {
-    const wrapper = mountResult({ kind: 'success', totalMinor: 12550, changeMinor: 0 })
+    const wrapper = mountResult({ kind: 'success', paymentMethod: 'EFECTIVO', totalMinor: 12550, changeMinor: 0 })
     expect(wrapper.get('.sale-result__change').text()).toContain('Sin cambio')
     expect(wrapper.get('.sale-result__change').text()).not.toContain('$0.00')
+    wrapper.unmount()
+  })
+
+  it('dice el método usado', () => {
+    const wrapper = mountResult(success)
+    expect(wrapper.get('.sale-result__method').text()).toBe('Pago: Efectivo')
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['TRANSFERENCIA', 'Pago: Transferencia'],
+    ['TARJETA', 'Pago: Tarjeta'],
+  ] as const)('con %s no hay cambio y se dice el método', (paymentMethod, text) => {
+    const wrapper = mountResult({ kind: 'success', paymentMethod, totalMinor: 125000, changeMinor: 0 })
+    expect(wrapper.get('.sale-result__method').text()).toBe(text)
+    expect(wrapper.find('.sale-result__change').exists()).toBe(false)
+    expect(wrapper.get('.sale-result__total').text()).toContain('$1,250.00')
     wrapper.unmount()
   })
 
@@ -90,10 +107,10 @@ describe('SaleResult — venta cobrada', () => {
 })
 
 describe('SaleResult — guardada sin señal', () => {
-  it('se siente como éxito: "Listo, ya quedó" con el mensaje de que se manda sola', () => {
+  it('se siente como éxito: "Venta guardada ✓" con el mensaje de que se manda sola', () => {
     const wrapper = mountResult(saved)
-    expect(heading(wrapper)).toBe('Listo, ya quedó')
-    expect(wrapper.text()).toContain('Sin señal, pero tu venta está guardada y se manda sola cuando haya internet.')
+    expect(heading(wrapper)).toBe('Venta guardada ✓')
+    expect(wrapper.text()).toContain('Sin conexión: tu venta quedó guardada aquí y se sincronizará sola cuando haya internet.')
     expect(wrapper.get('.sale-result__total').text()).toContain('$199.90')
     expect(wrapper.get('.sale-result__change').text()).toContain('$0.10')
     expect(wrapper.text()).not.toMatch(/error|falló|no se pudo/i)
@@ -111,7 +128,7 @@ describe('SaleResult — conflicto (NUNCA como éxito)', () => {
     expect(wrapper.get('.sale-result__icon').text()).not.toBe('✓')
     expect(wrapper.find('.sale-result__total').exists()).toBe(false)
     expect(wrapper.find('.sale-result__change').exists()).toBe(false)
-    expect(wrapper.text()).not.toMatch(/Venta registrada|Listo, ya quedó/)
+    expect(wrapper.text()).not.toMatch(/Venta guardada/)
     wrapper.unmount()
   })
 

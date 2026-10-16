@@ -28,14 +28,23 @@
     >
       <p class="sale-result__total">
         <span class="sale-result__label">{{ VOICE.saleResult.totalLabel }}</span>
-        <span class="sale-result__number">${{ minorToDisplay(amounts.totalMinor) }}</span>
+        <span class="sale-result__number">{{ formatMinorMoney(amounts.totalMinor) }}</span>
       </p>
-      <p class="sale-result__change">
+      <p
+        v-if="amounts.paymentMethod"
+        class="sale-result__method"
+      >
+        {{ VOICE.saleResult.methodUsed(paymentMethodLabel(amounts.paymentMethod)) }}
+      </p>
+      <p
+        v-if="amounts.paymentMethod === 'EFECTIVO'"
+        class="sale-result__change"
+      >
         <span class="sale-result__label">{{ amounts.changeMinor > 0 ? VOICE.saleResult.changeLabel : VOICE.saleResult.noChange }}</span>
         <span
           v-if="amounts.changeMinor > 0"
           class="sale-result__number sale-result__number--change"
-        >${{ minorToDisplay(amounts.changeMinor) }}</span>
+        >{{ formatMinorMoney(amounts.changeMinor) }}</span>
       </p>
     </div>
 
@@ -46,11 +55,11 @@
     >
       <p class="sale-result__total">
         <span class="sale-result__label">{{ VOICE.saleResult.totalLabel }}</span>
-        <span class="sale-result__number">${{ minorToDisplay(result.totalMinor) }}</span>
+        <span class="sale-result__number">{{ formatMinorMoney(result.totalMinor) }}</span>
       </p>
       <p class="sale-result__change">
         <span class="sale-result__label">{{ VOICE.saleResult.pendingLabel }}</span>
-        <span class="sale-result__number sale-result__number--change">${{ minorToDisplay(result.pendingMinor) }}</span>
+        <span class="sale-result__number sale-result__number--change">{{ formatMinorMoney(result.pendingMinor) }}</span>
       </p>
     </div>
 
@@ -76,7 +85,7 @@
       v-if="(result.kind === 'debt-registered' || result.kind === 'debt-saved-offline') && result.initialAbonoMinor > 0"
       class="sale-result__summary"
     >
-      {{ result.kind === 'debt-saved-offline' ? 'Abono inicial guardado' : VOICE.saleResult.initialAbonoLabel }}: ${{ minorToDisplay(result.initialAbonoMinor) }}.
+      {{ result.kind === 'debt-saved-offline' ? 'Abono inicial guardado' : VOICE.saleResult.initialAbonoLabel }}: {{ formatMinorMoney(result.initialAbonoMinor) }} ({{ paymentMethodLabel(result.paymentMethod) }}).
     </p>
 
     <!-- El motivo técnico del servidor es solo un detalle para el socio -->
@@ -116,7 +125,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { minorToDisplay } from '@/utils/money'
+import { formatMinorMoney } from '@/utils/money'
+import { paymentMethodLabel } from '@/utils/payment-method'
 import { VOICE } from '@/config/voice'
 import type { SaleResultView } from '@/types/sale-result.types'
 import AppButton from '../atoms/AppButton.vue'
@@ -171,7 +181,7 @@ const TITLES: Record<SaleResultView['kind'], string> = {
   'auth-needed': VOICE.saleResult.authNeededTitle,
   'failed-to-save': VOICE.saleResult.failedToSaveTitle,
   blocked: VOICE.saleResult.blockedTitle,
-  'debt-saved-offline': VOICE.saleResult.savedTitle,
+  'debt-saved-offline': VOICE.saleResult.debtSavedTitle,
   'debt-registered': VOICE.saleResult.debtTitle,
 }
 const title = computed(() => TITLES[props.result.kind])
@@ -194,9 +204,9 @@ const showsAmounts = computed(() =>
 const amounts = computed(() => {
   const result = props.result
   if (result.kind === 'success' || result.kind === 'saved-offline' || result.kind === 'auth-needed') {
-    return { totalMinor: result.totalMinor, changeMinor: result.changeMinor }
+    return { totalMinor: result.totalMinor, changeMinor: result.changeMinor, paymentMethod: result.paymentMethod }
   }
-  return { totalMinor: 0, changeMinor: 0 }
+  return { totalMinor: 0, changeMinor: 0, paymentMethod: null }
 })
 
 const primaryLabel = computed(() => {
@@ -310,8 +320,9 @@ const secondary = computed<{ label: string; event: 'new-sale' | 'back' } | null>
   border-radius: var(--radius-lg);
 }
 .sale-result__label { font-size: var(--font-size-md); font-weight: 700; color: var(--color-text-muted); }
-.sale-result__number { font-family: var(--font-display); font-size: 3rem; font-weight: 800; line-height: 1.05; color: var(--color-text); }
-.sale-result__number--change { color: var(--result-color); font-size: 3.5rem; }
+.sale-result__method { margin: 0; font-size: var(--font-size-lg); font-weight: 700; color: var(--color-text); }
+.sale-result__number { font-family: var(--font-display); font-size: clamp(1.75rem, 11vw, 3rem); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; font-weight: 800; line-height: 1.05; color: var(--color-text); }
+.sale-result__number--change { color: var(--result-color); font-size: clamp(2rem, 12vw, 3.5rem); }
 
 .sale-result__body { margin: 0; font-size: var(--font-size-lg); line-height: 1.5; color: var(--color-text); }
 .sale-result__body--action { font-weight: 700; }

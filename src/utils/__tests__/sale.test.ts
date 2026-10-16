@@ -146,7 +146,7 @@ describe('buildSalePayload', () => {
 
 describe('buildSalePayload — método de pago', () => {
   const lines = [{ productId: P1, quantity: 1 }]
-  const { cashReceivedMinor: _cash, ...baseNoCash } = base
+  const baseNoCash = { id: base.id, memberId: base.memberId, deviceId: base.deviceId, occurredAt: base.occurredAt }
 
   it('EFECTIVO: manda el método y el efectivo recibido', () => {
     const payload = buildSalePayload({ ...base, paymentMethod: 'EFECTIVO', lines })

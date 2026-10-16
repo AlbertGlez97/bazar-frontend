@@ -52,11 +52,10 @@
       </option>
     </AppSelect>
 
-    <CashInput
+    <AmountInput
       :id="`${idPrefix}-amount`"
       :model-value="modelValue.amount"
       label="Importe"
-      :show-pad="false"
       :disabled="disabled"
       @update:model-value="patch({ amount: $event })"
     />
@@ -128,7 +127,7 @@ import { computed } from 'vue'
 import AppInput from '../molecules/AppInput.vue'
 import AppSelect from '../molecules/AppSelect.vue'
 import AppTextarea from '../molecules/AppTextarea.vue'
-import CashInput from '../molecules/CashInput.vue'
+import AmountInput from '../molecules/AmountInput.vue'
 import {
   CATEGORY_LABELS,
   FUNDS_SOURCE_LABELS,

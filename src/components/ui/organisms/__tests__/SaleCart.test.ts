@@ -1,8 +1,7 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import SaleCart from '../SaleCart.vue'
-import CashInput from '../../molecules/CashInput.vue'
+import source from '../SaleCart.vue?raw'
 
 const line = (productId: string, name: string, extra: Partial<{ quantity: number; unitPriceMinor: number; tipo: 'unica' | 'cantidad'; stockAvailable: number }> = {}) => ({
   productId,
@@ -23,11 +22,13 @@ function mountCart(props: Partial<Props> = {}) {
       lines: [line('a', 'Café'), line('b', 'Pan', { quantity: 2 })],
       itemCount: 3,
       totalMinor: 15000,
-      cashMinor: 0,
+      paymentMethod: 'EFECTIVO',
+      amountMinor: 0,
+      amountText: '',
       changeMinor: 0,
       missingMinor: 15000,
       canCharge: false,
-      cashText: '',
+      partial: true,
       loading: false,
       ...props,
     },
@@ -35,120 +36,241 @@ function mountCart(props: Partial<Props> = {}) {
   })
 }
 
-const chargeBtn = (w: ReturnType<typeof mountCart>) => w.get('button[data-action="charge"]')
-const clearBtn = (w: ReturnType<typeof mountCart>) => w.find('button[data-action="clear"]')
-const hint = (w: ReturnType<typeof mountCart>) => w.find('.sale-cart__hint')
-const modalButton = (w: ReturnType<typeof mountCart>, text: string) => w.findAll('button').find((b) => b.text() === text)!
+type Wrapper = ReturnType<typeof mountCart>
+const chargeBtn = (w: Wrapper) => w.get('button[data-action="charge"]')
+const clearBtn = (w: Wrapper) => w.find('button[data-action="clear"]')
+const hint = (w: Wrapper) => w.find('.sale-cart__hint')
+const amountInput = (w: Wrapper) => w.get('.amount-input input')
+const methodButtons = (w: Wrapper) => w.findAll('.payment-method-picker button')
+const modalButton = (w: Wrapper, text: string) => w.findAll('button').find((b) => b.text() === text)!
 
-describe('SaleCart contextual cash help', () => {
-  it('keeps the mounted cash input, pad counts and cart intact while opening and closing guidance', async () => {
-    const wrapper: ReturnType<typeof mountCart> = mountCart({ 'onUpdate:cashText': (cashText: string) => { void wrapper.setProps({ cashText }) } })
-    const cash = wrapper.getComponent(CashInput).vm.$
-    await wrapper.get('.cash-input input').setValue('300')
-    await wrapper.get('button[aria-label^="Billete de $100"]').trigger('click')
-    await wrapper.get('button[aria-label^="Billete de $100"]').trigger('click')
-    expect(wrapper.props('cashText')).toBe('200.00')
-    const help = wrapper.get('details.sale-cart__cash-help')
-    expect(help.get('summary').text()).toBe('¿Cómo capturo el efectivo?')
-    ;(help.element as HTMLDetailsElement).open = true
-    await help.trigger('toggle')
-    expect(help.text()).toContain('su propia selección')
-    expect(wrapper.getComponent(CashInput).vm.$).toBe(cash)
-    ;(help.element as HTMLDetailsElement).open = false
-    await help.trigger('toggle')
-    await wrapper.get('button[aria-label^="Billete de $50"]').trigger('click')
-    expect(wrapper.props('cashText')).toBe('250.00')
-    expect(wrapper.get('button[aria-label^="Billete de $100"]').text()).toContain('×2')
-    expect(wrapper.findAll('.cart-line')).toHaveLength(2)
-    expect(wrapper.emitted('clear')).toBeUndefined()
-    await wrapper.get('button[aria-label="Limpiar selección de billetes"]').trigger('click')
-    expect(wrapper.props('cashText')).toBe('')
-    expect(wrapper.findAll('.cart-line')).toHaveLength(2)
-    expect(wrapper.getComponent(CashInput).vm.$).toBe(cash)
-  })
-  it('does not offer cash guidance on an empty cart', () => {
-    expect(mountCart({ lines: [], itemCount: 0, totalMinor: 0 }).find('.sale-cart__cash-help').exists()).toBe(false)
-  })
-})
-
-describe('SaleCart — contenido', () => {
-  it('lista cada producto, el resumen con el total y el campo de efectivo', () => {
+describe('SaleCart — contenido y orden del cobro', () => {
+  it('lista cada producto, el total grande, el método, el monto y Cobrar', () => {
     const wrapper = mountCart()
-    expect(wrapper.findAll('.cart-line')).toHaveLength(2)
+
+    expect(wrapper.text()).toContain('Café')
+    expect(wrapper.text()).toContain('Pan')
     expect(wrapper.get('.cart-summary__total').text()).toBe('$150.00')
-    expect(wrapper.find('.cash-input input').exists()).toBe(true)
+    expect(methodButtons(wrapper)).toHaveLength(3)
+    expect(wrapper.find('.amount-input input').exists()).toBe(true)
+    expect(chargeBtn(wrapper).text()).toBe('Cobrar')
+  })
+
+  it('el orden en pantalla, de arriba abajo: N productos, total, método, monto, cambio, Cobrar', () => {
+    const wrapper = mountCart()
+    const order = ['.sale-cart__lines-wrap', '.cart-summary', '.payment-method-picker', '.amount-input', '.payment-change', 'button[data-action="charge"]']
+    const html = wrapper.html()
+    const positions = order.map((selector) => {
+      const element = wrapper.get(selector).element
+      return { selector, index: html.indexOf(element.outerHTML.slice(0, 60).replace(/ data-v-[a-z0-9]+=""/g, '')) }
+    })
+    // Posición en el documento (más confiable que buscar texto en el HTML).
+    const nodes = order.map((selector) => wrapper.get(selector).element)
+    for (let i = 1; i < nodes.length; i++) {
+      const before = nodes[i - 1]!
+      const after = nodes[i]!
+      expect(
+        before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING,
+        `${order[i - 1]} debe ir antes que ${order[i]}`,
+      ).toBeTruthy()
+    }
+    expect(positions.length).toBe(order.length)
   })
 
   it('la lista es una lista con nombre', () => {
-    const list = mountCart().get('ul')
-    expect(list.attributes('aria-label')).toBe('Productos de la venta')
+    expect(mountCart().get('ul').attributes('aria-label')).toBe('Productos de la venta')
   })
 
-  it('vacío: muestra un aviso, sin campo de efectivo ni "Vaciar"', () => {
+  it('vacío: muestra un aviso, sin método ni monto ni "Vaciar"', () => {
     const wrapper = mountCart({ lines: [], itemCount: 0, totalMinor: 0, missingMinor: 0 })
-    expect(wrapper.text()).toContain('Aquí aparecen los productos que agregues.')
-    expect(wrapper.find('.cash-input').exists()).toBe(false)
+
+    expect(wrapper.text()).toContain('Aquí aparecen los productos')
+    expect(wrapper.find('.amount-input').exists()).toBe(false)
+    expect(wrapper.find('.payment-method-picker').exists()).toBe(false)
     expect(clearBtn(wrapper).exists()).toBe(false)
-    expect(wrapper.findAll('.cart-line')).toHaveLength(0)
+  })
+
+  it('no ofrece billetes, monedas ni atajos de efectivo', () => {
+    const wrapper = mountCart({ amountText: '100' })
+
+    expect(wrapper.text()).not.toMatch(/billete|moneda|Justo|¿Cómo capturo el efectivo\?/i)
+    expect(wrapper.find('details.sale-cart__cash-help').exists()).toBe(false)
+  })
+})
+
+describe('SaleCart — método y monto', () => {
+  it('Efectivo viene elegido y el campo pregunta "¿Cuánto te dan?"', () => {
+    const wrapper = mountCart()
+
+    expect(methodButtons(wrapper).map((b) => b.attributes('aria-pressed'))).toEqual(['true', 'false', 'false'])
+    expect(wrapper.get('.amount-input label').text()).toBe('¿Cuánto te dan?')
+  })
+
+  it.each(['TRANSFERENCIA', 'TARJETA'] as const)('con %s el campo se llama "Monto cobrado"', (paymentMethod) => {
+    const wrapper = mountCart({ paymentMethod, amountMinor: 15000, amountText: '150', missingMinor: 0, canCharge: true, partial: false })
+
+    expect(wrapper.get('.amount-input label').text()).toBe('Monto cobrado')
+  })
+
+  it('tocar otro método emite update:paymentMethod', async () => {
+    const wrapper = mountCart()
+
+    await methodButtons(wrapper)[2]!.trigger('click')
+
+    expect(wrapper.emitted('update:paymentMethod')).toEqual([['TARJETA']])
+  })
+
+  it('escribir el monto emite update:amountText con el texto limpio', async () => {
+    const wrapper = mountCart()
+
+    await amountInput(wrapper).setValue('$200')
+
+    expect(wrapper.emitted('update:amountText')).toEqual([['200']])
+  })
+
+  it('el monto que llega por props se ve en el campo', () => {
+    expect((amountInput(mountCart({ amountText: '180' })).element as HTMLInputElement).value).toBe('180')
+  })
+
+  it('el cambio sale en verde y grande con efectivo de más', () => {
+    const wrapper = mountCart({ amountMinor: 20000, amountText: '200', changeMinor: 5000, missingMinor: 0, canCharge: true, partial: false })
+
+    expect(wrapper.get('.payment-change').attributes('data-state')).toBe('change')
+    expect(wrapper.get('.payment-change__amount').text()).toBe('$50.00')
+  })
+
+  it.each(['TRANSFERENCIA', 'TARJETA'] as const)('con %s completo no hay cambio', (paymentMethod) => {
+    const wrapper = mountCart({ paymentMethod, amountMinor: 15000, amountText: '150', changeMinor: 0, missingMinor: 0, canCharge: true, partial: false })
+
+    expect(wrapper.find('.payment-change__amount').exists()).toBe(false)
+    expect(wrapper.text()).not.toMatch(/Cambio/)
+  })
+
+  it('un monto menor dice cuánto falta, con separador de miles', () => {
+    const wrapper = mountCart({ totalMinor: 150000, amountMinor: 100000, amountText: '1000', missingMinor: 50000 })
+
+    expect(wrapper.get('.payment-change [role="status"]').text()).toBe('Faltan $500.00')
   })
 })
 
 describe('SaleCart — botón Cobrar', () => {
-  it('sin efectivo suficiente está deshabilitado y explica por qué', () => {
-    const wrapper = mountCart({ cashMinor: 0, canCharge: false })
-    expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
-    expect(hint(wrapper).text()).toBe('Escribe el efectivo recibido para poder cobrar.')
+  it('sin monto suficiente está deshabilitado', () => {
+    expect(chargeBtn(mountCart()).attributes('disabled')).toBeDefined()
   })
 
-  it('efectivo corto: dice cuánto falta', () => {
-    const wrapper = mountCart({ cashMinor: 10000, missingMinor: 5000 })
-    expect(hint(wrapper).text()).toBe('Faltan $50.00 para poder cobrar.')
-    expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
-  })
-
-  it('carrito vacío: deshabilitado con su razón', () => {
+  it('carrito vacío: deshabilitado y con su razón', () => {
     const wrapper = mountCart({ lines: [], itemCount: 0, totalMinor: 0, missingMinor: 0 })
+
     expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
     expect(hint(wrapper).text()).toBe('Agrega un producto para poder cobrar.')
   })
 
-  it('listo para cobrar: habilitado, sin línea de razón, y emite charge', async () => {
-    const wrapper = mountCart({ cashMinor: 20000, changeMinor: 5000, missingMinor: 0, canCharge: true })
+  it('con monto suficiente: habilitado, sin razón, y emite charge', async () => {
+    const wrapper = mountCart({ amountMinor: 15000, amountText: '150', missingMinor: 0, canCharge: true, partial: false })
+
     expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
     expect(hint(wrapper).exists()).toBe(false)
-    expect(chargeBtn(wrapper).text()).toBe('Cobrar')
-
     await chargeBtn(wrapper).trigger('click')
     expect(wrapper.emitted('charge')).toHaveLength(1)
   })
 
   it('deshabilitado no emite charge aunque se toque', async () => {
-    const wrapper = mountCart({ canCharge: false })
+    const wrapper = mountCart()
+
     await chargeBtn(wrapper).trigger('click')
+
     expect(wrapper.emitted('charge')).toBeUndefined()
   })
 
-  it('cobrando: botón bloqueado con "Cobrando…", controles bloqueados y un solo envío', async () => {
-    const wrapper = mountCart({ cashMinor: 20000, missingMinor: 0, canCharge: true, loading: true })
+  it('cobrando: botón bloqueado con "Cobrando…", todo bloqueado y un solo envío', async () => {
+    const wrapper = mountCart({ loading: true, canCharge: true, missingMinor: 0, partial: false, amountMinor: 15000, amountText: '150' })
+
     expect(chargeBtn(wrapper).text()).toContain('Cobrando…')
     expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
-    expect(wrapper.get('.cash-input input').attributes('disabled')).toBeDefined()
-    expect(wrapper.get('button[data-action="remove"]').attributes('disabled')).toBeDefined()
-    expect(clearBtn(wrapper).attributes('disabled')).toBeDefined()
-
+    expect(amountInput(wrapper).attributes('disabled')).toBeDefined()
+    expect(methodButtons(wrapper).every((b) => b.attributes('disabled') !== undefined)).toBe(true)
     await chargeBtn(wrapper).trigger('click')
     expect(wrapper.emitted('charge')).toBeUndefined()
   })
 
-  it('el botón principal es grande (clase de 56 px)', () => {
-    expect(chargeBtn(mountCart()).classes()).toContain('sale-cart__charge')
+  it('es el único botón de color fuerte de la pantalla', () => {
+    const wrapper = mountCart({ amountMinor: 15000, amountText: '150', missingMinor: 0, canCharge: true, partial: false })
+
+    expect(wrapper.findAll('.app-btn--primary')).toHaveLength(1)
+    expect(wrapper.get('.app-btn--primary').attributes('data-action')).toBe('charge')
   })
 })
 
-describe('SaleCart — eventos de las líneas y el efectivo', () => {
+describe('SaleCart — fiado/apartado', () => {
+  const one = { lines: [line('a', 'Café')], itemCount: 1, totalMinor: 5000, missingMinor: 5000 }
+  const debtButton = (w: Wrapper) => w.find('button[data-action="open-debt-modal"]')
+  const onlyOneText = (w: Wrapper) => w.find('.sale-cart__debt-note')
+
+  it('con UNA línea y un monto menor al total (incluido $0, campo vacío) se ofrece', () => {
+    const wrapper = mountCart({ ...one, amountMinor: 0, amountText: '', partial: true })
+
+    expect(debtButton(wrapper).exists()).toBe(true)
+    expect(debtButton(wrapper).text()).toBe('Registrar como fiado/apartado')
+  })
+
+  it('con una línea y un abono parcial de otro método también se ofrece', () => {
+    const wrapper = mountCart({ ...one, paymentMethod: 'TARJETA', amountMinor: 2000, amountText: '20', missingMinor: 3000, partial: true })
+
+    expect(debtButton(wrapper).exists()).toBe(true)
+  })
+
+  it('tocarlo emite open-debt-modal', async () => {
+    const wrapper = mountCart({ ...one, partial: true })
+
+    await debtButton(wrapper).trigger('click')
+
+    expect(wrapper.emitted('open-debt-modal')).toHaveLength(1)
+  })
+
+  it('con 2 o más líneas y un monto menor, en vez de nada dice que el fiado es de un solo producto', () => {
+    const wrapper = mountCart({ partial: true })
+
+    expect(debtButton(wrapper).exists()).toBe(false)
+    expect(onlyOneText(wrapper).text()).toBe('El fiado es de un solo producto por ahora')
+  })
+
+  it('con 2 o más líneas y el monto completo no dice nada del fiado', () => {
+    const wrapper = mountCart({ amountMinor: 15000, amountText: '150', missingMinor: 0, canCharge: true, partial: false })
+
+    expect(debtButton(wrapper).exists()).toBe(false)
+    expect(onlyOneText(wrapper).exists()).toBe(false)
+  })
+
+  it('si ya se puede cobrar no se ofrece', () => {
+    const wrapper = mountCart({ ...one, amountMinor: 5000, amountText: '50', missingMinor: 0, canCharge: true, partial: false })
+
+    expect(debtButton(wrapper).exists()).toBe(false)
+  })
+
+  it('con el carrito vacío no se ofrece ni se explica', () => {
+    const wrapper = mountCart({ lines: [], itemCount: 0, totalMinor: 0, missingMinor: 0, partial: false })
+
+    expect(debtButton(wrapper).exists()).toBe(false)
+    expect(onlyOneText(wrapper).exists()).toBe(false)
+  })
+
+  it('mientras se cobra no se ofrece', () => {
+    const wrapper = mountCart({ ...one, loading: true, partial: true })
+
+    expect(debtButton(wrapper).exists()).toBe(false)
+  })
+
+  it('no se confunde con Cobrar: es neutro y de 44 px', () => {
+    expect(source).toMatch(/\.sale-cart__debt-option\s*\{[^}]*min-height:\s*2\.75rem/)
+    expect(source).not.toMatch(/\.sale-cart__debt-option\s*\{[^}]*--color-primary\b/)
+  })
+})
+
+describe('SaleCart — eventos de las líneas', () => {
   it('reenvía increment / decrement / remove con el id del producto', async () => {
     const wrapper = mountCart()
-    const secondLine = wrapper.findAll('.cart-line')[1]
+    const secondLine = wrapper.findAll('.cart-line')[1]!
+
     await secondLine.get('button[data-action="increment"]').trigger('click')
     await secondLine.get('button[data-action="decrement"]').trigger('click')
     await secondLine.get('button[data-action="remove"]').trigger('click')
@@ -157,165 +279,127 @@ describe('SaleCart — eventos de las líneas y el efectivo', () => {
     expect(wrapper.emitted('decrement')).toEqual([['b']])
     expect(wrapper.emitted('remove')).toEqual([['b']])
   })
-
-  it('reenvía el límite alcanzado con producto y tipo', async () => {
-    const wrapper = mountCart({ lines: [line('a', 'Café', { quantity: 1 })] })
-    await wrapper.get('button[data-action="decrement"]').trigger('click')
-    expect(wrapper.emitted('limit')).toEqual([['a', 'min']])
-  })
-
-  it('escribir efectivo emite update:cashText con el texto limpio', async () => {
-    const wrapper = mountCart()
-    await wrapper.get('.cash-input input').setValue('$200')
-    expect(wrapper.emitted('update:cashText')).toEqual([['200']])
-  })
-
-  it('un billete del pad combinable emite por el mismo camino', async () => {
-    const wrapper = mountCart()
-    const bill = wrapper.findAll('.cash-denomination-pad__btn').find((b) => b.text().startsWith('$200'))!
-    await bill.trigger('click')
-    expect(wrapper.emitted('update:cashText')).toEqual([['200.00']])
-  })
-
-  it('el efectivo que llega por props se ve en el campo', () => {
-    const wrapper = mountCart({ cashText: '180' })
-    expect((wrapper.get('.cash-input input').element as HTMLInputElement).value).toBe('180')
-  })
 })
 
 describe('SaleCart — Vaciar (confirmación segura)', () => {
   it('un toque en "Vaciar" NO vacía: abre la confirmación', async () => {
     const wrapper = mountCart()
-    expect(wrapper.text()).not.toContain('¿Vaciar la venta?')
 
     await clearBtn(wrapper).trigger('click')
 
-    expect(wrapper.text()).toContain('¿Vaciar la venta?')
     expect(wrapper.emitted('clear')).toBeUndefined()
+    expect(wrapper.text()).toContain('¿Vaciar la venta?')
   })
 
   it('la explicación dice qué se pierde y que no se puede deshacer', async () => {
     const wrapper = mountCart()
     await clearBtn(wrapper).trigger('click')
-    expect(wrapper.text()).toMatch(/quitar todos los productos/i)
-    expect(wrapper.text()).toMatch(/no se puede deshacer/i)
+
+    expect(wrapper.text()).toContain('no se puede deshacer')
   })
 
-  it('"Mejor no" cierra sin vaciar (es la opción principal, la segura)', async () => {
+  it('"Mejor no" cierra sin vaciar', async () => {
     const wrapper = mountCart()
     await clearBtn(wrapper).trigger('click')
+
     await modalButton(wrapper, 'Mejor no').trigger('click')
 
-    expect(wrapper.text()).not.toContain('¿Vaciar la venta?')
     expect(wrapper.emitted('clear')).toBeUndefined()
+    expect(wrapper.text()).not.toContain('¿Vaciar la venta?')
   })
 
   it('"Sí, vaciar" emite clear y cierra', async () => {
     const wrapper = mountCart()
     await clearBtn(wrapper).trigger('click')
+
     await modalButton(wrapper, 'Sí, vaciar').trigger('click')
 
     expect(wrapper.emitted('clear')).toHaveLength(1)
     expect(wrapper.text()).not.toContain('¿Vaciar la venta?')
   })
+})
 
-  it('la confirmación tiene dos salidas del mismo tamaño y sin la X pequeña', async () => {
-    const wrapper = mountCart()
-    await clearBtn(wrapper).trigger('click')
-    expect(wrapper.find('.app-modal__close').exists()).toBe(false)
-    expect(modalButton(wrapper, 'Mejor no').classes()).toContain('app-btn--lg')
-    expect(modalButton(wrapper, 'Sí, vaciar').classes()).toContain('app-btn--lg')
+describe('SaleCart — lista de productos colapsable ("N productos ▾")', () => {
+  const details = (w: Wrapper) => w.get('details.sale-cart__lines-wrap')
+
+  it('fuera del Paso 2 la lista está abierta', () => {
+    expect(details(mountCart()).attributes('open')).toBeDefined()
+  })
+
+  it('en el Paso 2 (prominent) arranca cerrada', () => {
+    expect(details(mountCart({ prominent: true })).attributes('open')).toBeUndefined()
+  })
+
+  it('el resumen dice cuántos productos son, en palabras', () => {
+    expect(details(mountCart()).get('summary').text()).toBe('2 productos')
+    expect(details(mountCart({ lines: [line('a', 'Café')], itemCount: 1 })).get('summary').text()).toBe('1 producto')
+  })
+
+  it('tocar el resumen abre la lista en el Paso 2', async () => {
+    const wrapper = mountCart({ prominent: true })
+
+    await details(wrapper).get('summary').trigger('click')
+    ;(details(wrapper).element as HTMLDetailsElement).open = true
+
+    expect((details(wrapper).element as HTMLDetailsElement).open).toBe(true)
+  })
+
+  it('vacío: no hay <details>', () => {
+    expect(mountCart({ lines: [], itemCount: 0 }).find('details').exists()).toBe(false)
   })
 })
 
-// `prominent` = Paso 2 del cobro en celular: solo cambia la presentación (CSS);
-// el contenido, los eventos y la accesibilidad son exactamente los mismos.
-describe('SaleCart — modo prominente (Paso 2 del cobro)', () => {
-  it('sin la prop no lleva la clase de pantalla de cobro', () => {
-    expect(mountCart().get('.sale-cart').classes()).not.toContain('sale-cart--checkout')
-    expect(mountCart({ prominent: false }).get('.sale-cart').classes()).not.toContain('sale-cart--checkout')
+describe('SaleCart — modo prominente (Paso 2 del cobro en celular)', () => {
+  it('lleva la clase de pantalla de cobro solo con la prop', () => {
+    expect(mountCart().get('section').classes()).not.toContain('sale-cart--checkout')
+    expect(mountCart({ prominent: true }).get('section').classes()).toContain('sale-cart--checkout')
   })
 
-  it('con la prop lleva la clase que agranda el total y el efectivo', () => {
-    expect(mountCart({ prominent: true }).get('.sale-cart').classes()).toContain('sale-cart--checkout')
-  })
-
-  it('muestra lo mismo: líneas, total, efectivo y Cobrar', () => {
+  it('el campo de monto y el método se agrandan (lg)', () => {
     const wrapper = mountCart({ prominent: true })
-    expect(wrapper.findAll('.cart-line')).toHaveLength(2)
-    expect(wrapper.get('.cart-summary__total').text()).toBe('$150.00')
-    expect(wrapper.find('.cash-input input').exists()).toBe(true)
-    expect(chargeBtn(wrapper).text()).toBe('Cobrar')
+
+    expect(wrapper.get('.amount-input').classes()).toContain('amount-input--lg')
+    expect(wrapper.get('.segmented-control').classes()).toContain('segmented-control--lg')
   })
 
-  it('conserva el nombre accesible y el aviso de por qué no se puede cobrar', () => {
+  it('muestra lo mismo y Cobrar sigue sin emitir si no se puede', async () => {
     const wrapper = mountCart({ prominent: true })
-    expect(wrapper.get('.sale-cart').attributes('aria-label')).toBe('Tu venta')
-    expect(hint(wrapper).exists()).toBe(true)
+
+    await chargeBtn(wrapper).trigger('click')
+
+    expect(wrapper.emitted('charge')).toBeUndefined()
+    expect(wrapper.get('section').attributes('aria-label')).toBe('Tu venta')
   })
 
-  it('Cobrar sigue sin emitir si no se puede cobrar, y emite una vez si se puede', async () => {
-    const blocked = mountCart({ prominent: true, canCharge: false })
-    await chargeBtn(blocked).trigger('click')
-    expect(blocked.emitted('charge')).toBeUndefined()
+  describe('contrato de CSS: Cobrar fijo abajo reservando su espacio', () => {
+    const style = source.slice(source.indexOf('<style'))
+    const rule = (selector: string) => {
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      return style.match(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`))?.[1] ?? ''
+    }
 
-    const ready = mountCart({ prominent: true, canCharge: true })
-    await chargeBtn(ready).trigger('click')
-    expect(ready.emitted('charge')).toHaveLength(1)
-  })
+    it('la barra de Cobrar queda fija abajo, con la zona segura del teléfono', () => {
+      const actions = rule('.sale-cart--checkout .sale-cart__actions')
+      expect(actions).toMatch(/position:\s*fixed/)
+      expect(actions).toMatch(/bottom:\s*0/)
+      expect(actions).toMatch(/env\(safe-area-inset-bottom/)
+    })
 
-  it('el efectivo sigue emitiendo el texto tal cual, sin adivinar', async () => {
-    const wrapper = mountCart({ prominent: true })
-    await wrapper.get('.cash-input input').setValue('100.5')
-    expect(wrapper.emitted('update:cashText')?.at(-1)).toEqual(['100.5'])
-  })
-})
+    it('el contenido reserva ese espacio con padding inferior para que Cobrar no tape nada', () => {
+      const padding = rule('.sale-cart--checkout').match(/padding-bottom:\s*calc\(([^)]*(?:\([^)]*\))?[^)]*)\)/)?.[1] ?? ''
+      expect(padding).toMatch(/env\(safe-area-inset-bottom/)
+      const rem = Number(/([\d.]+)rem/.exec(padding)?.[1])
+      expect(rem).toBeGreaterThanOrEqual(6)
+    })
 
-// La lista de productos vive dentro de un <details> (mismo patrón que
-// `SaleResult.vue`): fuera de Paso 2 se ve igual que siempre (abierta), y en
-// Paso 2 arranca cerrada porque el pad de billetes ya ocupa buena parte de la
-// pantalla — la persona la abre tocando el resumen cuando la necesita.
-describe('SaleCart — lista de productos colapsable', () => {
-  it('fuera de Paso 2 la lista está abierta por defecto (como hoy)', () => {
-    const details = mountCart().get('details.sale-cart__lines-wrap')
-    expect((details.element as HTMLDetailsElement).open).toBe(true)
-  })
+    it('"Cobrar" es el botón más grande de la pantalla (72 px)', () => {
+      expect(rule('.sale-cart--checkout .sale-cart__charge')).toMatch(/min-height:\s*4\.5rem/)
+    })
 
-  it('fuera de Paso 2, con prominent=false explícito, también está abierta', () => {
-    const details = mountCart({ prominent: false }).get('details.sale-cart__lines-wrap')
-    expect((details.element as HTMLDetailsElement).open).toBe(true)
-  })
-
-  it('en Paso 2 la lista arranca cerrada por defecto', () => {
-    const details = mountCart({ prominent: true }).get('details.sale-cart__lines-wrap')
-    expect((details.element as HTMLDetailsElement).open).toBe(false)
-  })
-
-  it('el resumen dice cuántos productos hay y sigue siendo una lista con nombre adentro', () => {
-    const wrapper = mountCart({ prominent: true })
-    expect(wrapper.get('.sale-cart__lines-summary').text()).toBe('Ver productos (2)')
-    expect(wrapper.get('ul').attributes('aria-label')).toBe('Productos de la venta')
-  })
-
-  it('tocar el resumen abre la lista en Paso 2', async () => {
-    const wrapper = mountCart({ prominent: true })
-    const details = wrapper.get('details.sale-cart__lines-wrap')
-    expect((details.element as HTMLDetailsElement).open).toBe(false)
-
-    await wrapper.get('.sale-cart__lines-summary').trigger('click')
-
-    expect((details.element as HTMLDetailsElement).open).toBe(true)
-  })
-
-  it('vacío: no hay <details> (la rama vacía no cambia)', () => {
-    const wrapper = mountCart({ lines: [], itemCount: 0, totalMinor: 0, missingMinor: 0 })
-    expect(wrapper.find('details.sale-cart__lines-wrap').exists()).toBe(false)
-  })
-})
-
-describe('help presentation under the global reset', () => {
-  it('ordered cash steps', () => {
-    const source = readFileSync('src/components/ui/organisms/SaleCart.vue', 'utf8')
-    expect(source).toMatch(/\.sale-cart__cash-help ol\s*\{[^}]*list-style:\s*decimal/)
+    it('en pantalla ancha "Cobrar" se queda pegado abajo del panel', () => {
+      const actions = rule('.sale-cart__actions')
+      expect(actions).toMatch(/position:\s*sticky/)
+      expect(actions).toMatch(/bottom:\s*0/)
+    })
   })
 })

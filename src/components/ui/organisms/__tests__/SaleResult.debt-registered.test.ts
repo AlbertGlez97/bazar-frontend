@@ -14,17 +14,17 @@ function mountResult(result: SaleResultView) {
 }
 
 const apartado: SaleResultView = {
-  kind: 'debt-registered', debtType: 'apartado', totalMinor: 5997, pendingMinor: 3997, initialAbonoMinor: 2000,
+  kind: 'debt-registered', debtType: 'apartado', totalMinor: 5997, pendingMinor: 3997, initialAbonoMinor: 2000, paymentMethod: 'EFECTIVO',
 }
 const fiadoSinAbono: SaleResultView = {
-  kind: 'debt-registered', debtType: 'fiado', totalMinor: 5997, pendingMinor: 5997, initialAbonoMinor: 0,
+  kind: 'debt-registered', debtType: 'fiado', totalMinor: 5997, pendingMinor: 5997, initialAbonoMinor: 0, paymentMethod: 'EFECTIVO',
 }
 
 describe('SaleResult — fiado/apartado registrado', () => {
-  it('título propio y NUNCA "Venta registrada"', () => {
+  it('título propio y NUNCA "Venta guardada"', () => {
     const wrapper = mountResult(apartado)
     expect(wrapper.get('h2').text()).toBe('Fiado/apartado registrado')
-    expect(wrapper.text()).not.toContain('Venta registrada')
+    expect(wrapper.text()).not.toContain('Venta guardada')
     wrapper.unmount()
   })
 
@@ -90,7 +90,7 @@ describe('SaleResult — fiado/apartado registrado', () => {
 
 it.each(['fiado', 'apartado'] as const)('shows saved %s balance and initial payment, never cash change', async (debtType) => {
   const wrapper = mountResult({ ...apartado, kind: 'debt-saved-offline', debtType })
-  expect(wrapper.get('h2').text()).toBe('Listo, ya quedó')
+  expect(wrapper.get('h2').text()).toBe('Fiado/apartado guardado ✓')
   expect(wrapper.text()).toContain('se manda solo cuando haya internet')
   expect(wrapper.text()).toContain('Saldo pendiente')
   expect(wrapper.text()).toContain('$39.97')

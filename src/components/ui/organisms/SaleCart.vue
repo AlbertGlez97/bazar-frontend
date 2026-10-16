@@ -1,10 +1,15 @@
 <template>
-  <!-- Organismo: el carrito de la venta completo (líneas, resumen, efectivo y
-       "Cobrar"). Es organismo porque incluye AppModal (confirmación de "Vaciar").
-       Presentacional: no lee stores. Recibe todo calculado en centavos y emite
-       lo que la persona quiere hacer; el contenedor (SaleView) lo conecta.
+  <!-- Organismo: el cobro de la venta completo. Es organismo porque incluye
+       AppModal (confirmación de "Vaciar"). Presentacional: no lee stores.
+       Recibe todo calculado en centavos y emite lo que la persona quiere hacer;
+       el contenedor (SaleView) lo conecta.
+
+       Orden de arriba abajo (igual en celular, tablet y escritorio; solo cambia
+       el espacio): "N productos ▾", total grande, método de pago, monto, cambio y
+       "Cobrar" fijo abajo. "Cobrar" es el ÚNICO botón de color fuerte de la
+       pantalla; el método y el fiado son neutros.
        No existe forma de intentar cobrar algo imposible: "Cobrar" se apaga y
-       una línea de texto dice qué falta. -->
+       el texto de arriba dice qué falta. -->
   <section
     class="sale-cart"
     :class="{ 'sale-cart--checkout': prominent }"
@@ -32,7 +37,7 @@
       :open="!prominent"
     >
       <summary class="sale-cart__lines-summary">
-        Ver productos ({{ lines.length }})
+        {{ VOICE.cobro.itemsToggle(lines.length) }}
       </summary>
       <ul
         class="sale-cart__lines"
@@ -62,45 +67,66 @@
     </p>
 
     <div class="sale-cart__payment">
-      <CartSummary
-        :item-count="itemCount"
-        :total-minor="totalMinor"
-        :cash-minor="cashMinor"
-        :change-minor="changeMinor"
-        :missing-minor="missingMinor"
-      />
+      <CartSummary :total-minor="totalMinor" />
 
-      <CashInput
-        v-if="lines.length > 0"
-        :model-value="cashText"
-        :total-minor="totalMinor"
-        :disabled="loading"
-        @update:model-value="emit('update:cashText', $event)"
-      />
+      <template v-if="lines.length > 0">
+        <PaymentMethodPicker
+          :model-value="paymentMethod"
+          :disabled="loading"
+          @update:model-value="emit('update:paymentMethod', $event)"
+        />
 
-      <!-- Inline disclosure never navigates or remounts the locally stateful input. -->
-      <details
-        v-if="lines.length > 0"
-        class="sale-cart__cash-help"
+        <AmountInput
+          :model-value="amountText"
+          :label="amountLabel"
+          :size="prominent ? 'lg' : 'md'"
+          :disabled="loading"
+          @update:model-value="emit('update:amountText', $event)"
+        />
+
+        <PaymentChange
+          :payment-method="paymentMethod"
+          :item-count="itemCount"
+          :total-minor="totalMinor"
+          :amount-minor="amountMinor"
+          :change-minor="changeMinor"
+          :missing-minor="missingMinor"
+        />
+      </template>
+
+      <!-- La razón por la que no se puede cobrar, en texto: nunca un botón mudo.
+           Con productos en el carrito esa razón la dice el cambio de arriba. -->
+      <p
+        v-if="hint && !loading"
+        class="sale-cart__hint"
       >
-        <summary>¿Cómo capturo el efectivo?</summary>
-        <p>{{ CASH_HELP.intro }}</p>
-        <ol>
-          <li
-            v-for="step in CASH_HELP.steps"
-            :key="step"
-          >
-            {{ step }}
-          </li>
-        </ol>
-        <p
-          v-for="tip in CASH_HELP.tips"
-          :key="tip"
-        >
-          {{ tip }}
-        </p>
-      </details>
+        {{ hint }}
+      </p>
 
+      <!-- Fiado/apartado: solo con UNA línea y un monto menor al total (incluido
+           $0, el campo vacío). La Deuda es de un solo producto, nunca un carrito:
+           con 2 o más se explica en una línea en vez de no mostrar nada. -->
+      <button
+        v-if="canRegisterDebt"
+        type="button"
+        class="sale-cart__debt-option"
+        data-action="open-debt-modal"
+        @click="emit('open-debt-modal')"
+      >
+        {{ VOICE.deuda.offerTitle }}
+      </button>
+      <p
+        v-else-if="showDebtOnlyOne"
+        class="sale-cart__debt-note"
+      >
+        {{ VOICE.cobro.debtOnlyOne }}
+      </p>
+    </div>
+
+    <!-- "Cobrar": fijo abajo. En el celular (Paso 2) reserva su espacio con un
+         padding inferior para no tapar nada; en pantalla ancha se pega al borde
+         del panel. -->
+    <div class="sale-cart__actions">
       <AppButton
         variant="primary"
         size="xl"
@@ -115,33 +141,12 @@
             class="sale-cart__spinner"
             aria-hidden="true"
           />
-          Cobrando…
+          {{ VOICE.cobro.charging }}
         </template>
         <template v-else>
-          Cobrar
+          {{ VOICE.cobro.charge }}
         </template>
       </AppButton>
-
-      <!-- La razón por la que no se puede cobrar, en texto: nunca un botón mudo -->
-      <p
-        v-if="hint && !loading"
-        class="sale-cart__hint"
-      >
-        {{ hint }}
-      </p>
-
-      <!-- D3: solo con UNA línea y efectivo insuficiente (nunca por carrito
-           vacío ni por un efectivo ambiguo) — el contrato de Deuda es de un
-           solo producto/cantidad, nunca un carrito. -->
-      <button
-        v-if="canRegisterDebt"
-        type="button"
-        class="sale-cart__debt-option"
-        data-action="open-debt-modal"
-        @click="emit('open-debt-modal')"
-      >
-        {{ VOICE.deuda.offerTitle }}
-      </button>
     </div>
 
     <!-- Vaciar borra el trabajo de un rato: nunca de un solo toque. "Mejor no"
@@ -152,7 +157,7 @@
       size="sm"
       hide-close
     >
-      Vas a quitar todos los productos del carrito y el efectivo que escribiste.
+      Vas a quitar todos los productos del carrito y lo que escribiste.
       Esto no se puede deshacer.
       <template #footer>
         <div class="sale-cart__confirm-actions">
@@ -180,33 +185,43 @@
 import { computed, ref } from 'vue'
 import { VOICE, saleChargeHint } from '@/config/voice'
 import type { CartLineView } from '@/types/cart.types'
+import type { PaymentMethod } from '@/types/payment.types'
+import { isCashPayment } from '@/utils/payment-method'
 import AppButton from '../atoms/AppButton.vue'
+import AmountInput from '../molecules/AmountInput.vue'
 import CartLineItem from '../molecules/CartLineItem.vue'
 import CartSummary from '../molecules/CartSummary.vue'
-import CashInput from '../molecules/CashInput.vue'
+import PaymentChange from '../molecules/PaymentChange.vue'
+import PaymentMethodPicker from '../molecules/PaymentMethodPicker.vue'
 import AppModal from './AppModal.vue'
-import { CASH_HELP } from '@/config/help-content'
 
 const props = defineProps<{
   lines: CartLineView[]
   /** Piezas en total */
   itemCount: number
   totalMinor: number
-  cashMinor: number
+  paymentMethod: PaymentMethod
+  /** Monto ya leído (efectivo recibido, o lo cobrado con transferencia/tarjeta). */
+  amountMinor: number
+  /** Texto del campo de monto (v-model:amountText) */
+  amountText: string
+  /** Cambio a devolver (0 si no es efectivo) */
   changeMinor: number
+  /** Lo que falta para cubrir el total (0 si ya alcanza) */
   missingMinor: number
-  /** Regla del carrito: no vacío y efectivo suficiente */
+  /** Regla del carrito: no vacío y monto suficiente */
   canCharge: boolean
-  /** Texto del campo de efectivo (v-model:cashText) */
-  cashText: string
+  /**
+   * El monto no alcanza el total (incluido $0). Con una sola línea habilita
+   * fiado/apartado. Un monto ambiguo nunca cuenta: ahí falla el texto, no el dinero.
+   */
+  partial: boolean
   /** Cobro en curso: todo se bloquea y el botón dice "Cobrando…" */
   loading: boolean
-  /** El efectivo escrito es ambiguo (§D3): mientras esto sea `true` no se ofrece fiado/apartado. */
-  cashInvalid?: boolean
   /**
-   * Paso 2 del cobro en celular: el total y el campo de efectivo pasan a ser lo
-   * más grande y prominente de la pantalla, arriba; la lista de productos baja y
-   * "Cobrar" queda pegado abajo. Solo cambia la presentación (CSS), no el contenido.
+   * Paso 2 del cobro en celular: la venta entera a pantalla completa, con el
+   * campo de monto y el método más grandes y "Cobrar" fijo abajo. Solo cambia la
+   * presentación (CSS); el contenido y los eventos son los mismos.
    */
   prominent?: boolean
 }>()
@@ -216,7 +231,8 @@ const emit = defineEmits<{
   decrement: [productId: string]
   remove: [productId: string]
   limit: [productId: string, which: 'min' | 'max']
-  'update:cashText': [text: string]
+  'update:paymentMethod': [method: PaymentMethod]
+  'update:amountText': [text: string]
   charge: []
   clear: []
   'open-debt-modal': []
@@ -224,22 +240,17 @@ const emit = defineEmits<{
 
 const confirmOpen = ref(false)
 
-const hint = computed(() => (props.canCharge ? '' : saleChargeHint(props)))
-
-/**
- * D3: "Registrar como fiado/apartado" solo con exactamente UNA línea (la
- * Deuda es de un solo producto/cantidad, nunca un carrito), y solo cuando lo
- * que falta es efectivo — nunca por carrito vacío (ya cubierto por exigir 1
- * línea) ni por un efectivo ambiguo (`cashInvalid`: ahí el problema es el
- * texto, no que falte dinero). Se apaga igual que el resto mientras se cobra.
- */
-const canRegisterDebt = computed(() =>
-  !props.loading
-  && props.lines.length === 1
-  && !props.canCharge
-  && props.missingMinor > 0
-  && !props.cashInvalid,
+const amountLabel = computed(() =>
+  isCashPayment(props.paymentMethod) ? VOICE.cobro.amountCash : VOICE.cobro.amountCharged,
 )
+
+/** Solo el carrito vacío necesita su propio aviso; con productos lo dice el cambio. */
+const hint = computed(() =>
+  props.lines.length === 0 && !props.canCharge ? saleChargeHint(props) : '',
+)
+
+const canRegisterDebt = computed(() => !props.loading && props.lines.length === 1 && props.partial)
+const showDebtOnlyOne = computed(() => !props.loading && props.lines.length >= 2 && props.partial)
 
 function onCharge() {
   // Doble candado: el botón ya está deshabilitado, pero un toque doble o un
@@ -255,13 +266,7 @@ function confirmClear() {
 </script>
 
 <style scoped>
-.sale-cart { display: flex; flex-direction: column; gap: var(--spacing-md); }
-.sale-cart__cash-help { padding: var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
-.sale-cart__cash-help summary { display: list-item; min-height: 44px; padding: var(--spacing-sm); cursor: pointer; font-weight: 600; }
-.sale-cart__cash-help summary:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
-.sale-cart__cash-help p, .sale-cart__cash-help li { line-height: 1.6; overflow-wrap: anywhere; }
-.sale-cart__cash-help li + li { margin-top: var(--spacing-sm); }
-.sale-cart__cash-help ol { list-style: decimal; padding-left: var(--spacing-lg); }
+.sale-cart { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
 
 .sale-cart__header { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); }
 .sale-cart__title { margin: 0; font-size: var(--font-size-xl); font-weight: 800; color: var(--color-text); }
@@ -285,8 +290,10 @@ function confirmClear() {
 .sale-cart__clear:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 .sale-cart__clear:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* "N productos ▾": el triángulo lo da el <summary> nativo; aquí solo el tamaño táctil */
 .sale-cart__lines-wrap { width: 100%; }
 .sale-cart__lines-summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 700; color: var(--color-text); }
+.sale-cart__lines-summary:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 .sale-cart__lines { display: flex; flex-direction: column; gap: var(--spacing-sm); margin: var(--spacing-sm) 0 0; padding: 0; list-style: none; }
 
 .sale-cart__empty {
@@ -305,25 +312,18 @@ function confirmClear() {
 }
 .sale-cart__empty-icon { font-size: 2.5rem; line-height: 1; opacity: 0.6; }
 
-.sale-cart__payment { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.sale-cart__payment { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
 
-/* Con pantalla alta, resumen + efectivo + "Cobrar" se quedan pegados abajo del
-   carrito mientras la lista de productos se desplaza: "Cobrar" nunca queda
-   escondido. Solo con pantalla muy alta: en una tablet de 800 px el bloque
-   ocuparía casi todo el panel y dejaría la lista sin espacio (ahí fluye normal). */
-@media (min-height: 900px) {
-  .sale-cart__payment {
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-    padding-top: var(--spacing-md);
-    background: var(--color-bg);
-    border-top: 2px solid var(--color-border);
-  }
+/* "Cobrar": pegado abajo del panel mientras la lista se desplaza, así nunca
+   queda escondido. La acción principal de la pantalla: 56 px, ancho completo.
+   Doble clase para ganarle en especificidad a los tamaños de AppButton. */
+.sale-cart__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding-top: var(--spacing-sm);
+  background: var(--color-bg);
 }
-
-/* La acción principal de la pantalla: 56 px, ancho completo. Doble clase para
-   ganarle en especificidad a los tamaños de AppButton (incluida su regla móvil). */
 .sale-cart .sale-cart__charge { min-height: 3.5rem; font-size: 1.25rem; font-weight: 800; }
 .sale-cart__spinner {
   display: inline-block;
@@ -339,7 +339,7 @@ function confirmClear() {
 
 .sale-cart__hint { margin: 0; text-align: center; font-size: var(--font-size-md); font-weight: 600; color: var(--color-text-muted); }
 
-/* D3: alternativa al cobro de contado, nunca confundible con "Cobrar" (ni su
+/* Fiado/apartado: alternativa al cobro, nunca confundible con "Cobrar" (ni su
    color ni su tamaño); 44 px mínimos al tacto. */
 .sale-cart__debt-option {
   min-height: 2.75rem;
@@ -356,40 +356,32 @@ function confirmClear() {
 }
 .sale-cart__debt-option:hover { background: var(--color-surface-alt); }
 .sale-cart__debt-option:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.sale-cart__debt-note { margin: 0; text-align: center; font-size: var(--font-size-md); font-weight: 600; color: var(--color-text-muted); }
 
 /* ── Paso 2 del cobro en celular (`prominent`) ───────────────────────────
-   Lo importante va arriba y en grande: total, efectivo y cambio. La lista de
-   productos baja y "Cobrar" se queda pegado al borde inferior. Solo se reordena
-   y se agranda; el contenido y los eventos son los mismos.
-   `display: contents` en el bloque de pago hace que resumen, efectivo y botón
-   participen del mismo flex que el encabezado y la lista, y así `order` los ordena. */
-.sale-cart--checkout { min-height: 100%; gap: var(--spacing-lg); }
-.sale-cart--checkout .sale-cart__payment { display: contents; }
-.sale-cart--checkout .sale-cart__header { order: 0; }
-.sale-cart--checkout :deep(.cart-summary) { order: 1; padding: var(--spacing-lg); }
-.sale-cart--checkout :deep(.cart-summary__total) { font-size: 3.75rem; }
-.sale-cart--checkout :deep(.cart-summary__status) { font-size: var(--font-size-xl); }
-.sale-cart--checkout :deep(.cart-summary__change) { font-size: 3rem; }
-.sale-cart--checkout :deep(.cash-input) { order: 2; }
-.sale-cart--checkout .sale-cart__cash-help { order: 2; }
-.sale-cart--checkout :deep(.cash-input__control) { min-height: 5rem; font-size: 2.5rem; }
-.sale-cart--checkout :deep(.cash-input__prefix) { font-size: 2rem; }
-.sale-cart--checkout :deep(.cash-input__chip) { min-height: 3.5rem; font-size: var(--font-size-lg); }
-.sale-cart--checkout :deep(.cash-denomination-pad__btn) { min-height: 3.5rem; font-size: var(--font-size-lg); }
-.sale-cart--checkout :deep(.cash-input__clear) { min-height: 3.5rem; font-size: var(--font-size-lg); }
-.sale-cart--checkout .sale-cart__lines-wrap,
-.sale-cart--checkout .sale-cart__empty { order: 3; }
-.sale-cart--checkout .sale-cart__hint { order: 5; }
-/* "Cobrar": el botón más grande de la pantalla, pegado abajo aunque la lista sea larga */
-.sale-cart--checkout .sale-cart__charge {
-  order: 4;
-  position: sticky;
-  bottom: var(--spacing-sm);
-  z-index: 1;
-  min-height: 4.5rem;
-  font-size: 1.5rem;
+   La venta entera a pantalla completa. El contenido ya está en el orden
+   correcto en el DOM, así que solo se agranda y se separa. "Cobrar" queda
+   FIJO abajo y el contenido reserva su espacio con un padding inferior (más la
+   zona segura del teléfono) para que nunca lo tape. */
+.sale-cart--checkout {
+  min-height: 100%;
+  gap: var(--spacing-lg);
+  padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+}
+.sale-cart--checkout :deep(.cart-summary) { padding: var(--spacing-lg); }
+.sale-cart--checkout .sale-cart__actions {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: var(--app-sidebar-offset, 0px);
+  z-index: 41;
+  padding: var(--spacing-sm) var(--spacing-md);
+  padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom, 0px));
+  background: var(--color-bg);
+  border-top: 2px solid var(--color-border-strong);
   box-shadow: var(--shadow-lg);
 }
+.sale-cart--checkout .sale-cart__charge { min-height: 4.5rem; font-size: 1.5rem; }
 
 .sale-cart__confirm-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); width: 100%; }
 .sale-cart__confirm-actions > * { flex: 1 1 9rem; }

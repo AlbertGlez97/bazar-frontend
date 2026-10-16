@@ -1,79 +1,100 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CartSummary from '../CartSummary.vue'
+import source from '../CartSummary.vue?raw'
 
-type Props = InstanceType<typeof CartSummary>['$props']
+const mountSummary = (props: Record<string, unknown> = {}) =>
+  mount(CartSummary, { props: { totalMinor: 110000, ...props } })
 
-function mountSummary(props: Partial<Props> = {}) {
-  return mount(CartSummary, {
-    props: { itemCount: 2, totalMinor: 15000, cashMinor: 0, changeMinor: 0, missingMinor: 0, ...props },
-  })
-}
+const total = (w: ReturnType<typeof mountSummary>) => w.get('.cart-summary__total')
 
-const status = (w: ReturnType<typeof mountSummary>) => w.get('.cart-summary__status')
+describe('CartSummary (el total)', () => {
+  it('muestra "Total" y el monto', () => {
+    const wrapper = mountSummary()
 
-describe('CartSummary — total', () => {
-  it('muestra el total grande con dos decimales exactos (1999 -> $19.99)', () => {
-    const wrapper = mountSummary({ totalMinor: 1999 })
-    expect(wrapper.get('.cart-summary__total').text()).toBe('$19.99')
+    expect(wrapper.text()).toContain('Total')
+    expect(total(wrapper).text()).toBe('$1,100.00')
   })
 
-  it('cuenta las piezas en singular y plural', () => {
-    expect(mountSummary({ itemCount: 1 }).text()).toContain('1 pieza')
-    expect(mountSummary({ itemCount: 3 }).text()).toContain('3 piezas')
+  it.each([
+    [0, '$0.00'],
+    [5, '$0.05'],
+    [99999, '$999.99'],
+    [110000, '$1,100.00'],
+    [1234567, '$12,345.67'],
+    [123456789, '$1,234,567.89'],
+  ])('formatea %i centavos con separador de miles: %s', (totalMinor, text) => {
+    expect(total(mountSummary({ totalMinor })).text()).toBe(text)
+  })
+
+  it('no muestra efectivo recibido, cambio ni estado: eso va aparte', () => {
+    const wrapper = mountSummary()
+
+    expect(wrapper.text()).not.toMatch(/Recibido|Cambio|Faltan|Justo/i)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+  })
+
+  it('es una región con nombre y el monto se lee completo para lectores de pantalla', () => {
+    const wrapper = mountSummary({ totalMinor: 1234567 })
+
+    expect(wrapper.get('section').attributes('aria-label')).toBe('Total de la venta')
+    expect(total(wrapper).attributes('aria-label')).toBe('Total $12,345.67')
   })
 })
 
-describe('CartSummary — estados', () => {
-  it('vacío: invita a tocar un producto y no habla de efectivo', () => {
-    const wrapper = mountSummary({ itemCount: 0, totalMinor: 0 })
-    expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('empty')
-    expect(status(wrapper).text()).toBe('Toca un producto para empezar.')
-    expect(wrapper.get('.cart-summary__total').text()).toBe('$0.00')
+describe('el total nunca se sale de su tarjeta ni se corta (contrato de CSS)', () => {
+  const style = source.slice(source.indexOf('<style'))
+  const rule = (selector: string) => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return style.match(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`))?.[1] ?? ''
+  }
+  const card = rule('.cart-summary')
+  const amount = rule('.cart-summary__total')
+
+  it('la tarjeta es un contenedor de tamaño en línea: la letra se mide contra SU ancho, no el de la pantalla', () => {
+    expect(card).toMatch(/container-type:\s*inline-size/)
+    expect(card).toMatch(/min-width:\s*0/)
+    expect(card).toMatch(/max-width:\s*100%/)
   })
 
-  it('sin efectivo todavía: pregunta con cuánto pagan', () => {
-    const wrapper = mountSummary({ cashMinor: 0, totalMinor: 15000, missingMinor: 15000 })
-    expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('no-cash')
-    expect(status(wrapper).text()).toBe('Escribe cuánto te dan.')
+  it('la letra del total se ajusta con clamp() sobre el ancho de la tarjeta (cqi), con un mínimo legible', () => {
+    expect(amount).toMatch(/font-size:\s*clamp\(\s*1\.5rem,\s*[\d.]+cqi,\s*3\.75rem\s*\)/)
   })
 
-  it('falta dinero: dice cuánto falta, exacto', () => {
-    const wrapper = mountSummary({ cashMinor: 10000, totalMinor: 15050, missingMinor: 5050 })
-    expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('missing')
-    expect(status(wrapper).text()).toContain('Faltan $50.50')
-    expect(wrapper.text()).toContain('Recibido $100.00')
+  it('trae una letra de respaldo para navegadores sin unidades de contenedor', () => {
+    const declarations = amount.match(/font-size:[^;]+;/g) ?? []
+    expect(declarations.length).toBeGreaterThanOrEqual(2)
+    expect(declarations[0]).toMatch(/clamp\(\s*1\.5rem,\s*[\d.]+vw,/)
   })
 
-  it('alcanza: muestra el efectivo y el cambio a entregar grande', () => {
-    const wrapper = mountSummary({ cashMinor: 20000, totalMinor: 15050, changeMinor: 4950 })
-    expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('ok')
-    expect(wrapper.get('.cart-summary__change').text()).toContain('$49.50')
-    expect(status(wrapper).text()).toContain('Cambio')
-    expect(wrapper.text()).toContain('Recibido $200.00')
+  it('el monto no se parte en dos renglones ni se desborda', () => {
+    expect(amount).toMatch(/white-space:\s*nowrap/)
+    expect(amount).toMatch(/max-width:\s*100%/)
+    expect(amount).toMatch(/min-width:\s*0/)
   })
 
-  it('efectivo justo: dice "Justo, sin cambio" y no muestra un cambio de $0.00', () => {
-    const wrapper = mountSummary({ cashMinor: 15000, totalMinor: 15000, changeMinor: 0 })
-    expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('ok')
-    expect(status(wrapper).text()).toBe('Justo, sin cambio.')
-    expect(wrapper.find('.cart-summary__change').exists()).toBe(false)
+  it('los dígitos tienen el mismo ancho, para que el cálculo del ajuste sea estable', () => {
+    expect(amount).toMatch(/font-variant-numeric:\s*tabular-nums/)
   })
 
-  it('un producto de precio 0 con efectivo 0 se puede cobrar: estado ok, sin cambio', () => {
-    const wrapper = mountSummary({ itemCount: 1, totalMinor: 0, cashMinor: 0, changeMinor: 0 })
-    expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('ok')
-    expect(status(wrapper).text()).toBe('Justo, sin cambio.')
-  })
+  /**
+   * jsdom no mide. Aquí se estima el peor caso con la regla del propio CSS:
+   * letra = clamp(1.5rem, K cqi, 3.75rem), ancho del texto ≈ caracteres × 0.62 em
+   * (dígitos tabulares de una tipografía display). Debe caber en la tarjeta más
+   * angosta (320 px de pantalla − márgenes de la vista − relleno de la tarjeta).
+   */
+  it.each([
+    ['12,345.67', 320],
+    ['12,345.67', 360],
+    ['1,234,567.89', 320],
+    ['21,474,836.47', 320],
+  ])('estimación: MXN %s cabe en una tarjeta de pantalla de %i px', (digits, screen) => {
+    const text = `$${digits}`
+    const k = Number(/clamp\(\s*1\.5rem,\s*([\d.]+)cqi/.exec(amount)![1])
+    const cardInner = screen - 2 * 16 /* margen de la vista */ - 2 * 16 /* relleno de la tarjeta */
+    const fontPx = Math.min(60, Math.max(24, (k / 100) * cardInner))
+    const textWidth = text.length * 0.62 * fontPx
 
-  it('el estado se anuncia en una región viva educada', () => {
-    const wrapper = mountSummary()
-    expect(status(wrapper).attributes('role')).toBe('status')
-    expect(status(wrapper).attributes('aria-live')).toBe('polite')
-  })
-
-  it('el texto de "falta" no depende solo del color: lleva palabras', () => {
-    const wrapper = mountSummary({ cashMinor: 100, totalMinor: 5000, missingMinor: 4900 })
-    expect(status(wrapper).text()).toMatch(/Faltan/)
+    expect(textWidth, `${text} a ${fontPx.toFixed(1)}px mide ${textWidth.toFixed(0)}px de ${cardInner}px`).toBeLessThanOrEqual(cardInner)
   })
 })

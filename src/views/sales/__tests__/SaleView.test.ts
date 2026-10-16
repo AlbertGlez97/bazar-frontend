@@ -79,8 +79,8 @@ function saleFor(payload: CreateSalePayload, status: Sale['status'] = 'completad
   return {
     id: payload.id, memberId: payload.memberId, deviceId: payload.deviceId, occurredAt: payload.occurredAt,
     receivedAt: '2026-09-25T12:00:01.000Z', currency: 'MXN', status,
-    totalMinor: rejected ? null : totalMinor, cashReceivedMinor: payload.cashReceivedMinor,
-    changeMinor: rejected ? null : payload.cashReceivedMinor - totalMinor,
+    totalMinor: rejected ? null : totalMinor, paymentMethod: payload.paymentMethod ?? 'EFECTIVO', cashReceivedMinor: payload.cashReceivedMinor ?? null,
+    changeMinor: rejected ? null : (payload.cashReceivedMinor ?? totalMinor) - totalMinor,
     conflictReason: rejected ? 'stock insuficiente al sincronizar: producto x' : null,
     conflictDetectedAt: rejected ? '2026-09-25T12:00:01.000Z' : null, items: [],
   }
@@ -120,7 +120,7 @@ const card = (w: Wrapper, name: string) => w.findAll('button.sale-picker__item')
 const cards = (w: Wrapper) => w.findAll('button.sale-picker__item')
 const lines = (w: Wrapper) => w.findAll('.cart-line')
 const chargeBtn = (w: Wrapper) => w.get('button[data-action="charge"]')
-const cashInput = (w: Wrapper) => w.get('.cash-input input')
+const cashInput = (w: Wrapper) => w.get('.amount-input input')
 const toasts = () => useToastStore().toasts.map((t) => t.message)
 
 async function tap(w: Wrapper, name: string) {
@@ -300,8 +300,8 @@ describe('SaleView — catálogo y carrito a la vez', () => {
     await wrapper.get('button[data-action="clear"]').trigger('click')
     await wrapper.findAll('button').find((b) => b.text() === 'Sí, vaciar')!.trigger('click')
     expect(lines(wrapper)).toHaveLength(0)
-    expect(wrapper.find('.cash-input').exists()).toBe(false)
-    expect(useCartStore().cashReceivedMinor).toBe(0)
+    expect(wrapper.find('.amount-input').exists()).toBe(false)
+    expect(useCartStore().amountMinor).toBe(0)
   })
 })
 
@@ -442,7 +442,7 @@ describe('SaleView — efectivo y cambio', () => {
     await tap(wrapper, 'Café de olla')
 
     expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
-    expect(wrapper.text()).toContain('Escribe el efectivo recibido para poder cobrar.')
+    expect(wrapper.text()).toContain('Escribe cuánto te dan.')
   })
 
   it('escribir el efectivo actualiza el cambio en vivo', async () => {
@@ -450,15 +450,15 @@ describe('SaleView — efectivo y cambio', () => {
     await tap(wrapper, 'Café de olla') // $19.99
 
     await payWith(wrapper, '10')
-    expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('missing')
-    expect(wrapper.get('.cart-summary__status').text()).toContain('Faltan $9.99')
+    expect(wrapper.get('.payment-change').attributes('data-state')).toBe('missing')
+    expect(wrapper.get('.payment-change').text()).toContain('Faltan $9.99')
 
     await payWith(wrapper, '20')
-    expect(wrapper.get('.cart-summary').attributes('data-state')).toBe('ok')
-    expect(wrapper.get('.cart-summary__change').text()).toBe('$0.01')
+    expect(wrapper.get('.payment-change').attributes('data-state')).toBe('change')
+    expect(wrapper.get('.payment-change__amount').text()).toBe('$0.01')
 
     await payWith(wrapper, '100.50')
-    expect(wrapper.get('.cart-summary__change').text()).toBe('$80.51')
+    expect(wrapper.get('.payment-change__amount').text()).toBe('$80.51')
   })
 
   it('la coma agrupa miles: "1,000" son mil pesos y "1,000.50" mil pesos con cincuenta centavos', async () => {
@@ -466,13 +466,13 @@ describe('SaleView — efectivo y cambio', () => {
     await tap(wrapper, 'Café de olla') // $19.99
 
     await payWith(wrapper, '1,000')
-    expect(useCartStore().cashReceivedMinor).toBe(100000)
-    expect(wrapper.get('.cart-summary__change').text()).toBe('$980.01')
+    expect(useCartStore().amountMinor).toBe(100000)
+    expect(wrapper.get('.payment-change__amount').text()).toBe('$980.01')
     expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
 
     await payWith(wrapper, '1,000.50')
-    expect(useCartStore().cashReceivedMinor).toBe(100050)
-    expect(wrapper.get('.cart-summary__change').text()).toBe('$980.51')
+    expect(useCartStore().amountMinor).toBe(100050)
+    expect(wrapper.get('.payment-change__amount').text()).toBe('$980.51')
   })
 
   it('un monto ambiguo ("100,50") no se adivina: avisa, conserva lo escrito y bloquea "Cobrar"', async () => {
@@ -482,13 +482,13 @@ describe('SaleView — efectivo y cambio', () => {
     expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
 
     await payWith(wrapper, '100,50')
-    expect(useCartStore().cashInvalid).toBe(true)
-    expect(wrapper.get('.cash-input__error').text()).toContain('1,000.50')
+    expect(useCartStore().amountInvalid).toBe(true)
+    expect(wrapper.get('.amount-input__error').text()).toContain('1,000.50')
     expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('100,50')
     expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
 
     await payWith(wrapper, '100.50')
-    expect(wrapper.find('.cash-input__error').exists()).toBe(false)
+    expect(wrapper.find('.amount-input__error').exists()).toBe(false)
     expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
   })
 
@@ -502,17 +502,65 @@ describe('SaleView — efectivo y cambio', () => {
     expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
   })
 
-  it('el atajo "Justo" y el pad de billetes llenan el campo y el cambio', async () => {
+  it('ya no hay selector de billetes ni monedas ni atajo "Justo"', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
 
-    await wrapper.findAll('.cash-input__chip').find((c) => c.text() === 'Justo')!.trigger('click')
+    expect(wrapper.find('.cash-denomination-pad').exists()).toBe(false)
+    expect(wrapper.find('.cash-input__chip').exists()).toBe(false)
+    expect(wrapper.text()).not.toMatch(/billete|moneda/i)
+  })
+
+  it('Efectivo viene elegido y el campo pregunta "¿Cuánto te dan?" vacío', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+
+    expect(useCartStore().paymentMethod).toBe('EFECTIVO')
+    expect(wrapper.get('.payment-method-picker [data-value="EFECTIVO"]').attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('.amount-input').text()).toContain('¿Cuánto te dan?')
+    expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('')
+  })
+
+  it('con Transferencia el campo trae el total, no hay cambio, no pasa del total y Cobrar queda listo', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla') // $19.99
+
+    await wrapper.get('.payment-method-picker [data-value="TRANSFERENCIA"]').trigger('click')
+
+    expect(useCartStore().paymentMethod).toBe('TRANSFERENCIA')
+    expect(wrapper.get('.amount-input').text()).toContain('Monto cobrado')
     expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('19.99')
     expect(chargeBtn(wrapper).attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('.payment-change__amount').exists()).toBe(false)
 
-    await wrapper.findAll('.cash-denomination-pad__btn').find((b) => b.text().startsWith('$50'))!.trigger('click')
-    expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('50.00')
-    expect(wrapper.get('.cart-summary__change').text()).toBe('$30.01')
+    await payWith(wrapper, '50')
+    expect(useCartStore().amountMinor).toBe(1999)
+    expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('19.99')
+  })
+
+  it('cambiar de método reinicia el monto', async () => {
+    const { wrapper } = await mountSale()
+    await sellCafe(wrapper, '50')
+
+    await wrapper.get('.payment-method-picker [data-value="TARJETA"]').trigger('click')
+    expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('19.99')
+
+    await wrapper.get('.payment-method-picker [data-value="EFECTIVO"]').trigger('click')
+    expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('')
+    expect(chargeBtn(wrapper).attributes('disabled')).toBeDefined()
+  })
+
+  it('cobrar con Tarjeta manda paymentMethod y NO manda cashReceivedMinor', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await wrapper.get('.payment-method-picker [data-value="TARJETA"]').trigger('click')
+
+    await submit(wrapper)
+
+    expect(createSale).toHaveBeenCalledTimes(1)
+    const payload = createSale.mock.calls[0][0]
+    expect(payload.paymentMethod).toBe('TARJETA')
+    expect(payload).not.toHaveProperty('cashReceivedMinor')
   })
 
   it('agregar más productos después de escribir el efectivo vuelve a apagar "Cobrar" si ya no alcanza', async () => {
@@ -537,14 +585,14 @@ describe('SaleView — efectivo y cambio', () => {
 })
 
 describe('SaleView — cobro exitoso', () => {
-  it('muestra "Venta registrada" con el total y el cambio del SERVIDOR (no los locales)', async () => {
+  it('muestra "Venta guardada ✓" con el total y el cambio del SERVIDOR (no los locales)', async () => {
     const { wrapper } = await mountSale()
     createSale.mockImplementation(async (payload) => completed(payload, 2500)) // el servidor cobró distinto
     await sellCafe(wrapper, '100')
 
     await submit(wrapper)
 
-    expect(wrapper.get('h2').text()).toBe('Venta registrada')
+    expect(wrapper.get('h2').text()).toBe('Venta guardada ✓')
     expect(wrapper.get('.sale-result__total').text()).toContain('$25.00')
     expect(wrapper.get('.sale-result__change').text()).toContain('$75.00')
     expect(wrapper.text()).not.toContain('$19.99')
@@ -577,8 +625,8 @@ describe('SaleView — cobro exitoso', () => {
 
     expect(wrapper.find('.sale-result').exists()).toBe(false)
     expect(lines(wrapper)).toHaveLength(0)
-    expect(useCartStore().cashReceivedMinor).toBe(0)
-    expect(wrapper.find('.cash-input').exists()).toBe(false)
+    expect(useCartStore().amountMinor).toBe(0)
+    expect(wrapper.find('.amount-input').exists()).toBe(false)
     expect(cards(wrapper)).toHaveLength(4)
   })
 
@@ -621,7 +669,7 @@ describe('SaleView — cobro exitoso', () => {
     release()
     await vi.waitFor(() => expect(wrapper.find('.sale-result').exists()).toBe(true))
     expect(createSale).toHaveBeenCalledTimes(1)
-    expect(wrapper.get('h2').text()).toBe('Venta registrada')
+    expect(wrapper.get('h2').text()).toBe('Venta guardada ✓')
   })
 })
 
@@ -636,8 +684,8 @@ describe('SaleView — conflicto (NUNCA como éxito)', () => {
     expect(wrapper.get('h2').text()).toBe('Esta venta no se pudo cobrar')
     expect(wrapper.get('.sale-result').classes()).toContain('sale-result--conflict')
     expect(wrapper.get('.sale-result').classes()).not.toContain('sale-result--success')
-    expect(wrapper.text()).not.toContain('Venta registrada')
-    expect(wrapper.text()).not.toContain('Listo, ya quedó')
+    expect(wrapper.text()).not.toContain('Venta guardada ✓')
+    expect(wrapper.text()).not.toContain('Venta guardada ✓')
     expect(wrapper.text()).toContain('Otra venta se llevó la última pieza')
     expect(wrapper.text()).toContain('no entregues el producto')
     expect(wrapper.find('.sale-result__total').exists()).toBe(false)
@@ -679,8 +727,8 @@ describe('SaleView — sin señal', () => {
     await submit(wrapper)
 
     expect(createSale).not.toHaveBeenCalled()
-    expect(wrapper.get('h2').text()).toBe('Listo, ya quedó')
-    expect(wrapper.text()).toContain('Sin señal, pero tu venta está guardada y se manda sola cuando haya internet.')
+    expect(wrapper.get('h2').text()).toBe('Venta guardada ✓')
+    expect(wrapper.text()).toContain('Sin conexión: tu venta quedó guardada aquí y se sincronizará sola cuando haya internet.')
     expect(wrapper.get('.sale-result__total').text()).toContain('$19.99')
     expect(wrapper.get('.sale-result__change').text()).toContain('$80.01')
     expect(wrapper.text()).not.toMatch(/error|falló/i)
@@ -714,7 +762,7 @@ describe('SaleView — sin señal', () => {
 
     await submit(wrapper)
 
-    expect(wrapper.get('h2').text()).toBe('Listo, ya quedó')
+    expect(wrapper.get('h2').text()).toBe('Venta guardada ✓')
     expect(await salesQueue.count()).toBe(1)
   })
 })
@@ -753,7 +801,7 @@ describe('SaleView — otros resultados', () => {
 
     expect(createSale).toHaveBeenCalledTimes(2)
     expect(createSale.mock.calls[1][0].id).toBe(createSale.mock.calls[0][0].id)
-    expect(wrapper.get('h2').text()).toBe('Venta registrada')
+    expect(wrapper.get('h2').text()).toBe('Venta guardada ✓')
   })
 
   it('sesión vencida (401): la venta queda guardada, se explica y "Iniciar sesión" lleva al login', async () => {
@@ -807,7 +855,7 @@ describe('SaleView — otros resultados', () => {
 
     enqueue.mockRestore()
     await wrapper.get('button.sale-result__primary').trigger('click')
-    await vi.waitFor(() => expect(wrapper.get('h2').text()).toBe('Listo, ya quedó'))
+    await vi.waitFor(() => expect(wrapper.get('h2').text()).toBe('Venta guardada ✓'))
   })
 
   it('"Regresar a la venta" desde un fallo de guardado conserva el carrito', async () => {
@@ -980,7 +1028,7 @@ describe('SaleView — flujo de dos pasos en pantalla angosta', () => {
 
       expect(lines(wrapper)).toHaveLength(1)
       expect(wrapper.get('.cart-summary__total').text()).toBe('$17.00')
-      expect(wrapper.find('.cash-input input').exists()).toBe(true)
+      expect(wrapper.find('.amount-input input').exists()).toBe(true)
       expect(chargeBtn(wrapper).text()).toBe('Cobrar')
     })
 
@@ -1026,7 +1074,7 @@ describe('SaleView — flujo de dos pasos en pantalla angosta', () => {
       expect(lines(wrapper)).toHaveLength(2)
       expect(bar(wrapper).text()).toContain('2 piezas')
       expect(bar(wrapper).text()).toContain('$28.49')
-      expect(useCartStore().cashReceivedMinor).toBe(5000)
+      expect(useCartStore().amountMinor).toBe(5000)
     })
 
     it('el botón Atrás del navegador/celular regresa del Paso 2 al Paso 1 (no sale de la venta)', async () => {
@@ -1100,7 +1148,7 @@ describe('SaleView — flujo de dos pasos en pantalla angosta', () => {
       await openCheckout(wrapper).trigger('click')
       await flushPromises()
       await payWith(wrapper, '20')
-      expect(wrapper.get('.cart-summary__change').text()).toBe('$3.00')
+      expect(wrapper.get('.payment-change__amount').text()).toBe('$3.00')
 
       await submit(wrapper)
 
@@ -1313,7 +1361,7 @@ describe('SaleView — cuadrícula o lista', () => {
     await sellCafe(wrapper, '50')
     await viewBtn(wrapper, 'list').trigger('click')
     expect(lines(wrapper)).toHaveLength(1)
-    expect(useCartStore().cashReceivedMinor).toBe(5000)
+    expect(useCartStore().amountMinor).toBe(5000)
     expect((cashInput(wrapper).element as HTMLInputElement).value).toBe('50')
   })
 
@@ -1415,29 +1463,68 @@ describe('SaleView — fiado/apartado', () => {
   // D1 (BE-15): el abono inicial del modal es EXPLÍCITO — lo que ya esté
   // escrito en el campo de efectivo del carrito se IGNORA por completo; nunca
   // se llama createAbono aparte, va dentro del mismo POST /deudas.
-  it('D1: el efectivo ya escrito en el carrito se ignora — el abono inicial es el del propio campo del modal', async () => {
+  it('el abono inicial es el monto del cobro (solo lectura en el modal) y va con el método elegido', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
-    await payWith(wrapper, '10') // insuficiente para $19.99, pero ya hay algo escrito
+    await payWith(wrapper, '10') // insuficiente para $19.99: queda como abono
+    await debtBtn(wrapper).trigger('click')
+    expect(wrapper.get('.registrar-deuda-modal__body').text()).toContain('$10.00')
+    expect(wrapper.get('.registrar-deuda-modal__body').text()).toContain('$9.99')
+    await nombreInput(wrapper).setValue('Lucía')
+
+    await confirmDebtBtn(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ abonoInicialMinor: 1000, abonoInicialPaymentMethod: 'EFECTIVO' }),
+      expect.any(Object),
+    )
+    expect(createAbono).not.toHaveBeenCalled()
+  })
+
+  it('el fiado con un monto menor usa el método elegido (Transferencia)', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await wrapper.get('.payment-method-picker [data-value="TRANSFERENCIA"]').trigger('click')
+    await payWith(wrapper, '5')
     await debtBtn(wrapper).trigger('click')
     await nombreInput(wrapper).setValue('Lucía')
 
     await confirmDebtBtn(wrapper).trigger('click')
     await flushPromises()
 
-    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ abonoInicialMinor: 0 }), expect.any(Object))
-    expect(createAbono).not.toHaveBeenCalled()
+    expect(createDeuda).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ abonoInicialMinor: 500, abonoInicialPaymentMethod: 'TRANSFERENCIA' }),
+      expect.any(Object),
+    )
   })
 
-  it('D1: escribir un abono inicial en el propio campo del modal lo manda en el mismo POST /deudas', async () => {
+  it('el fiado está disponible con el campo vacío ($0) y manda abonoInicialMinor: 0', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
+    await wrapper.get('.payment-method-picker [data-value="TARJETA"]').trigger('click')
+    await payWith(wrapper, '')
+    expect(debtBtn(wrapper).exists()).toBe(true)
+  })
+
+  it('con 2+ líneas y monto menor se explica que el fiado es de un solo producto', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await tap(wrapper, 'Pan dulce')
+    await payWith(wrapper, '5')
+
+    expect(debtBtn(wrapper).exists()).toBe(false)
+    expect(wrapper.text()).toContain('El fiado es de un solo producto por ahora')
+  })
+
+  it('el abono viaja en el mismo POST /deudas, sin llamar createAbono aparte', async () => {
+    const { wrapper } = await mountSale()
+    await tap(wrapper, 'Café de olla')
+    await payWith(wrapper, '10')
     await debtBtn(wrapper).trigger('click')
     await nombreInput(wrapper).setValue('Lucía')
-    const abonoInput = wrapper.get('.registrar-deuda-modal__body input[inputmode="decimal"]')
-    await abonoInput.setValue('10.00')
     createDeuda.mockImplementation(async (payload) => deudaFor({
-      abonos: [{ id: 'a-1', deudaId: deudaFor().id, contextId: 'bazar-local', montoMinor: payload.abonoInicialMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }],
+      abonos: [{ id: 'a-1', deudaId: deudaFor().id, contextId: 'bazar-local', montoMinor: payload.abonoInicialMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null, paymentMethod: 'EFECTIVO' }],
     }))
 
     await confirmDebtBtn(wrapper).trigger('click')
@@ -1447,7 +1534,7 @@ describe('SaleView — fiado/apartado', () => {
     expect(createAbono).not.toHaveBeenCalled()
   })
 
-  it('muestra el resultado: NO "Venta registrada", el tipo, el saldo pendiente, y "Nueva venta" vacía el carrito', async () => {
+  it('muestra el resultado: NO "Venta guardada ✓", el tipo, el saldo pendiente, y "Nueva venta" vacía el carrito', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
     await debtBtn(wrapper).trigger('click')
@@ -1458,7 +1545,7 @@ describe('SaleView — fiado/apartado', () => {
     await vi.waitFor(() => expect(wrapper.find('.sale-result').exists()).toBe(true))
 
     expect(wrapper.get('h2').text()).toBe('Fiado/apartado registrado')
-    expect(wrapper.text()).not.toContain('Venta registrada')
+    expect(wrapper.text()).not.toContain('Venta guardada ✓')
     expect(wrapper.text()).toMatch(/no es una venta de contado/i)
     expect(wrapper.text()).toContain('Apartado')
     expect(wrapper.get('.sale-result__change').text()).toContain('Saldo pendiente')
@@ -1467,7 +1554,7 @@ describe('SaleView — fiado/apartado', () => {
     await wrapper.get('button.sale-result__primary').trigger('click')
     expect(wrapper.find('.sale-result').exists()).toBe(false)
     expect(lines(wrapper)).toHaveLength(0)
-    expect(useCartStore().cashReceivedMinor).toBe(0)
+    expect(useCartStore().amountMinor).toBe(0)
   })
 
   // BE-15: el abono inicial va DENTRO de POST /deudas (transacción atómica) —
@@ -1476,10 +1563,9 @@ describe('SaleView — fiado/apartado', () => {
   it('BE-15: si el abono inicial excede el total, la creación entera falla como "rejected"', async () => {
     const { wrapper } = await mountSale()
     await tap(wrapper, 'Café de olla')
+    await payWith(wrapper, '10')
     await debtBtn(wrapper).trigger('click')
     await nombreInput(wrapper).setValue('Lucía')
-    const abonoInput = wrapper.get('.registrar-deuda-modal__body input[inputmode="decimal"]')
-    await abonoInput.setValue('50.00')
     createDeuda.mockRejectedValue({ isAxiosError: true, response: { status: 400, data: { message: 'Abono of 5000 exceeds the remaining balance of 1999' } } })
 
     await confirmDebtBtn(wrapper).trigger('click')
@@ -1514,7 +1600,7 @@ describe('SaleView — fiado/apartado', () => {
 
     await submit(wrapper)
 
-    expect(wrapper.get('h2').text()).toBe('Venta registrada')
+    expect(wrapper.get('h2').text()).toBe('Venta guardada ✓')
     expect(createDeuda).not.toHaveBeenCalled()
   })
 })
@@ -1522,10 +1608,12 @@ describe('SaleView — fiado/apartado', () => {
 it('offline debt creation goes through the real modal and retains initial payment', async () => {
   const { wrapper } = await mountSale()
   await tap(wrapper, 'Caf\u00e9 de olla')
+  await payWith(wrapper, '10')
+  await wrapper.get('.payment-method-picker [data-value="TRANSFERENCIA"]').trigger('click')
+  await payWith(wrapper, '10')
   setOnline(false)
   await wrapper.get('button[data-action="open-debt-modal"]').trigger('click')
   await wrapper.get('.registrar-deuda-modal__body').findAll('input')[0]!.setValue('Ana')
-  await wrapper.get('.registrar-deuda-modal__body input[inputmode="decimal"]').setValue('10.00')
   await wrapper.get('button[data-action="confirm-debt"]').trigger('click')
   await vi.waitFor(() => expect(wrapper.find('.sale-result').exists()).toBe(true))
   expect(wrapper.text()).toContain('se manda solo cuando haya internet')
@@ -1536,7 +1624,7 @@ it('offline debt creation goes through the real modal and retains initial paymen
   const store = useSalesQueueStore()
   await store.refreshCounts()
   expect(store.pendingCount).toBe(1)
-  expect((await salesQueue.list())[0]).toMatchObject({ kind: 'debt', payload: { abonoInicialMinor: 1000 } })
+  expect((await salesQueue.list())[0]).toMatchObject({ kind: 'debt', payload: { abonoInicialMinor: 1000, abonoInicialPaymentMethod: 'TRANSFERENCIA' } })
   wrapper.unmount()
   store.$dispose()
 })

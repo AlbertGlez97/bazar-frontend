@@ -40,9 +40,9 @@ function saleFor(payload: CreateSalePayload, status: Sale['status'] = 'completad
   const rejected = status === 'rechazada_por_conflicto'
   return {
     id: payload.id, memberId: payload.memberId, deviceId: payload.deviceId, occurredAt: payload.occurredAt,
-    receivedAt: '2026-09-25T12:00:01.000Z', currency: 'MXN', status,
-    totalMinor: rejected ? null : totalMinor, cashReceivedMinor: payload.cashReceivedMinor,
-    changeMinor: rejected ? null : payload.cashReceivedMinor - totalMinor,
+    receivedAt: '2026-09-25T12:00:01.000Z', currency: 'MXN', status, paymentMethod: payload.paymentMethod ?? 'EFECTIVO',
+    totalMinor: rejected ? null : totalMinor, cashReceivedMinor: payload.cashReceivedMinor ?? null,
+    changeMinor: rejected ? null : (payload.cashReceivedMinor ?? totalMinor) - totalMinor,
     conflictReason: rejected ? 'stock insuficiente al sincronizar' : null,
     conflictDetectedAt: rejected ? '2026-09-25T12:00:01.000Z' : null, items: [],
   }

@@ -31,6 +31,7 @@ const completed: Sale = {
   totalMinor: 125000,
   cashReceivedMinor: 250000,
   changeMinor: 125000,
+  paymentMethod: 'EFECTIVO',
   conflictReason: null,
   conflictDetectedAt: null,
   items: [],

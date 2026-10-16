@@ -180,7 +180,7 @@ describe('useHelp', () => {
     expect(helpDrawerOpen.value).toBe(false)
     await router.push('/app/venta')
     api.openHelpDrawer()
-    expect(drawerTarget.value).toEqual({ categoryId: 'ventas' })
+    expect(drawerTarget.value).toMatchObject({ categoryId: 'ventas' })
     expect(api.helpDrawerOpen).toBe(helpDrawerOpen)
     expect(api.drawerTarget).toBe(drawerTarget)
   })
@@ -231,7 +231,7 @@ describe('useHelp', () => {
 
   it('exposes the current route target', async () => {
     const { router, api } = await setup('/app/venta')
-    expect(api.currentRouteTarget.value).toEqual({ categoryId: 'ventas' })
+    expect(api.currentRouteTarget.value).toMatchObject({ categoryId: 'ventas' })
     await router.push('/app/finanzas/jornadas')
     await flushPromises()
     expect(api.currentRouteTarget.value?.topicId).toBe('finanzas.jornadas')

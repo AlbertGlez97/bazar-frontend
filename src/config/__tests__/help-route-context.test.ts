@@ -50,7 +50,7 @@ describe('help route context', () => {
   it('maps the operational and settings routes', () => {
     expect(HELP_ROUTE_CONTEXT).toMatchObject({
       AppHome: 'primeros-pasos',
-      Sale: 'ventas',
+      Sale: 'ventas.efectivo',
       ProductCatalog: 'productos',
       CodigosQr: 'productos.etiquetas-qr',
       Deudas: 'deudas',

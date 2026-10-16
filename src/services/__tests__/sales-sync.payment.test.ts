@@ -73,8 +73,9 @@ describe('cola offline — ventas con y sin método', () => {
   })
 
   it.each(['TRANSFERENCIA', 'TARJETA'] as const)('una venta nueva por %s se envía con su método y sin efectivo', async (paymentMethod) => {
-    const { cashReceivedMinor: _cash, ...rest } = salePayload('0190a5f0-7c3e-7000-8000-000000000002')
-    const payload: CreateSalePayload = { ...rest, paymentMethod }
+    const rest = { ...salePayload('0190a5f0-7c3e-7000-8000-000000000002') } as Record<string, unknown>
+    delete rest.cashReceivedMinor
+    const payload = { ...rest, paymentMethod } as unknown as CreateSalePayload
     const record = await queueSale(payload, '2026-09-25T12:00:00.000Z')
     const { syncPendingSales, createSale } = makeSync()
 
@@ -88,8 +89,9 @@ describe('cola offline — ventas con y sin método', () => {
   it('una cola mezclada (vieja, efectivo nueva, tarjeta) se envía en orden y cada una con lo suyo', async () => {
     const old = salePayload('0190a5f0-7c3e-7000-8000-000000000011')
     const cash = salePayload('0190a5f0-7c3e-7000-8000-000000000012', { paymentMethod: 'EFECTIVO' })
-    const { cashReceivedMinor: _cash, ...rest } = salePayload('0190a5f0-7c3e-7000-8000-000000000013')
-    const card: CreateSalePayload = { ...rest, paymentMethod: 'TARJETA' }
+    const rest = { ...salePayload('0190a5f0-7c3e-7000-8000-000000000013') } as Record<string, unknown>
+    delete rest.cashReceivedMinor
+    const card = { ...rest, paymentMethod: 'TARJETA' } as unknown as CreateSalePayload
     await queueSale(old, '2026-09-25T12:00:01.000Z')
     await queueSale(cash, '2026-09-25T12:00:02.000Z')
     await queueSale(card, '2026-09-25T12:00:03.000Z')
@@ -102,8 +104,9 @@ describe('cola offline — ventas con y sin método', () => {
   })
 
   it('el registro encolado conserva el método tal como se guardó', async () => {
-    const { cashReceivedMinor: _cash, ...rest } = salePayload('0190a5f0-7c3e-7000-8000-000000000021')
-    await queueSale({ ...rest, paymentMethod: 'TRANSFERENCIA' }, '2026-09-25T12:00:00.000Z')
+    const rest = { ...salePayload('0190a5f0-7c3e-7000-8000-000000000021') } as Record<string, unknown>
+    delete rest.cashReceivedMinor
+    await queueSale({ ...rest, paymentMethod: 'TRANSFERENCIA' } as unknown as CreateSalePayload, '2026-09-25T12:00:00.000Z')
 
     const [stored] = await salesQueue.list()
 

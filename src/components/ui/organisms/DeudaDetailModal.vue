@@ -91,7 +91,7 @@
             v-for="abono in deuda.abonos"
             :key="abono.id"
           >
-            {{ formatMinorMoney(abono.montoMinor) }} · {{ formatDate(abono.receivedAt) }}
+            {{ formatMinorMoney(abono.montoMinor) }} · {{ paymentMethodLabel(abono.paymentMethod) }} · {{ formatDate(abono.receivedAt) }}
             <span v-if="abono.nota"> · {{ abono.nota }}</span>
           </li>
         </ul>
@@ -138,6 +138,10 @@
           :error="abonoError ?? undefined"
           :disabled="submittingAbono"
         />
+        <PaymentMethodPicker
+          v-model="abonoMethod"
+          :disabled="submittingAbono"
+        />
         <AppTextarea
           v-model="abonoNota"
           :label="VOICE.deudasView.registerAbonoNotaLabel"
@@ -169,12 +173,14 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { AppAlert, AppBadge, AppButton, AppInput, AppModal, AppTextarea } from '@/components'
+import { AppAlert, AppBadge, AppButton, AppInput, AppModal, AppTextarea, PaymentMethodPicker } from '@/components'
 import { VOICE } from '@/config/voice'
 import { friendlyDeudaErrorMessage } from '@/services/deuda-errors'
 import DeudasService from '@/services/deudas.service'
 import ProductsService from '@/services/products.service'
 import { formatMinorMoney, parseMoneyText } from '@/utils/money'
+import { DEFAULT_PAYMENT_METHOD, paymentMethodLabel } from '@/utils/payment-method'
+import type { PaymentMethod } from '@/types/payment.types'
 import { formatDateKey } from '@/utils/business-time'
 import { isDeudaAtrasada, pendienteMinorOf, deudaStatusColor, deudaStatusLabel } from '@/utils/deuda-status'
 import type { Deuda } from '@/types/deuda.types'
@@ -197,6 +203,7 @@ const loadError = ref('')
 
 const abonoText = ref('')
 const abonoNota = ref('')
+const abonoMethod = ref<PaymentMethod>(DEFAULT_PAYMENT_METHOD)
 const abonoError = ref<string | null>(null)
 const abonoServerError = ref<string | null>(null)
 const submittingAbono = ref(false)
@@ -221,6 +228,7 @@ async function load() {
     status.value = 'ready'
     abonoText.value = ''
     abonoNota.value = ''
+    abonoMethod.value = DEFAULT_PAYMENT_METHOD
     abonoError.value = null
     abonoServerError.value = null
   } catch {
@@ -256,11 +264,13 @@ async function submitAbono() {
     const trimmedNota = abonoNota.value.trim()
     const updated = await DeudasService.createAbono(deuda.value.id, {
       montoMinor,
+      paymentMethod: abonoMethod.value,
       ...(trimmedNota ? { nota: trimmedNota } : {}),
     })
     deuda.value = updated
     abonoText.value = ''
     abonoNota.value = ''
+    abonoMethod.value = DEFAULT_PAYMENT_METHOD
     emit('abono-registrado', updated)
   } catch (cause) {
     abonoServerError.value = friendlyDeudaErrorMessage(cause)

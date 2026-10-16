@@ -89,7 +89,7 @@ describe('Help Center: navigation replaces the content', () => {
   it('renders a topic with a single article expanded, without an accordion shell', async () => {
     const { wrapper } = await openHelp({ query: { topic: 'ventas.efectivo' } })
     expect(wrapper.find('[aria-expanded]').exists()).toBe(false)
-    expect(wrapper.get('article#efectivo h3').text()).toContain('Recibir')
+    expect(wrapper.get('article#efectivo h3').text()).toContain('Cobrar una venta')
     wrapper.unmount()
   })
 
@@ -281,7 +281,7 @@ describe('Help Center: search', () => {
 
   it('matches without caring about accents or case', async () => {
     const { wrapper } = await openHelp()
-    await search(wrapper, 'BÍLLETES selección')
+    await search(wrapper, 'TRANSFERENCIA cobrár')
     expect(wrapper.findAll('.help-results__link').some((link) => link.text().includes('Ventas'))).toBe(true)
     wrapper.unmount()
   })

@@ -402,25 +402,32 @@ describe('copy del lector de QR (VOICE.scan)', () => {
 })
 
 describe('saleChargeHint (por qué "Cobrar" no está disponible)', () => {
+  const base = { itemCount: 1, totalMinor: 5000, amountMinor: 0, missingMinor: 5000, paymentMethod: 'EFECTIVO' as const }
+
   it('carrito vacío: pide agregar un producto', () => {
-    expect(saleChargeHint({ itemCount: 0, totalMinor: 0, cashMinor: 0, missingMinor: 0 }))
+    expect(saleChargeHint({ ...base, itemCount: 0, totalMinor: 0, missingMinor: 0 }))
       .toBe('Agrega un producto para poder cobrar.')
   })
 
-  it('sin efectivo: pide escribir cuánto recibió', () => {
-    expect(saleChargeHint({ itemCount: 2, totalMinor: 5000, cashMinor: 0, missingMinor: 5000 }))
-      .toBe('Escribe el efectivo recibido para poder cobrar.')
+  it('efectivo sin monto: pide escribir cuánto le dan', () => {
+    expect(saleChargeHint({ ...base, itemCount: 2 }))
+      .toBe('Escribe cuánto te dan para poder cobrar.')
   })
 
-  it('efectivo insuficiente: dice cuánto falta, exacto', () => {
-    expect(saleChargeHint({ itemCount: 1, totalMinor: 15050, cashMinor: 10000, missingMinor: 5050 }))
-      .toBe('Faltan $50.50 para poder cobrar.')
+  it('monto insuficiente: dice cuánto falta, exacto y con miles', () => {
+    expect(saleChargeHint({ ...base, totalMinor: 1215050, amountMinor: 10000, missingMinor: 1205050 }))
+      .toBe('Faltan $12,050.50 para poder cobrar.')
+  })
+
+  it('con transferencia no se pide "cuánto te dan": solo dice lo que falta', () => {
+    expect(saleChargeHint({ ...base, paymentMethod: 'TRANSFERENCIA', amountMinor: 0 }))
+      .toBe('Faltan $50.00 para poder cobrar.')
   })
 
   it('cuando se puede cobrar no hay nada que explicar', () => {
-    expect(saleChargeHint({ itemCount: 1, totalMinor: 5000, cashMinor: 5000, missingMinor: 0 })).toBe('')
-    // Precio 0 sin efectivo también se puede cobrar
-    expect(saleChargeHint({ itemCount: 1, totalMinor: 0, cashMinor: 0, missingMinor: 0 })).toBe('')
+    expect(saleChargeHint({ ...base, amountMinor: 5000, missingMinor: 0 })).toBe('')
+    // Precio 0 sin monto también se puede cobrar
+    expect(saleChargeHint({ ...base, totalMinor: 0, missingMinor: 0 })).toBe('')
   })
 })
 
@@ -531,12 +538,12 @@ describe('isIncidenciaNotesValidationError', () => {
 
 describe('copy de las pantallas de resultado (VOICE.saleResult)', () => {
   it('el éxito confirma con un hecho, sin "¡Éxito!"', () => {
-    expect(VOICE.saleResult.successTitle).toBe('Venta registrada')
+    expect(VOICE.saleResult.successTitle).toBe('Venta guardada ✓')
     expect(VOICE.saleResult.successTitle).not.toMatch(/éxito|!/i)
   })
 
   it('guardada sin señal se siente como éxito: promete que se envía sola', () => {
-    expect(VOICE.saleResult.savedTitle).toBe('Listo, ya quedó')
+    expect(VOICE.saleResult.savedTitle).toBe('Venta guardada ✓')
     expect(VOICE.saleResult.savedBody).toMatch(/guardada/)
     expect(VOICE.saleResult.savedBody).toMatch(/sola/)
     expect(VOICE.saleResult.savedBody + VOICE.saleResult.savedTitle).not.toMatch(/error|falló|no se pudo/i)

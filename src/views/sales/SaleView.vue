@@ -7,7 +7,7 @@
            Paso 1: el catálogo ocupa la pantalla (búsqueda + escanear) y el carrito
                    es una barra fija abajo con piezas + total y "Cobrar →". Sin
                    nada en la venta, la barra no se muestra.
-           Paso 2: la venta entera a pantalla completa (total y efectivo en grande)
+           Paso 2: la venta entera a pantalla completa (total, método y monto en grande)
                    con "Seguir agregando" para volver sin perder nada. Se abre con
                    `?paso=cobro` en la URL: así el botón Atrás del celular regresa
                    al Paso 1 en vez de salir de la venta.
@@ -79,18 +79,20 @@
             :lines="cart.lines"
             :item-count="cart.itemCount"
             :total-minor="cart.totalMinor"
-            :cash-minor="cart.cashReceivedMinor"
+            :payment-method="cart.paymentMethod"
+            :amount-minor="cart.amountMinor"
             :change-minor="cart.changeMinor"
             :missing-minor="cart.missingMinor"
             :can-charge="cart.canCharge"
-            :cash-text="cashText"
+            :partial="cart.isPartial"
+            :amount-text="amountText"
             :loading="checkout.loading"
-            :cash-invalid="cart.cashInvalid"
             @increment="onIncrement"
             @decrement="onDecrement"
             @remove="onRemove"
             @limit="onLimit"
-            @update:cash-text="onCashText"
+            @update:payment-method="cart.setPaymentMethod"
+            @update:amount-text="onAmountText"
             @charge="charge"
             @clear="clearCart"
             @open-debt-modal="debtModalOpen = true"
@@ -107,7 +109,7 @@
       >
         <p class="sale-view__bar-info">
           <span class="sale-view__bar-count">{{ barCount }}</span>
-          <strong class="sale-view__bar-total">${{ minorToDisplay(cart.totalMinor) }}</strong>
+          <strong class="sale-view__bar-total">{{ formatMinorMoney(cart.totalMinor) }}</strong>
         </p>
         <AppButton
           variant="primary"
@@ -128,13 +130,16 @@
       @scan="onScan"
     />
 
-    <!-- D3: fiado/apartado, solo alcanzable con una línea y efectivo
-         insuficiente (SaleCart ya lo garantiza). Presentacional; las llamadas
-         reales las hace checkout.registerDebt. -->
+    <!-- Fiado/apartado: solo alcanzable con una línea y un monto menor al total
+         (SaleCart ya lo garantiza). El abono inicial es el monto del cobro, con
+         el método elegido, y se muestra de solo lectura. Presentacional; las
+         llamadas reales las hace checkout.registerDebt. -->
     <RegistrarDeudaModal
       v-model="debtModalOpen"
       :submitting="checkout.registeringDebt"
       :total-minor="cart.totalMinor"
+      :abono-inicial-minor="cart.amountMinor"
+      :payment-method="cart.paymentMethod"
       @confirm="onRegisterDebt"
     />
   </div>
@@ -153,9 +158,10 @@ import { useSaleCatalogViewStore } from '@/stores/saleCatalogView.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { saleCartRefusalMessage, saleScanAddedMessage, saleScanUnknownMessage } from '@/config/voice'
-import { minorToDisplay, parseCashInput } from '@/utils/money'
+import { formatMinorMoney, minorToDisplay, parseCashInput } from '@/utils/money'
 import type { Product } from '@/types/product.types'
 import type { DeudaType } from '@/types/deuda.types'
+import type { PaymentMethod } from '@/types/payment.types'
 import { describeCheckoutResult } from './sale-result'
 
 const catalog = useSaleCatalogStore()
@@ -272,25 +278,34 @@ function clearCart() {
   cart.clear()
 }
 
-// ── Efectivo ─────────────────────────────────────────────────────────────
-// El campo guarda el TEXTO que la persona escribió; el carrito, los centavos.
+// ── Monto ────────────────────────────────────────────────────────────────
+// Un solo campo para los tres métodos. Guarda el TEXTO que la persona escribió;
+// el carrito, los centavos. En efectivo arranca vacío ("¿Cuánto te dan?"); con
+// transferencia o tarjeta viene con el total y no lo puede superar.
 function textOf(minor: number): string {
   if (minor === 0) return ''
   const text = minorToDisplay(minor)
   return text.endsWith('.00') ? text.slice(0, -3) : text
 }
-const cashText = ref(textOf(cart.cashReceivedMinor))
+const amountText = ref(textOf(cart.amountMinor))
 
-function onCashText(text: string) {
-  cashText.value = text
-  cart.setCashFromDisplay(text)
+function onAmountText(text: string) {
+  amountText.value = text
+  cart.setAmountFromDisplay(text)
+  // Un tope (transferencia/tarjeta no pasan del total) se refleja en el campo aunque el monto no cambie.
+  if (!cart.amountInvalid && parseCashInput(text) !== cart.amountMinor) amountText.value = textOf(cart.amountMinor)
 }
 
-// Si el efectivo cambia por otro camino (venta nueva, tope del contrato), el campo lo refleja.
+// Si el monto cambia por otro camino (cambiar de método, agregar un producto con
+// transferencia/tarjeta, venta nueva, el tope del total), el campo lo refleja.
 // Un texto ambiguo se queda tal cual (con su aviso) para que la persona lo corrija.
-watch(() => cart.cashReceivedMinor, (minor) => {
-  if (cart.cashInvalid) return
-  if (parseCashInput(cashText.value) !== minor) cashText.value = textOf(minor)
+watch(() => cart.amountMinor, (minor) => {
+  if (cart.amountInvalid) return
+  if (parseCashInput(amountText.value) !== minor) amountText.value = textOf(minor)
+})
+watch(() => cart.paymentMethod, () => {
+  if (!cart.amountInvalid) amountText.value = textOf(cart.amountMinor)
+  else amountText.value = ''
 })
 
 // ── QR ───────────────────────────────────────────────────────────────────
@@ -332,6 +347,7 @@ async function onRegisterDebt(payload: {
   type: DeudaType
   deudor: { nombre: string; telefono?: string; notas?: string }
   abonoInicialMinor: number
+  abonoInicialPaymentMethod: PaymentMethod
   cuotasPlaneadas: { fechaEsperada: string; montoEsperadoMinor: number }[]
 }) {
   await checkout.registerDebt(payload)
@@ -341,7 +357,7 @@ async function onRegisterDebt(payload: {
 /** La venta nueva vacía el carrito: el watcher de arriba saca el Paso 2 de la URL. */
 function startNewSale() {
   checkout.startNewSale()
-  cashText.value = ''
+  amountText.value = ''
 }
 
 /** Sesión vencida: la venta ya está a salvo en la cola; se limpia y se va a iniciar sesión. */

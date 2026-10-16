@@ -12,7 +12,7 @@ describe('local help search', () => {
     expect(searchHelp('codigo qr').map((article) => article.id)).toContain('escanear')
   })
   it('matches all tokens anywhere in reader text, including steps and cautions', () => {
-    expect(searchHelp('seleccion billetes').map((article) => article.id)).toContain('efectivo')
+    expect(searchHelp('transferencia tarjeta').map((article) => article.id)).toContain('efectivo')
     expect(searchHelp('no confirma').map((article) => article.id)).toContain('sin-conexion')
     expect(searchHelp('unicornio inexistente')).toEqual([])
     expect(searchHelp('src/components')).toEqual([])
@@ -31,14 +31,14 @@ describe('ranked help index search', () => {
 
   it('ignores case and accents', () => {
     expect(ids('  EFECTÍVO  ')).toContain('efectivo')
-    expect(ids('BÍLLETES SELECCION')).toContain('efectivo')
+    expect(ids('TRANSFERENCIA MÉTODO')).toContain('efectivo')
     expect(ids('aportacion')[0]).toBe('aportaciones')
     expect(ids('sin conexion')).toContain('sin-conexion')
   })
 
   it('requires every token (AND), in any reader-facing field', () => {
-    expect(ids('billetes cambio')).toContain('efectivo')
-    expect(ids('billetes unicornio')).toEqual([])
+    expect(ids('transferencia cambio')).toContain('efectivo')
+    expect(ids('transferencia unicornio')).toEqual([])
     expect(ids('no confirma')).toContain('sin-conexion')
   })
 

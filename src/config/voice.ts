@@ -2,7 +2,9 @@
 // Principios y ejemplos en doc/brand-guidelines.md (sección "Voz"). Regla de
 // oro: un mensaje dice qué pasó y qué hacer, y el toque cálido nunca va a costa
 // de la claridad.
-import { minorToDisplay } from '@/utils/money'
+import { formatMinorMoney, minorToDisplay } from '@/utils/money'
+import { isCashPayment } from '@/utils/payment-method'
+import type { PaymentMethod } from '@/types/payment.types'
 
 export const VOICE = {
   contextRecovery: {
@@ -172,15 +174,32 @@ export const VOICE = {
     /** Defensivo: la opción solo aparece con exactamente una línea (D3). */
     blockedDebtInvalidCart: 'Esta opción solo está disponible con un producto a la vez en el carrito.',
   },
+  /** Pantalla de cobro de Venta: frases cortas, para quien usa poco la tecnología. */
+  cobro: {
+    itemsToggle: (count: number) => (count === 1 ? '1 producto' : `${count} productos`),
+    methodLabel: '¿Cómo pagan?',
+    methodGroup: 'Método de pago',
+    amountCash: '¿Cuánto te dan?',
+    amountCharged: 'Monto cobrado',
+    change: 'Cambio',
+    askAmount: 'Escribe cuánto te dan.',
+    missing: (money: string) => `Faltan ${money}`,
+    exact: 'Justo, sin cambio.',
+    charge: 'Cobrar',
+    charging: 'Cobrando…',
+    /** Con 2 o más productos y un monto menor al total: en vez de no mostrar nada. */
+    debtOnlyOne: 'El fiado es de un solo producto por ahora',
+  },
   /** Pantallas de resultado del cobro (cada una con un solo botón principal). */
   saleResult: {
-    successTitle: 'Venta registrada',
+    successTitle: 'Venta guardada ✓',
+    methodUsed: (method: string) => `Pago: ${method}`,
     totalLabel: 'Total',
     changeLabel: 'Cambio a entregar',
     noChange: 'Sin cambio',
     newSale: 'Nueva venta',
-    savedTitle: 'Listo, ya quedó',
-    savedBody: 'Sin señal, pero tu venta está guardada y se manda sola cuando haya internet.',
+    savedTitle: 'Venta guardada ✓',
+    savedBody: 'Sin conexión: tu venta quedó guardada aquí y se sincronizará sola cuando haya internet.',
     conflictTitle: 'Esta venta no se pudo cobrar',
     conflictAction: 'Si ya cobraste, devuelve el dinero y no entregues el producto. Avisa a un socio.',
     conflictDetail: 'Detalle para el socio',
@@ -199,6 +218,7 @@ export const VOICE = {
      */
     debtSavedBody: 'Tu fiado/apartado está guardado en este dispositivo y se manda solo cuando haya internet. El saldo es estimado hasta sincronizar.',
     debtTitle: 'Fiado/apartado registrado',
+    debtSavedTitle: 'Fiado/apartado guardado ✓',
     debtTypeFiado: 'Fiado',
     debtTypeApartado: 'Apartado',
     debtNotASale: 'No es una venta de contado: el producto ya se descontó del inventario, pero el pago queda pendiente.',
@@ -244,6 +264,10 @@ export const VOICE = {
     columnDeudor: 'Deudor',
     columnDeudaType: 'Tipo',
     columnAmount: 'Monto',
+    columnMethod: 'Método',
+    byMethod: 'Dinero por método',
+    columnSales: 'Ventas',
+    columnAbonos: 'Abonos',
     emptyAbonos: 'Todavía no hay abonos en este periodo.',
     byDeudasLiquidadas: 'Deudas liquidadas',
     columnSaldadaAt: 'Liquidada el',
@@ -474,9 +498,11 @@ export const VOICE = {
      * separada a `createAbono` para el abono inicial ya no existe).
      */
     abonoInicialExceedsBalance: 'El abono inicial que escribiste es mayor al total de la deuda. Bájalo e intenta de nuevo.',
-    /** D1: campo de abono inicial explícito del modal. */
+    /** Resumen de solo lectura del modal: el abono viene del monto del cobro. */
+    totalLabel: 'Total',
     abonoInicialLabel: 'Abono inicial',
-    abonoInicialHint: 'Lo que ya te pagaron al momento de registrar. Déjalo en $0.00 si no recibiste nada.',
+    saldoLabel: 'Saldo pendiente',
+    abonoReadonlyHint: 'Para cambiar el abono, cierra esto y corrige el monto del cobro.',
     /** D2: sección opcional de calendario de cuotas planeadas (informativo, nunca obligatorio). */
     cuotasToggleLabel: '¿Quieres programar fechas de pago?',
     cuotasHint: 'Elige una o varias fechas; te sugerimos un monto parejo para cada una, pero puedes cambiarlo.',
@@ -756,14 +782,18 @@ export function salesNeedReviewMessage(count: number): string {
 export function saleChargeHint(state: {
   itemCount: number
   totalMinor: number
-  cashMinor: number
+  amountMinor: number
   missingMinor: number
+  paymentMethod: PaymentMethod
 }): string {
   if (state.itemCount === 0) return 'Agrega un producto para poder cobrar.'
-  // Un total de $0 (producto regalado) se cobra sin efectivo.
-  if (state.cashMinor === 0 && state.totalMinor > 0) return 'Escribe el efectivo recibido para poder cobrar.'
-  if (state.missingMinor > 0) return `Faltan $${minorToDisplay(state.missingMinor)} para poder cobrar.`
-  return ''
+  // Un total de $0 (producto regalado) se cobra sin monto.
+  if (state.missingMinor <= 0) return ''
+  // En efectivo, sin nada escrito: se pide el monto en vez de "faltan $1,100.00".
+  if (isCashPayment(state.paymentMethod) && state.amountMinor === 0 && state.totalMinor > 0) {
+    return 'Escribe cuánto te dan para poder cobrar.'
+  }
+  return `Faltan ${formatMinorMoney(state.missingMinor)} para poder cobrar.`
 }
 
 /**

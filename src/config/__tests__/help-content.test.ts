@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { existsSync } from 'node:fs'
-import { HELP_ARTICLES, HELP_EVIDENCE, CASH_HELP } from '../help-content'
+import { HELP_ARTICLES, HELP_EVIDENCE, COBRO_HELP } from '../help-content'
 
 describe('audited help content', () => {
   it('opens debt detail before checking product/type and names audited administrative controls', () => {
@@ -22,8 +22,8 @@ describe('audited help content', () => {
     expect(article('reportes').steps.join(' ')).not.toContain('filtros disponibles de personas')
     expect(article('sin-conexion').steps.join(' ')).not.toContain('Reintentar')
     expect(article('sin-conexion').steps.join(' ')).toContain('Entendido')
-    expect(CASH_HELP.tips.join(' ')).toContain('$430')
-    expect(CASH_HELP.tips.join(' ')).toContain('$70')
+    expect(COBRO_HELP.tips.join(' ')).toContain('$430')
+    expect(COBRO_HELP.tips.join(' ')).toContain('$70')
     expect(article('preguntas').questions?.length).toBeGreaterThan(2)
   })
   it('covers administrative workflows with socio boundaries and current limitations', () => {
@@ -53,8 +53,8 @@ describe('audited help content', () => {
     expect(HELP_ARTICLES.map((article) => article.id)).toEqual(expect.arrayContaining([
       'acceso', 'modos', 'primera-venta', 'carrito', 'efectivo', 'escanear', 'sin-conexion',
     ]))
-    expect(CASH_HELP.steps.join(' ')).toContain('su propia selección')
-    expect(CASH_HELP.tips.join(' ')).toContain('1,250.50')
+    expect(COBRO_HELP.steps.join(' ')).toContain('Transferencia o Tarjeta')
+    expect(COBRO_HELP.tips.join(' ')).toContain('1,250.50')
     expect(HELP_ARTICLES.find((article) => article.id === 'sin-conexion')?.tips.join(' ')).toContain('no confirma')
   })
 

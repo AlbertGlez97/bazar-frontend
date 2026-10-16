@@ -96,7 +96,7 @@ describe('shared help entry', () => {
 describe('quick help drawer: context per route', () => {
   it.each([
     ['/app', 'Primeros pasos'],
-    ['/app/venta', 'Ventas'],
+    ['/app/venta', 'Cobrar una venta'],
     ['/app/productos', 'Productos'],
     ['/app/deudas', 'Fiados y apartados'],
     ['/app/reportes', 'Reportes'],
@@ -117,12 +117,12 @@ describe('quick help drawer: context per route', () => {
     wrapper.unmount()
   })
 
-  it('shows all the articles of a category when the route has no specific topic (Ventas)', async () => {
+  it('opens straight on the sale section (cobrar) from the Venta screen', async () => {
     const { wrapper } = await mountAt('/app/venta')
     await helpButton(wrapper).trigger('click')
     await flushPromises()
-    expect(drawerArticleIds().sort()).toEqual(['carrito', 'efectivo', 'escanear', 'primera-venta'])
-    expect(dialog()!.querySelector('[aria-expanded="true"]')?.getAttribute('data-item-id')).toBe('primera-venta')
+    expect(drawerArticleIds()).toEqual(['efectivo'])
+    expect(dialog()!.textContent).not.toMatch(/billete|moneda/i)
     wrapper.unmount()
   })
 

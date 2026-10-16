@@ -227,7 +227,7 @@ describe('checkout.store.registerDebt — resultado con el abono inicial ya incl
     createDeuda.mockImplementation(async (payload) => deudaFor({
       id: payload.id!,
       abonos: payload.abonoInicialMinor > 0
-        ? [{ id: 'a-1', deudaId: payload.id!, contextId: 'bazar-local', montoMinor: payload.abonoInicialMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null }]
+        ? [{ id: 'a-1', deudaId: payload.id!, contextId: 'bazar-local', montoMinor: payload.abonoInicialMinor, receivedByMemberId: MEMBER.id, receivedAt: '2026-09-25T12:00:01.000Z', nota: null, paymentMethod: 'EFECTIVO' }]
         : [],
     }))
 

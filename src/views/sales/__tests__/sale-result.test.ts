@@ -12,6 +12,7 @@ const sale = (overrides: Partial<Sale> = {}): Sale => ({
   receivedAt: '2026-09-25T12:00:01.000Z',
   currency: 'MXN',
   status: 'completada',
+  paymentMethod: 'EFECTIVO',
   totalMinor: 25000,
   cashReceivedMinor: 30000,
   changeMinor: 5000,
@@ -23,9 +24,10 @@ const sale = (overrides: Partial<Sale> = {}): Sale => ({
 
 describe('describeCheckoutResult', () => {
   it('success: totales del servidor y el resumen de marca con el vendedor', () => {
-    const view = describeCheckoutResult({ kind: 'success', sale: sale(), totalMinor: 25000, changeMinor: 5000 }, 'Carlos')
+    const view = describeCheckoutResult({ kind: 'success', sale: sale(), paymentMethod: 'EFECTIVO', totalMinor: 25000, changeMinor: 5000 }, 'Carlos')
     expect(view).toEqual({
       kind: 'success',
+      paymentMethod: 'EFECTIVO',
       totalMinor: 25000,
       changeMinor: 5000,
       summary: 'Venta anotada: $250.00. Cambio: $50.00. Quedó a nombre de Carlos.',
@@ -33,13 +35,15 @@ describe('describeCheckoutResult', () => {
   })
 
   it('success sin vendedor conocido omite "Quedó a nombre de"', () => {
-    const view = describeCheckoutResult({ kind: 'success', sale: sale(), totalMinor: 12550, changeMinor: 0 })
+    const view = describeCheckoutResult({ kind: 'success', sale: sale(), paymentMethod: 'EFECTIVO', totalMinor: 12550, changeMinor: 0 })
     expect(view).toMatchObject({ kind: 'success', summary: 'Venta anotada: $125.50.' })
   })
 
   it('saved-offline conserva los totales locales', () => {
-    expect(describeCheckoutResult({ kind: 'saved-offline', pendingId: 'p', totalMinor: 1999, changeMinor: 1 }))
-      .toEqual({ kind: 'saved-offline', totalMinor: 1999, changeMinor: 1 })
+    expect(describeCheckoutResult({ kind: 'saved-offline', pendingId: 'p', paymentMethod: 'EFECTIVO', totalMinor: 1999, changeMinor: 1 }))
+      .toEqual({ kind: 'saved-offline', paymentMethod: 'EFECTIVO', totalMinor: 1999, changeMinor: 1 })
+    expect(describeCheckoutResult({ kind: 'saved-offline', pendingId: 'p', paymentMethod: 'TARJETA', totalMinor: 1999, changeMinor: 0 }))
+      .toMatchObject({ paymentMethod: 'TARJETA' })
   })
 
   it('conflict: mensaje amable de la marca y el motivo del servidor SOLO como detalle', () => {
@@ -58,8 +62,8 @@ describe('describeCheckoutResult', () => {
   it('rejected, auth-needed y failed-to-save pasan su mensaje amable', () => {
     expect(describeCheckoutResult({ kind: 'rejected', reasonMessage: 'algo amable', canFix: true }))
       .toEqual({ kind: 'rejected', message: 'algo amable' })
-    expect(describeCheckoutResult({ kind: 'auth-needed', pendingId: 'p', totalMinor: 5000, changeMinor: 0, message: 'sesión' }))
-      .toEqual({ kind: 'auth-needed', message: 'sesión', totalMinor: 5000, changeMinor: 0 })
+    expect(describeCheckoutResult({ kind: 'auth-needed', pendingId: 'p', paymentMethod: 'EFECTIVO', totalMinor: 5000, changeMinor: 0, message: 'sesión' }))
+      .toEqual({ kind: 'auth-needed', paymentMethod: 'EFECTIVO', message: 'sesión', totalMinor: 5000, changeMinor: 0 })
     expect(describeCheckoutResult({ kind: 'failed-to-save', message: 'no se guardó' }))
       .toEqual({ kind: 'failed-to-save', message: 'no se guardó' })
   })
@@ -83,6 +87,7 @@ describe('describeCheckoutResult', () => {
       totalMinor: 5997,
       pendingMinor: 3997,
       initialAbonoMinor: 2000,
+      paymentMethod: 'TRANSFERENCIA',
     })
     expect(view).toEqual({
       kind: 'debt-registered',
@@ -90,6 +95,7 @@ describe('describeCheckoutResult', () => {
       totalMinor: 5997,
       pendingMinor: 3997,
       initialAbonoMinor: 2000,
+      paymentMethod: 'TRANSFERENCIA',
     })
   })
 
@@ -101,6 +107,7 @@ describe('describeCheckoutResult', () => {
       totalMinor: 5997,
       pendingMinor: 5997,
       initialAbonoMinor: 0,
+      paymentMethod: 'EFECTIVO',
     })
     expect(view).toMatchObject({ kind: 'debt-registered', pendingMinor: 5997, initialAbonoMinor: 0 })
   })

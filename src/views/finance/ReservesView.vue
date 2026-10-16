@@ -86,11 +86,10 @@
             :disabled="finance.saving"
             required
           />
-          <CashInput
+          <AmountInput
             id="reserve-amount"
             v-model="form.amount"
             label="Importe"
-            :show-pad="false"
             :disabled="finance.saving"
           />
           <div
@@ -320,7 +319,7 @@ import {
   AppSelect,
   AppSkeleton,
   AppTextarea,
-  CashInput,
+  AmountInput,
   ReportRangePicker,
   TabNav,
 } from '@/components'

@@ -12,19 +12,20 @@ export function describeCheckoutResult(result: CheckoutResult, sellerName?: stri
     case 'success':
       return {
         kind: 'success',
+        paymentMethod: result.paymentMethod,
         totalMinor: result.totalMinor,
         changeMinor: result.changeMinor,
         summary: saleSuccessMessage({ totalMinor: result.totalMinor, changeMinor: result.changeMinor, sellerName }),
       }
     case 'saved-offline':
-      return { kind: 'saved-offline', totalMinor: result.totalMinor, changeMinor: result.changeMinor }
+      return { kind: 'saved-offline', paymentMethod: result.paymentMethod, totalMinor: result.totalMinor, changeMinor: result.changeMinor }
     case 'conflict':
       // `reason` ya es el texto amable de la marca; el del servidor solo es detalle.
       return { kind: 'conflict', message: result.reason, detail: result.sale.conflictReason }
     case 'rejected':
       return { kind: 'rejected', message: result.reasonMessage }
     case 'auth-needed':
-      return { kind: 'auth-needed', message: result.message, totalMinor: result.totalMinor, changeMinor: result.changeMinor }
+      return { kind: 'auth-needed', paymentMethod: result.paymentMethod, message: result.message, totalMinor: result.totalMinor, changeMinor: result.changeMinor }
     case 'failed-to-save':
       return { kind: 'failed-to-save', message: result.message }
     case 'blocked':
@@ -38,6 +39,7 @@ export function describeCheckoutResult(result: CheckoutResult, sellerName?: stri
         totalMinor: result.totalMinor,
         pendingMinor: result.pendingMinor,
         initialAbonoMinor: result.initialAbonoMinor,
+        paymentMethod: result.paymentMethod,
       }
   }
 }

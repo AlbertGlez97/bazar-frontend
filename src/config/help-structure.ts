@@ -35,10 +35,10 @@ const DEFINITIONS: readonly CategoryDefinition[] = [
   {
     id: 'ventas',
     title: 'Ventas',
-    description: 'Vender, cobrar en efectivo y escanear productos.',
+    description: 'Vender, cobrar con efectivo, transferencia o tarjeta y escanear productos.',
     topics: [
       { id: 'ventas.primera-venta', title: 'Primera venta y carrito', description: 'Agregar productos, ajustar cantidades y cobrar.' },
-      { id: 'ventas.efectivo', title: 'Efectivo y cambio', description: 'Recibir dinero, combinar billetes y dar cambio.' },
+      { id: 'ventas.efectivo', title: 'Cobrar una venta', description: 'Elegir cómo pagan, escribir el monto y dar cambio.' },
       { id: 'ventas.escanear', title: 'Escanear un producto', description: 'Agregar un producto con su código QR.' },
     ],
   },

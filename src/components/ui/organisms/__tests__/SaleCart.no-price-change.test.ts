@@ -33,11 +33,13 @@ function mountCart(prominent = false) {
       lines: [line('a', 'Café'), line('b', 'Radio vintage', { tipo: 'unica', quantity: 1, unitPriceMinor: 45000 })],
       itemCount: 3,
       totalMinor: 55000,
-      cashMinor: 60000,
+      paymentMethod: 'EFECTIVO' as const,
+      amountMinor: 60000,
+      partial: false,
       changeMinor: 5000,
       missingMinor: 0,
       canCharge: true,
-      cashText: '600',
+      amountText: '600',
       loading: false,
       prominent,
     },
@@ -55,11 +57,11 @@ describe.each([['normal', false], ['prominente (Paso 2)', true]] as const)('el c
     }
   })
 
-  it('el único campo de texto es el del efectivo: no hay campos de precio ni de descuento', () => {
+  it('el único campo de texto es el del monto: no hay campos de precio ni de descuento', () => {
     const wrapper = mountCart(prominent)
     const inputs = wrapper.findAll('input')
     expect(inputs).toHaveLength(1)
-    expect(inputs[0].element.closest('.cash-input')).not.toBeNull()
+    expect(inputs[0].element.closest('.amount-input')).not.toBeNull()
     expect(wrapper.find('input[type="number"]').exists()).toBe(false)
     expect(wrapper.find('select').exists()).toBe(false)
     expect(wrapper.find('textarea').exists()).toBe(false)
@@ -96,7 +98,7 @@ describe('el carrito solo emite las acciones permitidas', () => {
   it('SaleCart declara únicamente los eventos de siempre (sin evento de precio ni de descuento)', () => {
     const declared = ((SaleCart as unknown as { emits?: string[] }).emits ?? []).slice().sort()
     // "open-debt-modal" (D3, fiado/apartado) es aditivo, no de precio/descuento.
-    expect(declared).toEqual(['charge', 'clear', 'decrement', 'increment', 'limit', 'open-debt-modal', 'remove', 'update:cashText'])
+    expect(declared).toEqual(['charge', 'clear', 'decrement', 'increment', 'limit', 'open-debt-modal', 'remove', 'update:amountText', 'update:paymentMethod'])
     for (const event of declared) expect(event).not.toMatch(PRICE_CHANGE_WORDS)
   })
 

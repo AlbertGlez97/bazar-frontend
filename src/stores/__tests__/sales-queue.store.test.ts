@@ -24,7 +24,7 @@ function completed(payload: CreateSalePayload): CreateSaleResult {
   const sale = {
     id: payload.id, memberId: payload.memberId, deviceId: payload.deviceId, occurredAt: payload.occurredAt,
     receivedAt: '2026-09-25T12:00:01.000Z', currency: 'MXN', status: 'completada', totalMinor: 5000,
-    cashReceivedMinor: 10000, changeMinor: 5000, conflictReason: null, conflictDetectedAt: null, items: [],
+    cashReceivedMinor: 10000, changeMinor: 5000, paymentMethod: 'EFECTIVO', conflictReason: null, conflictDetectedAt: null, items: [],
   } satisfies Sale
   return { outcome: 'completed', httpStatus: 201, replayed: false, sale }
 }

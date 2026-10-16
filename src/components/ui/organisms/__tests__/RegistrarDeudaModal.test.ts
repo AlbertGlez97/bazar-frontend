@@ -1,15 +1,23 @@
 // Formulario de fiado/apartado (D3): tipo, nombre del deudor (requerido),
-// teléfono y notas (opcionales), abono inicial explícito (D1) y cuotas
-// planeadas opcionales (D2). Presentacional: no llama servicios, solo valida
-// y emite lo que la persona confirmó.
+// teléfono y notas (opcionales), el abono inicial de SOLO LECTURA (viene del
+// monto del cobro y del método elegido) y cuotas planeadas opcionales (D2).
+// Presentacional: no llama servicios, solo valida y emite lo que la persona confirmó.
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { VueDatePicker } from '@vuepic/vue-datepicker'
 import RegistrarDeudaModal from '../RegistrarDeudaModal.vue'
 
-function mountModal(props: Partial<{ modelValue: boolean; submitting: boolean; totalMinor: number }> = {}) {
+type ModalProps = {
+  modelValue: boolean
+  submitting: boolean
+  totalMinor: number
+  abonoInicialMinor: number
+  paymentMethod: 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA'
+}
+
+function mountModal(props: Partial<ModalProps> = {}) {
   return mount(RegistrarDeudaModal, {
-    props: { modelValue: true, totalMinor: 10000, ...props },
+    props: { modelValue: true, totalMinor: 10000, abonoInicialMinor: 0, paymentMethod: 'EFECTIVO', ...props },
     global: { stubs: { teleport: true } },
   })
 }
@@ -17,17 +25,18 @@ type Wrapper = ReturnType<typeof mountModal>
 
 const submitBtn = (w: Wrapper) => w.get('button[data-action="confirm-debt"]')
 const nombreInput = (w: Wrapper) => w.findAll('input')[0]
-const abonoInput = (w: Wrapper) => w.get('input[inputmode="decimal"]')
+const field = (w: Wrapper, name: 'total' | 'abono' | 'saldo') => w.get(`dd[data-field="${name}"]`).text().replace(/\s+/g, ' ')
 
 async function fillNombre(w: Wrapper, name = 'Lucía') {
   await nombreInput(w).setValue(name)
 }
 
 describe('RegistrarDeudaModal — contenido', () => {
-  it('trae selector de tipo (fiado/apartado), nombre, teléfono, notas y abono inicial', () => {
+  it('trae selector de tipo (fiado/apartado), nombre, teléfono y notas; el abono ya no es un campo', () => {
     const wrapper = mountModal()
     expect(wrapper.find('select').exists()).toBe(true)
-    expect(wrapper.findAll('input')).toHaveLength(4) // nombre + teléfono + abono inicial + toggle de cuotas
+    expect(wrapper.findAll('input')).toHaveLength(3) // nombre + teléfono + toggle de cuotas
+    expect(wrapper.find('input[inputmode="decimal"]').exists()).toBe(false)
     expect(wrapper.find('textarea').exists()).toBe(true)
   })
 
@@ -37,38 +46,65 @@ describe('RegistrarDeudaModal — contenido', () => {
   })
 })
 
-// D1: el abono inicial es un campo EXPLÍCITO, nunca inferido de nada externo
-// (este componente ni siquiera recibe el efectivo del carrito como prop).
-describe('RegistrarDeudaModal — abono inicial explícito (D1)', () => {
-  it('el campo muestra "0.00" por defecto, no vacío', () => {
-    const wrapper = mountModal()
-    expect((abonoInput(wrapper).element as HTMLInputElement).value).toBe('0.00')
+// El abono inicial es de SOLO LECTURA: sale del monto del cobro y del método elegido.
+describe('RegistrarDeudaModal — abono inicial de solo lectura', () => {
+  it('muestra Total, Abono inicial y Saldo pendiente, con separador de miles', () => {
+    const wrapper = mountModal({ totalMinor: 110000, abonoInicialMinor: 30000, paymentMethod: 'EFECTIVO' })
+
+    expect(field(wrapper, 'total')).toBe('$1,100.00')
+    expect(field(wrapper, 'abono')).toBe('$300.00 · Efectivo')
+    expect(field(wrapper, 'saldo')).toBe('$800.00')
+    expect(wrapper.text()).toContain('Saldo pendiente')
   })
 
-  it('sin tocar el abono, confirm manda abonoInicialMinor: 0 explícitamente', async () => {
-    const wrapper = mountModal()
-    await fillNombre(wrapper)
-    await submitBtn(wrapper).trigger('click')
+  it.each([
+    ['TRANSFERENCIA', 'Transferencia'],
+    ['TARJETA', 'Tarjeta'],
+  ] as const)('el abono dice que se paga con %s', (paymentMethod, label) => {
+    const wrapper = mountModal({ abonoInicialMinor: 2000, paymentMethod })
 
-    expect(wrapper.emitted('confirm')?.[0][0]).toMatchObject({ abonoInicialMinor: 0 })
+    expect(field(wrapper, 'abono')).toBe(`$20.00 · ${label}`)
   })
 
-  it('escribir un monto lo manda en centavos', async () => {
-    const wrapper = mountModal()
-    await fillNombre(wrapper)
-    await abonoInput(wrapper).setValue('150.50')
-    await submitBtn(wrapper).trigger('click')
+  it('con $0 de abono no menciona método y el saldo es el total', () => {
+    const wrapper = mountModal({ totalMinor: 10000, abonoInicialMinor: 0 })
 
-    expect(wrapper.emitted('confirm')?.[0][0]).toMatchObject({ abonoInicialMinor: 15050 })
+    expect(field(wrapper, 'abono')).toBe('$0.00')
+    expect(field(wrapper, 'saldo')).toBe('$100.00')
   })
 
-  it('un monto ambiguo ("100,50") no emite confirm y muestra el error', async () => {
+  it('ya no pide ni sugiere dejarlo en $0.00', () => {
     const wrapper = mountModal()
+
+    expect(wrapper.text()).not.toMatch(/Déjalo en|recibiste nada/i)
+  })
+
+  it('dice cómo cambiarlo: cerrar y corregir el monto del cobro', () => {
+    expect(mountModal().text()).toContain('cierra esto y corrige el monto del cobro')
+  })
+
+  it('confirm manda el abono y el método tal como se mostraron', async () => {
+    const wrapper = mountModal({ abonoInicialMinor: 15050, paymentMethod: 'TARJETA' })
     await fillNombre(wrapper)
-    await abonoInput(wrapper).setValue('100,50')
+
     await submitBtn(wrapper).trigger('click')
 
-    expect(wrapper.emitted('confirm')).toBeUndefined()
+    expect(wrapper.emitted('confirm')?.[0][0]).toMatchObject({ abonoInicialMinor: 15050, abonoInicialPaymentMethod: 'TARJETA' })
+  })
+
+  it('con $0 confirm manda abonoInicialMinor: 0 explícitamente y el método (EFECTIVO)', async () => {
+    const wrapper = mountModal()
+    await fillNombre(wrapper)
+
+    await submitBtn(wrapper).trigger('click')
+
+    expect(wrapper.emitted('confirm')?.[0][0]).toMatchObject({ abonoInicialMinor: 0, abonoInicialPaymentMethod: 'EFECTIVO' })
+  })
+
+  it('un saldo nunca sale negativo aunque el abono sea mayor al total', () => {
+    const wrapper = mountModal({ totalMinor: 1000, abonoInicialMinor: 5000 })
+
+    expect(field(wrapper, 'saldo')).toBe('$0.00')
   })
 })
 
@@ -96,6 +132,7 @@ describe('RegistrarDeudaModal — validación', () => {
       type: 'fiado',
       deudor: { nombre: 'Lucía' },
       abonoInicialMinor: 0,
+      abonoInicialPaymentMethod: 'EFECTIVO',
       cuotasPlaneadas: [],
     }]])
   })
@@ -164,9 +201,8 @@ describe('RegistrarDeudaModal — cuotas planeadas (D2)', () => {
   })
 
   it('elegir fechas y confirmar manda las cuotas sugeridas (reparto parejo del saldo tras el abono)', async () => {
-    const wrapper = mountModal({ totalMinor: 10000 })
+    const wrapper = mountModal({ totalMinor: 10000, abonoInicialMinor: 2000 }) // resto 8000
     await fillNombre(wrapper)
-    await abonoInput(wrapper).setValue('20.00') // abonoInicialMinor: 2000 -> resto 8000
     await wrapper.get('input[type="checkbox"]').setValue(true)
     await addCuotaBtn(wrapper).trigger('click')
     await addCuotaBtn(wrapper).trigger('click')
@@ -192,7 +228,7 @@ describe('RegistrarDeudaModal — cuotas planeadas (D2)', () => {
     await pickers[1].vm.$emit('update:model-value', new Date(2026, 10, 15))
     await wrapper.vm.$nextTick()
 
-    const cuotaInputs = wrapper.findAll('input[inputmode="decimal"]').slice(1) // [0] es el abono inicial
+    const cuotaInputs = wrapper.findAll('input[inputmode="decimal"]')
     await cuotaInputs[0].setValue('75.00')
     await wrapper.vm.$nextTick()
 
@@ -233,12 +269,10 @@ describe('RegistrarDeudaModal — abrir y cerrar', () => {
     const wrapper = mountModal({ modelValue: false })
     await wrapper.setProps({ modelValue: true })
     await fillNombre(wrapper, 'Ana')
-    await abonoInput(wrapper).setValue('50.00')
     await wrapper.setProps({ modelValue: false })
     await wrapper.setProps({ modelValue: true })
 
     expect((nombreInput(wrapper).element as HTMLInputElement).value).toBe('')
-    expect((abonoInput(wrapper).element as HTMLInputElement).value).toBe('0.00')
   })
 
   it('cancelar emite update:modelValue false sin emitir confirm', async () => {
@@ -255,7 +289,6 @@ describe('RegistrarDeudaModal — abrir y cerrar', () => {
     expect(submitBtn(wrapper).attributes('disabled')).toBeDefined()
     expect(wrapper.get('select').attributes('disabled')).toBeDefined()
     expect(nombreInput(wrapper).attributes('disabled')).toBeDefined()
-    expect(abonoInput(wrapper).attributes('disabled')).toBeDefined()
     expect(submitBtn(wrapper).text()).toBe('Registrando…')
   })
 })

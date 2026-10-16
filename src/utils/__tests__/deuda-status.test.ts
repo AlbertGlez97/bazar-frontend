@@ -55,7 +55,7 @@ describe('isDeudaAtrasada', () => {
   it('con una cuota vencida ya cubierta por abonos reales, NO está atrasada', () => {
     const deuda = deudaFor({
       cuotasPlaneadas: [{ id: 'c-1', deudaId: 'd-1', contextId: 'ctx', fechaEsperada: '2026-09-01', montoEsperadoMinor: 5000, createdAt: '2026-08-01T00:00:00.000Z' }],
-      abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 5000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null }],
+      abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 5000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null, paymentMethod: 'EFECTIVO' }],
     })
     expect(isDeudaAtrasada(deuda, NOW)).toBe(false)
   })
@@ -63,7 +63,7 @@ describe('isDeudaAtrasada', () => {
   it('con una cuota vencida parcialmente cubierta, sigue atrasada', () => {
     const deuda = deudaFor({
       cuotasPlaneadas: [{ id: 'c-1', deudaId: 'd-1', contextId: 'ctx', fechaEsperada: '2026-09-01', montoEsperadoMinor: 5000, createdAt: '2026-08-01T00:00:00.000Z' }],
-      abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 2000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null }],
+      abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 2000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null, paymentMethod: 'EFECTIVO' }],
     })
     expect(isDeudaAtrasada(deuda, NOW)).toBe(true)
   })
@@ -72,7 +72,7 @@ describe('isDeudaAtrasada', () => {
     const deuda = deudaFor({
       status: 'saldada',
       cuotasPlaneadas: [{ id: 'c-1', deudaId: 'd-1', contextId: 'ctx', fechaEsperada: '2026-09-01', montoEsperadoMinor: 5000, createdAt: '2026-08-01T00:00:00.000Z' }],
-      abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 10000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null }],
+      abonos: [{ id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 10000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null, paymentMethod: 'EFECTIVO' }],
     })
     expect(isDeudaAtrasada(deuda, NOW)).toBe(false)
   })
@@ -107,8 +107,8 @@ describe('pendienteMinorOf', () => {
     const deuda = deudaFor({
       totalMinor: 5997,
       abonos: [
-        { id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 2000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null },
-        { id: 'a-2', deudaId: 'd-1', contextId: 'ctx', montoMinor: 1000, receivedByMemberId: 'm-1', receivedAt: '2026-09-03T00:00:00.000Z', nota: null },
+        { id: 'a-1', deudaId: 'd-1', contextId: 'ctx', montoMinor: 2000, receivedByMemberId: 'm-1', receivedAt: '2026-09-02T00:00:00.000Z', nota: null, paymentMethod: 'EFECTIVO' },
+        { id: 'a-2', deudaId: 'd-1', contextId: 'ctx', montoMinor: 1000, receivedByMemberId: 'm-1', receivedAt: '2026-09-03T00:00:00.000Z', nota: null, paymentMethod: 'EFECTIVO' },
       ],
     })
     expect(pendienteMinorOf(deuda)).toBe(2997)

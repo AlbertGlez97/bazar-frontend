@@ -19,6 +19,7 @@ function sale(receivedAt: string, overrides: Partial<Sale> = {}): Sale {
     totalMinor: 1000,
     cashReceivedMinor: 1000,
     changeMinor: 0,
+    paymentMethod: 'EFECTIVO',
     conflictReason: null,
     conflictDetectedAt: null,
     items: [],

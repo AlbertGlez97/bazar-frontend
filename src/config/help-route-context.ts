@@ -7,7 +7,7 @@ import type { HelpTarget } from '@/types/help.types'
  */
 export const HELP_ROUTE_CONTEXT: Readonly<Record<string, string | null>> = {
   AppHome: 'primeros-pasos',
-  Sale: 'ventas',
+  Sale: 'ventas.efectivo',
   ProductCatalog: 'productos',
   CodigosQr: 'productos.etiquetas-qr',
   Deudas: 'deudas',
