@@ -51,6 +51,10 @@ const PRODUCT_VALIDATION_COPY: Array<[RegExp, string]> = [
   [/^tipo\b/i, VOICE.apiErrors.product.tipo],
   [/^supplier\b/i, VOICE.apiErrors.product.supplier],
   [/^notes\b/i, VOICE.apiErrors.product.notes],
+  // Reponer existencia (POST /products/:id/restock): rechazos con texto propio.
+  [/^Only products sold by quantity can be restocked/i, VOICE.productRestock.uniqueNote],
+  [/^A deactivated product cannot be restocked/i, VOICE.productRestock.inactiveNote],
+  [/^The resulting stock would exceed the maximum/i, VOICE.productRestock.quantityTooMany],
 ]
 
 interface AxiosLike {

@@ -66,12 +66,32 @@
       label="Existencia inicial"
       disabled
     />
-    <p
-      v-if="isEditMode"
-      class="product-form__readonly-note"
+    <!-- La existencia no se escribe aquí: se repone con su propia acción (suma lo
+         comprado y deja constancia). Una pieza única o un producto desactivado no se repone. -->
+    <div
+      v-if="isEditMode && product"
+      class="product-form__stock"
     >
-      Existencia actual: {{ product?.stock }} (se administra desde ventas/inventario, no aquí)
-    </p>
+      <p class="product-form__readonly-note">
+        <template v-if="restockable">
+          {{ VOICE.productRestock.formHint(product.stock) }}
+        </template>
+        <template v-else>
+          {{ VOICE.productRestock.currentStock(product.stock) }}.
+          {{ product.tipo === 'unica' ? VOICE.productRestock.uniqueNote : VOICE.productRestock.inactiveNote }}
+        </template>
+      </p>
+      <AppButton
+        v-if="restockable"
+        type="button"
+        variant="soft-success"
+        size="sm"
+        :disabled="loading"
+        @click="$emit('restock')"
+      >
+        Reponer existencia
+      </AppButton>
+    </div>
 
     <AppInput
       v-model="category"
@@ -133,6 +153,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { minorToDisplay, parseMoneyText } from '@/utils/money'
+import { canRestock } from '@/utils/product-restock'
 import { VOICE } from '@/config/voice'
 import type {
   Product,
@@ -155,9 +176,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   submit: [payload: ProductFormSubmitPayload]
   cancel: []
+  restock: []
 }>()
 
 const isEditMode = computed(() => !!props.product)
+const restockable = computed(() => !!props.product && canRestock(props.product))
 
 const name = ref(props.product?.name ?? '')
 const tipo = ref<ProductType>(props.product?.tipo ?? 'unica')
@@ -303,6 +326,12 @@ function handleSubmit() {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
   margin: 0;
+}
+.product-form__stock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
 }
 .product-form__actions {
   display: flex;

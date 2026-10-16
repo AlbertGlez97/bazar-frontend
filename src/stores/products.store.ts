@@ -107,7 +107,14 @@ export const useProductsStore = defineStore('products', () => {
 
   async function restockProduct(id: string, payload: RestockProductPayload): Promise<RestockProductResult> {
     const result = await ProductsService.restockProduct(id, payload)
-    await fetchProducts()
+    // La reposición ya quedó hecha. Un refresco caído no debe hacerla pasar por
+    // fallida (no es idempotente: reintentar duplicaría las piezas); `fetchProducts`
+    // ya deja su propio `error` para que el catálogo avise que no se pudo recargar.
+    try {
+      await fetchProducts()
+    } catch {
+      // intencional: ver arriba
+    }
     return result
   }
 

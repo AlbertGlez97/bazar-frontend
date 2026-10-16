@@ -75,6 +75,7 @@
       @edit="openEditModal"
       @deactivate="openDeactivateConfirm"
       @reactivate="handleReactivate"
+      @restock="openRestockModal"
     >
       <!-- Filtros del catálogo: botón junto al buscador y chips debajo. Es
            gestión: en Modo Venta el mostrador no los ofrece. Cada filtro viaja
@@ -108,6 +109,16 @@
       :product="editingProduct"
       :loading="isSubmitting"
       @submit="handleFormSubmit"
+      @restock="openRestockFromEdit"
+    />
+
+    <!-- Reponer existencia: suma lo comprado a un producto por cantidad. Es
+         gestión y necesita internet (va directo al servidor, no a una cola). -->
+    <ProductRestockModal
+      v-model="isRestockModalOpen"
+      :product="restockingProduct"
+      :loading="isRestocking"
+      @submit="handleRestockSubmit"
     />
 
     <LabelPrintDialog
@@ -138,7 +149,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ActiveFilterChips, AppAlert, AppButton, AppModal, LabelPrintDialog, ProductCatalogGrid, ProductFiltersPanel, ProductFormModal, ProductSelectionBar } from '@/components'
+import { ActiveFilterChips, AppAlert, AppButton, AppModal, LabelPrintDialog, ProductCatalogGrid, ProductFiltersPanel, ProductFormModal, ProductRestockModal, ProductSelectionBar } from '@/components'
 import { VOICE } from '@/config/voice'
 import { useLabelPrinting } from '@/composables/useLabelPrinting'
 import { useProductFilters } from '@/composables/useProductFilters'
@@ -149,7 +160,7 @@ import { useProductsStore } from '@/stores/products.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
-import type { Product, ProductFormSubmitPayload } from '@/types/product.types'
+import type { Product, ProductFormSubmitPayload, RestockProductPayload } from '@/types/product.types'
 import { describeFailure } from '@/utils/api-error'
 import { emptyProductFilters, toProductListParams } from '@/utils/product-filters'
 
@@ -264,6 +275,42 @@ function openCreateModal() {
 function openEditModal(product: Product) {
   editingProduct.value = product
   isFormModalOpen.value = true
+}
+
+// ── Reponer existencia ───────────────────────────────────────────────────
+const isRestockModalOpen = ref(false)
+const restockingProduct = ref<Product | null>(null)
+const isRestocking = ref(false)
+
+function openRestockModal(product: Product) {
+  restockingProduct.value = product
+  isRestockModalOpen.value = true
+}
+
+/** Desde el modal de edición: se cierra la edición y se abre la reposición (no se apilan dos modales). */
+function openRestockFromEdit() {
+  if (!editingProduct.value) return
+  isFormModalOpen.value = false
+  openRestockModal(editingProduct.value)
+}
+
+async function handleRestockSubmit(payload: RestockProductPayload) {
+  const product = restockingProduct.value
+  // Sin doble clic: mientras una petición va en camino, otra no sale (reponer
+  // no es idempotente: repetirla sumaría las piezas dos veces).
+  if (!product || isRestocking.value) return
+  isRestocking.value = true
+  try {
+    const { product: updated } = await store.restockProduct(product.id, payload)
+    contextLost.value = false
+    toast.success(VOICE.productRestock.done(updated.name, updated.stock))
+    isRestockModalOpen.value = false
+  } catch (error) {
+    // El modal se queda abierto con lo capturado para corregir o reintentar.
+    reportFailure(VOICE.productRestock.failed, error)
+  } finally {
+    isRestocking.value = false
+  }
 }
 
 async function handleFormSubmit(payload: ProductFormSubmitPayload) {

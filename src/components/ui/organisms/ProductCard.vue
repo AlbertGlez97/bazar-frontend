@@ -77,6 +77,16 @@
       >
         Editar
       </AppButton>
+      <!-- Reponer: solo productos por cantidad y activos (ver canRestock) -->
+      <AppButton
+        v-if="restockable"
+        size="sm"
+        variant="soft-success"
+        :aria-label="VOICE.productRestock.actionAria(product.name)"
+        @click="$emit('restock', product)"
+      >
+        {{ VOICE.productRestock.action }}
+      </AppButton>
       <AppButton
         v-if="product.active"
         size="sm"
@@ -101,6 +111,7 @@
 import { computed } from 'vue'
 import { VOICE } from '@/config/voice'
 import { minorToDisplay } from '@/utils/money'
+import { canRestock } from '@/utils/product-restock'
 import { isProductAvailable } from '@/utils/product-status'
 import type { Product } from '@/types/product.types'
 import AppBadge from '../atoms/AppBadge.vue'
@@ -144,8 +155,11 @@ defineEmits<{
   edit: [product: Product]
   deactivate: [product: Product]
   reactivate: [product: Product]
+  restock: [product: Product]
   'toggle-select': [product: Product]
 }>()
+
+const restockable = computed(() => canRestock(props.product))
 
 // tipo="unica" siempre tiene stock 1 (o 0 si ya se vendió); tipo="cantidad"
 // muestra el número real de existencias. En tamaño grande (venta) solo importa

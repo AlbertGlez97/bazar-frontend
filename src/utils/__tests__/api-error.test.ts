@@ -91,6 +91,16 @@ describe('describeApiError', () => {
       expect(described.message).not.toBe(VOICE.apiErrors.product.purchaseCost)
     })
 
+    it.each([
+      ['Only products sold by quantity can be restocked', VOICE.productRestock.uniqueNote],
+      ['A deactivated product cannot be restocked; reactivate it first', VOICE.productRestock.inactiveNote],
+      ['The resulting stock would exceed the maximum allowed', VOICE.productRestock.quantityTooMany],
+    ])('restock rejection "%s" -> friendly Spanish', (raw, expected) => {
+      const described = validation(raw)
+      expect(described).toMatchObject({ kind: 'validation', status: 400, message: expected })
+      expect(described.detail).toBe(raw)
+    })
+
     it('several messages: the first known one leads and the rest stay available as detail', () => {
       const described = validation('unitPriceMinor must be an integer number', 'unitPriceMinor must not be less than 0', 'category must be longer than or equal to 1 characters')
       expect(described.message.toLowerCase()).toContain('precio')

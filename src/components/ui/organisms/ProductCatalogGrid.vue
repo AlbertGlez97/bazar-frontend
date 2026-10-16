@@ -87,6 +87,7 @@
         @edit="$emit('edit', product)"
         @deactivate="$emit('deactivate', product)"
         @reactivate="$emit('reactivate', product)"
+        @restock="$emit('restock', product)"
       />
     </div>
 
@@ -153,6 +154,7 @@ const emit = defineEmits<{
   edit: [product: Product]
   deactivate: [product: Product]
   reactivate: [product: Product]
+  restock: [product: Product]
   'toggle-select': [product: Product]
   'update:view': [view: ManageCatalogView]
 }>()

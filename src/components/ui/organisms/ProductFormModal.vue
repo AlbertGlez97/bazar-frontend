@@ -14,6 +14,7 @@
       :loading="loading"
       @submit="$emit('submit', $event)"
       @cancel="$emit('update:modelValue', false)"
+      @restock="$emit('restock')"
     />
 
     <!-- Solo en edición: el producto ya existe y tiene id. En creación no hay
@@ -42,5 +43,6 @@ defineProps<{
 defineEmits<{
   'update:modelValue': [value: boolean]
   submit: [payload: ProductFormSubmitPayload]
+  restock: []
 }>()
 </script>

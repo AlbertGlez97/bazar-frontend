@@ -225,6 +225,18 @@ describe('products.store', () => {
       )
     })
 
+    it('si la reposición salió bien pero el refresco del listado falla, igual devuelve el resultado', async () => {
+      // La reposición no es idempotente: decir "falló" por un refresco caído
+      // invitaría a reintentar y a duplicar las piezas.
+      vi.mocked(ProductsService.restockProduct).mockResolvedValue(result)
+      vi.mocked(ProductsService.listProducts).mockRejectedValue(new Error('network'))
+      const store = useProductsStore()
+
+      await expect(store.restockProduct('p-1', { quantity: 5 })).resolves.toEqual(result)
+
+      expect(store.error).toBe('No pudimos cargar tu catálogo. Intenta de nuevo.')
+    })
+
     it('si el servidor rechaza, no refresca y relanza el error', async () => {
       const failure = new Error('400')
       vi.mocked(ProductsService.restockProduct).mockRejectedValue(failure)
