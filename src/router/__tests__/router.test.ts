@@ -44,6 +44,7 @@ describe('session routing', () => {
   })
   it('allows logged-out visitors to reach the business registration form', async () => {
     await router.push('/registro-negocio'); expect(router.currentRoute.value.name).toBe('BusinessRegistration')
+    await router.push('/verificar-correo?token=abc'); expect(router.currentRoute.value.name).toBe('VerifyEmail')
   })
   it.each(['/', '/unknown', '/login'])('sends restored-session %s to shell', async (path) => {
     restoreFullSession()

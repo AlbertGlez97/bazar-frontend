@@ -40,6 +40,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/business/RegisterBusinessView.vue'),
       },
       {
+        // Destino del enlace del correo de verificación: un botón confirma el correo (POST).
+        // Pública y sin redirecciones de sesión.
+        path: '/verificar-correo',
+        name: 'VerifyEmail',
+        component: () => import('@/views/business/VerifyEmailView.vue'),
+      },
+      {
         // Textos legales: públicos (con o sin sesión) y con su propio pie. Ver src/legal.
         path: '/privacidad',
         name: 'Privacy',
