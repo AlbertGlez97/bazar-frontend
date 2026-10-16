@@ -50,6 +50,7 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
 <style scoped>
 /* Mobile-first: área táctil ≥ 44px. En desktop volvemos compacto. */
 .app-checkbox {
+  position:    relative;
   display:     inline-flex;
   align-items: center;
   gap:         0.625rem;
@@ -60,7 +61,24 @@ defineEmits<{ 'update:modelValue': [v: boolean] }>()
 }
 .app-checkbox--disabled { opacity: .5; cursor: not-allowed; pointer-events: none; }
 
-.app-checkbox__input { display: none; }
+/* Oculto a la vista pero NO con display:none: así sigue en el orden de
+   tabulación y se puede marcar con el teclado (igual que AppSwitch). */
+.app-checkbox__input {
+  position: absolute;
+  width:    1px;
+  height:   1px;
+  margin:   -1px;
+  padding:  0;
+  border:   0;
+  overflow: hidden;
+  clip:     rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.app-checkbox__input:focus-visible ~ .app-checkbox__box {
+  outline:        3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
 
 .app-checkbox__box {
   width:         1.25rem;                /* 20px — antes 16 */
