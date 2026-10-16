@@ -15,6 +15,8 @@ const completeSections = [
   'MemberCreateForm', 'ProductForm', 'DeviceList', 'TeamMemberList', 'ProductCard',
   // Sección completa de filtros del catálogo: el botón, su insignia y el panel.
   'ProductFiltersPanel',
+  // Reponer existencia: formulario completo y su modal.
+  'ProductRestockForm', 'ProductRestockModal',
 ]
 
 function imports(source: string): string[] {
@@ -76,6 +78,10 @@ describe('Atomic Design boundaries', () => {
   it.each([
     resolve(ui, 'organisms/ProductFiltersPanel.vue'),
     resolve(src, 'utils/product-filters.ts'),
+    // La reposición solo presenta y valida: la petición vive en la vista y el store.
+    resolve(ui, 'organisms/ProductRestockForm.vue'),
+    resolve(ui, 'organisms/ProductRestockModal.vue'),
+    resolve(src, 'utils/product-restock.ts'),
   ])('%s no depende de stores, servicios, vistas ni del barrel público', (file) => {
     const violations = imports(readFileSync(file, 'utf8')).filter((specifier) => {
       if (!specifier.startsWith('.') && !specifier.startsWith('@/')) return false
