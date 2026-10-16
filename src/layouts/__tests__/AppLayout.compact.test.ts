@@ -5,6 +5,7 @@ import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import layoutSource from '../AppLayout.vue?raw'
 import AppLayout from '@/layouts/AppLayout.vue'
+import AppNavDrawer from '@/components/ui/organisms/AppNavDrawer.vue'
 import { SMALL_SCREEN_MAX_WIDTH, SMALL_SCREEN_QUERY } from '@/composables/useDeviceCapabilities'
 
 // Bajo 900 px (teléfono y tablet vertical) NO hay barra lateral: una barra
@@ -118,6 +119,13 @@ describe('AppLayout — pantalla pequeña (bajo 900 px)', () => {
     expect(wrapper.get('.account-menu__trigger').text()).toContain('Mi cuenta')
     expect(wrapper.find('.app-top-bar__logout').exists()).toBe(false)
     expect(wrapper.text()).not.toMatch(/\bSalir\b/)
+    wrapper.unmount()
+  })
+
+  it('colaborador: ni siquiera se monta el cajón del menú (no tiene cómo abrirlo)', async () => {
+    const { wrapper } = await mountLayout({ small: true, member: colaborador })
+
+    expect(wrapper.findComponent(AppNavDrawer).exists()).toBe(false)
     wrapper.unmount()
   })
 
