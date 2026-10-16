@@ -36,6 +36,9 @@
         <span aria-hidden="true">🔑</span>
         <span>Cambiar contraseña</span>
       </button>
+      <div class="account-menu__install">
+        <InstallAppButton variant="ghost" />
+      </div>
       <p
         v-if="offlineNotice"
         class="account-menu__notice"
@@ -59,6 +62,7 @@
 import { ref, watch } from 'vue'
 import { CircleUser } from '@lucide/vue'
 import AppDropdownPanel from './AppDropdownPanel.vue'
+import InstallAppButton from './InstallAppButton.vue'
 
 const props = withDefaults(defineProps<{
   /** Hay conexión: sin ella "Cambiar contraseña" avisa en vez de navegar. */
@@ -112,6 +116,10 @@ function onLogout() {
 .account-menu__trigger:hover,
 .account-menu__trigger[aria-expanded='true'] { background: var(--color-surface-alt); }
 .account-menu__trigger:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+
+/* Sin botón no ocupa lugar */
+.account-menu__install:not(:has(.install-btn)) { display: none; }
+.account-menu__install :deep(.install-btn) { width: 100%; min-height: 3rem; justify-content: flex-start; padding: 0 var(--spacing-md); border-color: transparent; color: var(--color-text); font-size: var(--font-size-md); font-weight: 600; }
 
 .account-menu__list { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 .account-menu__item {

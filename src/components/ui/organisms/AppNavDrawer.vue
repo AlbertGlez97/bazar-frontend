@@ -50,6 +50,12 @@
           <span>Ajustes</span>
         </RouterLink>
       </nav>
+
+      <!-- "Instalar app": solo se ve si Chrome ofreció instalar (o en iPhone/iPad) y la
+           app no está instalada. El evento lo guarda usePwaInstall desde el arranque. -->
+      <div class="app-nav-drawer__install">
+        <InstallAppButton variant="ghost" />
+      </div>
     </div>
 
     <template #footer>
@@ -75,6 +81,7 @@
 <script setup lang="ts">
 import type { UiMode } from '@/types/ui-mode.types'
 import AppAvatar from '../atoms/AppAvatar.vue'
+import InstallAppButton from '../molecules/InstallAppButton.vue'
 import AppDrawer from './AppDrawer.vue'
 import UiModeSwitch from './UiModeSwitch.vue'
 
@@ -116,6 +123,10 @@ function onLogout() {
 
 <style scoped>
 .app-nav-drawer { display: flex; flex-direction: column; gap: var(--spacing-md); }
+
+/* Sin botón no ocupa lugar (ni el espacio entre elementos) */
+.app-nav-drawer__install:not(:has(.install-btn)) { display: none; }
+.app-nav-drawer__install :deep(.install-btn) { width: 100%; justify-content: center; min-height: 3rem; color: var(--color-text); }
 
 .app-nav-drawer__nav { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 .app-nav-drawer__link {

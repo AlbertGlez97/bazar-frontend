@@ -1,70 +1,91 @@
 <template>
   <!--
-    InstallAppButton — CTA de instalación PWA.
-    • Android/desktop: dispara prompt nativo vía beforeinstallprompt.
-    • iOS: muestra instrucciones (Apple NO permite prompt programático).
-    • App ya instalada: no renderiza nada.
+    InstallAppButton — CTA de instalación PWA. Visible solo si la app NO está instalada y:
+    • Android/escritorio: Chrome ya disparó beforeinstallprompt (el evento lo guarda
+      usePwaInstall desde el arranque de la app, aunque este botón se monte después).
+    • iPhone/iPad: no hay evento; el botón abre una explicación corta.
+    La explicación va teleportada a <body> y por encima del cajón del celular.
   -->
   <template v-if="!isInstalled">
-    <!-- Botón principal -->
     <button
       v-if="canPrompt || platform === 'ios'"
+      type="button"
       class="install-btn"
       :class="{ 'install-btn--ghost': variant === 'ghost' }"
       @click="handleClick"
     >
-      <span class="install-btn__icon">📱</span>
+      <span
+        class="install-btn__icon"
+        aria-hidden="true"
+      >📱</span>
       <span>{{ label }}</span>
     </button>
 
-    <!-- Modal iOS — instrucciones manuales -->
-    <div
-      v-if="iosModalOpen"
-      class="install-modal"
-      role="dialog"
-      @click.self="iosModalOpen = false"
-    >
-      <div class="install-modal__content">
-        <button
-          class="install-modal__close"
-          aria-label="Cerrar"
-          @click="iosModalOpen = false"
-        >
-          ✕
-        </button>
+    <Teleport to="body">
+      <div
+        v-if="iosModalOpen"
+        class="install-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-modal-title"
+        @click.self="iosModalOpen = false"
+      >
+        <div class="install-modal__content">
+          <button
+            type="button"
+            class="install-modal__close"
+            aria-label="Cerrar"
+            @click="iosModalOpen = false"
+          >
+            <span aria-hidden="true">✕</span>
+          </button>
 
-        <h3 class="install-modal__title">
-          Instalar en tu iPhone/iPad
-        </h3>
-        <p class="install-modal__sub">
-          Apple no permite instalación automática. Sigue estos 3 pasos en Safari:
-        </p>
+          <h3
+            id="install-modal-title"
+            class="install-modal__title"
+          >
+            Instalar en tu iPhone o iPad
+          </h3>
 
-        <ol class="install-modal__steps">
-          <li>
-            <strong>1.</strong>
-            Toca el botón <strong>Compartir</strong>
-            <span class="install-modal__icon">⬆</span>
-            en la barra inferior de Safari.
-          </li>
-          <li>
-            <strong>2.</strong>
-            Desplázate y toca
-            <strong>"Agregar a pantalla de inicio"</strong>
-            <span class="install-modal__icon">➕</span>
-          </li>
-          <li>
-            <strong>3.</strong>
-            Toca <strong>"Agregar"</strong> en la esquina superior derecha.
-          </li>
-        </ol>
+          <template v-if="iosBrowser === 'safari'">
+            <p class="install-modal__sub">
+              Apple no deja instalar con un solo toque. Haz esto en Safari:
+            </p>
+            <ol class="install-modal__steps">
+              <li>
+                <strong>1.</strong>
+                Toca <strong>Compartir</strong>
+                <span
+                  class="install-modal__icon"
+                  aria-hidden="true"
+                >⬆</span>
+                en la barra de Safari.
+              </li>
+              <li>
+                <strong>2.</strong>
+                Elige <strong>Añadir a pantalla de inicio</strong>.
+              </li>
+              <li>
+                <strong>3.</strong>
+                Toca <strong>Añadir</strong>.
+              </li>
+            </ol>
+            <div class="install-modal__note">
+              Después, abre La Marchanta desde el ícono nuevo.
+            </div>
+          </template>
 
-        <div class="install-modal__note">
-          💡 Después de instalar, abre la app desde el icono en tu pantalla de inicio —
-          funcionará como una app nativa con splash screen y sin barra del navegador.
+          <template v-else>
+            <p class="install-modal__sub">
+              Chrome en iPhone no puede instalar la app.
+            </p>
+            <div class="install-modal__note">
+              Abre esta página en Safari y sigue los pasos desde ahí.
+            </div>
+          </template>
         </div>
       </div>
-    </div>
+    </Teleport>
   </template>
 </template>
 
@@ -73,18 +94,18 @@ import { ref } from 'vue'
 import { usePwaInstall } from '@/composables/usePwaInstall'
 
 interface Props {
-  /** Texto del botón. Default: "Instalar en tu celular" */
-  label?:   string
+  /** Texto del botón. Default: "Instalar app" */
+  label?: string
   /** Variante visual. 'primary' (default) o 'ghost' */
   variant?: 'primary' | 'ghost'
 }
 
 withDefaults(defineProps<Props>(), {
-  label:   'Instalar en tu celular',
+  label: 'Instalar app',
   variant: 'primary',
 })
 
-const { canPrompt, platform, isInstalled, promptInstall } = usePwaInstall()
+const { canPrompt, platform, iosBrowser, isInstalled, promptInstall } = usePwaInstall()
 const iosModalOpen = ref(false)
 
 async function handleClick() {
@@ -102,6 +123,7 @@ async function handleClick() {
   align-items: center;
   gap: var(--spacing-sm);
   padding: 0.75rem 1.25rem;
+  min-height: var(--control-height);
   border: none;
   background: var(--color-primary);
   color: var(--color-on-primary);
@@ -133,7 +155,7 @@ async function handleClick() {
 .install-modal {
   position: fixed;
   inset: 0;
-  z-index: 200;
+  z-index: 1100;
   background: var(--color-overlay);
   backdrop-filter: blur(6px);
   display: flex;

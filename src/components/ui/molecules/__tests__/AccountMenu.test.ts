@@ -1,6 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
+import { initPwaInstall, resetPwaInstallState } from '@/composables/usePwaInstall'
 import AccountMenu from '../AccountMenu.vue'
 import source from '../AccountMenu.vue?raw'
 
@@ -162,5 +163,61 @@ describe('AccountMenu', () => {
       expect(rem(rule('.account-menu__trigger'), 'min-height')).toBeGreaterThanOrEqual(2.75)
       expect(rem(rule('.account-menu__item'), 'min-height')).toBeGreaterThanOrEqual(2.75)
     })
+  })
+})
+
+describe('AccountMenu — Instalar app (celular)', () => {
+  function promptEvent() {
+    const event = new Event('beforeinstallprompt') as Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string; platform: string }> }
+    event.prompt = () => Promise.resolve()
+    event.userChoice = Promise.resolve({ outcome: 'accepted', platform: 'web' })
+    return event
+  }
+
+  beforeEach(() => {
+    resetPwaInstallState()
+    initPwaInstall()
+  })
+  afterEach(() => resetPwaInstallState())
+
+  const installButton = () => document.body.querySelector<HTMLButtonElement>('[role="dialog"] .install-btn')
+
+  it('el evento que llegó ANTES de abrir "Mi cuenta" igual muestra "Instalar app"', async () => {
+    window.dispatchEvent(promptEvent())
+    const wrapper = mountMenu()
+    await open(wrapper)
+
+    expect(installButton()!.textContent).toContain('Instalar app')
+    wrapper.unmount()
+  })
+
+  it('sin evento no hay botón', async () => {
+    const wrapper = mountMenu()
+    await open(wrapper)
+
+    expect(installButton()).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('al instalarse (appinstalled) desaparece', async () => {
+    window.dispatchEvent(promptEvent())
+    const wrapper = mountMenu()
+    await open(wrapper)
+
+    window.dispatchEvent(new Event('appinstalled'))
+    await nextTick()
+
+    expect(installButton()).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('conserva "Cambiar contraseña" y "Cerrar sesión" junto al botón', async () => {
+    window.dispatchEvent(promptEvent())
+    const wrapper = mountMenu()
+    await open(wrapper)
+
+    expect(action('change-password')).not.toBeNull()
+    expect(action('logout')).not.toBeNull()
+    wrapper.unmount()
   })
 })

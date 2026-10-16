@@ -3,9 +3,14 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import router from '@/router'
 import App from './App.vue'
+import { initPwaInstall } from '@/composables/usePwaInstall'
 
 // CSS global con variables de diseño, utilidades y componentes base
 import '@/assets/main.css'
+
+// `beforeinstallprompt` se dispara una sola vez al cargar: el listener se registra ANTES
+// de montar la app (no al montar un botón) para no perder el evento.
+initPwaInstall()
 
 const app = createApp(App)
 

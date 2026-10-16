@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import { initPwaInstall, resetPwaInstallState } from '@/composables/usePwaInstall'
 import AppNavDrawer from '../AppNavDrawer.vue'
 
 afterEach(() => {
@@ -151,6 +152,56 @@ describe('AppNavDrawer', () => {
 
     expect(dialog().querySelectorAll('.app-nav-drawer__link').length).toBe(items.length + 1)
     expect(dialog().querySelector('a[href="/app/ajustes"]')).not.toBeNull()
+    wrapper.unmount()
+  })
+})
+
+describe('AppNavDrawer — Instalar app (celular)', () => {
+  function promptEvent() {
+    const event = new Event('beforeinstallprompt') as Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string; platform: string }> }
+    event.prompt = () => Promise.resolve()
+    event.userChoice = Promise.resolve({ outcome: 'accepted', platform: 'web' })
+    return event
+  }
+
+  beforeEach(() => {
+    resetPwaInstallState()
+    initPwaInstall()
+  })
+  afterEach(() => resetPwaInstallState())
+
+  it('el evento que llegó ANTES de abrir el cajón igual muestra "Instalar app"', async () => {
+    window.dispatchEvent(promptEvent())
+    const { wrapper } = await host()
+
+    expect(dialog().querySelector('.install-btn')!.textContent).toContain('Instalar app')
+    wrapper.unmount()
+  })
+
+  it('sin evento no hay botón en el cajón', async () => {
+    const { wrapper } = await host()
+
+    expect(dialog().querySelector('.install-btn')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('si el evento llega con el cajón abierto, el botón aparece', async () => {
+    const { wrapper } = await host()
+    window.dispatchEvent(promptEvent())
+    await nextTick()
+
+    expect(dialog().querySelector('.install-btn')).not.toBeNull()
+    wrapper.unmount()
+  })
+
+  it('al instalarse (appinstalled) el botón desaparece del cajón', async () => {
+    window.dispatchEvent(promptEvent())
+    const { wrapper } = await host()
+
+    window.dispatchEvent(new Event('appinstalled'))
+    await nextTick()
+
+    expect(dialog().querySelector('.install-btn')).toBeNull()
     wrapper.unmount()
   })
 })
