@@ -114,6 +114,10 @@ describe('LegalDocument — lectura cómoda e impresión', () => {
     expect(css).toMatch(/max-width:\s*(6\d|70)ch|max-width:\s*(4[0-6])(\.\d+)?rem/)
   })
 
+  it('un correo o una palabra larga no se sale de la caja (a 320 px)', () => {
+    expect(css).toMatch(/overflow-wrap:\s*anywhere/)
+  })
+
   it('interlineado generoso para leer', () => {
     expect(css).toMatch(/line-height:\s*1\.[5-9]/)
   })

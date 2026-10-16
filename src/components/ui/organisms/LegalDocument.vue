@@ -134,6 +134,7 @@ const summaryId = computed(() => `${props.document.id}-resumen`)
   color: var(--color-text);
   font-size: var(--font-size-md);
   line-height: 1.65;
+  overflow-wrap: anywhere;
 }
 
 .legal-document__title { margin: 0 0 var(--spacing-xs); font-family: var(--font-display); font-size: var(--font-size-2xl); line-height: 1.2; }
