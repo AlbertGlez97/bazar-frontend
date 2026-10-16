@@ -3,6 +3,7 @@ import { REPORT_COLORS, toArgb } from '@/config/report-palette'
 import { businessWallClock, formatBusinessDateTime } from '@/utils/business-time'
 import { saveBlob } from '@/utils/report-files'
 import { deudaTypeLabel, GANANCIA_NO_DISPONIBLE, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
+import { PAYMENT_METHODS, paymentMethodLabel } from '@/utils/payment-method'
 import type { SalesReport } from '@/types/report.types'
 
 export const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -24,6 +25,7 @@ export interface ExcelSalesRow {
   /** Fecha cuyos campos UTC son la hora de pared del negocio (ver `businessWallClock`). */
   date: Date
   seller: string
+  method: string
   articles: number
   total: number
 }
@@ -57,6 +59,7 @@ export interface ExcelAbonoRow {
   date: Date
   deudor: string
   type: string
+  method: string
   amount: number
 }
 
@@ -113,6 +116,7 @@ export function buildExcelData(report: SalesReport): ExcelReportData {
       rows: report.rows.map((row) => ({
         date: businessWallClock(row.receivedAt),
         seller: row.sellerName,
+        method: paymentMethodLabel(row.paymentMethod),
         articles: row.articleCount,
         total: toPesos(row.totalMinor),
       })),
@@ -151,6 +155,7 @@ export function buildExcelData(report: SalesReport): ExcelReportData {
         date: businessWallClock(abono.fecha),
         deudor: abono.deudor,
         type: deudaTypeLabel(abono.type),
+        method: paymentMethodLabel(abono.paymentMethod),
         amount: toPesos(abono.montoMinor),
       })),
       totalAmount: toPesos(report.abonosRecibidosMinor),
@@ -176,6 +181,9 @@ export function buildExcelData(report: SalesReport): ExcelReportData {
         { label: 'Abonos recibidos', value: toPesos(report.abonosRecibidosMinor), money: true },
         // BE-15/D7: total combinado — ventas de contado + abonos reales.
         { label: 'Total ingresado', value: toPesos(report.totalIngresadoMinor), money: true },
+        // Dinero por método: la suma de las tres líneas cuadra con "Total ingresado".
+        { label: 'Dinero por método', value: '' },
+        ...PAYMENT_METHODS.map((method) => ({ label: paymentMethodLabel(method), value: toPesos(report.porMetodoPago[method].totalMinor), money: true })),
       ],
       notes: reportNotes(report),
     },
@@ -217,17 +225,18 @@ function addSalesSheet(workbook: Workbook, data: ExcelReportData) {
   ws.columns = [
     { width: 18 },
     { width: nameWidth(rows.map((r) => r.seller), 16) },
+    { width: 15 },
     { width: 11 },
     { width: 14 },
   ]
 
-  headerStyle(ws.addRow(['Fecha', 'Persona', 'Artículos', 'Total']), [3, 4])
+  headerStyle(ws.addRow(['Fecha', 'Persona', 'Método', 'Artículos', 'Total']), [4, 5])
 
   for (const item of rows) {
-    const row = ws.addRow([item.date, item.seller, item.articles, item.total])
+    const row = ws.addRow([item.date, item.seller, item.method, item.articles, item.total])
     row.getCell(1).numFmt = DATE_FORMAT
     row.getCell(2).numFmt = TEXT_FORMAT
-    row.getCell(4).numFmt = MONEY_FORMAT
+    row.getCell(5).numFmt = MONEY_FORMAT
   }
 
   const n = rows.length
@@ -237,17 +246,17 @@ function addSalesSheet(workbook: Workbook, data: ExcelReportData) {
   totalsRow.getCell(1).value = 'Total'
   totalsRow.getCell(2).value = plural(totals.count, 'venta', 'ventas')
   const sums: Array<[column: number, letter: string, result: number]> = [
-    [3, 'C', totals.articles],
-    [4, 'D', totals.total],
+    [4, 'D', totals.articles],
+    [5, 'E', totals.total],
   ]
   for (const [column, letter, result] of sums) {
     const cell = totalsRow.getCell(column)
     cell.value = n === 0 ? result : { formula: `SUM(${letter}2:${letter}${n + 1})`, result }
-    if (column >= 4) cell.numFmt = MONEY_FORMAT
+    if (column >= 5) cell.numFmt = MONEY_FORMAT
   }
-  totalsStyle(totalsRow, 4)
+  totalsStyle(totalsRow, 5)
 
-  if (n > 0) ws.autoFilter = `A1:D${n + 1}`
+  if (n > 0) ws.autoFilter = `A1:E${n + 1}`
 }
 
 function addPeopleSheet(workbook: Workbook, data: ExcelReportData) {
@@ -328,25 +337,26 @@ function addAbonosSheet(workbook: Workbook, data: ExcelReportData) {
     { width: 18 },
     { width: nameWidth(rows.map((r) => r.deudor), 16) },
     { width: 12 },
+    { width: 15 },
     { width: 14 },
   ]
 
-  headerStyle(ws.addRow(['Fecha', 'Deudor', 'Tipo', 'Monto']), [4])
+  headerStyle(ws.addRow(['Fecha', 'Deudor', 'Tipo', 'Método', 'Monto']), [5])
 
   for (const item of rows) {
-    const row = ws.addRow([item.date, item.deudor, item.type, item.amount])
+    const row = ws.addRow([item.date, item.deudor, item.type, item.method, item.amount])
     row.getCell(1).numFmt = DATE_FORMAT
     row.getCell(2).numFmt = TEXT_FORMAT
-    row.getCell(4).numFmt = MONEY_FORMAT
+    row.getCell(5).numFmt = MONEY_FORMAT
   }
 
   const n = rows.length
   const totalsRow = ws.getRow(n === 0 ? 2 : n + 3)
   totalsRow.getCell(1).value = 'Total'
-  const amountCell = totalsRow.getCell(4)
-  amountCell.value = n === 0 ? totalAmount : { formula: `SUM(D2:D${n + 1})`, result: totalAmount }
+  const amountCell = totalsRow.getCell(5)
+  amountCell.value = n === 0 ? totalAmount : { formula: `SUM(E2:E${n + 1})`, result: totalAmount }
   amountCell.numFmt = MONEY_FORMAT
-  totalsStyle(totalsRow, 4)
+  totalsStyle(totalsRow, 5)
 }
 
 /** Hoja "Deudas liquidadas" (BE-15/D7): ganancia real, con hueco explícito nunca escrito como `0`. */

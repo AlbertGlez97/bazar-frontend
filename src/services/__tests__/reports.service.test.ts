@@ -1,5 +1,6 @@
 // Tests de ReportsService — contrato de doc/api-contract-for-frontend.md §9.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { methodTotals } from '@/test/factories'
 import ReportsService from '../reports.service'
 import api from '../api'
 import type { SalesByMemberReport, SalesByPeriodReport, SalesDetailResponse } from '@/types/report.types'
@@ -15,10 +16,10 @@ const period: SalesByPeriodReport = {
   saleCount: 1,
   // BE-15: sales-by-period se extendió con dos tablas de deudas y un total
   // combinado, en vez de crear un endpoint nuevo.
-  abonosRecibidos: [{ fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' }],
+  abonosRecibidos: [{ fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado', paymentMethod: 'EFECTIVO' }],
   abonosRecibidosMinor: 20000,
   deudasLiquidadas: [{ id: 'd-1', type: 'fiado', deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true }],
-  totalIngresadoMinor: 230000,
+  totalIngresadoMinor: 230000, porMetodoPago: methodTotals(230000),
 }
 
 const byMember: SalesByMemberReport = {

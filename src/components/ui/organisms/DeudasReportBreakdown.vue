@@ -33,6 +33,9 @@
               <th scope="col">
                 {{ VOICE.reports.columnDeudaType }}
               </th>
+              <th scope="col">
+                {{ VOICE.reports.columnMethod }}
+              </th>
               <th
                 scope="col"
                 class="deudas-report-breakdown__num"
@@ -51,6 +54,7 @@
                 {{ abono.deudor }}
               </td>
               <td>{{ deudaTypeLabel(abono.type) }}</td>
+              <td>{{ paymentMethodLabel(abono.paymentMethod) }}</td>
               <td class="deudas-report-breakdown__num">
                 {{ formatMinorMoney(abono.montoMinor) }}
               </td>
@@ -122,6 +126,62 @@
       </div>
     </div>
 
+    <!-- Dinero por método: sus tres totales suman "Dinero total ingresado". -->
+    <div class="deudas-report-breakdown__section deudas-report-breakdown__methods">
+      <div class="deudas-report-breakdown__table-wrap">
+        <table class="deudas-report-breakdown__table">
+          <caption class="deudas-report-breakdown__caption">
+            {{ VOICE.reports.byMethod }}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">
+                {{ VOICE.reports.columnMethod }}
+              </th>
+              <th
+                scope="col"
+                class="deudas-report-breakdown__num"
+              >
+                {{ VOICE.reports.columnSales }}
+              </th>
+              <th
+                scope="col"
+                class="deudas-report-breakdown__num"
+              >
+                {{ VOICE.reports.columnAbonos }}
+              </th>
+              <th
+                scope="col"
+                class="deudas-report-breakdown__num"
+              >
+                {{ VOICE.reports.columnTotal }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="method in PAYMENT_METHODS"
+              :key="method"
+              :data-method="method"
+            >
+              <td class="deudas-report-breakdown__name">
+                {{ paymentMethodLabel(method) }}
+              </td>
+              <td class="deudas-report-breakdown__num">
+                {{ formatMinorMoney(porMetodoPago[method].ventasMinor) }}
+              </td>
+              <td class="deudas-report-breakdown__num">
+                {{ formatMinorMoney(porMetodoPago[method].abonosMinor) }}
+              </td>
+              <td class="deudas-report-breakdown__num">
+                {{ formatMinorMoney(porMetodoPago[method].totalMinor) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="deudas-report-breakdown__total">
       <p class="deudas-report-breakdown__total-label">
         {{ VOICE.reports.totalIngresadoLabel }}
@@ -139,13 +199,17 @@
 <script setup lang="ts">
 import { VOICE } from '@/config/voice'
 import { formatMinorMoney } from '@/utils/money'
+import { PAYMENT_METHODS, paymentMethodLabel } from '@/utils/payment-method'
 import { deudaTypeLabel, gananciaCellText } from '@/utils/sales-report'
+import type { PaymentMethod } from '@/types/payment.types'
+import type { PaymentMethodTotals } from '@/types/report.types'
 
 export interface AbonoRecibidoBreakdownRow {
   fecha: string
   deudor: string
   montoMinor: number
   type: 'fiado' | 'apartado'
+  paymentMethod: PaymentMethod
 }
 
 export interface DeudaLiquidadaBreakdownRow {
@@ -164,6 +228,8 @@ defineProps<{
   deudasLiquidadas: DeudaLiquidadaBreakdownRow[]
   /** `totalSoldMinor + abonosRecibidosMinor`, ya sumado. */
   totalIngresadoMinor: number
+  /** Dinero ingresado por método; la suma de sus `totalMinor` es `totalIngresadoMinor`. */
+  porMetodoPago: PaymentMethodTotals
 }>()
 
 function formatDate(iso: string): string {

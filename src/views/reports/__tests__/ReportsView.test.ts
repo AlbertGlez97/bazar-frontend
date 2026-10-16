@@ -2,6 +2,7 @@
 // reales; solo se simulan la red (ReportsService, colector de ventas) y los
 // exportadores (que cargan pdfmake / exceljs).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { methodTotals } from '@/test/factories'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
@@ -44,6 +45,7 @@ const period = (over: Partial<SalesByPeriodReport> = {}): SalesByPeriodReport =>
     abonosRecibidos, abonosRecibidosMinor,
     deudasLiquidadas: over.deudasLiquidadas ?? [],
     totalIngresadoMinor: over.totalIngresadoMinor ?? totalSoldMinor + abonosRecibidosMinor,
+    porMetodoPago: over.porMetodoPago ?? methodTotals(over.totalIngresadoMinor ?? totalSoldMinor + abonosRecibidosMinor),
     ...over,
   }
 }
@@ -59,7 +61,7 @@ const byMember = (over: Partial<SalesByMemberReport> = {}): SalesByMemberReport 
 function sale(id: string, memberId: string, receivedAt: string, totalMinor: number): Sale {
   return {
     id, memberId, deviceId: 'd-1', occurredAt: receivedAt, receivedAt, currency: 'MXN', status: 'completada',
-    totalMinor, cashReceivedMinor: totalMinor, changeMinor: 0, conflictReason: null, conflictDetectedAt: null,
+    totalMinor, cashReceivedMinor: totalMinor, changeMinor: 0, paymentMethod: 'EFECTIVO', conflictReason: null, conflictDetectedAt: null,
     items: [{ id: `${id}-i`, productId: 'p', quantity: 1, unitPriceMinor: totalMinor, subtotalMinor: totalMinor, createdAt: receivedAt }],
   }
 }
@@ -143,10 +145,12 @@ describe('ReportsView — carga y presentación', () => {
     expect(wrapper.text()).toContain('2 ventas')
     expect(wrapper.text()).toContain('24/09/2026')
     const rows = wrapper.findAll('tbody tr').map((tr) => tr.findAll('td').map((td) => td.text()))
-    expect(rows).toEqual([
+    expect(rows.slice(0, 2)).toEqual([
       ['Carlos Núñez', 'Colaborador', '$1,250.00', '96.1 %'],
       ['Ana', 'Socio', '$50.50', '3.9 %'],
     ])
+    // Tras la tabla de personas viene "Dinero por método": efectivo, transferencia y tarjeta.
+    expect(wrapper.findAll('tr[data-method]').map((tr) => tr.attributes('data-method'))).toEqual(['EFECTIVO', 'TRANSFERENCIA', 'TARJETA'])
   })
 
   it('labels a multi-day range with both dates', async () => {
@@ -485,7 +489,7 @@ describe('ReportsView — desglose por producto (D4: ganancia real)', () => {
 // sales-by-period — no requieren un colector aparte.
 describe('ReportsView — abonos recibidos y deudas liquidadas (BE-15)', () => {
   const abonosRecibidos: AbonoRecibidoRow[] = [
-    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' },
+    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado', paymentMethod: 'EFECTIVO' },
   ]
   const deudasLiquidadas: DeudaLiquidadaRow[] = [
     { id: 'd-1', type: 'fiado', deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true },

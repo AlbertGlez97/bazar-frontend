@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { methodTotals } from '@/test/factories'
 import { buildPdfDefinition, downloadPdf, renderPdfBlob } from '../pdf-report'
 import { saveBlob } from '@/utils/report-files'
 import { buildSalesReport } from '@/utils/sales-report'
@@ -27,7 +28,7 @@ vi.mock('pdfmake/build/vfs_fonts', () => {
 const report = buildSalesReport({
   period: {
     from: '2026-09-24T06:00:00.000Z', to: '2026-09-25T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0,
-    abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0,
+    abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0, porMetodoPago: methodTotals(0),
   },
   byMember: { from: '', to: '', items: [] },
   sales: [],

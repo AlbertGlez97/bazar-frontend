@@ -1,5 +1,6 @@
 import { businessDayOf, formatDateKey } from './business-time'
 import { addMinor, formatMinorMoney } from './money'
+import { resolvePaymentMethod } from './payment-method'
 import type {
   SalesByMemberReport,
   SalesByPeriodReport,
@@ -145,8 +146,9 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
       sellerName: known.get(sale.memberId)?.name ?? UNKNOWN_SELLER,
       articleCount: sale.items.reduce((sum, item) => sum + item.quantity, 0),
       totalMinor: sale.totalMinor ?? 0,
-      cashReceivedMinor: sale.cashReceivedMinor,
+      cashReceivedMinor: sale.cashReceivedMinor ?? null,
       changeMinor: sale.changeMinor ?? 0,
+      paymentMethod: resolvePaymentMethod(sale.paymentMethod),
     }))
     .sort((a, b) => Date.parse(a.receivedAt) - Date.parse(b.receivedAt) || a.id.localeCompare(b.id))
 
@@ -155,7 +157,7 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
       saleCount: acc.saleCount + 1,
       articleCount: acc.articleCount + row.articleCount,
       totalMinor: addMinor(acc.totalMinor, row.totalMinor),
-      cashReceivedMinor: addMinor(acc.cashReceivedMinor, row.cashReceivedMinor),
+      cashReceivedMinor: addMinor(acc.cashReceivedMinor, row.cashReceivedMinor ?? 0),
       changeMinor: addMinor(acc.changeMinor, row.changeMinor),
     }),
     { saleCount: 0, articleCount: 0, totalMinor: 0, cashReceivedMinor: 0, changeMinor: 0 },
@@ -220,5 +222,6 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
     abonosRecibidosMinor: period.abonosRecibidosMinor,
     deudasLiquidadas: period.deudasLiquidadas,
     totalIngresadoMinor: period.totalIngresadoMinor,
+    porMetodoPago: period.porMetodoPago,
   }
 }

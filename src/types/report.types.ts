@@ -2,6 +2,7 @@
 // frontend.md §9). Solo socios. Dinero en centavos MXN (enteros). Solo cuentan
 // ventas `completada`, ancladas a `receivedAt` (reloj del servidor).
 import type { MemberRole } from './member.types'
+import type { PaymentMethod } from './payment.types'
 
 /** Query de ambos reportes: `from` y `to` son OBLIGATORIOS. */
 export interface ReportRangeParams {
@@ -17,7 +18,19 @@ export interface AbonoRecibidoRow {
   deudor: string
   montoMinor: number
   type: 'fiado' | 'apartado'
+  /** Con qué se pagó el abono. */
+  paymentMethod: PaymentMethod
 }
+
+/** Dinero que entró con un método: ventas + abonos (lo que suma `totalMinor`). */
+export interface MethodTotals {
+  ventasMinor: number
+  abonosMinor: number
+  totalMinor: number
+}
+
+/** Dinero por método de pago; la suma de los `totalMinor` es `totalIngresadoMinor`. */
+export type PaymentMethodTotals = Record<PaymentMethod, MethodTotals>
 
 /**
  * Una Deuda liquidada en el periodo (BE-15): `saldadaAt` cae en el rango (no
@@ -52,6 +65,8 @@ export interface SalesByPeriodReport {
   deudasLiquidadas: DeudaLiquidadaRow[]
   /** BE-15. `totalSoldMinor + abonosRecibidosMinor`, ya sumado por el servidor. */
   totalIngresadoMinor: number
+  /** Dinero ingresado por método de pago (efectivo, transferencia, tarjeta). */
+  porMetodoPago: PaymentMethodTotals
 }
 
 export interface SalesByMemberItem {
@@ -136,8 +151,10 @@ export interface SalesReportRow {
   /** Suma de las cantidades de las partidas. */
   articleCount: number
   totalMinor: number
-  cashReceivedMinor: number
+  /** `null` con transferencia o tarjeta: no se recibió efectivo. */
+  cashReceivedMinor: number | null
   changeMinor: number
+  paymentMethod: PaymentMethod
 }
 
 /** Resumen por persona, calculado desde las filas del detalle. */
@@ -230,6 +247,8 @@ export interface SalesReport {
   deudasLiquidadas: DeudaLiquidadaRow[]
   /** `totalSoldMinor + abonosRecibidosMinor`. */
   totalIngresadoMinor: number
+  /** Tal cual lo calcula el servidor: la suma de sus `totalMinor` cuadra con `totalIngresadoMinor`. */
+  porMetodoPago: PaymentMethodTotals
 }
 
 // ── GET /dashboard/summary (doc/api-contract-for-frontend.md §"GET

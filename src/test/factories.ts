@@ -1,5 +1,6 @@
 // Fábricas de datos para tests de la pantalla de venta.
 import type { Product } from '@/types/product.types'
+import type { PaymentMethodTotals } from '@/types/report.types'
 
 let seq = 0
 
@@ -22,4 +23,19 @@ export function makeProduct(overrides: Partial<Product> = {}): Product {
     image: null,
     ...overrides,
   }
+}
+
+/**
+ * `porMetodoPago` de un reporte de prueba: todo el dinero en EFECTIVO salvo que
+ * se indique otra cosa. La suma de los `totalMinor` siempre es `totalMinor`.
+ */
+export function methodTotals(
+  totalMinor = 0,
+  split: Partial<Record<'TRANSFERENCIA' | 'TARJETA', number>> = {},
+): PaymentMethodTotals {
+  const transferencia = split.TRANSFERENCIA ?? 0
+  const tarjeta = split.TARJETA ?? 0
+  const efectivo = totalMinor - transferencia - tarjeta
+  const line = (value: number) => ({ ventasMinor: value, abonosMinor: 0, totalMinor: value })
+  return { EFECTIVO: line(efectivo), TRANSFERENCIA: line(transferencia), TARJETA: line(tarjeta) }
 }

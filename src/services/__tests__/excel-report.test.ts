@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { methodTotals } from '@/test/factories'
 import ExcelJS from 'exceljs'
 import { buildExcelData, buildWorkbook, downloadExcel, renderExcelBlob, XLSX_MIME } from '../excel-report'
 import { saveBlob } from '@/utils/report-files'
@@ -15,7 +16,7 @@ const MONEY_FORMAT = '"$"#,##0.00'
 function sale(id: string, memberId: string, receivedAt: string, totalMinor: number, cashMinor: number, quantities: number[]): Sale {
   return {
     id, memberId, deviceId: 'd-1', occurredAt: receivedAt, receivedAt, currency: 'MXN', status: 'completada',
-    totalMinor, cashReceivedMinor: cashMinor, changeMinor: cashMinor - totalMinor, conflictReason: null, conflictDetectedAt: null,
+    totalMinor, cashReceivedMinor: cashMinor, changeMinor: cashMinor - totalMinor, paymentMethod: 'EFECTIVO', conflictReason: null, conflictDetectedAt: null,
     items: quantities.map((quantity, i) => ({ id: `${id}-${i}`, productId: `p${i}`, quantity, unitPriceMinor: 1, subtotalMinor: quantity, createdAt: receivedAt })),
   }
 }
@@ -46,7 +47,7 @@ function makeReport(
       from: FROM, to: TO, totalSoldMinor, saleCount: sales.length,
       abonosRecibidos, abonosRecibidosMinor,
       deudasLiquidadas: extra.deudasLiquidadas ?? [],
-      totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor,
+      totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor, porMetodoPago: methodTotals(totalSoldMinor + abonosRecibidosMinor),
     },
     byMember: {
       from: FROM, to: TO,
@@ -105,6 +106,10 @@ describe('buildExcelData (pure shaping, no exceljs)', () => {
       { label: 'Total vendido', value: 1300.5, money: true },
       { label: 'Abonos recibidos', value: 0, money: true },
       { label: 'Total ingresado', value: 1300.5, money: true },
+      { label: 'Dinero por método', value: '' },
+      { label: 'Efectivo', value: 1300.5, money: true },
+      { label: 'Transferencia', value: 0, money: true },
+      { label: 'Tarjeta', value: 0, money: true },
     ])
   })
 
@@ -112,7 +117,7 @@ describe('buildExcelData (pure shaping, no exceljs)', () => {
     const report = buildSalesReport({
       period: {
         from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0,
-        abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0,
+        abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0, porMetodoPago: methodTotals(0),
       },
       byMember: { from: '', to: '', items: [] }, sales: [], businessName: 'La Marchanta', generatedAt: '2026-09-25T04:00:00.000Z',
     })
@@ -214,21 +219,22 @@ describe('buildWorkbook — product sheet (D4, real exceljs)', () => {
 // producto", que depende de si se pidió el detalle).
 describe('buildWorkbook — abonos recibidos y deudas liquidadas (BE-15, real exceljs)', () => {
   const abonosRecibidos = [
-    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' as const },
+    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' as const, paymentMethod: 'TRANSFERENCIA' as const },
   ]
   const deudasLiquidadas = [
     { id: 'd-1', type: 'fiado' as const, deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true },
     { id: 'd-2', type: 'apartado' as const, deudor: 'Ana', totalMinor: 10000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: null, gananciaDisponible: false },
   ]
 
-  it('writes "Abonos recibidos" with Fecha/Deudor/Tipo/Monto and a totals row', async () => {
+  it('writes "Abonos recibidos" with Fecha/Deudor/Tipo/Método/Monto and a totals row', async () => {
     const wb = await buildWorkbook(makeReport(DEFAULT_SALES, undefined, { abonosRecibidos }))
     const ws = wb.getWorksheet('Abonos recibidos')!
-    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Deudor', 'Tipo', 'Monto'])
+    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Deudor', 'Tipo', 'Método', 'Monto'])
     expect(ws.getCell('B2').value).toBe('Lucía')
     expect(ws.getCell('C2').value).toBe('Apartado')
-    expect(ws.getCell('D2').value).toBe(200)
-    expect(ws.getCell('D2').numFmt).toBe(MONEY_FORMAT)
+    expect(ws.getCell('D2').value).toBe('Transferencia')
+    expect(ws.getCell('E2').value).toBe(200)
+    expect(ws.getCell('E2').numFmt).toBe(MONEY_FORMAT)
   })
 
   it('writes "Deudas liquidadas" with Deudor/Tipo/Total/Liquidada el/Ganancia, "No disponible" for a missing profit', async () => {
@@ -260,12 +266,12 @@ describe('buildWorkbook (real exceljs)', () => {
 
   it('writes the Ventas header styled, frozen and filtered (sin Efectivo ni Cambio)', async () => {
     const ws = (await buildWorkbook(makeReport())).getWorksheet('Ventas')!
-    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Persona', 'Artículos', 'Total'])
+    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Persona', 'Método', 'Artículos', 'Total'])
     const head = ws.getCell('A1')
     expect(head.font?.bold).toBe(true)
     expect(head.fill).toMatchObject({ type: 'pattern', fgColor: { argb: 'FFB8501C' } })
     expect(ws.views[0]).toMatchObject({ state: 'frozen', ySplit: 1 })
-    expect(ws.autoFilter).toBe('A1:D3')
+    expect(ws.autoFilter).toBe('A1:E3')
   })
 
   it('writes real dates, real numbers and money/date formats', async () => {
@@ -275,14 +281,15 @@ describe('buildWorkbook (real exceljs)', () => {
     expect((date.value as Date).toISOString()).toBe('2026-09-24T12:00:00.000Z')
     expect(date.numFmt).toBe('dd/mm/yyyy hh:mm')
     expect(ws.getCell('B2').value).toBe('Ana')
-    expect(ws.getCell('C2').value).toBe(1)
-    for (const address of ['D2', 'D3']) {
+    expect(ws.getCell('C2').value).toBe('Efectivo')
+    expect(ws.getCell('D2').value).toBe(1)
+    for (const address of ['E2', 'E3']) {
       const cell = ws.getCell(address)
       expect(typeof cell.value).toBe('number')
       expect(cell.numFmt).toBe(MONEY_FORMAT)
     }
-    expect(ws.getCell('D2').value).toBe(50.5)
-    expect(ws.getCell('D3').value).toBe(1250)
+    expect(ws.getCell('E2').value).toBe(50.5)
+    expect(ws.getCell('E3').value).toBe(1250)
   })
 
   it('adds a totals row with SUM formulas and cached results', async () => {
@@ -290,11 +297,11 @@ describe('buildWorkbook (real exceljs)', () => {
     // Filas 2-3 de datos, fila 4 en blanco, totales en la 5.
     expect(ws.getCell('A5').value).toBe('Total')
     expect(ws.getCell('B5').value).toBe('2 ventas')
-    expect(ws.getCell('C5').value).toEqual({ formula: 'SUM(C2:C3)', result: 4 })
-    expect(ws.getCell('D5').value).toEqual({ formula: 'SUM(D2:D3)', result: 1300.5 })
-    expect(ws.getCell('D5').numFmt).toBe(MONEY_FORMAT)
-    expect(ws.getCell('D5').font?.bold).toBe(true)
-    expect(ws.getCell('E5').value).toBeNull()
+    expect(ws.getCell('D5').value).toEqual({ formula: 'SUM(D2:D3)', result: 4 })
+    expect(ws.getCell('E5').value).toEqual({ formula: 'SUM(E2:E3)', result: 1300.5 })
+    expect(ws.getCell('E5').numFmt).toBe(MONEY_FORMAT)
+    expect(ws.getCell('E5').font?.bold).toBe(true)
+    expect(ws.getCell('F5').value).toBeNull()
   })
 
   it('sets readable column widths', async () => {
@@ -305,9 +312,9 @@ describe('buildWorkbook (real exceljs)', () => {
 
   it('builds an empty report without formulas or crashes', async () => {
     const ws = (await buildWorkbook(makeReport([]))).getWorksheet('Ventas')!
-    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Persona', 'Artículos', 'Total'])
+    expect(ws.getRow(1).values).toEqual([undefined, 'Fecha', 'Persona', 'Método', 'Artículos', 'Total'])
     expect(ws.getCell('A2').value).toBe('Total')
-    expect(ws.getCell('D2').value).toBe(0)
+    expect(ws.getCell('E2').value).toBe(0)
     expect(ws.autoFilter).toBeFalsy()
   })
 
@@ -357,11 +364,11 @@ describe('buildWorkbook (real exceljs)', () => {
     const loaded = await new ExcelJS.Workbook().xlsx.load(buffer as ArrayBuffer)
     const ws = loaded.getWorksheet('Ventas')!
     expect(ws.getCell('B3').value).toBe('Carlos Núñez')
-    expect(ws.getCell('D3').value).toBe(1250)
+    expect(ws.getCell('E3').value).toBe(1250)
     expect((ws.getCell('A3').value as Date).toISOString()).toBe('2026-09-24T14:05:00.000Z')
-    expect(ws.getCell('D5').value).toEqual({ formula: 'SUM(D2:D3)', result: 1300.5 })
+    expect(ws.getCell('E5').value).toEqual({ formula: 'SUM(E2:E3)', result: 1300.5 })
     expect(ws.getCell('A1').type).toBe(ExcelJS.ValueType.String)
-    expect(ws.autoFilter).toBe('A1:D3')
+    expect(ws.autoFilter).toBe('A1:E3')
     expect(loaded.getWorksheet('Por persona')!.getCell('D2').value).toBe(1250)
   })
 })
@@ -389,5 +396,17 @@ describe('renderExcelBlob', () => {
       reader.readAsArrayBuffer(blob.slice(0, 2))
     })
     expect(head).toBe('PK')
+  })
+})
+
+describe('buildExcelData — dinero por método', () => {
+  it('las tres líneas del resumen suman el total ingresado', () => {
+    const { summary } = buildExcelData(makeReport())
+    const lines = summary.rows.filter((r) => ['Efectivo', 'Transferencia', 'Tarjeta'].includes(r.label))
+    const sum = lines.reduce((acc, r) => acc + (r.value as number), 0)
+    const total = summary.rows.find((r) => r.label === 'Total ingresado')!.value
+
+    expect(lines).toHaveLength(3)
+    expect(sum).toBeCloseTo(total as number, 2)
   })
 })

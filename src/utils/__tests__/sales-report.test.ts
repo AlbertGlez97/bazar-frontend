@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { methodTotals } from '@/test/factories'
 import {
   buildSalesReport,
   formatDayRange,
@@ -33,6 +34,7 @@ function sale(overrides: Partial<Sale> & { quantities?: number[] } = {}): Sale {
     totalMinor: 1000,
     cashReceivedMinor: 1000,
     changeMinor: 0,
+    paymentMethod: 'EFECTIVO',
     conflictReason: null,
     conflictDetectedAt: null,
     items: quantities.map((quantity, i) => ({
@@ -53,7 +55,7 @@ const period = (
     from: FROM, to: TO, totalSoldMinor, saleCount,
     abonosRecibidos, abonosRecibidosMinor,
     deudasLiquidadas: extra.deudasLiquidadas ?? [],
-    totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor,
+    totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor, porMetodoPago: methodTotals(totalSoldMinor + abonosRecibidosMinor),
   }
 }
 
@@ -83,7 +85,7 @@ function build(sales: Sale[], overrides: Partial<Parameters<typeof buildSalesRep
 // servidor, no hay nada que recalcular aquí, a diferencia de `rows`/`people`).
 describe('buildSalesReport — abonos/deudas liquidadas (BE-15, pass-through)', () => {
   it('pasa abonosRecibidos, abonosRecibidosMinor, deudasLiquidadas y totalIngresadoMinor tal cual del período', () => {
-    const abonosRecibidos: AbonoRecibidoRow[] = [{ fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' }]
+    const abonosRecibidos: AbonoRecibidoRow[] = [{ fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado', paymentMethod: 'EFECTIVO' }]
     const deudasLiquidadas: DeudaLiquidadaRow[] = [{ id: 'd-1', type: 'fiado', deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true }]
     const report = build([], { period: period(0, 0, { abonosRecibidos, deudasLiquidadas }) })
 
@@ -115,6 +117,7 @@ describe('buildSalesReport — rows', () => {
       totalMinor: 125000,
       cashReceivedMinor: 150000,
       changeMinor: 25000,
+      paymentMethod: 'EFECTIVO',
     }])
   })
 
@@ -223,7 +226,7 @@ describe('rangeDescription and reportNotes (shared by PDF and Excel)', () => {
     expect(rangeDescription(build([]))).toBe('24/09/2026')
     const week = build([], { period: {
       from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0,
-      abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0,
+      abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0, porMetodoPago: methodTotals(0),
     } })
     expect(rangeDescription(week)).toBe('20/09/2026 al 26/09/2026')
   })
@@ -361,7 +364,7 @@ describe('buildSalesReport — header data', () => {
   it('a multi-day range gives its first and last business day', () => {
     const report = build([], { period: {
       from: '2026-09-20T06:00:00.000Z', to: '2026-09-27T05:59:59.999Z', totalSoldMinor: 0, saleCount: 0,
-      abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0,
+      abonosRecibidos: [], abonosRecibidosMinor: 0, deudasLiquidadas: [], totalIngresadoMinor: 0, porMetodoPago: methodTotals(0),
     } })
     expect(report.range).toMatchObject({ fromDay: '2026-09-20', toDay: '2026-09-26' })
   })

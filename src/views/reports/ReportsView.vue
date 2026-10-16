@@ -101,6 +101,7 @@
         :abonos-recibidos="loaded.period.abonosRecibidos"
         :deudas-liquidadas="loaded.period.deudasLiquidadas"
         :total-ingresado-minor="loaded.period.totalIngresadoMinor"
+        :por-metodo-pago="loaded.period.porMetodoPago"
       />
     </template>
 

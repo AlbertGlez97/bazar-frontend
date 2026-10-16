@@ -3,6 +3,7 @@ import { REPORT_COLORS } from '@/config/report-palette'
 import { formatBusinessDateTime } from '@/utils/business-time'
 import { saveBlob } from '@/utils/report-files'
 import { formatMinorMoney } from '@/utils/money'
+import { PAYMENT_METHODS, paymentMethodLabel } from '@/utils/payment-method'
 import { deudaTypeLabel, gananciaCellText, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 
@@ -61,23 +62,26 @@ function salesTable(report: SalesReport): Content {
     table: {
       headerRows: 1,
       dontBreakRows: true,
-      widths: [88, '*', 50, 62],
+      widths: [82, '*', 62, 46, 62],
       body: [
         [
           headerCell('Fecha'),
           headerCell('Persona'),
+          headerCell('Método'),
           headerCell('Artículos', 'right'),
           headerCell('Total', 'right'),
         ],
         ...report.rows.map((row) => [
           cell(formatBusinessDateTime(row.receivedAt)),
           cell(row.sellerName),
+          cell(paymentMethodLabel(row.paymentMethod)),
           cell(String(row.articleCount), 'right'),
           cell(formatMinorMoney(row.totalMinor), 'right'),
         ]),
         [
           totalCell('Total'),
           totalCell(plural(totals.saleCount, 'venta', 'ventas')),
+          totalCell(''),
           totalCell(String(totals.articleCount), 'right'),
           totalCell(formatMinorMoney(totals.totalMinor), 'right'),
         ],
@@ -160,25 +164,61 @@ function abonosTable(report: SalesReport): Content {
     table: {
       headerRows: 1,
       dontBreakRows: true,
-      widths: [88, '*', 55, 62],
+      widths: [82, '*', 50, 62, 62],
       body: [
         [
           headerCell('Fecha'),
           headerCell('Deudor'),
           headerCell('Tipo'),
+          headerCell('Método'),
           headerCell('Monto', 'right'),
         ],
         ...report.abonosRecibidos.map((abono) => [
           cell(formatBusinessDateTime(abono.fecha)),
           cell(abono.deudor),
           cell(deudaTypeLabel(abono.type)),
+          cell(paymentMethodLabel(abono.paymentMethod)),
           cell(formatMinorMoney(abono.montoMinor), 'right'),
         ]),
         [
           totalCell('Total'),
           totalCell(''),
           totalCell(''),
+          totalCell(''),
           totalCell(formatMinorMoney(report.abonosRecibidosMinor), 'right'),
+        ],
+      ],
+    },
+    layout: TABLE_LAYOUT,
+    fontSize: 9,
+  }
+}
+
+/** Tabla "Dinero por método" (efectivo, transferencia, tarjeta): su total cuadra con "Total ingresado". */
+function methodsTable(report: SalesReport): Content {
+  return {
+    table: {
+      headerRows: 1,
+      dontBreakRows: true,
+      widths: ['*', 70, 70, 70],
+      body: [
+        [
+          headerCell('Método'),
+          headerCell('Ventas', 'right'),
+          headerCell('Abonos', 'right'),
+          headerCell('Total', 'right'),
+        ],
+        ...PAYMENT_METHODS.map((method) => [
+          cell(paymentMethodLabel(method)),
+          cell(formatMinorMoney(report.porMetodoPago[method].ventasMinor), 'right'),
+          cell(formatMinorMoney(report.porMetodoPago[method].abonosMinor), 'right'),
+          cell(formatMinorMoney(report.porMetodoPago[method].totalMinor), 'right'),
+        ]),
+        [
+          totalCell('Total ingresado'),
+          totalCell(''),
+          totalCell(''),
+          totalCell(formatMinorMoney(report.totalIngresadoMinor), 'right'),
         ],
       ],
     },
@@ -280,6 +320,9 @@ export function buildPdfDefinition(report: SalesReport): TDocumentDefinitions {
   content.push(report.deudasLiquidadas.length > 0
     ? deudasLiquidadasTable(report)
     : { text: 'Todavía no hay deudas liquidadas en este periodo.', color: C.textMuted, margin: [0, 0, 0, 8] })
+
+  content.push({ text: 'Dinero por método', style: 'sectionTitle', margin: [0, 16, 0, 6] })
+  content.push(methodsTable(report))
 
   content.push({
     columns: [

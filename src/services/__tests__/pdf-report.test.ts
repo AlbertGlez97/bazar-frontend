@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { methodTotals } from '@/test/factories'
 import type { Content, TDocumentDefinitions } from 'pdfmake/interfaces'
 import { buildPdfDefinition } from '../pdf-report'
 import { REPORT_COLORS } from '@/config/report-palette'
@@ -12,7 +13,7 @@ const TO = '2026-09-25T05:59:59.999Z'
 function sale(id: string, memberId: string, receivedAt: string, totalMinor: number, cashMinor: number, quantities: number[]): Sale {
   return {
     id, memberId, deviceId: 'd-1', occurredAt: receivedAt, receivedAt, currency: 'MXN', status: 'completada',
-    totalMinor, cashReceivedMinor: cashMinor, changeMinor: cashMinor - totalMinor, conflictReason: null, conflictDetectedAt: null,
+    totalMinor, cashReceivedMinor: cashMinor, changeMinor: cashMinor - totalMinor, paymentMethod: 'EFECTIVO', conflictReason: null, conflictDetectedAt: null,
     items: quantities.map((quantity, i) => ({ id: `${id}-${i}`, productId: `p${i}`, quantity, unitPriceMinor: 1, subtotalMinor: quantity, createdAt: receivedAt })),
   }
 }
@@ -41,7 +42,7 @@ function makeReport(overrides: {
       ...range, totalSoldMinor, saleCount: sales.length,
       abonosRecibidos, abonosRecibidosMinor,
       deudasLiquidadas: overrides.deudasLiquidadas ?? [],
-      totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor,
+      totalIngresadoMinor: totalSoldMinor + abonosRecibidosMinor, porMetodoPago: methodTotals(totalSoldMinor + abonosRecibidosMinor),
     },
     byMember: {
       ...range,
@@ -134,24 +135,24 @@ describe('buildPdfDefinition — sales table', () => {
   const def = buildPdfDefinition(makeReport())
   const table = findTable(def, 'Fecha')
 
-  it('has the columns Fecha / Persona / Artículos / Total (sin Efectivo ni Cambio) y repite el encabezado por página', () => {
-    expect(rowTexts(table.body[0])).toEqual(['Fecha', 'Persona', 'Artículos', 'Total'])
+  it('has the columns Fecha / Persona / Método / Artículos / Total (sin Efectivo ni Cambio) y repite el encabezado por página', () => {
+    expect(rowTexts(table.body[0])).toEqual(['Fecha', 'Persona', 'Método', 'Artículos', 'Total'])
     expect((table.node.table as { headerRows?: number }).headerRows).toBe(1)
   })
 
   it('lists sales oldest first with business-time dates and formatted amounts', () => {
-    expect(rowTexts(table.body[1])).toEqual(['24/09/2026 12:00', 'Ana', '1', '$50.50'])
-    expect(rowTexts(table.body[2])).toEqual(['24/09/2026 14:05', 'Carlos Núñez', '3', '$1,250.00'])
+    expect(rowTexts(table.body[1])).toEqual(['24/09/2026 12:00', 'Ana', 'Efectivo', '1', '$50.50'])
+    expect(rowTexts(table.body[2])).toEqual(['24/09/2026 14:05', 'Carlos Núñez', 'Efectivo', '3', '$1,250.00'])
   })
 
   it('ends with a totals row summed from the rows', () => {
     const last = rowTexts(table.body[table.body.length - 1])
-    expect(last).toEqual(['Total', '2 ventas', '4', '$1,300.50'])
+    expect(last).toEqual(['Total', '2 ventas', '', '4', '$1,300.50'])
     expect(table.body).toHaveLength(1 + 2 + 1)
   })
 
   it('right-aligns the numeric columns', () => {
-    const cell = table.body[1][3] as unknown as Node
+    const cell = table.body[1][4] as unknown as Node
     expect(cell.alignment).toBe('right')
   })
 
@@ -242,17 +243,17 @@ describe('buildPdfDefinition — product breakdown (D4: real profit by product/m
 // "Por producto", que depende de si se pidió el detalle).
 describe('buildPdfDefinition — abonos recibidos y deudas liquidadas (BE-15)', () => {
   const abonosRecibidos = [
-    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' as const },
+    { fecha: '2026-09-22T15:30:00.000Z', deudor: 'Lucía', montoMinor: 20000, type: 'apartado' as const, paymentMethod: 'TRANSFERENCIA' as const },
   ]
   const deudasLiquidadas = [
     { id: 'd-1', type: 'fiado' as const, deudor: 'Carlos', totalMinor: 65000, saldadaAt: '2026-09-23T13:00:00.000Z', gananciaMinor: 15000, gananciaDisponible: true },
   ]
 
-  it('has an "Abonos recibidos" table with Fecha / Deudor / Tipo / Monto', () => {
+  it('has an "Abonos recibidos" table with Fecha / Deudor / Tipo / Método / Monto', () => {
     const def = buildPdfDefinition(makeReport({ abonosRecibidos }))
     const table = findTable(def, 'Fecha', 1)
-    expect(rowTexts(table.body[0])).toEqual(['Fecha', 'Deudor', 'Tipo', 'Monto'])
-    expect(rowTexts(table.body[1])).toEqual(['22/09/2026 09:30', 'Lucía', 'Apartado', '$200.00'])
+    expect(rowTexts(table.body[0])).toEqual(['Fecha', 'Deudor', 'Tipo', 'Método', 'Monto'])
+    expect(rowTexts(table.body[1])).toEqual(['22/09/2026 09:30', 'Lucía', 'Apartado', 'Transferencia', '$200.00'])
   })
 
   it('has a "Deudas liquidadas" table with Deudor / Tipo / Total / Liquidada el / Ganancia', () => {
@@ -317,5 +318,19 @@ describe('buildPdfDefinition — notes and edge cases', () => {
   it('names without a match print "Sin nombre"', () => {
     const def = buildPdfDefinition(makeReport({ sales: [sale('s-9', 'm-ghost', '2026-09-24T18:00:00.000Z', 100, 100, [1])] }))
     expect(rowTexts(findTable(def, 'Fecha').body[1])[1]).toBe('Sin nombre')
+  })
+})
+
+describe('buildPdfDefinition — dinero por método', () => {
+  it('lleva la tabla "Dinero por método" con una fila por método y el total ingresado al final', () => {
+    const def = buildPdfDefinition(makeReport())
+    const table = findTable(def, 'Método')
+
+    expect(rowTexts(table.body[0])).toEqual(['Método', 'Ventas', 'Abonos', 'Total'])
+    expect(rowTexts(table.body[1])).toEqual(['Efectivo', '$1,300.50', '$0.00', '$1,300.50'])
+    expect(rowTexts(table.body[2])).toEqual(['Transferencia', '$0.00', '$0.00', '$0.00'])
+    expect(rowTexts(table.body[3])).toEqual(['Tarjeta', '$0.00', '$0.00', '$0.00'])
+    expect(rowTexts(table.body[4])).toEqual(['Total ingresado', '', '', '$1,300.50'])
+    expect(texts(def.content)).toContain('Dinero por método')
   })
 })
