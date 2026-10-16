@@ -59,4 +59,26 @@ describe('AppSelect', () => {
     expect((labels[1].element as HTMLLabelElement).control).toBe(selects[1].element)
     wrapper.unmount()
   })
+
+  it('con error se marca inválido y apunta a su mensaje, conservando una pista previa', () => {
+    const wrapper = mount(AppSelect, {
+      props: { label: 'Tipo', error: 'Elige el tipo.' },
+      attrs: { 'aria-describedby': 'pista' },
+      slots: { default: options },
+      attachTo: document.body,
+    })
+    const select = wrapper.get('select')
+    const message = wrapper.get('.app-select__error')
+
+    expect(select.attributes('aria-invalid')).toBe('true')
+    expect(message.attributes('id')).toBeTruthy()
+    expect(select.attributes('aria-describedby')).toBe('pista ' + message.attributes('id'))
+    wrapper.unmount()
+  })
+
+  it('sin error no se marca inválido', () => {
+    const wrapper = mount(AppSelect, { props: { label: 'Tipo' }, slots: { default: options } })
+
+    expect(wrapper.get('select').attributes('aria-invalid')).toBeUndefined()
+  })
 })

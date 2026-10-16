@@ -81,4 +81,27 @@ describe('AppTextarea', () => {
       wrapper.unmount()
     })
   })
+
+  describe('error accesible', () => {
+    it('con error se marca inválido y apunta a su mensaje, conservando una pista previa', () => {
+      const wrapper = mount(AppTextarea, {
+        props: { label: 'Mensaje', error: 'Escribe más.' },
+        attrs: { 'aria-describedby': 'contador' },
+        attachTo: document.body,
+      })
+      const textarea = wrapper.get('textarea')
+      const message = wrapper.get('.app-textarea__error')
+
+      expect(textarea.attributes('aria-invalid')).toBe('true')
+      expect(message.attributes('id')).toBeTruthy()
+      expect(textarea.attributes('aria-describedby')).toBe('contador ' + message.attributes('id'))
+      wrapper.unmount()
+    })
+
+    it('sin error no se marca inválido', () => {
+      const wrapper = mount(AppTextarea, { props: { label: 'Mensaje' } })
+
+      expect(wrapper.get('textarea').attributes('aria-invalid')).toBeUndefined()
+    })
+  })
 })

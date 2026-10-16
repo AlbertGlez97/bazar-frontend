@@ -17,13 +17,14 @@
       :disabled="disabled"
       :placeholder="placeholder"
       :rows="rows"
-      v-bind="{ ...$attrs, id: fieldId() }"
+      v-bind="{ ...$attrs, id: fieldId(), ...errorAria }"
       @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
 
     <!-- Mensaje de error -->
     <p
       v-if="error"
+      :id="`${fieldId()}-error`"
       class="app-textarea__error"
     >
       {{ error }}
@@ -32,16 +33,17 @@
 </template>
 
 <script setup lang="ts">
-import { useAttrs } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { useFieldId } from '@/composables/useFieldId'
 
 // Desactiva herencia automática de attrs para evitar duplicar atributos en el wrapper
 defineOptions({ inheritAttrs: false })
 
 // id que enlaza <label for> con el <textarea> (explícito del padre o generado)
-const fieldId = useFieldId(useAttrs())
+const attrs = useAttrs()
+const fieldId = useFieldId(attrs)
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   modelValue?:  string
   label?:       string
   error?:       string
@@ -58,6 +60,13 @@ withDefaults(defineProps<{
 })
 
 defineEmits<{ 'update:modelValue': [v: string] }>()
+
+// Con error, el control se marca inválido y apunta a su mensaje; una pista previa se conserva.
+const errorAria = computed<{ 'aria-invalid'?: 'true'; 'aria-describedby'?: string }>(() => {
+  if (!props.error) return {}
+  const described = [attrs['aria-describedby'], `${fieldId()}-error`].filter(Boolean).join(' ')
+  return { 'aria-invalid': 'true', 'aria-describedby': described }
+})
 </script>
 
 <style scoped>

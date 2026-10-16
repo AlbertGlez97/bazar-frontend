@@ -16,7 +16,7 @@
         :class="`app-select--${size}`"
         :value="modelValue"
         :disabled="disabled"
-        v-bind="{ ...$attrs, id: fieldId() }"
+        v-bind="{ ...$attrs, id: fieldId(), ...errorAria }"
         @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
       >
         <option
@@ -48,6 +48,7 @@
 
     <p
       v-if="error"
+      :id="`${fieldId()}-error`"
       class="app-select__error"
     >
       {{ error }}
@@ -56,15 +57,16 @@
 </template>
 
 <script setup lang="ts">
-import { useAttrs } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { useFieldId } from '@/composables/useFieldId'
 
 defineOptions({ inheritAttrs: false })
 
 // id que enlaza <label for> con el <select> (explícito del padre o generado)
-const fieldId = useFieldId(useAttrs())
+const attrs = useAttrs()
+const fieldId = useFieldId(attrs)
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   modelValue?:  string | number
   label?:       string
   error?:       string
@@ -81,6 +83,13 @@ withDefaults(defineProps<{
 })
 
 defineEmits<{ 'update:modelValue': [v: string] }>()
+
+// Con error, el control se marca inválido y apunta a su mensaje; una pista previa se conserva.
+const errorAria = computed<{ 'aria-invalid'?: 'true'; 'aria-describedby'?: string }>(() => {
+  if (!props.error) return {}
+  const described = [attrs['aria-describedby'], `${fieldId()}-error`].filter(Boolean).join(' ')
+  return { 'aria-invalid': 'true', 'aria-describedby': described }
+})
 </script>
 
 <style scoped>
