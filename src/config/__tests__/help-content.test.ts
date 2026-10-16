@@ -348,3 +348,43 @@ describe('help: escáner (vibra, aviso, sigue abierto) y carrito (quitar con −
     }
   })
 })
+
+describe('help: instalar la app (Android y iPhone)', () => {
+  const article = HELP_ARTICLES.find((item) => item.id === 'instalar')!
+  const text = [article.intro, ...article.steps, ...article.tips].join(' ')
+  const sentences = text.split(/(?<=[.!?])\s+/).map((sentence) => sentence.trim()).filter(Boolean)
+
+  it('se llama "Instalar la app" y está en Primeros pasos', () => {
+    expect(article.title).toBe('Instalar la app')
+    expect(article.category).toBe('Primeros pasos')
+  })
+
+  it('explica Android con el botón Instalar app y el menú de Chrome', () => {
+    expect(text).toContain('Android')
+    expect(text).toContain('Instalar app')
+    expect(text).toContain('Menú')
+  })
+
+  it('explica iPhone con Safari, Compartir y Añadir a pantalla de inicio', () => {
+    expect(text).toContain('iPhone')
+    expect(text).toContain('Safari')
+    expect(text).toContain('Compartir')
+    expect(text).toContain('Añadir a pantalla de inicio')
+  })
+
+  it('avisa que Chrome en iPhone no puede instalar la app', () => {
+    expect(text).toContain('Chrome en iPhone no puede instalar')
+  })
+
+  it('dice dónde está el botón en el celular: el menú o Mi cuenta', () => {
+    expect(text).toContain('Mi cuenta')
+  })
+
+  it('frases cortas (20 palabras o menos)', () => {
+    for (const sentence of sentences) expect(sentence.split(/\s+/).length, sentence).toBeLessThanOrEqual(20)
+  })
+
+  it('sigue teniendo al menos 3 pasos y su evidencia', () => {
+    expect(article.steps.length).toBeGreaterThanOrEqual(3)
+  })
+})
