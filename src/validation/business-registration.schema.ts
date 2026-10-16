@@ -1,11 +1,12 @@
 import { z } from 'zod'
+import type { BusinessType } from '@/types/business-registration.types'
 
 // Esquema del formulario de registro de negocio (POST /business-registration).
-// Los límites son los del contrato del backend: nombreNegocio 1..200, nombre y
-// apellidos 1..100, correo válido de hasta 254, telefono opcional de 1..30 sin
-// formato estricto en el servidor. Aquí el teléfono es más exigente porque la
-// audiencia es mexicana y así se evitan capturas basura; los mensajes están en
-// la voz de La Marchanta (doc/brand-guidelines.md).
+// Los límites son los del contrato del backend: nombreNegocio 1..200, tipoNegocio de
+// una lista de 8, queVende 10..400, dondeVende ≤200, recomendadoPor ≤120, nombre y
+// apellidos 1..100, correo válido de hasta 254 y teléfono de México OBLIGATORIO (el
+// servidor lo guarda a 10 dígitos; aquí se manda ya normalizado). Los mensajes están
+// en la voz de La Marchanta (doc/brand-guidelines.md): frases cortas, qué hacer.
 
 /**
  * Teléfono mexicano. Regla basada en el Plan Técnico Fundamental de Numeración
@@ -29,6 +30,38 @@ export function isValidMxPhone(value: string): boolean {
   return MX_PHONE_RE.test(value.replace(PHONE_SEPARATORS_RE, ''))
 }
 
+/**
+ * Deja solo los 10 dígitos del número: quita separadores y el prefijo de país
+ * (+52, 52, o el heredado +52 1). El servidor acepta espacios, guiones y +52, pero no
+ * paréntesis ni puntos, así que se manda ya limpio.
+ */
+export function normalizeMxPhone(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 13 && digits.startsWith('521')) return digits.slice(3)
+  if (digits.length === 12 && digits.startsWith('52')) return digits.slice(2)
+  return digits
+}
+
+export const BUSINESS_TYPE_OPTIONS = [
+  { value: 'bazar_o_tianguis', label: 'Bazar o tianguis' },
+  { value: 'abarrotes', label: 'Abarrotes o tiendita' },
+  { value: 'ropa_y_accesorios', label: 'Ropa y accesorios' },
+  { value: 'comida_y_bebidas', label: 'Comida y bebidas' },
+  { value: 'plantas_y_jardineria', label: 'Plantas y jardinería' },
+  { value: 'artesanias', label: 'Artesanías' },
+  { value: 'servicios', label: 'Servicios' },
+  { value: 'otro', label: 'Otro' },
+] as const satisfies readonly { value: BusinessType; label: string }[]
+
+/** Texto opcional: en blanco sale ausente (no se manda la clave). */
+const optionalText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `Es muy largo: máximo ${max} caracteres.`)
+    .transform((v) => (v === '' ? undefined : v))
+
+
 export const EMAIL_INVALID_MESSAGE = 'Ese correo no se ve bien. Revisa que tenga la forma nombre@dominio.com.'
 
 export const businessRegistrationSchema = z.object({
@@ -37,6 +70,17 @@ export const businessRegistrationSchema = z.object({
     .trim()
     .min(1, 'Escribe el nombre de tu negocio.')
     .max(200, 'El nombre del negocio es muy largo (máximo 200 caracteres).'),
+  tipoNegocio: z.enum(BUSINESS_TYPE_OPTIONS.map((o) => o.value) as [BusinessType, ...BusinessType[]], {
+    message: 'Elige el tipo de tu negocio.',
+  }),
+  queVende: z
+    .string()
+    .trim()
+    .min(1, 'Cuéntanos qué vendes.')
+    .min(10, 'Cuéntanos un poco más: escribe al menos 10 letras.')
+    .max(400, 'Es muy largo: máximo 400 caracteres.'),
+  dondeVende: optionalText(200),
+  recomendadoPor: optionalText(120),
   nombre: z
     .string()
     .trim()
@@ -56,14 +100,14 @@ export const businessRegistrationSchema = z.object({
     .min(1, 'Escribe tu correo.')
     .email(EMAIL_INVALID_MESSAGE)
     .max(254, 'Ese correo es muy largo (máximo 254 caracteres).'),
-  // Opcional: en blanco es válido y sale del payload (undefined). Lleno, se
-  // envía tal como lo escribió la persona (recortado): el backend no exige formato.
   telefono: z
     .string()
     .trim()
-    .max(30, 'El teléfono es muy largo (máximo 30 caracteres).')
-    .refine((v) => v === '' || isValidMxPhone(v), 'Escribe un teléfono de 10 dígitos, por ejemplo 55 1234 5678.')
-    .transform((v) => (v === '' ? undefined : v)),
+    .min(1, 'Escribe tu número de WhatsApp.')
+    .max(30, 'Ese número es muy largo.')
+    .refine(isValidMxPhone, 'Escribe un número de 10 dígitos, por ejemplo 55 1234 5678.')
+    .transform(normalizeMxPhone),
+  aceptaLegal: z.literal(true, { errorMap: () => ({ message: 'Para continuar, acepta el Aviso de privacidad y los Términos.' }) }),
 })
 
 /** Lo que escribe la persona (antes de recortar y normalizar). */
