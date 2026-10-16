@@ -90,7 +90,7 @@ describe('check-pwa: detecta lo que rompió la instalación', () => {
     const report = await run(routes)
 
     expect(report.ok).toBe(false)
-    expect(failed(report).some((r) => r.name.includes('icons/512.png') && /text\/html/.test(r.detail))).toBe(true)
+    expect(failed(report).some((r) => r.name.includes('icons/512.png') && /text\/html/.test(r.detail) && /comodín/.test(r.detail))).toBe(true)
   })
 
   it('un 200 con content-type equivocado falla (ícono png servido como octet-stream)', async () => {
@@ -189,7 +189,8 @@ describe('check-pwa: precache del service worker', () => {
   })
 
   it('una entrada del precache con 403 falla (rompería la instalación del service worker)', async () => {
-    const report = await run({ ...healthy(), '/assets/app-1.js': { status: 403, type: 'text/html', body: '' } })
+    // content-type de JS a propósito: lo que debe fallar es el STATUS, no el tipo
+    const report = await run({ ...healthy(), '/assets/app-1.js': { status: 403, type: 'application/javascript', body: '' } })
 
     expect(failed(report).some((r) => r.name.includes('precache') && r.name.includes('assets/app-1.js'))).toBe(true)
   })
