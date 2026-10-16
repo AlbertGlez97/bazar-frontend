@@ -123,6 +123,9 @@ describe('quick help drawer: context per route', () => {
     await flushPromises()
     expect(drawerArticleIds()).toEqual(['efectivo'])
     expect(dialog()!.textContent).not.toMatch(/billete|moneda/i)
+    // Los artículos de carrito y de escanear siguen a un toque, como temas relacionados.
+    expect(dialog()!.textContent).toContain('Primera venta y carrito')
+    expect(dialog()!.textContent).toContain('Escanear un producto')
     wrapper.unmount()
   })
 

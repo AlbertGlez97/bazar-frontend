@@ -38,7 +38,7 @@ const DEFINITIONS: readonly CategoryDefinition[] = [
     description: 'Vender, cobrar con efectivo, transferencia o tarjeta y escanear productos.',
     topics: [
       { id: 'ventas.primera-venta', title: 'Primera venta y carrito', description: 'Agregar productos, ajustar cantidades y cobrar.' },
-      { id: 'ventas.efectivo', title: 'Cobrar una venta', description: 'Elegir cómo pagan, escribir el monto y dar cambio.' },
+      { id: 'ventas.efectivo', title: 'Cobrar una venta', description: 'Elegir cómo pagan, escribir el monto y dar cambio.', related: ['ventas.primera-venta', 'ventas.escanear'] },
       { id: 'ventas.escanear', title: 'Escanear un producto', description: 'Agregar un producto con su código QR.' },
     ],
   },
