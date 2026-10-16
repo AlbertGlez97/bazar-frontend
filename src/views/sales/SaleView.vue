@@ -391,13 +391,18 @@ async function goToLogin() {
   gap: var(--spacing-lg);
   align-items: start;
 }
+/* Columna con alto máximo: el panel no se desplaza entero. Su contenido se reparte ese
+   alto y solo la lista de productos se desplaza (ver SaleCart), así "Cobrar" nunca
+   tapa el campo de monto ni queda fuera de la pantalla. */
 .sale-view__cart {
   position: sticky;
   top: calc(var(--header-height) + var(--spacing-md));
-  max-height: calc(100vh - var(--header-height) - var(--spacing-lg) * 2);
-  max-height: calc(100dvh - var(--header-height) - var(--spacing-lg) * 2);
-  overflow-y: auto;
-  padding: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--header-height) - var(--spacing-md) * 2);
+  max-height: calc(100dvh - var(--header-height) - var(--spacing-md) * 2);
+  overflow: hidden;
+  padding: var(--spacing-sm) var(--spacing-md);
   background: var(--color-bg);
   border: 2px solid var(--color-border);
   border-radius: var(--radius-xl);

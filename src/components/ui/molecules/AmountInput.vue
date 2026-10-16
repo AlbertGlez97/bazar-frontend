@@ -108,7 +108,7 @@ function onInput(event: Event) {
 .amount-input__control {
   width: 100%;
   min-width: 0;
-  min-height: 3.5rem;
+  min-height: var(--control-height-cta);
   padding: 0 var(--spacing-md) 0 calc(var(--spacing-md) + 1.5rem);
   font-family: var(--font-display);
   font-size: var(--font-size-xl);

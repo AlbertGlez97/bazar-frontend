@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CartLineItem from '../CartLineItem.vue'
+import source from '../CartLineItem.vue?raw'
 
 const line = {
   productId: 'p-1',
@@ -97,5 +98,57 @@ describe('CartLineItem — bloqueado mientras se cobra', () => {
     expect(wrapper.get('button[data-action="increment"]').attributes('disabled')).toBeDefined()
     await wrapper.get('button[data-action="remove"]').trigger('click')
     expect(wrapper.emitted('remove')).toBeUndefined()
+  })
+})
+
+describe('CartLineItem — línea compacta (escritorio ~110 px)', () => {
+  const css = source.slice(source.indexOf('<style')).replace(/<style[^>]*>/, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  const rule = (selector: string) =>
+    [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors!.split(',').map((part) => part.trim()).includes(selector))
+      .map(([, , body]) => body)
+      .join(';')
+
+  it('contador a la izquierda y "Quitar" a la derecha, en la MISMA fila', () => {
+    const wrapper = mountLine()
+    const row = wrapper.get('.cart-line__controls')
+    const children = [...row.element.children]
+
+    expect(children[0]!.classList.contains('quantity-stepper')).toBe(true)
+    expect(children.at(-1)!.getAttribute('data-action')).toBe('remove')
+    expect(rule('.cart-line__controls')).toMatch(/justify-content:\s*space-between/)
+    expect(rule('.cart-line__controls')).toMatch(/flex-wrap:\s*nowrap/)
+  })
+
+  it('"Quitar" conserva texto e ícono pero es discreto: sin relleno rojo ni caja pesada', () => {
+    const remove = rule('.cart-line__remove')
+    expect(remove).toMatch(/background:\s*transparent/)
+    expect(remove).not.toMatch(/--color-danger-soft/)
+    expect(remove).toMatch(/border:\s*(0|none)/)
+    expect(remove).toMatch(/min-height:\s*var\(--control-height-compact\)/)
+  })
+
+  it('el nombre ocupa 2 líneas como máximo', () => {
+    const name = rule('.cart-line__name')
+    expect(name).toMatch(/-webkit-line-clamp:\s*2/)
+    expect(name).toMatch(/overflow:\s*hidden/)
+  })
+
+  it('el precio c/u va junto al subtotal (columna derecha), no como una fila más debajo del nombre', () => {
+    const wrapper = mountLine()
+    expect(wrapper.get('.cart-line__amounts .cart-line__unit').text()).toContain('c/u')
+    expect(wrapper.get('.cart-line__amounts .cart-line__subtotal').text()).toBe('$59.97')
+    expect(wrapper.find('.cart-line__controls .cart-line__unit').exists()).toBe(false)
+  })
+
+  it('miniatura de 3.5 rem y poco aire: la línea queda cerca de 110 px', () => {
+    expect(rule('.cart-line__media')).toMatch(/width:\s*3\.5rem/)
+    expect(rule('.cart-line__media')).toMatch(/height:\s*3\.5rem/)
+    expect(rule('.cart-line')).toMatch(/padding:\s*0\.75rem var\(--spacing-md\)/)
+  })
+
+  it('el contador del carrito es la pastilla neutra de tamaño md (token compacto), no la "lg" de 56 px', () => {
+    const wrapper = mountLine()
+    expect(wrapper.get('.quantity-stepper').classes()).toContain('quantity-stepper--md')
   })
 })

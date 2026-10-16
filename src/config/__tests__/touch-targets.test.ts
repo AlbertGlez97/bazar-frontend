@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 
 // Guarda del objetivo táctil mínimo (44x44 px, guía de marca, sección "Interacción", y WCAG 2.5.5 nivel AAA).
+// Los botones y controles de Venta/Gestión cuyo tamaño depende del TIPO DE PUNTERO
+// (mouse 32/40 px, dedo 44-48 px) se prueban en control-heights.test.ts, en los dos
+// modos; aquí quedan los que miden 44 px o más siempre.
 // jsdom no calcula layout, así que no se puede medir un botón: en su lugar se
 // comprueba el CONTRATO DE CSS, es decir, que la regla que dimensiona cada
 // control táctil declare al menos 44 px (en px o rem). La medición real en
@@ -76,54 +79,32 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
     expect(pxOf(body, 'min-height')).toBeGreaterThanOrEqual(MIN_TOUCH_PX)
   })
 
-  it('AppButton size="lg" supera los 44 px (botones del aviso de modo)', () => {
-    const body = ruleBody(sourceOf('AppButton.vue'), '.app-btn--lg')
-    expect(pxOf(body, 'min-height')).toBeGreaterThanOrEqual(MIN_TOUCH_PX)
-  })
-
   it('lector de QR: "Listo" e "Intentar de nuevo" miden 56 px de alto', () => {
     expectAtLeast44('QrScannerModal.vue', '.qr-scanner__action', ['min-height'])
   })
 
-  it('QuantityStepper: "−" y "+" miden 44x44 (56x56 en el carrito)', () => {
-    expectAtLeast44('QuantityStepper.vue', '.quantity-stepper__btn', ['min-width', 'min-height'])
-    expectAtLeast44('QuantityStepper.vue', '.quantity-stepper--lg .quantity-stepper__btn', ['min-width', 'min-height'])
+  it('QuantityStepper táctil (catálogo del celular): "−" y "+" miden 44x44 siempre', () => {
+    expectAtLeast44('QuantityStepper.vue', '.quantity-stepper--touch .quantity-stepper__btn', ['min-width', 'min-height'])
   })
 
-  it('carrito: el botón "Quitar" de cada línea mide 44x44', () => {
-    expectAtLeast44('CartLineItem.vue', '.cart-line__remove', ['min-width', 'min-height'])
-  })
-
-  it('monto: el campo mide al menos 56 px (64 px en la pantalla de cobro)', () => {
-    expectAtLeast44('AmountInput.vue', '.amount-input__control', ['min-height'])
+  it('monto: en la pantalla de cobro del celular el campo mide 64 px', () => {
     expectAtLeast44('AmountInput.vue', '.amount-input--lg .amount-input__control', ['min-height'])
-  })
-
-  it('método de pago: cada botón del control segmentado mide al menos 44 px (56 px en lg)', () => {
-    expectAtLeast44('SegmentedControl.vue', '.segmented-control__btn', ['min-height'])
-    expectAtLeast44('SegmentedControl.vue', '.segmented-control--lg .segmented-control__btn', ['min-height'])
   })
 
   it('filtro de categorías: cada botón mide 44x44', () => {
     expectAtLeast44('CategoryQuickFilter.vue', '.category-filter__btn', ['min-width', 'min-height'])
   })
 
-  it('carrito: "Cobrar" mide 56 px y "Vaciar" 44x44', () => {
-    expectAtLeast44('SaleCart.vue', '.sale-cart .sale-cart__charge', ['min-height'])
-    expectAtLeast44('SaleCart.vue', '.sale-cart__clear', ['min-width', 'min-height'])
+  it('carrito: "Vaciar" conserva su ancho mínimo táctil', () => {
+    expectAtLeast44('SaleCart.vue', '.sale-cart__clear', ['min-width'])
   })
 
-  it('carrito: el resumen que despliega la lista de productos mide al menos 44 px', () => {
-    expectAtLeast44('SaleCart.vue', '.sale-cart__lines-summary', ['min-height'])
-  })
-
-  it('catálogo de venta: buscador de 56 px y botón "Escanear" de 56 px', () => {
+  it('catálogo de venta: el buscador mide 56 px', () => {
     expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__search :deep(.app-input)', ['min-height'])
-    expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker .sale-picker__scan', ['min-height'])
   })
 
-  it('catálogo de venta: los botones de vista (cuadrícula/lista) y cada fila de la lista miden al menos 44 px', () => {
-    expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__view-btn', ['min-width', 'min-height'])
+  it('catálogo de venta: los botones de vista conservan su ancho táctil y cada fila de la lista mide al menos 44 px', () => {
+    expectAtLeast44('SaleCatalogPicker.vue', '.sale-picker__view-btn', ['min-width'])
     // La fila de la Vista de Lista ya no fija su propio alto: envuelve un
     // ProductCard size="list", que trae el min-height (compartido con la
     // Vista de Lista de Gestión).
@@ -148,12 +129,11 @@ describe('objetivos táctiles de 44 px (contrato de CSS)', () => {
   })
 
   // Paso 2 del cobro (celular): total y efectivo son lo más grande y "Cobrar" el botón mayor.
-  it('Paso 2 del cobro: "Cobrar" mide 72 px, el campo de monto 64 px y los métodos 56 px', () => {
+  it('Paso 2 del cobro: "Cobrar" mide 72 px y el campo de monto 64 px (los métodos, 56 px con dedo: control-heights.test.ts)', () => {
     const MIN_PROMINENT_PX = 72
     const charge = ruleBody(sourceOf('SaleCart.vue'), '.sale-cart--checkout .sale-cart__charge')
     expect(pxOf(charge, 'min-height')).toBeGreaterThanOrEqual(MIN_PROMINENT_PX)
     expect(pxOf(ruleBody(sourceOf('AmountInput.vue'), '.amount-input--lg .amount-input__control'), 'min-height')).toBeGreaterThanOrEqual(64)
-    expect(pxOf(ruleBody(sourceOf('SegmentedControl.vue'), '.segmented-control--lg .segmented-control__btn'), 'min-height')).toBeGreaterThanOrEqual(56)
   })
 
   it('reportes: los atajos de periodo, "Actualizar" y las descargas miden 44x44', () => {

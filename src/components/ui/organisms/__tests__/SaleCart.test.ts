@@ -260,8 +260,8 @@ describe('SaleCart — fiado/apartado', () => {
     expect(debtButton(wrapper).exists()).toBe(false)
   })
 
-  it('no se confunde con Cobrar: es neutro y de 44 px', () => {
-    expect(source).toMatch(/\.sale-cart__debt-option\s*\{[^}]*min-height:\s*2\.75rem/)
+  it('no se confunde con Cobrar: es neutro y de alto principal (40 mouse / 48 dedo)', () => {
+    expect(source).toMatch(/\.sale-cart__debt-option\s*\{[^}]*min-height:\s*var\(--control-height\)/)
     expect(source).not.toMatch(/\.sale-cart__debt-option\s*\{[^}]*--color-primary\b/)
   })
 })
@@ -396,10 +396,36 @@ describe('SaleCart — modo prominente (Paso 2 del cobro en celular)', () => {
       expect(rule('.sale-cart--checkout .sale-cart__charge')).toMatch(/min-height:\s*4\.5rem/)
     })
 
-    it('en pantalla ancha "Cobrar" se queda pegado abajo del panel', () => {
+    it('en escritorio "Cobrar" va en el flujo (ni sticky ni fijo): nunca queda encima del campo de monto', () => {
       const actions = rule('.sale-cart__actions')
-      expect(actions).toMatch(/position:\s*sticky/)
-      expect(actions).toMatch(/bottom:\s*0/)
+      expect(actions).not.toMatch(/position:\s*(sticky|fixed|absolute)/)
     })
+
+    it('en escritorio, si no caben los productos, solo LA LISTA se desplaza: total, método, monto, cambio y Cobrar quedan a la vista', () => {
+      const cart = rule('.sale-cart:not(.sale-cart--checkout)')
+      expect(cart).toMatch(/min-height:\s*0/)
+      expect(cart).toMatch(/flex:\s*1 1 auto/)
+      const wrap = rule('.sale-cart:not(.sale-cart--checkout) .sale-cart__lines-wrap')
+      expect(wrap).toMatch(/overflow-y:\s*auto/)
+      expect(wrap).toMatch(/min-height:\s*0/)
+      expect(wrap).toMatch(/flex:\s*0 1 auto/)
+      expect(rule('.sale-cart:not(.sale-cart--checkout) .sale-cart__payment')).toMatch(/flex-shrink:\s*0/)
+      expect(rule('.sale-cart:not(.sale-cart--checkout) .sale-cart__actions')).toMatch(/flex-shrink:\s*0/)
+    })
+
+    it('el espaciado de escritorio es compacto (8 px) para que todo quepa sin desplazarse', () => {
+      expect(rule('.sale-cart:not(.sale-cart--checkout)')).toMatch(/gap:\s*var\(--spacing-sm\)/)
+      expect(rule('.sale-cart:not(.sale-cart--checkout) .sale-cart__payment')).toMatch(/gap:\s*var\(--spacing-sm\)/)
+    })
+  })
+
+  it('en escritorio el total y el cambio van compactos; en el Paso 2 siguen grandes', () => {
+    const desktop = mountCart()
+    expect(desktop.get('.cart-summary').classes()).toContain('cart-summary--compact')
+    expect(desktop.get('.payment-change').classes()).toContain('payment-change--compact')
+
+    const step2 = mountCart({ prominent: true })
+    expect(step2.get('.cart-summary').classes()).not.toContain('cart-summary--compact')
+    expect(step2.get('.payment-change').classes()).not.toContain('payment-change--compact')
   })
 })

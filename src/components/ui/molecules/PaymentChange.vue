@@ -6,6 +6,7 @@
        solo color. -->
   <section
     class="payment-change"
+    :class="{ 'payment-change--compact': compact }"
     :data-state="state"
     aria-label="Cambio"
   >
@@ -49,6 +50,8 @@ const props = defineProps<{
   changeMinor: number
   /** Lo que falta para cubrir el total; 0 si ya alcanza. */
   missingMinor: number
+  /** Escritorio: "Cambio" y el importe en una sola fila, más bajo. */
+  compact?: boolean
 }>()
 
 type State = 'empty' | 'no-amount' | 'missing' | 'change' | 'exact' | 'none'
@@ -121,5 +124,21 @@ const message = computed(() => {
   font-variant-numeric: tabular-nums;
   line-height: 1.05;
   white-space: nowrap;
+}
+
+/* Escritorio: la palabra y el importe en una sola fila, más bajo (baja a dos filas si no cupiera) */
+.payment-change--compact .payment-change__live {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-md);
+}
+.payment-change--compact .payment-change__label,
+.payment-change--compact .payment-change__message { font-size: var(--font-size-md); }
+.payment-change--compact .payment-change__amount {
+  font-size: clamp(1.25rem, 8vw, 2rem);
+  font-size: clamp(1.25rem, 9cqi, 2rem);
 }
 </style>

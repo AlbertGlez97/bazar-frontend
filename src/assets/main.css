@@ -156,6 +156,25 @@
   --sidebar-width-collapsed: 4rem;  /* 64px */
   --header-height:           4rem;  /* 64px */
   --container-max-width:     72rem;
+
+  /* Alto de los controles: depende de CÓMO se toca (mouse o dedo), nunca del
+     ancho de la pantalla. Un solo lugar define los tamaños; los componentes
+     solo usan --control-height, --control-height-compact y --control-height-cta.
+       mouse (pointer: fine)   principal 40 px · compacto 32 px · acción principal 48 px
+       dedo  (pointer: coarse) principal 48 px · compacto 44 px · acción principal 56 px */
+  --control-height-touch:    2.75rem; /* 44px: mínimo táctil */
+  --control-height-touch-lg: 3rem;    /* 48px */
+  --control-height:          2.5rem;  /* 40px */
+  --control-height-compact:  2rem;    /* 32px */
+  --control-height-cta:      3rem;    /* 48px */
+}
+
+@media (pointer: coarse) {
+  :root {
+    --control-height:         var(--control-height-touch-lg);
+    --control-height-compact: var(--control-height-touch);
+    --control-height-cta:     3.5rem;
+  }
 }
 
 /* ─── Reset base ────────────────────────────────────────────────── */

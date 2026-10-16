@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import QuantityStepper from '../QuantityStepper.vue'
+import source from '../QuantityStepper.vue?raw'
 
 function mountStepper(props: Partial<InstanceType<typeof QuantityStepper>['$props']> = {}) {
   return mount(QuantityStepper, { props: { quantity: 2, productName: 'Café de olla', ...props } })
@@ -106,10 +107,37 @@ describe('QuantityStepper — límites', () => {
   })
 })
 
-describe('QuantityStepper — tamaño', () => {
-  it('por defecto es md y "lg" (carrito) agrega su clase', () => {
+describe('QuantityStepper — tamaño y aspecto', () => {
+  const css = source.slice(source.indexOf('<style')).replace(/<style[^>]*>/, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  const rule = (selector: string) =>
+    [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .filter(([, selectors]) => selectors!.split(',').map((part) => part.trim()).includes(selector))
+      .map(([, , body]) => body)
+      .join(';')
+
+  it('por defecto es md y "touch" (catálogo del celular) agrega su clase', () => {
     expect(mountStepper().get('.quantity-stepper').classes()).toContain('quantity-stepper--md')
-    expect(mountStepper({ size: 'lg' }).get('.quantity-stepper').classes()).toContain('quantity-stepper--lg')
+    expect(mountStepper({ size: 'touch' }).get('.quantity-stepper').classes()).toContain('quantity-stepper--touch')
+  })
+
+  it('es UNA sola pastilla "− 1 +": borde y esquinas redondas en el contenedor, sin separación entre botones', () => {
+    const pill = rule('.quantity-stepper')
+    expect(pill).toMatch(/border:\s*1px solid/)
+    expect(pill).toMatch(/border-radius:\s*var\(--radius-full\)/)
+    expect(pill).toMatch(/background:\s*var\(--color-surface\)/)
+    expect(pill).toMatch(/gap:\s*0/)
+  })
+
+  it('es neutra: ni "−" ni "+" usan el color fuerte (ese es solo de "Cobrar")', () => {
+    expect(css).not.toMatch(/--color-primary|--color-on-primary|--terracota/)
+    expect(rule('.quantity-stepper__btn')).toMatch(/color:\s*var\(--color-text\)/)
+    expect(rule('.quantity-stepper__btn')).toMatch(/background:\s*transparent/)
+  })
+
+  it('el alto sale del token compacto (32 px mouse, 44 px dedo) y "touch" nunca baja de 44 px', () => {
+    expect(rule('.quantity-stepper__btn')).toMatch(/min-height:\s*var\(--control-height-compact\)/)
+    expect(rule('.quantity-stepper__btn')).toMatch(/min-width:\s*var\(--control-height-compact\)/)
+    expect(rule('.quantity-stepper--touch .quantity-stepper__btn')).toMatch(/min-height:\s*2\.75rem/)
   })
 })
 

@@ -36,3 +36,14 @@ describe('barra inferior del celular — contrato de CSS', () => {
     expect(total).toMatch(/min-width:\s*0/)
   })
 })
+
+describe('panel "Tu venta" en escritorio — contrato de CSS', () => {
+  it('el panel es una columna con alto máximo; no se desplaza entero (solo la lista de productos)', () => {
+    const panel = rule('.sale-view__cart')
+    expect(panel).toMatch(/display:\s*flex/)
+    expect(panel).toMatch(/flex-direction:\s*column/)
+    expect(panel).toMatch(/max-height:\s*calc\(100dvh/)
+    expect(panel).toMatch(/overflow:\s*hidden/)
+    expect(panel).not.toMatch(/overflow-y:\s*auto/)
+  })
+})

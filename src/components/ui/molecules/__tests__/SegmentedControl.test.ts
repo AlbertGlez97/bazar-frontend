@@ -82,14 +82,22 @@ describe('SegmentedControl', () => {
       return style.match(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`))?.[1] ?? ''
     }
 
-    it('cada botón mide al menos 44 px de alto y se reparte el ancho a partes iguales', () => {
-      const button = rule('.segmented-control__btn')
-      expect(button).toMatch(/min-height:\s*(2\.75|3|3\.5)rem/)
-      expect(button).toMatch(/flex:\s*1\s+1\s+0/)
+    it('el alto sale de los tokens por tipo de puntero (los valores: control-heights.test.ts)', () => {
+      expect(rule('.segmented-control__btn')).toMatch(/min-height:\s*var\(--control-height\)/)
+      expect(rule('.segmented-control--lg .segmented-control__btn')).toMatch(/min-height:\s*var\(--control-height-cta\)/)
     })
 
-    it('en tamaño lg los botones son de 56 px (celular, poca experiencia con tecnología)', () => {
-      expect(rule('.segmented-control--lg .segmented-control__btn')).toMatch(/min-height:\s*3\.5rem/)
+    it('el texto NUNCA se parte ni se trunca: una sola línea, ancho según contenido ("Transferencia" completa)', () => {
+      const button = rule('.segmented-control__btn')
+      expect(button).toMatch(/white-space:\s*nowrap/)
+      expect(button).toMatch(/flex:\s*1\s+1\s+auto/)
+      expect(button).not.toMatch(/min-width:\s*0/)
+      expect(rule('.segmented-control__label')).not.toMatch(/overflow-wrap:\s*anywhere|word-break/)
+      expect(rule('.segmented-control__label')).not.toMatch(/text-overflow|overflow:\s*hidden/)
+    })
+
+    it('si de verdad no cupieran, los botones bajan a otra fila en vez de cortar el texto', () => {
+      expect(rule('.segmented-control')).toMatch(/flex-wrap:\s*wrap/)
     })
 
     it('la opción activa se distingue por borde y peso, no solo por color', () => {

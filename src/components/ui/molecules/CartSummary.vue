@@ -6,6 +6,7 @@
        PaymentChange. -->
   <section
     class="cart-summary"
+    :class="{ 'cart-summary--compact': compact }"
     aria-label="Total de la venta"
   >
     <span class="cart-summary__label">Total</span>
@@ -22,6 +23,8 @@ import { formatMinorMoney } from '@/utils/money'
 
 const props = defineProps<{
   totalMinor: number
+  /** Escritorio: "Total" y el importe en una sola fila, para que todo el cobro quepa sin desplazarse. */
+  compact?: boolean
 }>()
 
 /** "$1,100.00": siempre con separador de miles. */
@@ -58,5 +61,20 @@ const money = computed(() => formatMinorMoney(props.totalMinor))
   line-height: 1.05;
   white-space: nowrap;
   color: var(--color-text);
+}
+
+/* Escritorio: una fila ("Total" a la izquierda, el importe a la derecha); si el importe
+   no cupiera junto a la palabra, baja a otra fila y usa todo el ancho. */
+.cart-summary--compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0 var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+.cart-summary--compact .cart-summary__total {
+  font-size: clamp(1.5rem, 8vw, 2.5rem);
+  font-size: clamp(1.5rem, 9cqi, 2.5rem);
 }
 </style>

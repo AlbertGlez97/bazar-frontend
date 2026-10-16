@@ -59,6 +59,7 @@ function select(value: string) {
 <style scoped>
 .segmented-control {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-xs);
   width: 100%;
   min-width: 0;
@@ -68,13 +69,13 @@ function select(value: string) {
 }
 .segmented-control__btn {
   display: inline-flex;
-  flex: 1 1 0;
+  flex: 1 1 auto;
   align-items: center;
   justify-content: center;
   gap: var(--spacing-xs);
-  min-width: 0;
-  min-height: 2.75rem;
+  min-height: var(--control-height);
   padding: 0 var(--spacing-sm);
+  white-space: nowrap;
   font-family: inherit;
   font-size: var(--font-size-md);
   font-weight: 600;
@@ -87,7 +88,9 @@ function select(value: string) {
   cursor: pointer;
   touch-action: manipulation;
 }
-.segmented-control__label { overflow-wrap: anywhere; }
+/* El texto va completo en una sola línea ("Transferencia" no se parte): el botón
+   se ensancha según su contenido y, si de verdad no cupiera, baja de fila. */
+.segmented-control__label { white-space: nowrap; }
 .segmented-control__btn:hover:not(:disabled) { background: var(--color-surface); }
 .segmented-control__btn[aria-pressed='true'] {
   font-weight: 800;
@@ -99,7 +102,7 @@ function select(value: string) {
 .segmented-control__btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .segmented-control--lg .segmented-control__btn {
-  min-height: 3.5rem;
+  min-height: var(--control-height-cta);
   font-size: var(--font-size-md);
 }
 </style>

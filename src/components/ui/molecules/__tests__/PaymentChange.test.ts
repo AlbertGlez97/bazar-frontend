@@ -109,3 +109,26 @@ describe('PaymentChange — cambio o lo que falta', () => {
     })
   })
 })
+
+describe('PaymentChange — compacto (escritorio)', () => {
+  const style = source.slice(source.indexOf('<style'))
+  const rule = (selector: string) => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return style.match(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`))?.[1] ?? ''
+  }
+
+  it('"compact" agrega su clase; sin la prop es el cambio grande de siempre', () => {
+    expect(mountChange({ amountMinor: 120000, changeMinor: 10000, missingMinor: 0 }).get('.payment-change').classes()).not.toContain('payment-change--compact')
+    const compact = mount(PaymentChange, { props: { ...base, amountMinor: 120000, changeMinor: 10000, missingMinor: 0, compact: true } })
+    expect(compact.get('.payment-change').classes()).toContain('payment-change--compact')
+    expect(compact.get('.payment-change__amount').text()).toBe('$100.00')
+  })
+
+  it('la palabra "Cambio" y el importe van en una sola fila (bajan a dos si no cupieran)', () => {
+    const live = rule('.payment-change--compact .payment-change__live')
+    expect(live).toMatch(/flex-direction:\s*row/)
+    expect(live).toMatch(/flex-wrap:\s*wrap/)
+    expect(live).toMatch(/justify-content:\s*space-between/)
+    expect(rule('.payment-change--compact .payment-change__amount')).toMatch(/font-size:\s*clamp\(\s*1\.25rem,\s*[\d.]+cqi,\s*2rem\s*\)/)
+  })
+})

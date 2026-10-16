@@ -149,12 +149,13 @@
           <ProductCard
             :product="product"
             :size="view === 'list' ? 'list' : compact ? 'compact' : 'large'"
-            :quantity="compact ? (quantities[product.id] ?? 0) : 0"
+            :quantity="showQuantity ? quantityOf(product.id) : 0"
             simplified-availability
           />
-          <!-- Pantalla ancha: la marca de siempre. En celular la reemplaza "×N" sobre la foto. -->
+          <!-- Cuadrícula en pantalla ancha: la marca de siempre. En celular y en la lista
+               la reemplaza "×N" (sobre la foto, o dentro de la fila). -->
           <span
-            v-if="inCart.has(product.id) && !compact"
+            v-if="inCart.has(product.id) && !compact && view !== 'list'"
             class="sale-picker__mark"
           >En tu venta</span>
         </button>
@@ -220,6 +221,10 @@ function setView(next: SaleCatalogView) {
 }
 
 const inCart = computed(() => new Set(props.inCartIds))
+/** "×N" en vez de la marca: en celular (los dos modos) y en la lista de escritorio. */
+const showQuantity = computed(() => compact.value || props.view === 'list')
+/** Piezas en la venta; si el contenedor no manda cantidades, lo que está en la venta cuenta como 1. */
+const quantityOf = (productId: string) => props.quantities[productId] ?? (inCart.value.has(productId) ? 1 : 0)
 const hasFilter = computed(() => props.search.trim() !== '' || props.category !== '')
 const snapshotText = computed(() =>
   props.snapshotSavedAt
@@ -253,7 +258,7 @@ function onSelect(product: Product) {
   font-size: var(--font-size-lg);
   border-width: 2px;
 }
-.sale-picker .sale-picker__scan { min-height: 3.5rem; font-size: var(--font-size-md); font-weight: 700; flex: 0 0 auto; }
+.sale-picker .sale-picker__scan { min-height: var(--control-height); font-size: var(--font-size-md); font-weight: 700; flex: 0 0 auto; }
 .sale-picker__scan-icon { font-size: 1.4rem; line-height: 1; }
 
 .sale-picker__notice {
@@ -307,7 +312,7 @@ function onSelect(product: Product) {
   justify-content: center;
   gap: var(--spacing-xs);
   min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-height: var(--control-height-compact);
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-md);

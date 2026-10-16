@@ -142,12 +142,19 @@ describe('SaleCatalogPicker — vista de lista', () => {
     expect(wrapper.emitted('select')).toBeUndefined()
   })
 
-  it('lo agregado se marca "En tu venta" con texto, y se anuncia en el nombre accesible', () => {
-    const wrapper = list({ inCartIds: [pan.id] })
+  it('lo agregado muestra "×N" DENTRO de la fila (no una píldora suelta debajo) y se anuncia en el nombre accesible', () => {
+    const wrapper = list({ inCartIds: [pan.id], quantities: { [pan.id]: 2 } })
     const panRow = items(wrapper)[1]
-    expect(panRow.text()).toContain('En tu venta')
-    expect(items(wrapper)[0].text()).not.toContain('En tu venta')
+    expect(panRow.get('.product-card__body .product-card__qty').text()).toBe('×2')
+    expect(panRow.find('.sale-picker__mark').exists()).toBe(false)
+    expect(panRow.text()).not.toContain('En tu venta')
+    expect(items(wrapper)[0].find('.product-card__qty').exists()).toBe(false)
     expect(panRow.attributes('aria-label')).toBe('Agregar Pan dulce, $8.50, ya está en tu venta')
+  })
+
+  it('si el contenedor no manda cantidades, lo que está en la venta cuenta como ×1', () => {
+    const wrapper = list({ inCartIds: [pan.id] })
+    expect(items(wrapper)[1].get('.product-card__qty').text()).toBe('×1')
   })
 
   it('el nombre accesible es el mismo que el de la tarjeta', () => {

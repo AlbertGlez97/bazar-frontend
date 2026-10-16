@@ -81,7 +81,7 @@ describe('AmountInput', () => {
     }
 
     it('el campo mide al menos 44 px y en tamaño grande 64 px, con letra legible', () => {
-      expect(rule('.amount-input__control')).toMatch(/min-height:\s*(2\.75|3|3\.5)rem/)
+      expect(rule('.amount-input__control')).toMatch(/min-height:\s*var\(--control-height-cta\)/)
       expect(rule('.amount-input--lg .amount-input__control')).toMatch(/min-height:\s*4rem/)
       expect(rule('.amount-input--lg .amount-input__control')).toMatch(/font-size:\s*2rem/)
     })

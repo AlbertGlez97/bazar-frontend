@@ -78,8 +78,8 @@ describe('miniatura de producto: contención de imagen (contrato de CSS)', () =>
   it('CartLineItem: la miniatura del carrito es de tamaño fijo, recortada, con object-fit cover', () => {
     const source = sourceOf('CartLineItem.vue')
     const media = ruleBody(source, '.cart-line__media')
-    expect(propOf(media, 'width')).toBe('4rem')
-    expect(propOf(media, 'height')).toBe('4rem')
+    expect(propOf(media, 'width')).toBe('3.5rem')
+    expect(propOf(media, 'height')).toBe('3.5rem')
     expect(propOf(media, 'overflow')).toBe('hidden')
     expect(propOf(ruleBody(source, '.cart-line__img'), 'object-fit')).toBe('cover')
   })

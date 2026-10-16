@@ -67,7 +67,10 @@
     </p>
 
     <div class="sale-cart__payment">
-      <CartSummary :total-minor="totalMinor" />
+      <CartSummary
+        :total-minor="totalMinor"
+        :compact="!prominent"
+      />
 
       <template v-if="lines.length > 0">
         <PaymentMethodPicker
@@ -91,6 +94,7 @@
           :amount-minor="amountMinor"
           :change-minor="changeMinor"
           :missing-minor="missingMinor"
+          :compact="!prominent"
         />
       </template>
 
@@ -268,13 +272,24 @@ function confirmClear() {
 <style scoped>
 .sale-cart { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
 
+/* Escritorio: el panel tiene alto máximo (ver SaleView). El carrito se reparte ese alto:
+   encabezado, total, método, monto, cambio y Cobrar mantienen su tamaño y SOLO la lista de
+   productos se encoge y se desplaza. Gap de 8 px: con 2 productos todo cabe sin desplazarse. */
+.sale-cart:not(.sale-cart--checkout) { flex: 1 1 auto; min-height: 0; gap: var(--spacing-sm); }
+.sale-cart:not(.sale-cart--checkout) .sale-cart__lines-wrap { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+.sale-cart:not(.sale-cart--checkout) .sale-cart__lines-summary { position: sticky; top: 0; z-index: 1; background: var(--color-bg); }
+.sale-cart:not(.sale-cart--checkout) .sale-cart__header,
+.sale-cart:not(.sale-cart--checkout) .sale-cart__empty { flex-shrink: 0; }
+.sale-cart:not(.sale-cart--checkout) .sale-cart__payment { flex-shrink: 0; gap: var(--spacing-sm); }
+.sale-cart:not(.sale-cart--checkout) .sale-cart__actions { flex-shrink: 0; }
+
 .sale-cart__header { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md); }
 .sale-cart__title { margin: 0; font-size: var(--font-size-xl); font-weight: 800; color: var(--color-text); }
 
 /* Vaciar: pequeño en el diseño pero de 44 px al tacto, y en chile porque descarta */
 .sale-cart__clear {
   min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-height: var(--control-height-compact);
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-sm);
@@ -292,7 +307,7 @@ function confirmClear() {
 
 /* "N productos ▾": el triángulo lo da el <summary> nativo; aquí solo el tamaño táctil */
 .sale-cart__lines-wrap { width: 100%; }
-.sale-cart__lines-summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-weight: 700; color: var(--color-text); }
+.sale-cart__lines-summary { min-height: var(--control-height-compact); display: flex; align-items: center; cursor: pointer; font-weight: 700; color: var(--color-text); }
 .sale-cart__lines-summary:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 .sale-cart__lines { display: flex; flex-direction: column; gap: var(--spacing-sm); margin: var(--spacing-sm) 0 0; padding: 0; list-style: none; }
 
@@ -314,17 +329,13 @@ function confirmClear() {
 
 .sale-cart__payment { display: flex; flex-direction: column; gap: var(--spacing-md); min-width: 0; }
 
-/* "Cobrar": pegado abajo del panel mientras la lista se desplaza, así nunca
-   queda escondido. La acción principal de la pantalla: 56 px, ancho completo.
-   Doble clase para ganarle en especificidad a los tamaños de AppButton. */
-.sale-cart__actions {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  padding-top: var(--spacing-sm);
-  background: var(--color-bg);
-}
-.sale-cart .sale-cart__charge { min-height: 3.5rem; font-size: 1.25rem; font-weight: 800; }
+/* "Cobrar": la acción principal de la pantalla, a todo el ancho. En escritorio va
+   en el flujo, DEBAJO del campo de monto y del cambio (nunca encima de nada): si los
+   productos no caben, la que se desplaza es la lista (ver más abajo). En el Paso 2 del
+   celular se fija abajo y reserva su espacio. Doble clase para ganarle en
+   especificidad a los tamaños de AppButton. */
+.sale-cart__actions { background: var(--color-bg); }
+.sale-cart .sale-cart__charge { min-height: var(--control-height-cta); font-size: 1.25rem; font-weight: 800; }
 .sale-cart__spinner {
   display: inline-block;
   width: 1.1em;
@@ -342,7 +353,7 @@ function confirmClear() {
 /* Fiado/apartado: alternativa al cobro, nunca confundible con "Cobrar" (ni su
    color ni su tamaño); 44 px mínimos al tacto. */
 .sale-cart__debt-option {
-  min-height: 2.75rem;
+  min-height: var(--control-height);
   padding: 0 var(--spacing-md);
   font-family: inherit;
   font-size: var(--font-size-md);

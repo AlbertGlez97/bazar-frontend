@@ -1,5 +1,5 @@
 <template>
-  <!-- Molécula: selector de cantidad "− 3 +". No sabe de productos ni de stock real:
+  <!-- Molécula: selector de cantidad, una sola pastilla neutra "− 3 +". No sabe de productos ni de stock real:
        recibe la cantidad y los topes, y emite lo que la persona quiere hacer.
        En un tope los botones se ven apagados pero NO usan `disabled`: siguen
        enfocables y un toque emite `limit` con el motivo, para que quien lo usa
@@ -70,8 +70,8 @@ const props = withDefaults(defineProps<{
   min?: number
   /** Tope de existencia; sin valor no hay tope */
   max?: number
-  /** `lg` (56 px) en el carrito; `md` (44 px) en el resto */
-  size?: 'md' | 'lg'
+  /** `md`: alto por tipo de puntero (32 px mouse, 44 px dedo); `touch`: siempre ≥ 44 px (catálogo del celular) */
+  size?: 'md' | 'touch'
   /** Bloqueo real (por ejemplo mientras se cobra) */
   disabled?: boolean
   /** La cantidad también se puede teclear (emite `update:quantity`). */
@@ -113,62 +113,63 @@ function onIncrement() {
 </script>
 
 <style scoped>
+/* Una sola pastilla neutra "− 1 +": el contenedor lleva el borde y las esquinas
+   redondas, los botones van sin fondo propio. Sin color fuerte: ese es solo de
+   "Cobrar" (un botón primario por sección). */
 .quantity-stepper {
   display: inline-flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-full);
 }
 
 .quantity-stepper__btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--control-height-compact);
+  min-height: var(--control-height-compact);
   padding: 0;
   font-family: var(--font-display);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: 800;
   line-height: 1;
-  color: var(--color-on-primary);
-  background: var(--color-primary);
-  border: 2px solid var(--color-primary);
-  border-radius: var(--radius-md);
+  color: var(--color-text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-full);
   cursor: pointer;
   touch-action: manipulation;
-  transition: background var(--transition), border-color var(--transition);
+  transition: background var(--transition);
 }
-.quantity-stepper__btn:hover:not(:disabled):not(.quantity-stepper__btn--limit) {
-  background: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
-}
+.quantity-stepper__btn:hover:not(:disabled):not(.quantity-stepper__btn--limit) { background: var(--color-surface-alt); }
 .quantity-stepper__btn:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 
-/* Tope alcanzado: se ve apagado (con borde, no solo color) pero se puede tocar para saber por qué */
+/* Tope alcanzado: se ve apagado (más tenue, sin hover) pero se puede tocar para saber por qué */
 .quantity-stepper__btn--limit {
-  color: var(--color-text-muted);
-  background: var(--color-surface-alt);
-  border-color: var(--color-border-strong);
+  color: var(--color-text-subtle);
   cursor: not-allowed;
 }
 .quantity-stepper__btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .quantity-stepper__value {
-  min-width: 2.5rem;
+  min-width: 2rem;
   text-align: center;
   font-family: var(--font-display);
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-md);
   font-weight: 800;
   color: var(--color-text);
 }
 
 /* Editable: el campo conserva el aspecto del número y quita las flechitas del navegador */
 .quantity-stepper__value--input {
-  min-height: 2.75rem;
+  min-height: var(--control-height-compact);
   padding: 0 var(--spacing-xs);
-  background: var(--color-surface);
-  border: 2px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
   appearance: textfield;
   -moz-appearance: textfield;
 }
@@ -176,11 +177,11 @@ function onIncrement() {
 .quantity-stepper__value--input::-webkit-inner-spin-button { appearance: none; margin: 0; }
 .quantity-stepper__value--input:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 
-/* Carrito: 56 px, lo más cómodo de tocar */
-.quantity-stepper--lg .quantity-stepper__btn {
-  min-width: 3.5rem;
-  min-height: 3.5rem;
-  font-size: var(--font-size-2xl);
+/* Catálogo del celular: siempre al menos 44 px, con mouse o con dedo */
+.quantity-stepper--touch .quantity-stepper__btn {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  font-size: var(--font-size-xl);
 }
-.quantity-stepper--lg .quantity-stepper__value { min-width: 3rem; font-size: var(--font-size-2xl); }
+.quantity-stepper--touch .quantity-stepper__value { min-width: 2.25rem; font-size: var(--font-size-lg); }
 </style>

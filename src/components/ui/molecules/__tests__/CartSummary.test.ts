@@ -98,3 +98,27 @@ describe('el total nunca se sale de su tarjeta ni se corta (contrato de CSS)', (
     expect(textWidth, `${text} a ${fontPx.toFixed(1)}px mide ${textWidth.toFixed(0)}px de ${cardInner}px`).toBeLessThanOrEqual(cardInner)
   })
 })
+
+describe('CartSummary — compacto (escritorio)', () => {
+  const style = source.slice(source.indexOf('<style'))
+  const rule = (selector: string) => {
+    const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return style.match(new RegExp(`${escaped}\\s*\\{([^}]+)\\}`))?.[1] ?? ''
+  }
+
+  it('"compact" agrega su clase; sin la prop es el total grande de siempre', () => {
+    expect(mountSummary({ compact: true }).get('.cart-summary').classes()).toContain('cart-summary--compact')
+    expect(mountSummary().get('.cart-summary').classes()).not.toContain('cart-summary--compact')
+  })
+
+  it('"Total" y el importe van en una sola fila, y bajan a dos si el importe no cupiera', () => {
+    const compact = rule('.cart-summary--compact')
+    expect(compact).toMatch(/flex-direction:\s*row/)
+    expect(compact).toMatch(/flex-wrap:\s*wrap/)
+    expect(compact).toMatch(/justify-content:\s*space-between/)
+  })
+
+  it('la letra del importe sigue ajustándose al ancho de la tarjeta (cqi), con un tope menor', () => {
+    expect(rule('.cart-summary--compact .cart-summary__total')).toMatch(/font-size:\s*clamp\(\s*1\.5rem,\s*[\d.]+cqi,\s*2\.5rem\s*\)/)
+  })
+})

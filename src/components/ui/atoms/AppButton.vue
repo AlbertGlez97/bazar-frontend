@@ -73,26 +73,21 @@ defineOptions({ inheritAttrs: true })
 .app-btn--loading { opacity: .6; cursor: not-allowed; pointer-events: none; }
 .app-btn--block   { width: 100%; }
 
-/* ── Tamaños — padding/height en rem para escalar con user font-prefs ─ */
-.app-btn--xs { padding: 0.375rem 0.625rem; font-size: 0.75rem;   min-height: 2rem;    }
-.app-btn--sm { padding: 0.5rem   0.875rem; font-size: 0.8125rem; min-height: 2.25rem; }
-.app-btn--md { padding: 0.625rem 1rem;     font-size: 0.9375rem; min-height: 2.5rem;  }
-.app-btn--lg { padding: 0.75rem  1.25rem;  font-size: 1rem;      min-height: 2.75rem; }
-.app-btn--xl { padding: 0.875rem 1.5rem;   font-size: 1.0625rem; min-height: 3rem;    }
-
-/* Mobile: eleva touch targets de tamaños principales a ≥ 44px (Apple HIG) */
-@media (max-width: 767px) {
-  .app-btn--md,
-  .app-btn--lg,
-  .app-btn--xl { min-height: 2.75rem; }
-}
+/* ── Tamaños — el alto sale de los tokens de main.css, que cambian según el
+   TIPO DE PUNTERO (mouse 32/40/48 px, dedo 44/48/56 px), nunca según el ancho
+   de la pantalla. xs/sm = compacto · md/lg = principal · xl = acción principal. */
+.app-btn--xs { padding: 0.375rem 0.625rem; font-size: 0.75rem;   min-height: var(--control-height-compact); }
+.app-btn--sm { padding: 0.5rem   0.875rem; font-size: 0.8125rem; min-height: var(--control-height-compact); }
+.app-btn--md { padding: 0.625rem 1rem;     font-size: 0.9375rem; min-height: var(--control-height); }
+.app-btn--lg { padding: 0.75rem  1.25rem;  font-size: 1rem;      min-height: var(--control-height); }
+.app-btn--xl { padding: 0.875rem 1.5rem;   font-size: 1.0625rem; min-height: var(--control-height-cta); }
 
 /* Botón de solo ícono: cuadrado con min-width para preservar área táctil */
-.app-btn--icon-only.app-btn--xs { padding: 0.375rem; min-width: 2rem;    }
-.app-btn--icon-only.app-btn--sm { padding: 0.5rem;   min-width: 2.25rem; }
-.app-btn--icon-only.app-btn--md { padding: 0.625rem; min-width: 2.5rem;  }
-.app-btn--icon-only.app-btn--lg { padding: 0.75rem;  min-width: 2.75rem; }
-.app-btn--icon-only.app-btn--xl { padding: 0.875rem; min-width: 3rem;    }
+.app-btn--icon-only.app-btn--xs { padding: 0.375rem; min-width: var(--control-height-compact); }
+.app-btn--icon-only.app-btn--sm { padding: 0.5rem;   min-width: var(--control-height-compact); }
+.app-btn--icon-only.app-btn--md { padding: 0.625rem; min-width: var(--control-height); }
+.app-btn--icon-only.app-btn--lg { padding: 0.75rem;  min-width: var(--control-height); }
+.app-btn--icon-only.app-btn--xl { padding: 0.875rem; min-width: var(--control-height-cta); }
 
 /* ── Variantes sólidas ────────────────────────────────────────────── */
 .app-btn--primary {

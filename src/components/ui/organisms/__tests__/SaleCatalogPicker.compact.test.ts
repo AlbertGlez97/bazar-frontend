@@ -155,8 +155,9 @@ describe('SaleCatalogPicker — contrato de CSS móvil', () => {
   })
 
   it('el buscador, "Escanear", las categorías y la vista miden al menos 44 px', () => {
-    expect(rule(picker, '.sale-picker .sale-picker__scan')).toMatch(/min-height:\s*3\.5rem/)
-    expect(rule(picker, '.sale-picker__view-btn')).toMatch(/min-height:\s*2\.75rem/)
+    // Con dedo los tokens valen 48 y 44 px; con mouse, 40 y 32 (control-heights.test.ts).
+    expect(rule(picker, '.sale-picker .sale-picker__scan')).toMatch(/min-height:\s*var\(--control-height\)/)
+    expect(rule(picker, '.sale-picker__view-btn')).toMatch(/min-height:\s*var\(--control-height-compact\)/)
   })
 
   it('usa el mismo umbral de pantalla pequeña que el resto de la app (899.98 px)', () => {
