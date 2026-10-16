@@ -93,4 +93,39 @@ describe('ProductsService', () => {
     expect(result.active).toBe(true)
     expect(api.patch).toHaveBeenCalledExactlyOnceWith('/products/p-1/reactivate')
   })
+
+  describe('restockProduct', () => {
+    const movement = {
+      id: 'm-1', productId: 'p-1', memberId: 'u-1', type: 'REPOSICION', quantity: 5,
+      stockBefore: 1, stockAfter: 6, unitCostMinor: 1100, note: null,
+      createdAt: '2026-10-15T12:00:00.000Z', contextId: 'ctx',
+    }
+
+    it('hace POST /products/:id/restock con el cuerpo dado y devuelve producto y movimiento', async () => {
+      const response = { product: { ...product, stock: 6 }, movement }
+      vi.mocked(api.post).mockResolvedValue({ data: response })
+
+      const result = await ProductsService.restockProduct('p-1', { quantity: 5, unitCostMinor: 1100, note: 'Sábado' })
+
+      expect(result).toEqual(response)
+      expect(api.post).toHaveBeenCalledExactlyOnceWith('/products/p-1/restock', {
+        quantity: 5, unitCostMinor: 1100, note: 'Sábado',
+      })
+    })
+
+    it('solo manda lo que se le dio (sin costo ni nota no inventa claves)', async () => {
+      vi.mocked(api.post).mockResolvedValue({ data: { product, movement } })
+
+      await ProductsService.restockProduct('p-1', { quantity: 2 })
+
+      expect(vi.mocked(api.post).mock.calls[0]![1]).toStrictEqual({ quantity: 2 })
+    })
+
+    it('deja pasar el error del servidor para que quien llama lo explique', async () => {
+      const failure = Object.assign(new Error('Bad Request'), { response: { status: 400 } })
+      vi.mocked(api.post).mockRejectedValue(failure)
+
+      await expect(ProductsService.restockProduct('p-1', { quantity: 2 })).rejects.toBe(failure)
+    })
+  })
 })

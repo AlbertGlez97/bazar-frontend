@@ -5,6 +5,8 @@ import type {
   CreateProductPayload,
   Product,
   ProductListParams,
+  RestockProductPayload,
+  RestockProductResult,
   UpdateProductPayload,
 } from '@/types/product.types'
 
@@ -103,6 +105,12 @@ export const useProductsStore = defineStore('products', () => {
     return product
   }
 
+  async function restockProduct(id: string, payload: RestockProductPayload): Promise<RestockProductResult> {
+    const result = await ProductsService.restockProduct(id, payload)
+    await fetchProducts()
+    return result
+  }
+
   async function deactivateProduct(id: string): Promise<Product> {
     const product = await ProductsService.deactivateProduct(id)
     await fetchProducts()
@@ -118,6 +126,6 @@ export const useProductsStore = defineStore('products', () => {
   return {
     items, total, page, limit, search, includeInactive, umbral, agotados, sinCosto, tipo, loading, error, totalPages,
     fetchProducts, createProduct, updateProduct, uploadProductImage,
-    deactivateProduct, reactivateProduct,
+    restockProduct, deactivateProduct, reactivateProduct,
   }
 })

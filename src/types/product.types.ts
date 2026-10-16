@@ -20,6 +20,39 @@ export interface Product {
   image: string | null
 }
 
+/**
+ * POST /products/:id/restock — suma piezas a un producto por cantidad (solo
+ * socios). `quantity` es lo que se SUMA, no la nueva existencia. Sin
+ * `unitCostMinor` el costo del producto no se toca; con él, el servidor lo
+ * promedia (ponderado) con la existencia que ya había.
+ */
+export interface RestockProductPayload {
+  quantity: number
+  /** Costo unitario de ESTA compra, en centavos. */
+  unitCostMinor?: number
+  note?: string
+}
+
+/** Constancia de una reposición (solo se agrega, nunca se edita). */
+export interface StockMovement {
+  id: string
+  productId: string
+  memberId: string
+  type: 'REPOSICION'
+  quantity: number
+  stockBefore: number
+  stockAfter: number
+  unitCostMinor: number | null
+  note: string | null
+  createdAt: string
+  contextId: string
+}
+
+export interface RestockProductResult {
+  product: Product
+  movement: StockMovement
+}
+
 export interface ProductListParams {
   page?: number
   limit?: number

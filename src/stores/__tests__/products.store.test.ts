@@ -12,6 +12,7 @@ vi.mock('@/services/products.service', () => ({
     uploadProductImage: vi.fn(),
     deactivateProduct: vi.fn(),
     reactivateProduct: vi.fn(),
+    restockProduct: vi.fn(),
   },
 }))
 
@@ -196,6 +197,43 @@ describe('products.store', () => {
 
     expect(reactivated.active).toBe(true)
     expect(ProductsService.reactivateProduct).toHaveBeenCalledExactlyOnceWith('p-1')
+  })
+
+  describe('restockProduct', () => {
+    const result = {
+      product: { ...product, stock: 15 },
+      movement: {
+        id: 'm-1', productId: 'p-1', memberId: 'u-1', type: 'REPOSICION' as const, quantity: 5,
+        stockBefore: 10, stockAfter: 15, unitCostMinor: null, note: null,
+        createdAt: '2026-10-15T12:00:00.000Z', contextId: 'ctx',
+      },
+    }
+
+    it('repone, refresca el listado con los filtros vigentes y devuelve producto y movimiento', async () => {
+      vi.mocked(ProductsService.restockProduct).mockResolvedValue(result)
+      vi.mocked(ProductsService.listProducts).mockResolvedValue(listResponse)
+      const store = useProductsStore()
+      await store.fetchProducts({ agotados: true, search: 'lám' })
+      vi.mocked(ProductsService.listProducts).mockClear()
+
+      const restocked = await store.restockProduct('p-1', { quantity: 5 })
+
+      expect(restocked).toEqual(result)
+      expect(ProductsService.restockProduct).toHaveBeenCalledExactlyOnceWith('p-1', { quantity: 5 })
+      expect(ProductsService.listProducts).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ agotados: true, search: 'lám' }),
+      )
+    })
+
+    it('si el servidor rechaza, no refresca y relanza el error', async () => {
+      const failure = new Error('400')
+      vi.mocked(ProductsService.restockProduct).mockRejectedValue(failure)
+      const store = useProductsStore()
+
+      await expect(store.restockProduct('p-1', { quantity: 5 })).rejects.toBe(failure)
+
+      expect(ProductsService.listProducts).not.toHaveBeenCalled()
+    })
   })
 
   describe('filtro de poca existencia (umbral)', () => {

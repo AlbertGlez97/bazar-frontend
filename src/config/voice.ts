@@ -252,6 +252,32 @@ export const VOICE = {
     totalIngresadoHint: 'Ventas de contado + abonos reales del periodo.',
   },
   /** Inicio de Modo Gestión (solo socios): resumen del día (`GET /dashboard/summary`). */
+  /** Reponer existencia: sumar piezas compradas a un producto por cantidad (solo socios). */
+  productRestock: {
+    action: 'Reponer',
+    actionAria: (name: string) => `Reponer existencia de ${name}`,
+    title: 'Reponer existencia',
+    intro: (name: string) => `Suma las piezas nuevas de «${name}». Lo que escribas se agrega a lo que ya hay.`,
+    currentStock: (stock: number) => `Existencia actual: ${stock}`,
+    stockAfter: (stock: number) => `Después de reponer: ${stock}`,
+    quantityLabel: 'Piezas que compraste',
+    costLabel: 'Costo por pieza de esta compra (MXN, opcional)',
+    costHint: 'Si lo escribes, el costo del producto se promedia con el de lo que ya había. Si lo dejas vacío, el costo no cambia.',
+    noteLabel: 'Nota (opcional)',
+    submit: 'Reponer',
+    cancel: 'Cancelar',
+    quantityRequired: 'Escribe cuántas piezas compraste (1 o más).',
+    quantityTooMany: 'Con tantas piezas la existencia pasaría del máximo permitido.',
+    costAmbiguous: 'No entiendo ese monto. Usa coma para miles y punto para centavos, ej. 1,000.50.',
+    costTooLarge: 'Ese costo es demasiado grande.',
+    noteTooLong: 'La nota admite hasta 1000 caracteres.',
+    reviewFields: 'Revisa los campos marcados para continuar.',
+    done: (name: string, stock: number) => `Listo, ahora hay ${stock} de «${name}».`,
+    failed: 'No pudimos reponer la existencia.',
+    uniqueNote: 'Es una pieza única: no se repone.',
+    inactiveNote: 'Está desactivado: reactívalo para reponerlo.',
+    formHint: (stock: number) => `Existencia actual: ${stock}. Para sumar piezas que compraste usa «Reponer existencia».`,
+  },
   /** Panel "Filtros" del catálogo de Productos (Modo Gestión). */
   productFilters: {
     button: 'Filtros',

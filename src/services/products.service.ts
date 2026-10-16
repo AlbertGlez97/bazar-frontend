@@ -5,6 +5,8 @@ import type {
   ProductListResponse,
   CreateProductPayload,
   UpdateProductPayload,
+  RestockProductPayload,
+  RestockProductResult,
 } from '@/types/product.types'
 
 const ProductsService = {
@@ -46,6 +48,16 @@ const ProductsService = {
     const { data } = await api.post<Product>(`/products/${id}/image`, form, {
       headers: { 'Content-Type': undefined },
     })
+    return data
+  },
+
+  /**
+   * POST /products/:id/restock — solo socios, solo productos por cantidad.
+   * Va directo al servidor (no a una cola offline): en Gestión se necesita
+   * internet y la persona tiene que ver si se pudo o no.
+   */
+  async restockProduct(id: string, payload: RestockProductPayload): Promise<RestockProductResult> {
+    const { data } = await api.post<RestockProductResult>(`/products/${id}/restock`, payload)
     return data
   },
 
