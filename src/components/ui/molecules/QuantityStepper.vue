@@ -24,8 +24,23 @@
       <span aria-hidden="true">−</span>
     </button>
 
+    <!-- Modo editable: la cantidad se puede teclear (una compra de 100 piezas no se
+         captura con 100 toques). El valor lo valida quien lo usa. -->
+    <input
+      v-if="editable"
+      class="quantity-stepper__value quantity-stepper__value--input"
+      type="number"
+      inputmode="numeric"
+      :value="quantity"
+      :min="min"
+      :max="max"
+      :disabled="disabled"
+      :aria-label="`Cantidad de ${productName}`"
+      @input="onType"
+    >
     <!-- <output> es una región viva: al cambiar la cantidad se anuncia el número -->
     <output
+      v-else
       class="quantity-stepper__value"
       aria-live="polite"
     >{{ quantity }}</output>
@@ -59,11 +74,14 @@ const props = withDefaults(defineProps<{
   size?: 'md' | 'lg'
   /** Bloqueo real (por ejemplo mientras se cobra) */
   disabled?: boolean
+  /** La cantidad también se puede teclear (emite `update:quantity`). */
+  editable?: boolean
 }>(), {
   min: 1,
   max: undefined,
   size: 'md',
   disabled: false,
+  editable: false,
 })
 
 const emit = defineEmits<{
@@ -71,7 +89,14 @@ const emit = defineEmits<{
   decrement: []
   /** Se tocó un botón que está en su tope: `min` o `max` */
   limit: [which: 'min' | 'max']
+  /** Solo en modo editable: lo que se tecleó (0 si el campo quedó vacío o no es un entero). */
+  'update:quantity': [quantity: number]
 }>()
+
+function onType(event: Event) {
+  const typed = Number((event.target as HTMLInputElement).value)
+  emit('update:quantity', Number.isInteger(typed) ? typed : 0)
+}
 
 const atMin = computed(() => props.quantity <= props.min)
 const atMax = computed(() => props.max !== undefined && props.quantity >= props.max)
@@ -136,6 +161,20 @@ function onIncrement() {
   font-weight: 800;
   color: var(--color-text);
 }
+
+/* Editable: el campo conserva el aspecto del número y quita las flechitas del navegador */
+.quantity-stepper__value--input {
+  min-height: 2.75rem;
+  padding: 0 var(--spacing-xs);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.quantity-stepper__value--input::-webkit-outer-spin-button,
+.quantity-stepper__value--input::-webkit-inner-spin-button { appearance: none; margin: 0; }
+.quantity-stepper__value--input:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 
 /* Carrito: 56 px, lo más cómodo de tocar */
 .quantity-stepper--lg .quantity-stepper__btn {

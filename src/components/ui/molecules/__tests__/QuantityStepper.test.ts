@@ -112,3 +112,53 @@ describe('QuantityStepper — tamaño', () => {
     expect(mountStepper({ size: 'lg' }).get('.quantity-stepper').classes()).toContain('quantity-stepper--lg')
   })
 })
+
+describe('QuantityStepper — modo editable (teclear la cantidad)', () => {
+  const field = (w: ReturnType<typeof mountStepper>) => w.get('input.quantity-stepper__value')
+
+  it('por defecto sigue siendo solo un <output>: no hay campo para teclear', () => {
+    const wrapper = mountStepper()
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(wrapper.find('output').exists()).toBe(true)
+  })
+
+  it('editable cambia el <output> por un campo numérico con nombre accesible', () => {
+    const wrapper = mountStepper({ quantity: 4, editable: true })
+    expect(wrapper.find('output').exists()).toBe(false)
+    expect((field(wrapper).element as HTMLInputElement).value).toBe('4')
+    expect(field(wrapper).attributes('type')).toBe('number')
+    expect(field(wrapper).attributes('inputmode')).toBe('numeric')
+    expect(field(wrapper).attributes('aria-label')).toBe('Cantidad de Café de olla')
+  })
+
+  it('el campo respeta min y max del stepper', () => {
+    const wrapper = mountStepper({ editable: true, min: 1, max: 50 })
+    expect(field(wrapper).attributes('min')).toBe('1')
+    expect(field(wrapper).attributes('max')).toBe('50')
+  })
+
+  it('al teclear emite update:quantity con el número entero', async () => {
+    const wrapper = mountStepper({ editable: true })
+    await field(wrapper).setValue('48')
+    expect(wrapper.emitted('update:quantity')).toEqual([[48]])
+  })
+
+  it('un campo vacío o con texto emite 0 (quien lo usa lo valida y lo avisa)', async () => {
+    const wrapper = mountStepper({ editable: true })
+    await field(wrapper).setValue('')
+    expect(wrapper.emitted('update:quantity')?.at(-1)).toEqual([0])
+  })
+
+  it('los botones siguen funcionando igual', async () => {
+    const wrapper = mountStepper({ editable: true })
+    await plus(wrapper).trigger('click')
+    await minus(wrapper).trigger('click')
+    expect(wrapper.emitted('increment')).toHaveLength(1)
+    expect(wrapper.emitted('decrement')).toHaveLength(1)
+  })
+
+  it('disabled también bloquea el campo', () => {
+    const wrapper = mountStepper({ editable: true, disabled: true })
+    expect(field(wrapper).attributes('disabled')).toBeDefined()
+  })
+})
