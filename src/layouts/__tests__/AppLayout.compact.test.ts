@@ -59,6 +59,7 @@ async function mountLayout(options: { small: boolean; member?: typeof socio; mod
           { path: 'venta', name: 'Sale', component: stub },
           { path: 'productos', name: 'ProductCatalog', component: stub },
           { path: 'ajustes', name: 'Settings', component: stub },
+          { path: 'ajustes/contrasena', name: 'ChangePassword', component: stub },
           { path: 'ayuda', name: 'Help', component: stub },
         ],
       },
@@ -71,6 +72,7 @@ async function mountLayout(options: { small: boolean; member?: typeof socio; mod
 }
 
 const drawer = () => document.body.querySelector<HTMLElement>('[role="dialog"][aria-labelledby]')
+const accountAction = (name: string) => document.body.querySelector<HTMLButtonElement>(`[data-action="${name}"]`)!
 
 describe('AppLayout — el umbral es el de pantalla pequeña (900 px)', () => {
   it('usa SMALL_SCREEN_MAX_WIDTH = 900 y no un breakpoint propio', () => {
@@ -107,22 +109,63 @@ describe('AppLayout — pantalla pequeña (bajo 900 px)', () => {
     wrapper.unmount()
   })
 
-  it('colaborador: solo Ayuda y "Salir"; sin botón de menú', async () => {
+  it('colaborador: título, "Ayuda" y "Mi cuenta"; sin botón de menú ni "Salir" suelto', async () => {
     const { wrapper } = await mountLayout({ small: true, member: colaborador })
 
     expect(wrapper.find('.app-top-bar__menu').exists()).toBe(false)
-    expect(wrapper.find('.app-top-bar__help').exists()).toBe(true)
-    expect(wrapper.get('.app-top-bar__logout').text()).toContain('Salir')
+    expect(wrapper.get('.app-top-bar__title').text()).toBe('Vender')
+    expect(wrapper.get('.app-top-bar__help').text()).toContain('Ayuda')
+    expect(wrapper.get('.account-menu__trigger').text()).toContain('Mi cuenta')
+    expect(wrapper.find('.app-top-bar__logout').exists()).toBe(false)
+    expect(wrapper.text()).not.toMatch(/\bSalir\b/)
     wrapper.unmount()
   })
 
-  it('colaborador: "Salir" cierra la sesión y lleva al ingreso', async () => {
+  it('colaborador: "Mi cuenta" > "Cambiar contraseña" lleva a la pantalla de cambiar su contraseña', async () => {
     const { wrapper, router } = await mountLayout({ small: true, member: colaborador })
 
-    await wrapper.get('.app-top-bar__logout').trigger('click')
+    await wrapper.get('.account-menu__trigger').trigger('click')
+    await flushPromises()
+    accountAction('change-password').click()
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('ChangePassword')
+    wrapper.unmount()
+  })
+
+  it('colaborador sin conexión: "Cambiar contraseña" no navega y dice que necesita internet', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    const { wrapper, router } = await mountLayout({ small: true, member: colaborador })
+
+    await wrapper.get('.account-menu__trigger').trigger('click')
+    await flushPromises()
+    accountAction('change-password').click()
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('Sale')
+    expect(document.body.textContent).toContain('Necesitas internet para cambiar tu contraseña.')
+    wrapper.unmount()
+  })
+
+  it('colaborador: "Mi cuenta" > "Cerrar sesión" cierra la sesión y lleva al ingreso', async () => {
+    const { wrapper, router } = await mountLayout({ small: true, member: colaborador })
+
+    await wrapper.get('.account-menu__trigger').trigger('click')
+    await flushPromises()
+    accountAction('logout').click()
     await flushPromises()
 
     expect(router.currentRoute.value.name).toBe('Login')
+    wrapper.unmount()
+  })
+
+  it('socio: no trae "Mi cuenta" en la barra (la tiene en el cajón) y conserva Ajustes en el cajón', async () => {
+    const { wrapper } = await mountLayout({ small: true })
+
+    expect(wrapper.find('.account-menu').exists()).toBe(false)
+    await wrapper.get('.app-top-bar__menu').trigger('click')
+    await flushPromises()
+    expect(drawer()!.querySelector('a[href="/app/ajustes"]')).not.toBeNull()
     wrapper.unmount()
   })
 

@@ -1,8 +1,9 @@
 <template>
   <!-- Molécula: barra superior del celular y la tablet vertical (menos de 900 px,
        donde ya no hay barra lateral). Título de la pantalla y botones con TEXTO:
-       "Ayuda" siempre; "Menú" a la izquierda para quien administra y "Salir"
-       para quien solo vende. Presentacional: avisa lo que se toca, no navega. -->
+       "Ayuda" siempre; "Menú" a la izquierda para quien administra y "Mi cuenta"
+       (cambiar contraseña, cerrar sesión) para quien solo vende.
+       Presentacional: avisa lo que se toca, no navega. -->
   <header class="app-top-bar">
     <button
       v-if="showMenu"
@@ -40,24 +41,19 @@
       <span>Ayuda</span>
     </button>
 
-    <button
-      v-if="showLogout"
-      type="button"
-      class="app-top-bar__logout"
-      @click="emit('logout')"
-    >
-      <LogOut
-        :size="20"
-        aria-hidden="true"
-      />
-      <span>Salir</span>
-    </button>
+    <AccountMenu
+      v-if="showAccount"
+      :online="online"
+      @change-password="emit('change-password')"
+      @logout="emit('logout')"
+    />
   </header>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { CircleHelp, LogOut, Menu } from '@lucide/vue'
+import { CircleHelp, Menu } from '@lucide/vue'
+import AccountMenu from './AccountMenu.vue'
 
 withDefaults(defineProps<{
   title: string
@@ -67,11 +63,13 @@ withDefaults(defineProps<{
   /** La propia pantalla de ayuda no lo muestra. */
   showHelp?: boolean
   helpOpen?: boolean
-  /** Colaborador: sin menú, "Salir" a la vista. */
-  showLogout?: boolean
-}>(), { showMenu: false, menuOpen: false, showHelp: true, helpOpen: false, showLogout: false })
+  /** Colaborador: sin menú, "Mi cuenta" a la vista. */
+  showAccount?: boolean
+  /** Hay conexión (para el aviso de "Cambiar contraseña"). */
+  online?: boolean
+}>(), { showMenu: false, menuOpen: false, showHelp: true, helpOpen: false, showAccount: false, online: true })
 
-const emit = defineEmits<{ menu: []; help: []; logout: [] }>()
+const emit = defineEmits<{ menu: []; help: []; 'change-password': []; logout: [] }>()
 
 const menuEl = ref<HTMLButtonElement | null>(null)
 const helpEl = ref<HTMLButtonElement | null>(null)
@@ -108,8 +106,7 @@ defineExpose({ menuEl, helpEl })
 }
 
 .app-top-bar__menu,
-.app-top-bar__help,
-.app-top-bar__logout {
+.app-top-bar__help {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -132,10 +129,8 @@ defineExpose({ menuEl, helpEl })
 .app-top-bar__help { color: var(--color-primary); }
 .app-top-bar__menu:hover,
 .app-top-bar__help:hover,
-.app-top-bar__logout:hover,
 .app-top-bar__menu[aria-expanded='true'],
 .app-top-bar__help[aria-expanded='true'] { background: var(--color-surface-alt); }
 .app-top-bar__menu:focus-visible,
-.app-top-bar__help:focus-visible,
-.app-top-bar__logout:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+.app-top-bar__help:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 </style>

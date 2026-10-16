@@ -80,6 +80,7 @@ export { default as ReportRangePicker } from './ui/molecules/ReportRangePicker.v
 export { default as CuotasPlaneadasEditor } from './ui/molecules/CuotasPlaneadasEditor.vue'
 export { default as AppAccordion } from './ui/molecules/AppAccordion.vue'
 export { default as AppDropdownPanel } from './ui/molecules/AppDropdownPanel.vue'
+export { default as AccountMenu } from './ui/molecules/AccountMenu.vue'
 export { default as FilterSwitchRow } from './ui/molecules/FilterSwitchRow.vue'
 export { default as ActiveFilterChips } from './ui/molecules/ActiveFilterChips.vue'
 export { default as AppTopBar } from './ui/molecules/AppTopBar.vue'

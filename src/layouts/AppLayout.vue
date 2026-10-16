@@ -131,9 +131,11 @@
         :menu-open="navDrawerOpen"
         :show-help="!isHelpRoute"
         :help-open="helpDrawerOpen"
-        :show-logout="!isSocio"
+        :show-account="!isSocio"
+        :online="isOnline"
         @menu="navDrawerOpen = true"
         @help="openHelpDrawer()"
+        @change-password="router.push({ name: 'ChangePassword' })"
         @logout="handleLogout"
       />
       <div
@@ -245,6 +247,7 @@ import { AppBadge, AppButton, AppAvatar, InstallAppButton, UiModeSwitch, SyncSta
 import AppTopBar from '@/components/ui/molecules/AppTopBar.vue'
 import AppNavDrawer from '@/components/ui/organisms/AppNavDrawer.vue'
 import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 import { APP_NAME } from '@/config/app'
 import { landingFor } from '@/router/landing'
@@ -273,6 +276,7 @@ const isHelpRoute = computed(() => route.name === 'Help')
 // de useDeviceCapabilities, el mismo que usa la venta; no hay otro propio.
 const { isSmallScreen: isCompact } = useDeviceCapabilities()
 const isSocio = computed(() => session.member?.role === 'socio')
+const isOnline = useOnlineStatus()
 const navDrawerOpen = ref(false)
 const topBar = ref<InstanceType<typeof AppTopBar> | null>(null)
 // Si la pantalla crece (girar la tablet) con el cajón abierto, se cierra solo.

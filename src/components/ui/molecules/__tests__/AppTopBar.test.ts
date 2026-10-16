@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import AppTopBar from '../AppTopBar.vue'
 import source from '../AppTopBar.vue?raw'
@@ -46,28 +47,45 @@ describe('AppTopBar', () => {
   })
 
   it('el menú va antes que el título (izquierda) y Ayuda después', () => {
-    const html = mountBar({ showMenu: true, showLogout: true }).html()
+    const html = mountBar({ showMenu: true, showAccount: true }).html()
 
     expect(html.indexOf('app-top-bar__menu')).toBeLessThan(html.indexOf('app-top-bar__title'))
     expect(html.indexOf('app-top-bar__title')).toBeLessThan(html.indexOf('app-top-bar__help'))
   })
 
-  it('colaborador: sin menú; con "Salir" visible que emite logout', async () => {
-    const wrapper = mountBar({ showMenu: false, showLogout: true })
+  it('colaborador: sin menú, con "Ayuda" y "Mi cuenta" (ambos con texto) y ningún "Salir" suelto', () => {
+    const wrapper = mountBar({ showMenu: false, showAccount: true })
 
     expect(wrapper.find('.app-top-bar__menu').exists()).toBe(false)
-    const logout = wrapper.get('.app-top-bar__logout')
-    expect(logout.text()).toContain('Salir')
-    await logout.trigger('click')
-    expect(wrapper.emitted('logout')).toHaveLength(1)
+    expect(wrapper.get('.app-top-bar__help').text()).toContain('Ayuda')
+    expect(wrapper.get('.account-menu__trigger').text()).toContain('Mi cuenta')
+    expect(wrapper.find('.app-top-bar__logout').exists()).toBe(false)
+    expect(wrapper.text()).not.toMatch(/\bSalir\b/)
   })
 
-  it('sin showLogout no hay botón Salir', () => {
-    expect(mountBar().find('.app-top-bar__logout').exists()).toBe(false)
+  it('"Mi cuenta" reenvía cambiar contraseña y cerrar sesión', async () => {
+    const wrapper = mount(AppTopBar, { attachTo: document.body, props: { title: 'Vender', showAccount: true, online: true } })
+    await wrapper.get('.account-menu__trigger').trigger('click')
+    await nextTick()
+
+    document.body.querySelector<HTMLButtonElement>('[data-action="change-password"]')!.click()
+    await nextTick()
+    await wrapper.get('.account-menu__trigger').trigger('click')
+    await nextTick()
+    document.body.querySelector<HTMLButtonElement>('[data-action="logout"]')!.click()
+
+    expect(wrapper.emitted('change-password')).toHaveLength(1)
+    expect(wrapper.emitted('logout')).toHaveLength(1)
+    wrapper.unmount()
+    document.body.innerHTML = ''
+  })
+
+  it('sin showAccount (socio) no hay "Mi cuenta": su cuenta vive en el cajón', () => {
+    expect(mountBar({ showMenu: true }).find('.account-menu').exists()).toBe(false)
   })
 
   it('es el encabezado de la página y todos sus botones tienen nombre accesible', () => {
-    const wrapper = mountBar({ showMenu: true, showLogout: true })
+    const wrapper = mountBar({ showMenu: true, showAccount: true })
 
     expect(wrapper.find('header.app-top-bar').exists()).toBe(true)
     for (const button of wrapper.findAll('button')) {
@@ -86,7 +104,7 @@ describe('AppTopBar', () => {
     const rem = (body: string, property: string) => Number(body.match(new RegExp(`${property}:\\s*([\\d.]+)rem`))?.[1] ?? 0)
 
     it('cada botón mide al menos 44 px (2.75rem) de alto y de ancho', () => {
-      for (const selector of ['.app-top-bar__menu', '.app-top-bar__help', '.app-top-bar__logout']) {
+      for (const selector of ['.app-top-bar__menu', '.app-top-bar__help']) {
         const body = rule(selector)
         expect(rem(body, 'min-height'), `${selector} min-height`).toBeGreaterThanOrEqual(2.75)
         expect(rem(body, 'min-width'), `${selector} min-width`).toBeGreaterThanOrEqual(2.75)
