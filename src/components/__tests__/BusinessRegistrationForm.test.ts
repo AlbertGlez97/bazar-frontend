@@ -159,8 +159,8 @@ describe('BusinessRegistrationForm: campos', () => {
     const links = label.findAllComponents(RouterLinkStub)
 
     expect(wrapper.find('.legal-notice-summary').exists()).toBe(true)
-    expect(label.text()).toContain('Leí el Aviso de privacidad y los Términos')
-    expect(links.map((l) => l.props('to'))).toEqual(['/privacidad', '/terminos'])
+    expect(label.text().replace(/\s+/g, ' ')).toContain('Leí el Aviso de privacidad y los Términos')
+    expect(links.map((l: { props: (key: string) => unknown }) => l.props('to'))).toEqual(['/privacidad', '/terminos'])
     for (const link of links) {
       expect(link.attributes('target')).toBe('_blank')
       expect(link.attributes('rel')).toContain('noopener')

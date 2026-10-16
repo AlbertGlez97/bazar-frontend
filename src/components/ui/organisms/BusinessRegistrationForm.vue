@@ -54,9 +54,9 @@
       <p
         id="registro-quevende-count"
         class="business-registration-form__hint"
-        :class="{ 'business-registration-form__hint--over': queVende.length > QUE_VENDE_MAX }"
+        :class="{ 'business-registration-form__hint--over': queVendeLength > QUE_VENDE_MAX }"
       >
-        {{ queVende.length }} de {{ QUE_VENDE_MAX }}
+        {{ queVendeLength }} de {{ QUE_VENDE_MAX }}
       </p>
     </div>
 
@@ -176,11 +176,15 @@
           to="/privacidad"
           target="_blank"
           rel="noopener noreferrer"
-        >Aviso de privacidad</RouterLink> y los <RouterLink
+        >
+          Aviso de privacidad
+        </RouterLink> y los <RouterLink
           to="/terminos"
           target="_blank"
           rel="noopener noreferrer"
-        >Términos</RouterLink>
+        >
+          Términos
+        </RouterLink>
       </AppCheckbox>
       <p
         v-if="errors.aceptaLegal"
@@ -325,6 +329,8 @@ const [correo, correoAttrs] = defineField('correo', fieldConfig)
 const [telefono, telefonoAttrs] = defineField('telefono', fieldConfig)
 const [recomendadoPor, recomendadoPorAttrs] = defineField('recomendadoPor', fieldConfig)
 const [aceptaLegal, aceptaLegalAttrs] = defineField('aceptaLegal', checkboxConfig)
+
+const queVendeLength = computed(() => (queVende.value ?? '').length)
 
 // Campo trampa (no pasa por el esquema: se manda tal cual)
 const trap = ref('')

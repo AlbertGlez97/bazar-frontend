@@ -9,6 +9,12 @@ WORKDIR /app
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
+# Clave PÚBLICA (site key) de Cloudflare Turnstile para el registro de negocios. Es pública por
+# diseño (viaja en el bundle); la clave SECRETA vive solo en el backend. Mismo motivo que arriba:
+# se hornea al construir, así que es un ARG.
+ARG VITE_TURNSTILE_SITE_KEY
+ENV VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY
+
 COPY package*.json ./
 RUN npm ci
 
