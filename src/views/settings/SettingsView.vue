@@ -44,6 +44,21 @@
         </li>
       </ul>
     </nav>
+
+    <!-- Los textos legales: para todas las personas, sea cual sea su rol -->
+    <nav
+      :aria-label="LEGAL_NAV_LABEL"
+      class="settings-view__legal"
+    >
+      <RouterLink
+        v-for="link in LEGAL_LINKS"
+        :key="link.to"
+        :to="link.to"
+        class="settings-view__legal-link"
+      >
+        {{ link.label }}
+      </RouterLink>
+    </nav>
   </section>
 </template>
 
@@ -51,6 +66,7 @@
 import { computed } from 'vue'
 import { VOICE } from '@/config/voice'
 import { getSettingsItems } from '@/layouts/settings-items'
+import { LEGAL_LINKS, LEGAL_NAV_LABEL } from '@/legal/legal-links'
 import { useSessionStore } from '@/stores/session.store'
 
 const session = useSessionStore()
@@ -70,6 +86,19 @@ const items = computed(() => getSettingsItems({ isSocio: session.member?.role ==
 }
 .settings-view__title { font-size: var(--font-size-xl); margin: 0; }
 .settings-view__lead { color: var(--color-text-muted); margin: var(--spacing-xs) 0 0; }
+
+/* Textos legales: enlaces discretos debajo de las entradas, con zona táctil de 44 px */
+.settings-view__legal { display: flex; flex-wrap: wrap; gap: var(--spacing-xs) var(--spacing-md); margin-top: var(--spacing-lg); }
+.settings-view__legal-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.settings-view__legal-link:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
 
 .settings-view__list {
   display: flex;

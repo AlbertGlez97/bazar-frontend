@@ -53,6 +53,21 @@
 
       <!-- "Instalar app": solo se ve si Chrome ofreció instalar (o en iPhone/iPad) y la
            app no está instalada. El evento lo guarda usePwaInstall desde el arranque. -->
+      <nav
+        class="app-nav-drawer__legal"
+        :aria-label="LEGAL_NAV_LABEL"
+      >
+        <RouterLink
+          v-for="link in LEGAL_LINKS"
+          :key="link.to"
+          :to="link.to"
+          class="app-nav-drawer__legal-link"
+          @click="close"
+        >
+          {{ link.label }}
+        </RouterLink>
+      </nav>
+
       <div class="app-nav-drawer__install">
         <InstallAppButton variant="ghost" />
       </div>
@@ -79,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { LEGAL_LINKS, LEGAL_NAV_LABEL } from '@/legal/legal-links'
 import type { UiMode } from '@/types/ui-mode.types'
 import AppAvatar from '../atoms/AppAvatar.vue'
 import InstallAppButton from '../molecules/InstallAppButton.vue'
@@ -127,6 +143,22 @@ function onLogout() {
 /* Sin botón no ocupa lugar (ni el espacio entre elementos) */
 .app-nav-drawer__install:not(:has(.install-btn)) { display: none; }
 .app-nav-drawer__install :deep(.install-btn) { width: 100%; justify-content: center; min-height: 3rem; color: var(--color-text); }
+
+.app-nav-drawer__legal { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.app-nav-drawer__legal-link {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  border-radius: var(--radius-md);
+}
+.app-nav-drawer__legal-link:hover { background: var(--color-surface-alt); }
+.app-nav-drawer__legal-link:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 
 .app-nav-drawer__nav { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 .app-nav-drawer__link {

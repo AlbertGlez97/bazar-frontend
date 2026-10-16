@@ -36,6 +36,20 @@
         <span aria-hidden="true">🔑</span>
         <span>Cambiar contraseña</span>
       </button>
+      <nav
+        class="account-menu__legal"
+        :aria-label="LEGAL_NAV_LABEL"
+      >
+        <RouterLink
+          v-for="link in LEGAL_LINKS"
+          :key="link.to"
+          :to="link.to"
+          class="account-menu__legal-link"
+          @click="open = false"
+        >
+          {{ link.label }}
+        </RouterLink>
+      </nav>
       <div class="account-menu__install">
         <InstallAppButton variant="ghost" />
       </div>
@@ -61,6 +75,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { CircleUser } from '@lucide/vue'
+import { LEGAL_LINKS, LEGAL_NAV_LABEL } from '@/legal/legal-links'
 import AppDropdownPanel from './AppDropdownPanel.vue'
 import InstallAppButton from './InstallAppButton.vue'
 
@@ -116,6 +131,22 @@ function onLogout() {
 .account-menu__trigger:hover,
 .account-menu__trigger[aria-expanded='true'] { background: var(--color-surface-alt); }
 .account-menu__trigger:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
+
+.account-menu__legal { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.account-menu__legal-link {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0 var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  border-radius: var(--radius-md);
+}
+.account-menu__legal-link:hover { background: var(--color-surface-alt); }
+.account-menu__legal-link:focus-visible { outline: 3px solid var(--color-focus-ring); outline-offset: 2px; }
 
 /* Sin botón no ocupa lugar */
 .account-menu__install:not(:has(.install-btn)) { display: none; }

@@ -29,10 +29,12 @@ describe('AuthLayout', () => {
     expect(wrapper.find('.auth-layout').exists()).toBe(true)
   })
 
-  it('no anuncia la stack tecnológica ni deja un footer vacío', async () => {
+  it('no anuncia la stack tecnológica y su pie trae los textos legales (no un footer vacío)', async () => {
     const { wrapper } = await mountAtLogin()
     expect(wrapper.text()).not.toMatch(/NestJS|Vue 3|PostgreSQL|Construido con/)
-    expect(wrapper.find('footer').exists()).toBe(false)
+    const footer = wrapper.get('footer')
+    expect(footer.text()).toContain('Aviso de privacidad')
+    expect(footer.text()).toContain('Términos y condiciones')
   })
 
   it('renderiza el header con el nombre de la app', async () => {

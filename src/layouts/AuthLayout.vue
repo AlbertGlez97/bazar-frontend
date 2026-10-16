@@ -23,12 +23,16 @@
       <!-- Vista hija (Login) -->
       <RouterView />
     </main>
+
+    <!-- Pie con los textos legales y el contacto -->
+    <PublicFooter class="auth-layout__footer" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { APP_NAME } from '@/config/app'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
+import PublicFooter from '@/components/ui/organisms/PublicFooter.vue'
 </script>
 
 <style scoped>
@@ -47,6 +51,9 @@ import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
 }
 
 /* ── Toldo ─────────────────────────────────────────────────── */
+/* El pie va debajo de la tarjeta, a todo el ancho de la pantalla */
+.auth-layout__footer { position: relative; z-index: 1; margin: var(--spacing-lg) calc(var(--spacing-md) * -1) calc(var(--spacing-lg) * -1); width: calc(100% + var(--spacing-md) * 2); }
+
 .auth-layout__awning {
   position: absolute;
   top: 0;

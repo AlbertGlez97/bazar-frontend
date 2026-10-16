@@ -32,30 +32,17 @@
       <RouterView />
     </main>
 
-    <footer class="public-layout__footer">
-      <div class="public-layout__footer-inner container">
-        <BrandLogo
-          :size="28"
-          variant="full"
-        />
-        <p class="public-layout__tagline">
-          Para quien vende de tú a tú.
-        </p>
-        <p class="public-layout__copy">
-          &copy; {{ year }} {{ APP_NAME }}
-        </p>
-      </div>
-    </footer>
+    <PublicFooter />
   </div>
 </template>
 
 <script setup lang="ts">
 import { useAuthStore } from '@/stores/auth.store'
 import BrandLogo from '@/components/ui/atoms/BrandLogo.vue'
+import PublicFooter from '@/components/ui/organisms/PublicFooter.vue'
 import { APP_NAME } from '@/config/app'
 
 const authStore = useAuthStore()
-const year = new Date().getFullYear()
 </script>
 
 <style scoped>
@@ -95,18 +82,4 @@ const year = new Date().getFullYear()
 
 .public-layout__main { flex: 1; }
 
-.public-layout__footer {
-  background: var(--color-surface-alt);
-  border-top: 1px solid var(--color-border);
-  padding: var(--spacing-xl) var(--spacing-md);
-}
-.public-layout__footer-inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
-  text-align: center;
-}
-.public-layout__tagline { color: var(--color-text); font-weight: 500; }
-.public-layout__copy { color: var(--color-text-muted); font-size: var(--font-size-sm); }
 </style>
