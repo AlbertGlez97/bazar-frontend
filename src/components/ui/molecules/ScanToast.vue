@@ -36,8 +36,8 @@
 
 <script setup lang="ts">
 defineProps<{
-  /** Lo que se muestra ahora; `null` = nada. */
-  notice: { kind: 'success' | 'error'; title: string; detail?: string } | null
+  /** Lo que se muestra ahora; `null` o sin valor = nada. */
+  notice?: { kind: 'success' | 'error'; title: string; detail?: string } | null
 }>()
 </script>
 

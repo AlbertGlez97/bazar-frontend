@@ -1748,7 +1748,7 @@ describe('SaleView — contador y pista en el catálogo del celular', () => {
     w.findAll('li.sale-picker__cell').find((cell) => cell.text().includes(name))!.get('.sale-picker__counter')
   const minusOf = (w: Wrapper, name: string) => counterOf(w, name).get('button[data-action="decrement"]')
   const plusOf = (w: Wrapper, name: string) => counterOf(w, name).get('button[data-action="increment"]')
-  const qtyInCart = (w: Wrapper, name: string) => {
+  const qtyInCart = (_w: Wrapper, name: string) => {
     const line = useCartStore().lines.find((l) => l.name === name)
     return line ? line.quantity : 0
   }

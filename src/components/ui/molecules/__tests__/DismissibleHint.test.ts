@@ -32,7 +32,7 @@ describe('DismissibleHint', () => {
   it('es una nota, no una alerta: no roba el foco ni se anuncia a gritos', () => {
     const wrapper = mount(DismissibleHint, { props: { text: 'Hola' } })
 
-    expect(wrapper.get('[role="note"]').exists()).toBe(true)
+    expect(wrapper.find('[role="note"]').exists()).toBe(true)
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect(wrapper.find('[aria-live="assertive"]').exists()).toBe(false)
   })
