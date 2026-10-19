@@ -112,6 +112,15 @@
       >
         Reactivar
       </AppButton>
+      <!-- Otra talla, otro color del mismo producto: abre el alta ya precargada -->
+      <AppButton
+        size="sm"
+        variant="secondary"
+        :aria-label="VOICE.productDuplicate.actionAria(product.name)"
+        @click="$emit('duplicate', product)"
+      >
+        {{ VOICE.productDuplicate.action }}
+      </AppButton>
     </div>
   </div>
 </template>
@@ -170,6 +179,7 @@ defineEmits<{
   deactivate: [product: Product]
   reactivate: [product: Product]
   restock: [product: Product]
+  duplicate: [product: Product]
   'toggle-select': [product: Product]
 }>()
 

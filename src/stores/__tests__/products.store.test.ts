@@ -14,6 +14,7 @@ vi.mock('@/services/products.service', () => ({
     reactivateProduct: vi.fn(),
     restockProduct: vi.fn(),
     getSuggestions: vi.fn(),
+    fetchImageFile: vi.fn(),
   },
 }))
 
@@ -346,5 +347,37 @@ describe('products.store — marca y sugerencias', () => {
     await store.loadSuggestions()
 
     expect(store.brandSuggestions).toEqual(['Nike', 'Puma'])
+  })
+})
+
+describe('products.store — copiar la foto de otro producto', () => {
+  it('baja la foto como archivo nuevo y la sube al producto NUEVO', async () => {
+    const file = new File(['x'], 'copia.png', { type: 'image/png' })
+    vi.mocked(ProductsService.fetchImageFile).mockResolvedValue(file)
+    vi.mocked(ProductsService.uploadProductImage).mockResolvedValue({ ...product, id: 'nuevo' })
+    vi.mocked(ProductsService.listProducts).mockResolvedValue(listResponse)
+    const store = useProductsStore()
+
+    await store.copyProductImage('nuevo', '/uploads/products/abc.png', 'Playera')
+
+    expect(ProductsService.fetchImageFile).toHaveBeenCalledExactlyOnceWith('/uploads/products/abc.png', 'Playera')
+    expect(ProductsService.uploadProductImage).toHaveBeenCalledExactlyOnceWith('nuevo', file)
+  })
+
+  it('si no se puede bajar, no sube nada y lanza', async () => {
+    vi.mocked(ProductsService.fetchImageFile).mockRejectedValue(new Error('404'))
+    const store = useProductsStore()
+
+    await expect(store.copyProductImage('nuevo', '/uploads/products/abc.png', 'Playera')).rejects.toThrow('404')
+
+    expect(ProductsService.uploadProductImage).not.toHaveBeenCalled()
+  })
+
+  it('si la subida falla, lanza', async () => {
+    vi.mocked(ProductsService.fetchImageFile).mockResolvedValue(new File(['x'], 'a.png', { type: 'image/png' }))
+    vi.mocked(ProductsService.uploadProductImage).mockRejectedValue(new Error('500'))
+    const store = useProductsStore()
+
+    await expect(store.copyProductImage('nuevo', '/uploads/products/abc.png', 'Playera')).rejects.toThrow('500')
   })
 })

@@ -128,6 +128,16 @@ export const useProductsStore = defineStore('products', () => {
     return product
   }
 
+  /**
+   * "Crear otro igual": copia la foto de otro producto al nuevo bajándola y subiéndola
+   * como archivo nuevo (las rutas nunca se comparten). Lanza si algo falla; quien llama
+   * avisa sin deshacer el producto, que ya existe.
+   */
+  async function copyProductImage(targetId: string, sourceImageUrl: string, name: string): Promise<Product> {
+    const file = await ProductsService.fetchImageFile(sourceImageUrl, name)
+    return uploadProductImage(targetId, file)
+  }
+
   async function restockProduct(id: string, payload: RestockProductPayload): Promise<RestockProductResult> {
     const result = await ProductsService.restockProduct(id, payload)
     // La reposición ya quedó hecha. Un refresco caído no debe hacerla pasar por
@@ -156,7 +166,7 @@ export const useProductsStore = defineStore('products', () => {
   return {
     items, total, page, limit, search, includeInactive, umbral, agotados, sinCosto, tipo, brand, loading, error, totalPages,
     brandSuggestions, presentationSuggestions, loadSuggestions,
-    fetchProducts, createProduct, updateProduct, uploadProductImage,
+    fetchProducts, createProduct, updateProduct, uploadProductImage, copyProductImage,
     restockProduct, deactivateProduct, reactivateProduct,
   }
 })

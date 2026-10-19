@@ -76,6 +76,7 @@
       @deactivate="openDeactivateConfirm"
       @reactivate="handleReactivate"
       @restock="openRestockModal"
+      @duplicate="openDuplicate"
     >
       <!-- Filtros del catálogo: botón junto al buscador y chips debajo. Es
            gestión: en Modo Venta el mostrador no los ofrece. Cada filtro viaja
@@ -107,10 +108,13 @@
     <ProductFormModal
       v-model="isFormModalOpen"
       :product="editingProduct"
+      :draft="draft"
       :loading="isSubmitting"
       :brand-suggestions="suggestionsBrands"
       :presentation-suggestions="suggestionsPresentations"
       @submit="handleFormSubmit"
+      @submit-and-duplicate="handleSubmitAndDuplicate"
+      @duplicate="duplicateFromEdit"
       @restock="openRestockFromEdit"
     />
 
@@ -162,8 +166,9 @@ import { useProductsStore } from '@/stores/products.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useToastStore } from '@/stores/toast.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
-import type { Product, ProductFormSubmitPayload, RestockProductPayload } from '@/types/product.types'
+import type { Product, ProductDraft, ProductFormSubmitPayload, RestockProductPayload } from '@/types/product.types'
 import { describeFailure } from '@/utils/api-error'
+import { duplicateDraft } from '@/utils/product-duplicate'
 import { emptyProductFilters, toProductListParams } from '@/utils/product-filters'
 
 const store = useProductsStore()
@@ -228,6 +233,8 @@ onBeforeUnmount(() => selection.exit())
 
 const isFormModalOpen = ref(false)
 const editingProduct = ref<Product | null>(null)
+// Borrador de "Crear otro igual" (un alta que arranca con lo copiado de otro producto).
+const draft = ref<ProductDraft | null>(null)
 const isSubmitting = ref(false)
 
 const isConfirmModalOpen = ref(false)
@@ -278,12 +285,27 @@ function handlePageChange(page: number) {
 
 function openCreateModal() {
   editingProduct.value = null
+  draft.value = null
   isFormModalOpen.value = true
 }
 
 function openEditModal(product: Product) {
   editingProduct.value = product
+  draft.value = null
   isFormModalOpen.value = true
+}
+
+// ── Crear otro igual ─────────────────────────────────────────────────────
+/** Abre el alta precargada con lo copiado del producto (sin presentación ni existencia). */
+function openDuplicate(product: Product) {
+  editingProduct.value = null
+  draft.value = duplicateDraft(product)
+  isFormModalOpen.value = true
+}
+
+/** Desde el modal de edición: la misma ventana pasa a ser el alta; copia lo GUARDADO, no lo que se haya tecleado. */
+function duplicateFromEdit() {
+  if (editingProduct.value) openDuplicate(editingProduct.value)
 }
 
 // ── Reponer existencia ───────────────────────────────────────────────────
@@ -322,8 +344,13 @@ async function handleRestockSubmit(payload: RestockProductPayload) {
   }
 }
 
-async function handleFormSubmit(payload: ProductFormSubmitPayload) {
-  const { imageFile, ...rest } = payload
+/** "Guardar y crear otro igual": lo mismo que guardar, pero el alta siguiente queda abierta. */
+function handleSubmitAndDuplicate(payload: ProductFormSubmitPayload) {
+  return handleFormSubmit(payload, true)
+}
+
+async function handleFormSubmit(payload: ProductFormSubmitPayload, andDuplicate = false) {
+  const { imageFile, copyImageFrom, ...rest } = payload as ProductFormSubmitPayload & { copyImageFrom?: string }
 
   // Edición sin campos cambiados: PATCH /products/:id responde 400 "At least
   // one editable field is required" a un body vacío. Decisión: no se envía la
@@ -353,7 +380,7 @@ async function handleFormSubmit(payload: ProductFormSubmitPayload) {
     // imagen — no se revierte nada, el producto ya existe.
     if (imageFile) {
       try {
-        await store.uploadProductImage(product.id, imageFile)
+        product = await store.uploadProductImage(product.id, imageFile)
       } catch (error) {
         // El producto ya existe: solo se avisa de la foto. Un error que no se
         // sabe leer conserva el texto de siempre; uno conocido agrega el motivo.
@@ -361,11 +388,26 @@ async function handleFormSubmit(payload: ProductFormSubmitPayload) {
         if (described.kind === 'context-lost') contextLost.value = true
         toast.error(described.kind === 'unknown' && described.status === null ? VOICE.apiErrors.catalog.image : message)
       }
+    } else if (copyImageFrom) {
+      // "Crear otro igual": la foto del original se baja y se sube como archivo nuevo (la
+      // ruta nunca se comparte). Si falla, el producto ya existe: solo se avisa.
+      try {
+        product = await store.copyProductImage(product.id, copyImageFrom, product.name)
+      } catch {
+        toast.error(VOICE.productDuplicate.photoFailed)
+      }
     }
 
     contextLost.value = false
     // Una marca o presentación nueva ya cuenta como sugerencia para el siguiente producto.
     void store.loadSuggestions()
+    if (andDuplicate) {
+      // El siguiente alta arranca del producto recién guardado (con su foto, que se vuelve a copiar).
+      toast.success(VOICE.productDuplicate.done(product.name))
+      editingProduct.value = null
+      draft.value = duplicateDraft(product)
+      return
+    }
     toast.success(editingProduct.value ? 'Listo, producto actualizado.' : 'Listo, ya quedó en tu catálogo.')
     isFormModalOpen.value = false
   } catch (error) {
