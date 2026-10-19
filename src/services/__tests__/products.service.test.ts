@@ -1,6 +1,6 @@
 // Tests de ProductsService — wrappers delgados sobre api.ts, contrato real
 // de doc/api-contract-for-frontend.md §5.
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProductsService from '../products.service'
 import api from '../api'
 
@@ -146,5 +146,58 @@ describe('ProductsService — marca, presentación y descripción', () => {
     await ProductsService.listProducts({ brand: 'Nike' })
 
     expect(api.get).toHaveBeenCalledExactlyOnceWith('/products', { params: { brand: 'Nike' } })
+  })
+})
+
+describe('ProductsService.fetchImageFile — copiar la foto de otro producto', () => {
+  const realFetch = globalThis.fetch
+  afterEach(() => { globalThis.fetch = realFetch })
+
+  const answer = (init: { ok?: boolean; type?: string; body?: string }) =>
+    vi.fn().mockResolvedValue({
+      ok: init.ok ?? true,
+      status: init.ok === false ? 404 : 200,
+      headers: new Headers({ 'content-type': init.type ?? 'image/png' }),
+      blob: async () => new Blob([init.body ?? 'png-bytes'], { type: init.type ?? 'image/png' }),
+    })
+
+  it('baja la imagen de su ruta y la entrega como un archivo nuevo', async () => {
+    const fetchMock = answer({})
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+
+    const file = await ProductsService.fetchImageFile('/uploads/products/abc.png', 'Playera lisa')
+
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith('/uploads/products/abc.png')
+    expect(file).toBeInstanceOf(File)
+    expect(file.type).toBe('image/png')
+    expect(file.name).toBe('Playera lisa.png')
+    expect(file.size).toBe('png-bytes'.length)
+  })
+
+  it('el nombre del archivo no puede traer barras ni saltos de línea', async () => {
+    globalThis.fetch = answer({}) as unknown as typeof fetch
+
+    const file = await ProductsService.fetchImageFile('/uploads/products/abc.png', 'a/b\c\nd')
+
+    expect(file.name).not.toMatch(/[\/\n]/)
+    expect(file.name.endsWith('.png')).toBe(true)
+  })
+
+  it('si el servidor responde error, lanza (quien llama avisa "No pudimos copiar la foto")', async () => {
+    globalThis.fetch = answer({ ok: false }) as unknown as typeof fetch
+
+    await expect(ProductsService.fetchImageFile('/uploads/products/abc.png', 'x')).rejects.toThrow()
+  })
+
+  it('si lo que llega no es una imagen, lanza', async () => {
+    globalThis.fetch = answer({ type: 'text/html', body: '<html>' }) as unknown as typeof fetch
+
+    await expect(ProductsService.fetchImageFile('/uploads/products/abc.png', 'x')).rejects.toThrow()
+  })
+
+  it('si no hay red, lanza', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch')) as unknown as typeof fetch
+
+    await expect(ProductsService.fetchImageFile('/uploads/products/abc.png', 'x')).rejects.toThrow()
   })
 })

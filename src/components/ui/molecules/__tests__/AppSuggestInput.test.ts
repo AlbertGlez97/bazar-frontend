@@ -83,3 +83,13 @@ describe('AppSuggestInput', () => {
     expect(wrapper.findAll('option')).toHaveLength(200)
   })
 })
+
+describe('AppSuggestInput — foco', () => {
+  it('expone focus() para llevar el cursor al campo', () => {
+    const wrapper = mountField()
+
+    ;(wrapper.vm as unknown as { focus: () => void }).focus()
+
+    expect(document.activeElement).toBe(wrapper.find('input').element)
+  })
+})

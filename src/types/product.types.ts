@@ -130,5 +130,31 @@ export interface UpdateProductPayload {
 // se sube en una llamada aparte a POST /products/:id/image) a los campos
 // propios de creación o edición.
 export type ProductFormSubmitPayload =
-  | (CreateProductPayload & { imageFile: File | null })
+  | (CreateProductPayload & {
+      imageFile: File | null
+      /** "Crear otro igual": ruta de la foto a copiar (subiéndola como archivo nuevo) si no se eligió otra. */
+      copyImageFrom?: string
+    })
   | (UpdateProductPayload & { imageFile: File | null })
+
+/**
+ * Punto de partida de "Crear otro igual": lo que se copia de un producto para dar de
+ * alta otro. Sin presentación ni existencia (cada combinación tiene las suyas) y sin
+ * identidad (id, fechas, estado). La foto no se comparte: `imageUrl` solo dice cuál
+ * copiar, subiéndola como archivo nuevo.
+ */
+export interface ProductDraft {
+  /** Producto del que se copió. */
+  sourceId: string
+  name: string
+  tipo: ProductType
+  brand: string | null
+  category: string | null
+  unitPriceMinor: number
+  purchaseCostMinor: number | null
+  supplier: string | null
+  notes: string | null
+  description: string | null
+  /** Ruta de la foto a copiar, o null. */
+  imageUrl: string | null
+}

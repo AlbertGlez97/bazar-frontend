@@ -59,6 +59,21 @@ const ProductsService = {
   },
 
   /**
+   * Baja la foto de un producto (su ruta pública, del mismo origen) y la entrega como
+   * un archivo NUEVO, para subirla a otro producto sin compartir la ruta. Lanza si no
+   * hay red, si el servidor responde error o si lo que llega no es una imagen.
+   */
+  async fetchImageFile(imageUrl: string, name: string): Promise<File> {
+    const response = await fetch(imageUrl)
+    if (!response.ok) throw new Error(`No se pudo bajar la foto (${response.status})`)
+    const type = (response.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase()
+    if (!type.startsWith('image/')) throw new Error('El archivo descargado no es una imagen')
+    const blob = await response.blob()
+    const safeName = name.replace(/[\\/\r\n]+/g, ' ').trim().slice(0, 60) || 'foto'
+    return new File([blob], `${safeName}.png`, { type })
+  },
+
+  /**
    * POST /products/:id/restock — solo socios, solo productos por cantidad.
    * Va directo al servidor (no a una cola offline): en Gestión se necesita
    * internet y la persona tiene que ver si se pudo o no.

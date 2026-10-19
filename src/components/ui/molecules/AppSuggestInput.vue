@@ -4,7 +4,10 @@
        leen los lectores de pantalla y funciona con teclado; escribir algo distinto sigue
        siendo válido (son sugerencias, no una lista cerrada). Presentacional: las
        sugerencias llegan por prop, aquí no se pide nada. -->
-  <div class="app-suggest-input">
+  <div
+    ref="root"
+    class="app-suggest-input"
+  >
     <AppInput
       :model-value="modelValue"
       :label="label"
@@ -46,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useId } from 'vue'
+import { computed, ref, useId } from 'vue'
 import AppCharCounter from '../atoms/AppCharCounter.vue'
 import AppInput from './AppInput.vue'
 
@@ -77,6 +80,10 @@ const uid = useId()
 const listId = `${uid}-list`
 const hintId = `${uid}-hint`
 const counterId = `${uid}-count`
+
+const root = ref<HTMLElement | null>(null)
+/** Lleva el cursor al campo (p. ej. al abrir "Crear otro igual", donde falta la presentación). */
+defineExpose({ focus: () => root.value?.querySelector('input')?.focus() })
 
 const options = computed(() => [...new Set(props.suggestions)])
 const describedBy = computed(() => [props.hint ? hintId : '', counterId].filter(Boolean).join(' '))

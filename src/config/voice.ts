@@ -290,6 +290,16 @@ export const VOICE = {
     descriptionLabel: 'Descripción breve (opcional)',
     descriptionHint: 'Una frase corta que ayude a reconocerlo.',
   },
+  /** "Crear otro igual": dar de alta otro producto a partir de uno (otra talla, otro color). */
+  productDuplicate: {
+    action: 'Crear otro igual',
+    actionAria: (name: string) => `Crear otro igual que ${name}`,
+    saveAndAnother: 'Guardar y crear otro igual',
+    title: 'Crear otro igual',
+    photoHint: 'Copiaremos la foto. Elige otra si quieres cambiarla.',
+    photoFailed: 'No pudimos copiar la foto',
+    done: (name: string) => `Listo, «${name}» quedó en tu catálogo.`,
+  },
   /** Reponer existencia: sumar piezas compradas a un producto por cantidad (solo socios). */
   productRestock: {
     action: 'Reponer',

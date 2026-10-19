@@ -52,6 +52,7 @@
       :maxlength="PRODUCT_TEXT_LIMITS.brand"
     />
     <AppSuggestInput
+      ref="presentationField"
       v-model="presentation"
       :label="VOICE.productDescriptors.presentationLabel"
       :hint="VOICE.productDescriptors.presentationHint"
@@ -150,9 +151,15 @@
 
     <AppImageUpload
       label="Imagen del producto (opcional)"
-      :existing-image-url="product?.image ?? null"
+      :existing-image-url="product?.image ?? draft?.imageUrl ?? null"
       @update:model-value="imageFile = $event"
     />
+    <p
+      v-if="draft?.imageUrl && !imageFile"
+      class="product-form__hint"
+    >
+      {{ VOICE.productDuplicate.photoHint }}
+    </p>
 
     <div class="product-form__actions">
       <AppButton
@@ -162,6 +169,26 @@
         @click="$emit('cancel')"
       >
         Cancelar
+      </AppButton>
+      <!-- Editando: abre el alta de otro producto parecido (no guarda lo que se haya cambiado aquí). -->
+      <AppButton
+        v-if="isEditMode"
+        type="button"
+        variant="soft-primary"
+        :disabled="loading"
+        @click="$emit('duplicate')"
+      >
+        {{ VOICE.productDuplicate.action }}
+      </AppButton>
+      <!-- Creando: guarda este y abre el siguiente ya precargado. Secundario: lo normal es "Crear producto". -->
+      <AppButton
+        v-else
+        type="button"
+        variant="secondary"
+        :disabled="loading"
+        @click="handleSubmitAndDuplicate"
+      >
+        {{ VOICE.productDuplicate.saveAndAnother }}
       </AppButton>
       <AppButton
         type="submit"
@@ -175,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { minorToDisplay, parseMoneyText } from '@/utils/money'
 import { canRestock } from '@/utils/product-restock'
 import { collapseSpaces } from '@/utils/short-text'
@@ -183,6 +210,7 @@ import { PRODUCT_TEXT_LIMITS } from '@/config/catalog'
 import { VOICE } from '@/config/voice'
 import type {
   Product,
+  ProductDraft,
   ProductFormSubmitPayload,
   ProductType,
 } from '@/types/product.types'
@@ -197,12 +225,18 @@ import AppAlert from '../molecules/AppAlert.vue'
 const props = withDefaults(defineProps<{
   /** Si se pasa un producto, el formulario opera en modo edición */
   product?: Product | null
+  /**
+   * "Crear otro igual": es un ALTA que arranca con lo copiado de otro producto (sin
+   * presentación ni existencia) y con el cursor en la Presentación.
+   */
+  draft?: ProductDraft | null
   loading?: boolean
   /** Marcas y presentaciones ya usadas (solo las tienen los socios); sin ellas el campo es de texto libre. */
   brandSuggestions?: string[]
   presentationSuggestions?: string[]
 }>(), {
   product: null,
+  draft: null,
   loading: false,
   brandSuggestions: () => [],
   presentationSuggestions: () => [],
@@ -210,6 +244,10 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   submit: [payload: ProductFormSubmitPayload]
+  /** Alta y, enseguida, otra igual: el que escucha guarda y abre un borrador nuevo. */
+  'submit-and-duplicate': [payload: ProductFormSubmitPayload]
+  /** Editando: pide abrir el alta de otro producto parecido. */
+  duplicate: []
   cancel: []
   restock: []
 }>()
@@ -217,20 +255,31 @@ const emit = defineEmits<{
 const isEditMode = computed(() => !!props.product)
 const restockable = computed(() => !!props.product && canRestock(props.product))
 
-const name = ref(props.product?.name ?? '')
-const tipo = ref<ProductType>(props.product?.tipo ?? 'unica')
-const unitPriceDisplay = ref(props.product ? minorToDisplay(props.product.unitPriceMinor) : '')
-const initialStock = ref(props.product?.initialStock ?? 1)
-const category = ref(props.product?.category ?? '')
-const purchaseCostDisplay = ref(
-  props.product?.purchaseCostMinor != null ? minorToDisplay(props.product.purchaseCostMinor) : ''
-)
-const supplier = ref(props.product?.supplier ?? '')
-const notes = ref(props.product?.notes ?? '')
-const brand = ref(props.product?.brand ?? '')
+// De dónde salen los valores iniciales: el producto que se edita, o el borrador de
+// "Crear otro igual" (mismos nombres de campo). La presentación y la existencia solo
+// vienen de un producto: un borrador las deja vacías.
+const base = props.product ?? props.draft
+const name = ref(base?.name ?? '')
+const tipo = ref<ProductType>(base?.tipo ?? 'unica')
+const unitPriceDisplay = ref(base ? minorToDisplay(base.unitPriceMinor) : '')
+// '' = vacía (un borrador por cantidad: la existencia es de cada combinación).
+const initialStock = ref<number | ''>(props.product?.initialStock ?? (props.draft?.tipo === 'cantidad' ? '' : 1))
+const category = ref(base?.category ?? '')
+const purchaseCostDisplay = ref(base?.purchaseCostMinor != null ? minorToDisplay(base.purchaseCostMinor) : '')
+const supplier = ref(base?.supplier ?? '')
+const notes = ref(base?.notes ?? '')
+const brand = ref(base?.brand ?? '')
 const presentation = ref(props.product?.presentation ?? '')
-const description = ref(props.product?.description ?? '')
+const description = ref(base?.description ?? '')
 const imageFile = ref<File | null>(null)
+
+const presentationField = ref<{ focus: () => void } | null>(null)
+// "Crear otro igual" abre con el cursor donde falta el dato propio de esta combinación.
+onMounted(async () => {
+  if (!props.draft) return
+  await nextTick()
+  presentationField.value?.focus()
+})
 
 const errors = ref<{
   name?: string
@@ -308,9 +357,10 @@ function validate(): { unitPriceMinor: number; purchaseCostMinor: number | null 
   return { unitPriceMinor, purchaseCostMinor }
 }
 
-function handleSubmit() {
+/** Valida y arma lo que se manda; `null` si hay errores (ya quedaron marcados en el formulario). */
+function buildPayload(): ProductFormSubmitPayload | null {
   const amounts = validate()
-  if (!amounts) return
+  if (!amounts) return null
   const { unitPriceMinor, purchaseCostMinor } = amounts
 
   if (isEditMode.value && props.product) {
@@ -343,15 +393,14 @@ function handleSubmit() {
       if (value !== (original[key] ?? null)) payload[key] = value
     }
 
-    emit('submit', { ...payload, imageFile: imageFile.value } as ProductFormSubmitPayload)
-    return
+    return { ...payload, imageFile: imageFile.value } as ProductFormSubmitPayload
   }
 
-  emit('submit', {
+  return {
     name: name.value,
     tipo: tipo.value,
     unitPriceMinor,
-    initialStock: tipo.value === 'cantidad' ? initialStock.value : undefined,
+    initialStock: tipo.value === 'cantidad' ? Number(initialStock.value) : undefined,
     category: category.value.trim() || undefined,
     purchaseCostMinor: purchaseCostMinor ?? undefined,
     supplier: supplier.value.trim() || undefined,
@@ -360,7 +409,20 @@ function handleSubmit() {
     presentation: collapseSpaces(presentation.value) || undefined,
     description: collapseSpaces(description.value) || undefined,
     imageFile: imageFile.value,
-  })
+    // La foto de otro producto no se comparte: quien guarda la sube como archivo nuevo.
+    // Si se eligió una propia, esa manda.
+    ...(props.draft?.imageUrl && !imageFile.value ? { copyImageFrom: props.draft.imageUrl } : {}),
+  }
+}
+
+function handleSubmit() {
+  const payload = buildPayload()
+  if (payload) emit('submit', payload)
+}
+
+function handleSubmitAndDuplicate() {
+  const payload = buildPayload()
+  if (payload) emit('submit-and-duplicate', payload)
 }
 </script>
 
