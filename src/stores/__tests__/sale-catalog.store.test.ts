@@ -449,3 +449,52 @@ describe('sale-catalog.store — applySoldItems', () => {
     expect(store.getById('c')?.stock).toBe(4)
   })
 })
+
+describe('sale-catalog.store — búsqueda por marca y presentación', () => {
+  const catalog = [
+    product({ id: 'a', name: 'Playera', brand: 'Nike', presentation: 'XL' }),
+    product({ id: 'b', name: 'Botella', brand: 'Contigo', presentation: '24 oz' }),
+    product({ id: 'c', name: 'Taza', brand: null, presentation: 'Azul · 28' }),
+    product({ id: 'd', name: 'Sarape' }),
+    product({ id: 'e', name: 'Gorra', brand: 'Pañoleta', presentation: null }),
+  ]
+
+  async function loaded() {
+    serverWith(catalog)
+    const store = useSaleCatalogStore()
+    await store.load()
+    return store
+  }
+
+  it('encuentra por marca, sin distinguir mayúsculas', async () => {
+    const store = await loaded()
+    store.setSearch('NIKE')
+    expect(store.filtered.map((p) => p.id)).toEqual(['a'])
+  })
+
+  it('encuentra por presentación', async () => {
+    const store = await loaded()
+    store.setSearch('24 oz')
+    expect(store.filtered.map((p) => p.id)).toEqual(['b'])
+    store.setSearch('azul')
+    expect(store.filtered.map((p) => p.id)).toEqual(['c'])
+  })
+
+  it('sin acentos: "panoleta" encuentra "Pañoleta"', async () => {
+    const store = await loaded()
+    store.setSearch('panoleta')
+    expect(store.filtered.map((p) => p.id)).toEqual(['e'])
+  })
+
+  it('un producto sin marca ni presentación sigue encontrándose por nombre', async () => {
+    const store = await loaded()
+    store.setSearch('sarape')
+    expect(store.filtered.map((p) => p.id)).toEqual(['d'])
+  })
+
+  it('no confunde: lo que no está en nombre, marca ni presentación no aparece', async () => {
+    const store = await loaded()
+    store.setSearch('adidas')
+    expect(store.filtered).toEqual([])
+  })
+})

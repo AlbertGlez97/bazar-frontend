@@ -30,6 +30,11 @@ export const useProductsStore = defineStore('products', () => {
   const agotados = ref(false)
   const sinCosto = ref(false)
   const tipo = ref<ProductListParams['tipo']>(undefined)
+  // Marca exacta; persiste al paginar o buscar y se apaga con `brand: undefined` explícito.
+  const brand = ref<string | undefined>(undefined)
+  // Sugerencias del formulario (solo socios las pueden pedir).
+  const brandSuggestions = ref<string[]>([])
+  const presentationSuggestions = ref<string[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -50,6 +55,7 @@ export const useProductsStore = defineStore('products', () => {
     if ('agotados' in params) agotados.value = params.agotados === true
     if ('sinCosto' in params) sinCosto.value = params.sinCosto === true
     if ('tipo' in params) tipo.value = params.tipo
+    if ('brand' in params) brand.value = params.brand
 
     loading.value = true
     error.value = null
@@ -63,6 +69,7 @@ export const useProductsStore = defineStore('products', () => {
         agotados: agotados.value || undefined,
         sinCosto: sinCosto.value || undefined,
         tipo: tipo.value,
+        brand: brand.value,
       })
       let response = await query(page.value)
 
@@ -84,6 +91,22 @@ export const useProductsStore = defineStore('products', () => {
       throw cause
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * Marcas y presentaciones ya usadas, para sugerirlas en el formulario. Es un
+   * extra: si no se pueden traer (sin red, o quien pregunta no es socio) quedan
+   * vacías y el formulario sigue siendo de texto libre. Nunca lanza.
+   */
+  async function loadSuggestions(): Promise<void> {
+    try {
+      const suggestions = await ProductsService.getSuggestions()
+      brandSuggestions.value = suggestions.brands
+      presentationSuggestions.value = suggestions.presentations
+    } catch {
+      brandSuggestions.value = []
+      presentationSuggestions.value = []
     }
   }
 
@@ -131,7 +154,8 @@ export const useProductsStore = defineStore('products', () => {
   }
 
   return {
-    items, total, page, limit, search, includeInactive, umbral, agotados, sinCosto, tipo, loading, error, totalPages,
+    items, total, page, limit, search, includeInactive, umbral, agotados, sinCosto, tipo, brand, loading, error, totalPages,
+    brandSuggestions, presentationSuggestions, loadSuggestions,
     fetchProducts, createProduct, updateProduct, uploadProductImage,
     restockProduct, deactivateProduct, reactivateProduct,
   }

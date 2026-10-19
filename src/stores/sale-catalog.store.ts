@@ -113,12 +113,12 @@ export const useSaleCatalogStore = defineStore('sale-catalog', () => {
     return [...distinct].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
   })
 
-  /** Productos que cumplen búsqueda (subcadena en el nombre, sin acentos ni mayúsculas) y categoría, en el orden del servidor. */
+  /** Productos que cumplen búsqueda (subcadena en nombre, marca o presentación, sin acentos ni mayúsculas) y categoría, en el orden del servidor. */
   const filtered = computed(() => {
     const needle = normalize(search.value)
     return products.value.filter((item) => {
       if (category.value && item.category?.trim() !== category.value) return false
-      return !needle || normalize(item.name).includes(needle)
+      return !needle || [item.name, item.brand, item.presentation].some((text) => normalize(text ?? '').includes(needle))
     })
   })
 

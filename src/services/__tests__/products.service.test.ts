@@ -129,3 +129,22 @@ describe('ProductsService', () => {
     })
   })
 })
+
+describe('ProductsService — marca, presentación y descripción', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('getSuggestions hace GET /products/suggestions', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { brands: ['Nike'], presentations: ['XL'] } })
+
+    expect(await ProductsService.getSuggestions()).toEqual({ brands: ['Nike'], presentations: ['XL'] })
+    expect(api.get).toHaveBeenCalledExactlyOnceWith('/products/suggestions')
+  })
+
+  it('listProducts manda `brand`', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { items: [], total: 0, page: 1, limit: 20 } })
+
+    await ProductsService.listProducts({ brand: 'Nike' })
+
+    expect(api.get).toHaveBeenCalledExactlyOnceWith('/products', { params: { brand: 'Nike' } })
+  })
+})

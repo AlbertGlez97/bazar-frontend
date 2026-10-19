@@ -13,6 +13,7 @@ vi.mock('@/services/products.service', () => ({
     deactivateProduct: vi.fn(),
     reactivateProduct: vi.fn(),
     restockProduct: vi.fn(),
+    getSuggestions: vi.fn(),
   },
 }))
 
@@ -291,5 +292,59 @@ describe('products.store', () => {
       expect(ProductsService.listProducts).toHaveBeenCalledExactlyOnceWith({ page: 1, limit: 20 })
       expect(store.umbral).toBeUndefined()
     })
+  })
+})
+
+describe('products.store — marca y sugerencias', () => {
+  it('guarda la marca y la manda al servidor; se conserva al paginar', async () => {
+    const store = useProductsStore()
+
+    await store.fetchProducts({ brand: 'Nike' })
+    await store.fetchProducts({ page: 2 })
+
+    expect(ProductsService.listProducts).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, brand: 'Nike' }))
+    expect(store.brand).toBe('Nike')
+  })
+
+  it('`brand: undefined` explícito la apaga', async () => {
+    const store = useProductsStore()
+    await store.fetchProducts({ brand: 'Nike' })
+
+    await store.fetchProducts({ brand: undefined })
+
+    expect(vi.mocked(ProductsService.listProducts).mock.calls.at(-1)![0]!.brand).toBeUndefined()
+    expect(store.brand).toBeUndefined()
+  })
+
+  it('loadSuggestions guarda marcas y presentaciones', async () => {
+    vi.mocked(ProductsService.getSuggestions).mockResolvedValue({ brands: ['Nike'], presentations: ['XL'] })
+    const store = useProductsStore()
+
+    await store.loadSuggestions()
+
+    expect(store.brandSuggestions).toEqual(['Nike'])
+    expect(store.presentationSuggestions).toEqual(['XL'])
+  })
+
+  it('si no se pueden traer, quedan vacías y no se lanza (las sugerencias son un extra)', async () => {
+    vi.mocked(ProductsService.getSuggestions).mockRejectedValue(new Error('403'))
+    const store = useProductsStore()
+
+    await expect(store.loadSuggestions()).resolves.toBeUndefined()
+
+    expect(store.brandSuggestions).toEqual([])
+    expect(store.presentationSuggestions).toEqual([])
+  })
+
+  it('una sugerencia nueva (se acaba de crear un producto con otra marca) se ve al recargarlas', async () => {
+    vi.mocked(ProductsService.getSuggestions)
+      .mockResolvedValueOnce({ brands: ['Nike'], presentations: [] })
+      .mockResolvedValueOnce({ brands: ['Nike', 'Puma'], presentations: [] })
+    const store = useProductsStore()
+
+    await store.loadSuggestions()
+    await store.loadSuggestions()
+
+    expect(store.brandSuggestions).toEqual(['Nike', 'Puma'])
   })
 })

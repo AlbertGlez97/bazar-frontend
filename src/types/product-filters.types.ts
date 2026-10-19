@@ -15,6 +15,8 @@ export interface ProductFilters {
   tipo: ProductTipoFilter | undefined
   /** Solo productos sin costo de compra. */
   sinCosto: boolean
+  /** Solo esta marca (igualdad exacta, sin distinguir mayúsculas); `undefined` = todas. */
+  marca?: string | undefined
 }
 
 export type ProductFilterKey = keyof ProductFilters

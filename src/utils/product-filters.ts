@@ -1,5 +1,6 @@
-import { LOW_STOCK_UMBRAL } from '@/config/catalog'
+import { LOW_STOCK_UMBRAL, PRODUCT_TEXT_LIMITS } from '@/config/catalog'
 import { VOICE } from '@/config/voice'
+import { collapseSpaces } from '@/utils/short-text'
 import type { ProductListParams } from '@/types/product.types'
 import type { ProductFilterChip, ProductFilterKey, ProductFilters, ProductTipoFilter } from '@/types/product-filters.types'
 
@@ -9,7 +10,15 @@ type QueryInput = Record<string, unknown>
 const TIPOS: readonly ProductTipoFilter[] = ['unica', 'cantidad']
 
 export function emptyProductFilters(): ProductFilters {
-  return { pocaExistencia: false, agotados: false, inactivos: false, tipo: undefined, sinCosto: false }
+  return { pocaExistencia: false, agotados: false, inactivos: false, tipo: undefined, sinCosto: false, marca: undefined }
+}
+
+/** La marca de la URL, limpia como la guarda el servidor; vacía o de más de 40 caracteres = sin filtro. */
+function readBrand(value: unknown): string | undefined {
+  const text = firstValue(value)
+  if (typeof text !== 'string') return undefined
+  const brand = collapseSpaces(text)
+  return brand !== '' && brand.length <= PRODUCT_TEXT_LIMITS.brand ? brand : undefined
 }
 
 /** Con un parámetro repetido (`?a=1&a=0`) gana el primero. */
@@ -32,6 +41,7 @@ export function parseProductFilters(query: QueryInput, options: { allowInactive?
     inactivos: options.allowInactive === true && isOn(query.inactivos),
     tipo: TIPOS.find((candidate) => candidate === tipo),
     sinCosto: isOn(query.sinCosto),
+    marca: readBrand(query.marca),
   }
 }
 
@@ -43,6 +53,7 @@ export function serializeProductFilters(filters: ProductFilters): Record<string,
   if (filters.inactivos) query.inactivos = '1'
   if (filters.tipo) query.tipo = filters.tipo
   if (filters.sinCosto) query.sinCosto = '1'
+  if (filters.marca) query.marca = filters.marca
   return query
 }
 
@@ -54,6 +65,7 @@ export function activeFilterChips(filters: ProductFilters): ProductFilterChip[] 
   if (filters.inactivos) chips.push({ key: 'inactivos', label: labels.inactive })
   if (filters.tipo) chips.push({ key: 'tipo', label: labels[filters.tipo] })
   if (filters.sinCosto) chips.push({ key: 'sinCosto', label: labels.noCost })
+  if (filters.marca) chips.push({ key: 'marca', label: labels.brandChip(filters.marca) })
   return chips
 }
 
@@ -72,12 +84,13 @@ export function clearFilter(filters: ProductFilters, key: ProductFilterKey): Pro
  * así que omitir una llave dejaría puesto el filtro anterior.
  */
 export function toProductListParams(filters: ProductFilters): Required<Pick<ProductListParams, 'includeInactive'>>
-  & Pick<ProductListParams, 'umbral' | 'agotados' | 'sinCosto' | 'tipo'> {
+  & Pick<ProductListParams, 'umbral' | 'agotados' | 'sinCosto' | 'tipo' | 'brand'> {
   return {
     includeInactive: filters.inactivos,
     umbral: filters.pocaExistencia ? LOW_STOCK_UMBRAL : undefined,
     agotados: filters.agotados ? true : undefined,
     sinCosto: filters.sinCosto ? true : undefined,
     tipo: filters.tipo,
+    brand: filters.marca,
   }
 }

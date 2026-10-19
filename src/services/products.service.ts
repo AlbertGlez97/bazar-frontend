@@ -3,6 +3,7 @@ import type {
   Product,
   ProductListParams,
   ProductListResponse,
+  ProductSuggestions,
   CreateProductPayload,
   UpdateProductPayload,
   RestockProductPayload,
@@ -13,6 +14,12 @@ const ProductsService = {
   /** GET /products — cualquier Member autenticado (solo AuthGuard). */
   async listProducts(params: ProductListParams = {}): Promise<ProductListResponse> {
     const { data } = await api.get<ProductListResponse>('/products', { params })
+    return data
+  },
+
+  /** GET /products/suggestions — solo socios: marcas y presentaciones ya usadas (máx. 200 de cada una). */
+  async getSuggestions(): Promise<ProductSuggestions> {
+    const { data } = await api.get<ProductSuggestions>('/products/suggestions')
     return data
   },
 

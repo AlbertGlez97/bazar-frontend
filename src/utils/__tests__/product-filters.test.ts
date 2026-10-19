@@ -112,3 +112,42 @@ describe('toProductListParams (filtros → parámetros de GET /products)', () =>
     })
   })
 })
+
+describe('filtro por marca', () => {
+  it('arranca sin marca', () => {
+    expect(emptyProductFilters().marca).toBeUndefined()
+  })
+  it('se lee de la URL, recortada y sin espacios de más', () => {
+    expect(parseProductFilters({ marca: '  Casa   Vieja ' }).marca).toBe('Casa Vieja')
+  })
+  it('una marca vacía o en blanco es "sin filtro"', () => {
+    expect(parseProductFilters({ marca: '' }).marca).toBeUndefined()
+    expect(parseProductFilters({ marca: '   ' }).marca).toBeUndefined()
+  })
+  it('más de 40 caracteres se descarta (el servidor lo rechazaría con 400)', () => {
+    expect(parseProductFilters({ marca: 'x'.repeat(41) }).marca).toBeUndefined()
+    expect(parseProductFilters({ marca: 'x'.repeat(40) }).marca).toBe('x'.repeat(40))
+  })
+  it('con el parámetro repetido gana el primero', () => {
+    expect(parseProductFilters({ marca: ['Nike', 'Puma'] }).marca).toBe('Nike')
+  })
+  it('se escribe en la URL solo si está activa', () => {
+    expect(serializeProductFilters({ ...emptyProductFilters(), marca: 'Nike' })).toEqual({ marca: 'Nike' })
+    expect(serializeProductFilters(emptyProductFilters())).toEqual({})
+  })
+  it('es un chip con su nombre, y cuenta como filtro activo', () => {
+    const filters = { ...emptyProductFilters(), marca: 'Nike' }
+    expect(activeFilterChips(filters)).toEqual([{ key: 'marca', label: 'Marca: Nike' }])
+    expect(countActiveFilters(filters)).toBe(1)
+  })
+  it('se apaga solo ese filtro', () => {
+    const filters = { ...emptyProductFilters(), marca: 'Nike', agotados: true }
+    expect(clearFilter(filters, 'marca')).toEqual({ ...emptyProductFilters(), agotados: true })
+  })
+  it('viaja al servidor como `brand`; apagado va `undefined` explícito', () => {
+    expect(toProductListParams({ ...emptyProductFilters(), marca: 'Nike' })).toHaveProperty('brand', 'Nike')
+    const off = toProductListParams(emptyProductFilters())
+    expect('brand' in off).toBe(true)
+    expect(off.brand).toBeUndefined()
+  })
+})

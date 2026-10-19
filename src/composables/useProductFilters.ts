@@ -11,7 +11,7 @@ import {
 } from '@/utils/product-filters'
 
 /** Parámetros de URL que pertenecen a los filtros; el resto de la query no se toca. */
-const FILTER_QUERY_KEYS = ['pocaExistencia', 'agotados', 'inactivos', 'tipo', 'sinCosto']
+const FILTER_QUERY_KEYS = ['pocaExistencia', 'agotados', 'inactivos', 'tipo', 'sinCosto', 'marca']
 
 /**
  * Filtros del catálogo de Productos con la URL como fuente de verdad: así se

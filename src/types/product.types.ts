@@ -11,9 +11,19 @@ export interface Product {
   initialStock: number
   stock: number
   category: string | null
-  purchaseCostMinor: number | null
+  /**
+   * Costo de compra. El servidor NO lo manda a quien no es socio (la clave no
+   * aparece), así que puede faltar; `null` sí significa "todavía sin costo".
+   */
+  purchaseCostMinor?: number | null
   supplier: string | null
   notes: string | null
+  /** Marca (máx. 40). Ausente en un catálogo guardado antes de que existiera. */
+  brand?: string | null
+  /** Talla, tamaño o capacidad (máx. 40); el color va dentro: "Azul · 28". */
+  presentation?: string | null
+  /** Descripción breve (máx. 200). */
+  description?: string | null
   createdAt: string
   active: boolean
   /** Ruta pública relativa, ej. "/uploads/products/<uuid>.png", o null */
@@ -67,6 +77,14 @@ export interface ProductListParams {
   sinCosto?: boolean
   /** Solo productos de este tipo. Ausente = ambos. */
   tipo?: 'unica' | 'cantidad'
+  /** Solo productos de esta marca (igualdad exacta, sin distinguir mayúsculas). Ausente = sin filtro. */
+  brand?: string
+}
+
+/** GET /products/suggestions (solo socios): lo que ya se usó, para sugerirlo en el formulario. */
+export interface ProductSuggestions {
+  brands: string[]
+  presentations: string[]
 }
 
 export interface ProductListResponse {
@@ -87,6 +105,9 @@ export interface CreateProductPayload {
   purchaseCostMinor?: number
   supplier?: string
   notes?: string
+  brand?: string
+  presentation?: string
+  description?: string
 }
 
 // PATCH /products/:id (solo socios). Todos opcionales, pero al menos uno es
@@ -100,6 +121,9 @@ export interface UpdateProductPayload {
   purchaseCostMinor?: number | null
   supplier?: string | null
   notes?: string | null
+  brand?: string | null
+  presentation?: string | null
+  description?: string | null
 }
 
 // Payload que emite ProductForm — agrega el archivo de imagen (opcional,
