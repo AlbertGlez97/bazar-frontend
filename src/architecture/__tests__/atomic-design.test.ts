@@ -7,6 +7,8 @@ const src = resolve(process.cwd(), 'src')
 const ui = resolve(src, 'components/ui')
 const compoundControls = [
   'AppInput', 'AppSelect', 'AppTextarea', 'AppImageUpload', 'QuantityStepper', 'AppStatCard',
+  // Campo de texto corto con sugerencias, ayuda y contador (Marca, Presentación).
+  'AppSuggestInput',
   // Filtros de Productos: contenedor desplegable genérico, fila de filtro y chips son moléculas.
   'AppDropdownPanel', 'FilterSwitchRow', 'ActiveFilterChips',
 ]

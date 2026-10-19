@@ -17,9 +17,30 @@
       :disabled="disabled"
       :placeholder="placeholder"
       :rows="rows"
-      v-bind="{ ...$attrs, id: fieldId(), ...errorAria }"
+      v-bind="{ ...$attrs, id: fieldId(), ...describedByAttrs }"
       @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
     />
+
+    <!-- Ayuda corta y contador (opcionales): describen al campo, no son una región viva -->
+    <div
+      v-if="hint || counterMax !== null"
+      class="app-textarea__meta"
+    >
+      <p
+        v-if="hint"
+        :id="hintId"
+        class="app-textarea__hint"
+      >
+        {{ hint }}
+      </p>
+      <AppCharCounter
+        v-if="counterMax !== null"
+        :id="counterId"
+        class="app-textarea__counter"
+        :current="modelValue.length"
+        :max="counterMax"
+      />
+    </div>
 
     <!-- Mensaje de error -->
     <p
@@ -35,6 +56,7 @@
 <script setup lang="ts">
 import { computed, useAttrs } from 'vue'
 import { useFieldId } from '@/composables/useFieldId'
+import AppCharCounter from '../atoms/AppCharCounter.vue'
 
 // Desactiva herencia automática de attrs para evitar duplicar atributos en el wrapper
 defineOptions({ inheritAttrs: false })
@@ -50,6 +72,10 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   disabled?:    boolean
   rows?:        number
+  /** Ayuda corta bajo el campo. */
+  hint?:        string
+  /** Muestra "usados/máximo"; necesita el atributo `maxlength` (que también limita la escritura). */
+  counter?:     boolean
 }>(), {
   modelValue:  '',
   label:       undefined,
@@ -57,15 +83,33 @@ const props = withDefaults(defineProps<{
   placeholder: undefined,
   disabled:    false,
   rows:        4,
+  hint:        undefined,
+  counter:     false,
 })
 
 defineEmits<{ 'update:modelValue': [v: string] }>()
 
-// Con error, el control se marca inválido y apunta a su mensaje; una pista previa se conserva.
-const errorAria = computed<{ 'aria-invalid'?: 'true'; 'aria-describedby'?: string }>(() => {
-  if (!props.error) return {}
-  const described = [attrs['aria-describedby'], `${fieldId()}-error`].filter(Boolean).join(' ')
-  return { 'aria-invalid': 'true', 'aria-describedby': described }
+const hintId = computed(() => `${fieldId()}-hint`)
+const counterId = computed(() => `${fieldId()}-count`)
+// Sin `maxlength` no hay máximo que mostrar.
+const counterMax = computed(() => {
+  const max = Number(attrs.maxlength)
+  return props.counter && Number.isFinite(max) && max > 0 ? max : null
+})
+
+// aria-describedby: lo que puso el padre, la ayuda, el contador y (con error) el mensaje.
+// Con error, además, el control se marca inválido.
+const describedByAttrs = computed<{ 'aria-invalid'?: 'true'; 'aria-describedby'?: string }>(() => {
+  const described = [
+    attrs['aria-describedby'],
+    props.hint ? hintId.value : '',
+    counterMax.value !== null ? counterId.value : '',
+    props.error ? `${fieldId()}-error` : '',
+  ].filter(Boolean).join(' ')
+  return {
+    ...(props.error ? { 'aria-invalid': 'true' as const } : {}),
+    ...(described ? { 'aria-describedby': described } : {}),
+  }
 })
 </script>
 
@@ -111,6 +155,14 @@ const errorAria = computed<{ 'aria-invalid'?: 'true'; 'aria-describedby'?: strin
 .app-textarea-wrap--error .app-textarea:focus {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-danger) 22%, transparent);
 }
+.app-textarea__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+.app-textarea__hint { margin: 0; font-size: 0.8125rem; color: var(--color-text-muted); }
+.app-textarea__counter { margin-left: auto; }
 .app-textarea__error {
   font-size: 0.8125rem;
   color: var(--color-danger);
