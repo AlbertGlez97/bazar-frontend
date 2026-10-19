@@ -25,8 +25,10 @@ describe('CartLineItem — marca y presentación', () => {
   })
 
   it('una línea anterior a los campos (sin las propiedades) se ve igual que antes', () => {
-    const { brand: _b, presentation: _p, ...old } = line
-    const wrapper = mount(CartLineItem, { props: { line: old } })
+    const old: Partial<typeof line> = { ...line }
+    delete old.brand
+    delete old.presentation
+    const wrapper = mount(CartLineItem, { props: { line: old as typeof line } })
 
     expect(wrapper.find('.cart-line__subtitle').exists()).toBe(false)
   })
