@@ -65,8 +65,18 @@
         v-else
         class="qr-scanner__hint"
       >
-        {{ VOICE.scan.hint }}
+        {{ mode === 'sheet' ? VOICE.scan.hintSheet : VOICE.scan.hint }}
       </p>
+
+      <!-- Qué hacer al leer un código: agregarlo a la venta (lo de siempre) o ver su ficha -->
+      <SegmentedControl
+        v-if="showModeControl"
+        :model-value="mode"
+        :options="modeOptions"
+        :label="VOICE.scan.modeLabel"
+        size="lg"
+        @update:model-value="emit('update:mode', $event as ScanMode)"
+      />
     </div>
 
     <!-- Lo que pasó con la última lectura (agregado / no encontrado): flotante, sin tapar la cámara -->
@@ -97,19 +107,32 @@ import {
 import { VOICE, cameraErrorMessage, type CameraFailure } from '@/config/voice'
 import AppButton from '../atoms/AppButton.vue'
 import ScanToast from '../molecules/ScanToast.vue'
+import SegmentedControl from '../molecules/SegmentedControl.vue'
+import type { ScanMode } from '@/types/scan.types'
 import AppModal from './AppModal.vue'
 
-const props = defineProps<{
+
+const props = withDefaults(defineProps<{
   /** Abierto (v-model). Abierto = cámara encendida; cerrado o desmontado = apagada. */
   modelValue: boolean
   /** Qué pasó con la última lectura; lo decide quien usa el modal. */
   notice?: { kind: 'success' | 'error'; title: string; detail?: string } | null
-}>()
+  /** Qué se hace con una lectura: agregar a la venta o ver la ficha. Solo cambia la pista y el control; quien usa el modal actúa. */
+  mode?: ScanMode
+  /** Muestra el control "Agregar a la venta | Ver ficha" (Venta). En Productos el modo es fijo y no se muestra. */
+  showModeControl?: boolean
+}>(), { notice: null, mode: 'add', showModeControl: false })
 
 const emit = defineEmits<{
   'update:modelValue': [open: boolean]
+  'update:mode': [mode: ScanMode]
   scan: [text: string]
 }>()
+
+const modeOptions = [
+  { value: 'add', label: VOICE.scan.modeAdd },
+  { value: 'sheet', label: VOICE.scan.modeSheet },
+] as const
 
 /** Una misma lectura dentro de este lapso cuenta una sola vez. */
 const REPEAT_WINDOW_MS = 1500

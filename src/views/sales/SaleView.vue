@@ -137,8 +137,23 @@
 
     <QrScannerModal
       v-model="scanOpen"
+      v-model:mode="sheetScan.mode.value"
+      show-mode-control
       :notice="scanNotice.current.value"
       @scan="onScan"
+    />
+
+    <!-- Ficha del producto leído, ENCIMA del escáner (que sigue abierto debajo). Un
+         colaborador no ve costo ni acciones de gestión (isSocio). -->
+    <ProductSheet
+      v-if="sheetScan.sheetProduct.value"
+      :model-value="true"
+      :product="sheetScan.sheetProduct.value"
+      :is-socio="session.member?.role === 'socio'"
+      show-sale-actions
+      @update:model-value="sheetScan.closeSheet()"
+      @add="addFromSheet"
+      @scan-another="sheetScan.closeSheet()"
     />
 
     <!-- Fiado/apartado: solo alcanzable con una línea y un monto menor al total
@@ -159,10 +174,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { AppButton, QrScannerModal, RegistrarDeudaModal, SaleCart, SaleCatalogPicker, SaleResult } from '@/components'
+import { AppButton, ProductSheet, QrScannerModal, RegistrarDeudaModal, SaleCart, SaleCatalogPicker, SaleResult } from '@/components'
 import { useDeviceCapabilities } from '@/composables/useDeviceCapabilities'
 import { useDismissedHint } from '@/composables/useDismissedHint'
 import { useScanNotice } from '@/composables/useScanNotice'
+import { useProductSheetScan } from '@/composables/useProductSheetScan'
 import { useAuthStore } from '@/stores/auth.store'
 import { useCartStore } from '@/stores/cart.store'
 import { useCheckoutStore } from '@/stores/checkout.store'
@@ -359,17 +375,37 @@ const scanOpen = ref(false)
 // también funciona sin conexión.
 const scanNotice = useScanNotice()
 
+// "Agregar a la venta" (por defecto) o "Ver ficha"; el modo no persiste.
+const sheetScan = useProductSheetScan('add')
+
 function openScanner() {
   scanNotice.clear()
+  sheetScan.reset()
   scanOpen.value = true
 }
 
 function onScan(text: string) {
+  // Con la ficha abierta las lecturas no hacen nada: ni la cambian ni agregan a escondidas.
+  if (sheetScan.sheetProduct.value) return
   const product = catalog.findByScannedText(text)
   if (!product) {
     scanNotice.unknown()
     return
   }
+  if (sheetScan.mode.value === 'sheet') {
+    sheetScan.showSheet(product)
+    return
+  }
+  addScanned(product)
+}
+
+/** "Agregar a la venta" desde la ficha: lo mismo que una lectura en modo agregar, y la ficha se cierra. */
+function addFromSheet(product: Product) {
+  sheetScan.closeSheet()
+  addScanned(product)
+}
+
+function addScanned(product: Product) {
   const result = cart.add(product)
   if (!result.ok) {
     scanNotice.rejected(saleCartRefusalMessage(result.reason, product.name))

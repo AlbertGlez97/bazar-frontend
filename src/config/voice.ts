@@ -388,6 +388,10 @@ export const VOICE = {
   scan: {
     title: 'Escanear producto',
     hint: 'Apunta la cámara al código QR del producto.',
+    hintSheet: 'Apunta la cámara al código QR para ver su ficha.',
+    modeLabel: 'Qué hacer al escanear',
+    modeAdd: 'Agregar a la venta',
+    modeSheet: 'Ver ficha',
     loading: 'Abriendo la cámara…',
     done: 'Listo',
     retry: 'Intentar de nuevo',

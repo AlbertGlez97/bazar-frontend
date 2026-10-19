@@ -1926,3 +1926,137 @@ describe('SaleView — contador y pista en el catálogo del celular', () => {
     })
   })
 })
+
+describe('SaleView — escáner: Agregar a la venta | Ver ficha', () => {
+  async function openScanner(wrapper: Wrapper) {
+    let onDecode: (text: string) => void = () => undefined
+    startQrScanner.mockImplementation(async (_video: HTMLVideoElement, cb: (text: string) => void) => {
+      onDecode = cb
+      return { stop: vi.fn() }
+    })
+    await wrapper.get('button[data-action="scan"]').trigger('click')
+    await flushPromises()
+    return { read: async (text: string) => { onDecode(text); await flushPromises() } }
+  }
+  const vibrate = vi.fn(() => true)
+  beforeEach(() => {
+    vibrate.mockClear()
+    Object.defineProperty(navigator, 'vibrate', { configurable: true, writable: true, value: vibrate })
+  })
+  afterEach(() => { delete (navigator as unknown as Record<string, unknown>).vibrate })
+  const modeButton = (w: Wrapper, text: string) => w.findAll('.segmented-control button').find((b) => b.text() === text)!
+  const sheet = (w: Wrapper) => w.find('.product-sheet')
+  const sheetButton = (w: Wrapper, text: string) => w.findAll('.product-sheet__actions button').find((b) => b.text() === text)
+
+  it('por defecto está en "Agregar a la venta" (como siempre)', async () => {
+    const { wrapper } = await mountSale()
+    await openScanner(wrapper)
+    expect(modeButton(wrapper, 'Agregar a la venta').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('en "Ver ficha": vibración corta, abre la ficha y NO agrega nada solo', async () => {
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+    await modeButton(wrapper, 'Ver ficha').trigger('click')
+    vibrate.mockClear()
+
+    await scanner.read(CAFE.id)
+
+    expect(vibrate).toHaveBeenCalledWith(40)
+    expect(sheet(wrapper).exists()).toBe(true)
+    expect(sheet(wrapper).text()).toContain('Café de olla')
+    expect(lines(wrapper)).toHaveLength(0)
+  })
+
+  it('la ficha queda encima del escáner (el escáner sigue abierto debajo)', async () => {
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+    await modeButton(wrapper, 'Ver ficha').trigger('click')
+    await scanner.read(CAFE.id)
+
+    expect(wrapper.text()).toContain('Escanear producto')
+    expect(sheetButton(wrapper, 'Escanear otro')).toBeDefined()
+  })
+
+  it('la ficha de un colaborador no muestra costo ni Editar', async () => {
+    useSessionStore().setMember({ ...MEMBER, role: 'colaborador' })
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+    await modeButton(wrapper, 'Ver ficha').trigger('click')
+    await scanner.read(CAFE.id)
+
+    expect(sheet(wrapper).text()).not.toContain('Costo')
+    expect(sheetButton(wrapper, 'Editar')).toBeUndefined()
+  })
+
+  it('"Agregar a la venta" de la ficha agrega, avisa y cierra la ficha', async () => {
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+    await modeButton(wrapper, 'Ver ficha').trigger('click')
+    await scanner.read(CAFE.id)
+
+    await sheetButton(wrapper, 'Agregar a la venta')!.trigger('click')
+    await flushPromises()
+
+    expect(lines(wrapper)).toHaveLength(1)
+    expect(sheet(wrapper).exists()).toBe(false)
+    expect(wrapper.find('.scan-toast').exists()).toBe(true)
+  })
+
+  it('"Escanear otro" cierra la ficha sin agregar y se puede leer otro', async () => {
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+    await modeButton(wrapper, 'Ver ficha').trigger('click')
+    await scanner.read(CAFE.id)
+
+    await sheetButton(wrapper, 'Escanear otro')!.trigger('click')
+    await scanner.read(PAN.id)
+
+    expect(lines(wrapper)).toHaveLength(0)
+    expect(sheet(wrapper).text()).toContain('Pan dulce')
+  })
+
+  it('mientras la ficha está abierta, otra lectura no la cambia ni agrega', async () => {
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+    await modeButton(wrapper, 'Ver ficha').trigger('click')
+    await scanner.read(CAFE.id)
+
+    await scanner.read(PAN.id)
+
+    expect(sheet(wrapper).text()).toContain('Café de olla')
+    expect(lines(wrapper)).toHaveLength(0)
+  })
+
+  it('un código desconocido en modo ficha: el aviso rojo de siempre y no abre ficha', async () => {
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+    await modeButton(wrapper, 'Ver ficha').trigger('click')
+
+    await scanner.read('https://cualquier-cosa.example/qr')
+
+    expect(sheet(wrapper).exists()).toBe(false)
+    expect(wrapper.get('.scan-toast .scan-toast__text').text()).toContain('No encontré este producto')
+  })
+
+  it('el modo no persiste: al abrir el escáner otra vez vuelve a "Agregar a la venta"', async () => {
+    const { wrapper } = await mountSale()
+    await openScanner(wrapper)
+    await modeButton(wrapper, 'Ver ficha').trigger('click')
+    await wrapper.findAll('button').find((b) => b.text() === 'Listo')!.trigger('click')
+
+    await openScanner(wrapper)
+
+    expect(modeButton(wrapper, 'Agregar a la venta').attributes('aria-pressed')).toBe('true')
+  })
+
+  it('en modo "Agregar" todo sigue igual: agrega y avisa', async () => {
+    const { wrapper } = await mountSale()
+    const scanner = await openScanner(wrapper)
+
+    await scanner.read(CAFE.id)
+
+    expect(lines(wrapper)).toHaveLength(1)
+    expect(sheet(wrapper).exists()).toBe(false)
+  })
+})
