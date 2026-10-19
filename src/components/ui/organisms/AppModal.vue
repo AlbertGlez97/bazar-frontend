@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
 import { useId, onMounted, onUnmounted, watch, ref, nextTick } from 'vue'
+import { hasOpenModal, isTopModal, popModal, pushModal } from '@/composables/useModalStack'
 
 const props = withDefaults(defineProps<{
   modelValue:    boolean
@@ -147,15 +148,19 @@ watch(() => props.modelValue, async open => {
 function close()  { emit('update:modelValue', false) }
 function onBackdropClick() { if (props.closeOnBackdrop) close() }
 
-// Bloquear scroll del body mientras el modal está abierto
+// Bloquear scroll del body mientras haya algún modal abierto: con dos apilados, cerrar el
+// de arriba no lo libera (lo libera el último en cerrarse).
+const stackId = Symbol('modal')
 function lockScroll()   { document.body.style.overflow = 'hidden' }
-function unlockScroll() { document.body.style.overflow = '' }
+function unlockScroll() { if (!hasOpenModal()) document.body.style.overflow = '' }
 
-watch(() => props.modelValue, v => { if (v) lockScroll(); else unlockScroll() }, { immediate: true })
+watch(() => props.modelValue, v => {
+  if (v) { pushModal(stackId); lockScroll() } else { popModal(stackId); unlockScroll() }
+}, { immediate: true })
 
-// Cerrar con Escape
+// Cerrar con Escape (solo el modal de arriba atiende el teclado)
 function onKeydown(e: KeyboardEvent) {
-  if (!props.modelValue) return
+  if (!props.modelValue || !isTopModal(stackId)) return
   if (e.key === 'Escape') close()
   if (!props.manageFocus || e.key !== 'Tab') return
   const targets = focusable(), first = targets[0], last = targets.at(-1)
@@ -167,7 +172,7 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 onMounted(()   => document.addEventListener('keydown', onKeydown))
-onUnmounted(() => { document.removeEventListener('keydown', onKeydown); unlockScroll(); restoreFocus() })
+onUnmounted(() => { document.removeEventListener('keydown', onKeydown); popModal(stackId); unlockScroll(); restoreFocus() })
 </script>
 
 <style scoped>
