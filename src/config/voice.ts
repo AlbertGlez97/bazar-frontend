@@ -281,6 +281,15 @@ export const VOICE = {
     totalIngresadoHint: 'Ventas de contado + abonos reales del periodo.',
   },
   /** Inicio de Modo Gestión (solo socios): resumen del día (`GET /dashboard/summary`). */
+  /** Marca, presentación y descripción breve de un producto (opcionales). */
+  productDescriptors: {
+    brandLabel: 'Marca (opcional)',
+    brandHint: 'Ej. Nike, Sony.',
+    presentationLabel: 'Presentación (opcional)',
+    presentationHint: 'Ej. XL, 24 oz. El color va aquí: Azul · 28.',
+    descriptionLabel: 'Descripción breve (opcional)',
+    descriptionHint: 'Una frase corta que ayude a reconocerlo.',
+  },
   /** Reponer existencia: sumar piezas compradas a un producto por cantidad (solo socios). */
   productRestock: {
     action: 'Reponer',

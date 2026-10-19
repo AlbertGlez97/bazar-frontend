@@ -108,6 +108,8 @@
       v-model="isFormModalOpen"
       :product="editingProduct"
       :loading="isSubmitting"
+      :brand-suggestions="suggestionsBrands"
+      :presentation-suggestions="suggestionsPresentations"
       @submit="handleFormSubmit"
       @restock="openRestockFromEdit"
     />
@@ -244,7 +246,14 @@ const { filters: urlFilters, filtersKey: urlFiltersKey, chips, setFilters, remov
 const filters = computed(() => (isVenta.value ? emptyProductFilters() : urlFilters.value))
 const appliedKey = computed(() => (isVenta.value ? '{}' : urlFiltersKey.value))
 
+// Marcas y presentaciones ya usadas: solo las pide un socio (el servidor las niega al
+// resto) y solo se le dan a quien puede abrir el formulario. El store sobrevive al
+// cierre de sesión, así que un colaborador nunca recibe las de un socio anterior.
+const suggestionsBrands = computed(() => (isSocio.value ? store.brandSuggestions : []))
+const suggestionsPresentations = computed(() => (isSocio.value ? store.presentationSuggestions : []))
+
 onMounted(() => {
+  if (isSocio.value) void store.loadSuggestions()
   // El store sobrevive al cierre de sesión: `toProductListParams` manda todos
   // los filtros de forma explícita (también los apagados), así un colaborador
   // que entra después de un socio no hereda los de este.
@@ -355,6 +364,8 @@ async function handleFormSubmit(payload: ProductFormSubmitPayload) {
     }
 
     contextLost.value = false
+    // Una marca o presentación nueva ya cuenta como sugerencia para el siguiente producto.
+    void store.loadSuggestions()
     toast.success(editingProduct.value ? 'Listo, producto actualizado.' : 'Listo, ya quedó en tu catálogo.')
     isFormModalOpen.value = false
   } catch (error) {

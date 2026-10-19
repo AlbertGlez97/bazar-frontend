@@ -12,6 +12,8 @@
     <ProductForm
       :product="product"
       :loading="loading"
+      :brand-suggestions="brandSuggestions"
+      :presentation-suggestions="presentationSuggestions"
       @submit="$emit('submit', $event)"
       @cancel="$emit('update:modelValue', false)"
       @restock="$emit('restock')"
@@ -34,11 +36,18 @@ import AppModal from './AppModal.vue'
 import ProductForm from '../organisms/ProductForm.vue'
 import ProductQrCard from '../molecules/ProductQrCard.vue'
 
-defineProps<{
+withDefaults(defineProps<{
   modelValue: boolean
   product?: Product | null
   loading?: boolean
-}>()
+  brandSuggestions?: string[]
+  presentationSuggestions?: string[]
+}>(), {
+  product: null,
+  loading: false,
+  brandSuggestions: () => [],
+  presentationSuggestions: () => [],
+})
 
 defineEmits<{
   'update:modelValue': [value: boolean]

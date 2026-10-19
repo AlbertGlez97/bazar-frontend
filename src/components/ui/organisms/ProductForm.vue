@@ -43,6 +43,30 @@
       Tipo: {{ tipo === 'unica' ? 'Pieza única' : 'Por cantidad' }} (no editable)
     </p>
 
+    <!-- Datos para distinguir productos parecidos y mostrar su ficha al escanear el QR. -->
+    <AppSuggestInput
+      v-model="brand"
+      :label="VOICE.productDescriptors.brandLabel"
+      :hint="VOICE.productDescriptors.brandHint"
+      :suggestions="brandSuggestions"
+      :maxlength="PRODUCT_TEXT_LIMITS.brand"
+    />
+    <AppSuggestInput
+      v-model="presentation"
+      :label="VOICE.productDescriptors.presentationLabel"
+      :hint="VOICE.productDescriptors.presentationHint"
+      :suggestions="presentationSuggestions"
+      :maxlength="PRODUCT_TEXT_LIMITS.presentation"
+    />
+    <AppTextarea
+      v-model="description"
+      :label="VOICE.productDescriptors.descriptionLabel"
+      :hint="VOICE.productDescriptors.descriptionHint"
+      :rows="2"
+      :maxlength="PRODUCT_TEXT_LIMITS.description"
+      counter
+    />
+
     <AppInput
       v-model="unitPriceDisplay"
       label="Precio de venta (MXN)"
@@ -154,6 +178,8 @@
 import { computed, ref, watch } from 'vue'
 import { minorToDisplay, parseMoneyText } from '@/utils/money'
 import { canRestock } from '@/utils/product-restock'
+import { collapseSpaces } from '@/utils/short-text'
+import { PRODUCT_TEXT_LIMITS } from '@/config/catalog'
 import { VOICE } from '@/config/voice'
 import type {
   Product,
@@ -163,15 +189,24 @@ import type {
 import AppInput from '../molecules/AppInput.vue'
 import AppSelect from '../molecules/AppSelect.vue'
 import AppTextarea from '../molecules/AppTextarea.vue'
+import AppSuggestInput from '../molecules/AppSuggestInput.vue'
 import AppButton from '../atoms/AppButton.vue'
 import AppImageUpload from '../molecules/AppImageUpload.vue'
 import AppAlert from '../molecules/AppAlert.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   /** Si se pasa un producto, el formulario opera en modo edición */
   product?: Product | null
   loading?: boolean
-}>()
+  /** Marcas y presentaciones ya usadas (solo las tienen los socios); sin ellas el campo es de texto libre. */
+  brandSuggestions?: string[]
+  presentationSuggestions?: string[]
+}>(), {
+  product: null,
+  loading: false,
+  brandSuggestions: () => [],
+  presentationSuggestions: () => [],
+})
 
 const emit = defineEmits<{
   submit: [payload: ProductFormSubmitPayload]
@@ -192,6 +227,9 @@ const purchaseCostDisplay = ref(
 )
 const supplier = ref(props.product?.supplier ?? '')
 const notes = ref(props.product?.notes ?? '')
+const brand = ref(props.product?.brand ?? '')
+const presentation = ref(props.product?.presentation ?? '')
+const description = ref(props.product?.description ?? '')
 const imageFile = ref<File | null>(null)
 
 const errors = ref<{
@@ -297,6 +335,14 @@ function handleSubmit() {
     const notesValue = notes.value.trim() || null
     if (notesValue !== original.notes) payload.notes = notesValue
 
+    // Marca, presentación y descripción: igual que el servidor las guarda (espacios
+    // juntos y recortados, vacío = null). Un producto de antes no los trae (ausentes).
+    const descriptors = { brand, presentation, description } as const
+    for (const key of ['brand', 'presentation', 'description'] as const) {
+      const value = collapseSpaces(descriptors[key].value) || null
+      if (value !== (original[key] ?? null)) payload[key] = value
+    }
+
     emit('submit', { ...payload, imageFile: imageFile.value } as ProductFormSubmitPayload)
     return
   }
@@ -310,6 +356,9 @@ function handleSubmit() {
     purchaseCostMinor: purchaseCostMinor ?? undefined,
     supplier: supplier.value.trim() || undefined,
     notes: notes.value.trim() || undefined,
+    brand: collapseSpaces(brand.value) || undefined,
+    presentation: collapseSpaces(presentation.value) || undefined,
+    description: collapseSpaces(description.value) || undefined,
     imageFile: imageFile.value,
   })
 }
