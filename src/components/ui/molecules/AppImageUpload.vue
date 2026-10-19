@@ -2,10 +2,14 @@
   <!-- Molécula: input de archivo con preview y validación de tipo/tamaño en
        cliente. Solo valida y emite `update:modelValue` con el File elegido
        (o null); NO sube nada — eso es responsabilidad de quien la use. -->
-  <div class="app-image-upload">
+  <div
+    class="app-image-upload"
+    :class="$attrs.class"
+  >
     <label
       v-if="label"
       class="app-image-upload__label"
+      :for="fieldId()"
     >{{ label }}</label>
 
     <div
@@ -20,6 +24,7 @@
     </div>
 
     <input
+      :id="fieldId()"
       ref="inputRef"
       type="file"
       class="app-image-upload__input"
@@ -38,7 +43,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, useAttrs } from 'vue'
+import { useFieldId } from '@/composables/useFieldId'
+
+// El id enlaza <label for> con el <input type="file">; un id puesto por el padre va al
+// input (no a la raíz, para que no se repita).
+defineOptions({ inheritAttrs: false })
+const attrs = useAttrs()
+const fieldId = useFieldId(attrs)
 
 const props = withDefaults(defineProps<{
   label?: string
