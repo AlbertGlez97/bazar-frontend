@@ -59,8 +59,8 @@ describe('legal-config: datos del responsable y plazos, en un solo lugar', () =>
 })
 
 describe('versions: versión de los textos', () => {
-  it('LEGAL_VERSION es 2026-10-16 con formato AAAA-MM-DD', () => {
-    expect(LEGAL_VERSION).toBe('2026-10-16')
+  it('LEGAL_VERSION es 2026-10-19 con formato AAAA-MM-DD', () => {
+    expect(LEGAL_VERSION).toBe('2026-10-19')
     expect(LEGAL_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 

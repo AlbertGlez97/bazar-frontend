@@ -47,6 +47,7 @@ export const PRIVACY_NOTICE: LegalDocumentData = {
             'Tu teléfono o WhatsApp.',
             'Quién te recomendó el sistema. Es opcional.',
             'Que aceptaste este aviso y los términos, con la fecha y la versión en que los aceptaste.',
+            'Datos técnicos de la verificación de seguridad de esa página: tu dirección IP y señales de tu navegador.',
           ],
         },
         { kind: 'h3', text: 'Cuando usas el sistema' },
@@ -95,6 +96,7 @@ export const PRIVACY_NOTICE: LegalDocumentData = {
             'Darte el servicio: registrar ventas, productos, deudas, gastos y reportes.',
             'Saber quién hizo cada operación, para que tu negocio pueda revisarla.',
             'Cuidar la seguridad del sistema y evitar usos indebidos.',
+            'Comprobar que quien se registra es una persona y no un programa automático.',
             'Atender tus dudas y el ejercicio de tus derechos.',
             'Cumplir obligaciones legales.',
           ],
@@ -123,6 +125,7 @@ export const PRIVACY_NOTICE: LegalDocumentData = {
           items: [
             'Resend envía por correo tu usuario y tu contraseña temporal. Recibe tu correo y esos datos solo para entregarlos.',
             'Cloudflare entrega el sitio y protege la conexión. Por su red pasa el tráfico y ve tu dirección IP.',
+            'Cloudflare Turnstile hace la verificación de seguridad de la página de registro. Se carga desde Cloudflare y recibe tu dirección IP y señales técnicas de tu navegador.',
             'Google Fonts da las letras del sitio. Tu navegador se las pide y Google recibe tu dirección IP.',
             'El servidor donde vive el sistema, que administra el responsable.',
           ],

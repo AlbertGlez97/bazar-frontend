@@ -1,6 +1,6 @@
 # Preguntas y supuestos para la revisión del abogado
 
-Versión de los textos: `2026-10-16`. Los textos de `/privacidad` y `/terminos` **no han sido revisados por un abogado**; este documento junta lo que necesita su revisión. Nada de lo publicado afirma lo contrario. Las constantes viven en `src/legal/legal-config.ts` (los comentarios "provisional, revisar con abogado" marcan cada una); el contenido de cada afirmación está trazado en `inventario-datos.md` y las fuentes en `fuentes-consultadas.md`.
+Versión de los textos: `2026-10-19` (la `2026-10-16` fue la primera; qué cambió está en `LEGAL_CHANGELOG`, `src/legal/versions.ts`: el aviso ahora explica la verificación de seguridad de Cloudflare Turnstile). Los textos de `/privacidad` y `/terminos` **no han sido revisados por un abogado**; este documento junta lo que necesita su revisión. Nada de lo publicado afirma lo contrario. Las constantes viven en `src/legal/legal-config.ts` (los comentarios "provisional, revisar con abogado" marcan cada una); el contenido de cada afirmación está trazado en `inventario-datos.md` y las fuentes en `fuentes-consultadas.md`.
 
 ## 1. Datos del responsable
 
@@ -36,7 +36,7 @@ Versión de los textos: `2026-10-16`. Los textos de `/privacidad` y `/terminos` 
 18. **Google Fonts.** Alternativa técnica (no legal): servir las tipografías desde el propio servidor y quitar a Google del aviso. ¿Vale la pena?
 19. **Servidor propio y respaldos.** El sistema corre en un servidor del responsable. **No hay respaldos documentados** en el repositorio. Los Términos dicen que no se garantizan. ¿Es suficiente o hace falta describir medidas?
 20. **Registros del servidor.** No se comprobó si nginx, Nest o Docker guardan la IP de quien consulta ni por cuánto tiempo. El aviso solo dice que el servidor "recibe" la IP. ¿Hay que declarar registros y plazo?
-21. **Cookies.** La app no crea cookies propias. No se verificó si Cloudflare coloca alguna. El aviso dice que "podría" usar cookies técnicas.
+21. **Cookies.** La app no crea cookies propias. No se verificó si Cloudflare coloca alguna. El aviso dice que "podría" usar cookies técnicas. Desde la versión 2026-10-19 el aviso también nombra a **Cloudflare Turnstile** (verificación de la página de registro): dice que recibe la dirección IP y señales técnicas del navegador, sin afirmar nada sobre qué guarda. Pregunta: ¿hace falta algo más sobre lo que Turnstile almacena en el navegador?
 
 ## 6. Seguridad y vulneraciones
 
