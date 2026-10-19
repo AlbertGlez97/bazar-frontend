@@ -7,6 +7,8 @@ import type { Product } from '@/types/product.types'
 export interface SelectedProduct {
   id: string
   name: string
+  /** Para la etiqueta: se imprime bajo el nombre. */
+  presentation: string | null
 }
 
 /** El servidor topa `limit` en 100: se pide de a 100 páginas. */
@@ -46,13 +48,13 @@ export const useProductSelectionStore = defineStore('product-selection', () => {
   }
 
   /** Marca o desmarca. Un producto inactivo no se selecciona: su etiqueta no serviría. */
-  function toggle(product: Pick<Product, 'id' | 'name' | 'active'>) {
+  function toggle(product: Pick<Product, 'id' | 'name' | 'active' | 'presentation'>) {
     if (selected.value.has(product.id)) {
       selected.value.delete(product.id)
       return
     }
     if (!product.active) return
-    selected.value.set(product.id, { id: product.id, name: product.name })
+    selected.value.set(product.id, { id: product.id, name: product.name, presentation: product.presentation ?? null })
   }
 
   /**
@@ -72,7 +74,7 @@ export const useProductSelectionStore = defineStore('product-selection', () => {
         const response = await ProductsService.listProducts({ page, limit: PAGE_SIZE, search: search || undefined })
         total = response.total
         for (const product of response.items) {
-          if (product.active) found.push({ id: product.id, name: product.name })
+          if (product.active) found.push({ id: product.id, name: product.name, presentation: product.presentation ?? null })
         }
         progress.value = { loaded: Math.min(page * PAGE_SIZE, total), total }
         if (response.items.length === 0) break

@@ -46,7 +46,7 @@ describe('product selection store', () => {
     store.toggle(product(2))
     expect(store.count).toBe(2)
     expect(store.has(product(1).id)).toBe(true)
-    expect(store.items).toEqual([{ id: product(1).id, name: 'Producto 1' }, { id: product(2).id, name: 'Producto 2' }])
+    expect(store.items).toEqual([{ id: product(1).id, name: 'Producto 1', presentation: null }, { id: product(2).id, name: 'Producto 2', presentation: null }])
     store.toggle(product(1))
     expect(store.has(product(1).id)).toBe(false)
     expect(store.count).toBe(1)
@@ -186,5 +186,21 @@ describe('selectAllMatching', () => {
     expect(await store.selectAllMatching('')).toBe(0)
     expect(await first).toBe(5)
     expect(vi.mocked(ProductsService.listProducts)).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('product-selection.store — presentación para la etiqueta', () => {
+  it('guarda la presentación del producto elegido (nula si no tiene)', async () => {
+    const { setActivePinia, createPinia } = await import('pinia')
+    setActivePinia(createPinia())
+    const { useProductSelectionStore } = await import('../product-selection.store')
+    const store = useProductSelectionStore()
+    store.toggle({ id: 'a', name: 'Playera', active: true, presentation: 'XL' } as never)
+    store.toggle({ id: 'b', name: 'Taza', active: true } as never)
+
+    expect(store.items).toEqual([
+      { id: 'a', name: 'Playera', presentation: 'XL' },
+      { id: 'b', name: 'Taza', presentation: null },
+    ])
   })
 })

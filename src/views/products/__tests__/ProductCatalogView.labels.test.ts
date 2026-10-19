@@ -162,7 +162,7 @@ describe('ProductCatalogView — selección para imprimir códigos QR', () => {
     await button(wrapper, VOICE.labels.print)!.trigger('click')
     await button(wrapper, VOICE.labels.preview)!.trigger('click')
     await button(wrapper, VOICE.labels.download)!.trigger('click')
-    const expected = [{ id: id(3), name: 'Producto 3' }, { id: id(1), name: 'Producto 1' }]
+    const expected = [{ id: id(3), name: 'Producto 3', presentation: null }, { id: id(1), name: 'Producto 1', presentation: null }]
     expect(printing.preview).toHaveBeenCalledWith(expected)
     expect(printing.download).toHaveBeenCalledWith(expected)
   })

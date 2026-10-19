@@ -10,6 +10,12 @@
     <p class="product-restock-form__intro">
       {{ copy.intro(product.name) }}
     </p>
+    <p
+      v-if="subtitle"
+      class="product-restock-form__subtitle"
+    >
+      {{ subtitle }}
+    </p>
 
     <AppAlert
       v-if="formError"
@@ -93,6 +99,7 @@
 import { computed, ref } from 'vue'
 import { VOICE } from '@/config/voice'
 import type { Product, RestockProductPayload } from '@/types/product.types'
+import { productSubtitle } from '@/utils/product-label'
 import { buildRestockPayload, maxRestockQuantity, stockAfterRestock } from '@/utils/product-restock'
 import type { RestockErrors } from '@/utils/product-restock'
 import AppButton from '../atoms/AppButton.vue'
@@ -113,6 +120,7 @@ const emit = defineEmits<{
 }>()
 
 const copy = VOICE.productRestock
+const subtitle = computed(() => productSubtitle(props.product))
 
 const quantity = ref(1)
 const costText = ref('')
@@ -142,6 +150,7 @@ function handleSubmit() {
 </script>
 
 <style scoped>
+.product-restock-form__subtitle { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 .product-restock-form {
   display: flex;
   flex-direction: column;

@@ -60,6 +60,8 @@ export const CALIBRATION_LIMITS = {
 export interface LabelInput {
   id: string
   name: string
+  /** Talla, tamaño o capacidad: va en el último renglón, el nombre se acorta a uno. */
+  presentation?: string | null
 }
 
 export interface CellBox { x: number; y: number; w: number; h: number }
@@ -288,7 +290,7 @@ export function planLabelSheet(
     }
     const centerX = round3(cell.x + LABEL_WIDTH_MM / 2)
     const textTop = qr.y + qr.size + NAME_GAP_MM
-    const textLines = wrapLabelName(product.name, innerW, measure).map((text, i) => ({
+    const textLines = labelTextLines(product, innerW, measure).map((text, i) => ({
       text,
       x: centerX,
       y: round3(textTop + i * pitch),
@@ -310,4 +312,18 @@ export function planLabelSheet(
     },
     bottomOverflowMm: gridBottomOverflowMm(cal),
   }
+}
+
+/**
+ * Renglones de texto de una etiqueta. El diseño reserva `NAME_MAX_LINES` renglones: sin
+ * presentación el nombre usa los dos; con presentación el nombre se queda en uno y la
+ * presentación va en el último, así el QR y la calibración no cambian.
+ */
+function labelTextLines(product: LabelInput, maxWidthMm: number, measure: TextMeasure): string[] {
+  const presentation = sanitizeLabelText(product.presentation ?? '')
+  if (!presentation) return wrapLabelName(product.name, maxWidthMm, measure)
+  return [
+    ...wrapLabelName(product.name, maxWidthMm, measure, NAME_MAX_LINES - 1),
+    ...wrapLabelName(presentation, maxWidthMm, measure, 1),
+  ]
 }
