@@ -444,6 +444,69 @@ describe('BusinessRegistrationForm: envío', () => {
     expect((control(wrapper, 'aceptaLegal').element as HTMLInputElement).checked).toBe(true)
   })
 
+  it('SIN clave de Turnstile en el build: el registro no está disponible, no se puede enviar y lo escrito se conserva', async () => {
+    const wrapper = mountForm({ siteKey: '' })
+    await fill(wrapper, valid)
+    await accept(wrapper)
+    wrapper.findComponent(TurnstileStub).vm.$emit('failed', 'config')
+    await flushPromises()
+    await submit(wrapper)
+
+    expect(wrapper.emitted('submit')).toBeUndefined()
+    expect(wrapper.get('.business-registration-form__unavailable').text()).toBe('El registro no está disponible por ahora.')
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
+    expect((control(wrapper, 'nombreNegocio').element as HTMLInputElement).value).toBe(valid.nombreNegocio)
+  })
+
+  it('SIN clave no sale ningún envío aunque llegara un token (Enter en un campo, p. ej.)', async () => {
+    const wrapper = mountForm({ siteKey: '' })
+    await fillValid(wrapper)
+    wrapper.findComponent(TurnstileStub).vm.$emit('failed', 'config')
+    await flushPromises()
+    await submit(wrapper)
+
+    expect(wrapper.emitted('submit')).toBeUndefined()
+  })
+
+  it('SIN clave, NO se pide "Completa la verificación" (no hay nada que completar): solo el aviso de no disponible', async () => {
+    const wrapper = mountForm({ siteKey: '' })
+    wrapper.findComponent(TurnstileStub).vm.$emit('failed', 'config')
+    await flushPromises()
+    await submit(wrapper)
+
+    expect(wrapper.find('.business-registration-form__captcha-error').exists()).toBe(false)
+  })
+
+  it('una falla transitoria del widget NO desactiva el botón ni dice que el registro no está disponible', async () => {
+    const wrapper = mountForm()
+    wrapper.findComponent(TurnstileStub).vm.$emit('failed', 'load')
+    await flushPromises()
+
+    expect(wrapper.find('.business-registration-form__unavailable').exists()).toBe(false)
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('integración con el widget real: sin clave aparece UN solo aviso visible y el botón queda desactivado', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const wrapper = mount(BusinessRegistrationForm, {
+      props: { siteKey: '' },
+      attachTo: document.body,
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    await flushPromises()
+
+    const visible = wrapper.findAll('[role="alert"]').filter((e) => e.isVisible())
+    expect(visible.map((e) => e.text())).toEqual(['El registro no está disponible por ahora.'])
+    expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
+    expect(warn).toHaveBeenCalledTimes(1)
+    warn.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('con clave configurada no aparece el aviso de no disponible', () => {
+    expect(mountForm().find('.business-registration-form__unavailable').exists()).toBe(false)
+  })
+
   it('al verificar de nuevo, el aviso de la verificación desaparece', async () => {
     const wrapper = mountForm()
     await submit(wrapper)

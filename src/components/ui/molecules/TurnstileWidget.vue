@@ -18,9 +18,7 @@
       role="alert"
     >
       <p>
-        {{ problem === 'load'
-          ? 'No pudimos cargar la verificación de seguridad. Revisa tu internet.'
-          : 'No pudimos hacer la verificación de seguridad. Intenta de nuevo.' }}
+        {{ MESSAGES[problem] }}
       </p>
       <AppButton
         v-if="problem !== 'config'"
@@ -54,6 +52,13 @@ const emit = defineEmits<{
   failed: [kind: 'load' | 'error' | 'config']
 }>()
 
+// 'config' no es una falla pasajera: al build le falta la clave y reintentar no lo arregla.
+const MESSAGES = {
+  load: 'No pudimos cargar la verificación de seguridad. Revisa tu internet.',
+  error: 'No pudimos hacer la verificación de seguridad. Intenta de nuevo.',
+  config: 'El registro no está disponible por ahora.',
+} as const
+
 const container = ref<HTMLElement | null>(null)
 const problem = ref<'load' | 'error' | 'config' | null>(null)
 let api: TurnstileApi | null = null
@@ -67,6 +72,9 @@ function fail(kind: 'load' | 'error' | 'config') {
 async function draw() {
   problem.value = null
   if (!props.siteKey) {
+    console.warn(
+      'VITE_TURNSTILE_SITE_KEY no está configurada en este build: el registro de negocios no puede verificar a la persona y queda desactivado.',
+    )
     fail('config')
     return
   }

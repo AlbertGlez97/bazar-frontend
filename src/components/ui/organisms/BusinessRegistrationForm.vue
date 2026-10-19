@@ -200,13 +200,22 @@
     </div>
 
     <div class="business-registration-form__captcha">
+      <!-- Sin clave en el build el aviso de abajo habla por el widget (que sigue montado, oculto) -->
       <TurnstileWidget
+        v-show="!unavailable"
         ref="captchaEl"
         :site-key="siteKey"
         @verified="onVerified"
         @expired="onExpired"
-        @failed="captchaFailed = true"
+        @failed="onWidgetFailed"
       />
+      <p
+        v-if="unavailable"
+        class="business-registration-form__unavailable"
+        role="alert"
+      >
+        El registro no está disponible por ahora.
+      </p>
       <p
         v-if="captchaMessage"
         ref="captchaErrorEl"
@@ -241,7 +250,7 @@
       size="lg"
       block
       :loading="loading"
-      :disabled="loading"
+      :disabled="loading || unavailable"
     >
       Enviar solicitud
     </AppButton>
@@ -344,16 +353,21 @@ const trapId = `registro-trampa-${useId()}`
 // El token es de UN solo uso: se borra al enviar (acierte o falle el servidor) y la persona
 // vuelve a verificar. El aviso solo aparece tras un intento de envío, no antes.
 const captchaToken = ref('')
-const captchaFailed = ref(false)
+const widgetProblem = ref<'load' | 'error' | 'config' | null>(null)
 const captchaTouched = ref(false)
+// Sin clave en el build no hay nada que completar: el registro no está disponible (no es una falla pasajera)
+const unavailable = computed(() => widgetProblem.value === 'config')
 const captchaMessage = computed(() => {
-  if (!captchaTouched.value || captchaToken.value) return ''
-  return captchaFailed.value ? CAPTCHA_NOT_READY : CAPTCHA_MISSING
+  if (unavailable.value || !captchaTouched.value || captchaToken.value) return ''
+  return widgetProblem.value ? CAPTCHA_NOT_READY : CAPTCHA_MISSING
 })
 
 function onVerified(token: string) {
   captchaToken.value = token
-  captchaFailed.value = false
+  widgetProblem.value = null
+}
+function onWidgetFailed(kind: 'load' | 'error' | 'config') {
+  widgetProblem.value = kind
 }
 function onExpired() {
   captchaToken.value = ''
@@ -381,7 +395,7 @@ function focusFirstInvalid() {
 
 const submit = handleSubmit(
   (values) => {
-    if (props.loading || sent.value) return
+    if (props.loading || sent.value || unavailable.value) return
     captchaTouched.value = true
     if (!captchaToken.value) {
       nextTick(focusFirstInvalid)
@@ -471,6 +485,7 @@ defineExpose({ setFieldError: setServerFieldError, resetCaptcha })
   border-radius: var(--radius-sm);
 }
 .business-registration-form__legal-error,
+.business-registration-form__unavailable,
 .business-registration-form__captcha-error {
   margin: 0;
   font-size: var(--font-size-sm);

@@ -102,12 +102,45 @@ describe('TurnstileWidget', () => {
     wrapper.unmount()
   })
 
-  it('sin clave pública no intenta dibujar: avisa que la verificación no está disponible', async () => {
+  it('sin clave pública no intenta dibujar: dice que el registro no está disponible y no ofrece reintentar', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const wrapper = await mountWidget('')
 
     expect(api.render).not.toHaveBeenCalled()
     expect(wrapper.emitted('failed')).toEqual([['config']])
-    expect(wrapper.get('[role="alert"]').text()).toContain('No pudimos hacer la verificación de seguridad')
+    expect(wrapper.get('[role="alert"]').text()).toBe('El registro no está disponible por ahora.')
+    expect(wrapper.find('button').exists()).toBe(false) // reintentar no arregla una configuración
+    warn.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('sin clave pública deja UN aviso en la consola que dice qué variable falta', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const wrapper = await mountWidget('')
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0][0])).toContain('VITE_TURNSTILE_SITE_KEY')
+    warn.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('con clave no escribe nada en la consola', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    const wrapper = await mountWidget('site-key-123')
+
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+    wrapper.unmount()
+  })
+
+  it('una falla transitoria (el script no carga) NO dice que el registro no está disponible', async () => {
+    delete (window as { turnstile?: unknown }).turnstile
+    const wrapper = mount(TurnstileWidget, { props: { siteKey: 'k' }, attachTo: document.body })
+    await flushPromises()
+    document.head.querySelector('script[src*="challenges.cloudflare.com"]')!.dispatchEvent(new Event('error'))
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).not.toContain('no está disponible')
     wrapper.unmount()
   })
 
