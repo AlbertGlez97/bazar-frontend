@@ -38,3 +38,22 @@ describe('Turnstile en el build', () => {
     expect(conf).toMatch(/connect-src[^;]*https:\/\/challenges\.cloudflare\.com/)
   })
 })
+
+describe('doc/despliegue.md', () => {
+  const doc = normalize(read('doc/despliegue.md'))
+
+  it('lista las variables nuevas de producción de los dos repos', () => {
+    for (const name of ['VITE_TURNSTILE_SITE_KEY', 'TURNSTILE_SECRET_KEY', 'PUBLIC_SITE_URL', 'CLIENT_IP_HEADER', 'TURNSTILE_DEV_BYPASS']) {
+      expect(doc).toContain(name)
+    }
+  })
+
+  it('trae el diff del compose con el build arg junto a VITE_API_URL', () => {
+    expect(doc).toMatch(/VITE_API_URL: \$\{VITE_API_URL\}\n\+\s+VITE_TURNSTILE_SITE_KEY: \$\{VITE_TURNSTILE_SITE_KEY\}/)
+  })
+
+  it('dice que el workflow no cambia y que la clave secreta no va al frontend', () => {
+    expect(doc).toMatch(/no se modifica .*workflow|workflow.* no (se )?(modifica|cambia)/i)
+    expect(doc).toMatch(/secreta[^.]*solo[^.]*backend/i)
+  })
+})
