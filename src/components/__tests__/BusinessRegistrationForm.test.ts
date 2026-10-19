@@ -4,7 +4,7 @@
 // se prueba en TurnstileWidget.test.ts.
 import { describe, it, expect, vi } from 'vitest'
 import { mount, flushPromises, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
-import { defineComponent } from 'vue'
+import { defineComponent, h } from 'vue'
 import BusinessRegistrationForm from '@/components/ui/organisms/BusinessRegistrationForm.vue'
 import { LEGAL_VERSION } from '@/legal/versions'
 
@@ -232,6 +232,70 @@ describe('BusinessRegistrationForm: campo trampa', () => {
     expect(holder).not.toBeNull()
     expect(trap(wrapper).attributes('tabindex')).toBe('-1')
     expect(trap(wrapper).attributes('autocomplete')).toBe('off')
+  })
+
+  it('tiene id y una etiqueta asociada (<label for>) dentro del mismo contenedor oculto', () => {
+    const wrapper = mountForm({}, document.body)
+    const input = trap(wrapper)
+    const holder = input.element.closest('[aria-hidden="true"]')!
+    const label = holder.querySelector('label')
+
+    expect(input.attributes('id')).toBeTruthy()
+    expect(label).not.toBeNull()
+    expect(label!.getAttribute('for')).toBe(input.attributes('id'))
+    expect((label as HTMLLabelElement).control).toBe(input.element)
+    expect(label!.textContent!.trim()).toBe('Déjalo vacío')
+    wrapper.unmount()
+  })
+
+  it('su id no se repite con ningún otro, ni siquiera con dos formularios en la misma página', () => {
+    // componente funcional (no defineComponent): dos formularios dentro de UNA sola app
+    const TwoForms = () => h('div', [h(BusinessRegistrationForm, { siteKey: 'k' }), h(BusinessRegistrationForm, { siteKey: 'k' })])
+    const wrapper = mount(TwoForms, {
+      attachTo: document.body,
+      global: { stubs: { RouterLink: RouterLinkStub, TurnstileWidget: TurnstileStub } },
+    })
+    const others = [...wrapper.element.querySelectorAll('[id]')].filter((e) => !e.id.startsWith('registro-trampa-')).map((e) => e.id)
+    const traps = [...wrapper.element.querySelectorAll('input[name="contacto_alterno"]')].map((e) => e.id)
+
+    expect(traps).toHaveLength(2)
+    expect(traps[0]).not.toBe(traps[1])
+    expect(traps.every((id) => id.startsWith('registro-trampa-'))).toBe(true)
+    expect(others).not.toContain(traps[0])
+    wrapper.unmount()
+  })
+
+  it('el contenedor sigue oculto a las personas: fuera de pantalla y sin entrar en la accesibilidad', () => {
+    const wrapper = mountForm()
+    const holder = trap(wrapper).element.closest('[aria-hidden="true"]')!
+
+    expect(holder.classList.contains('business-registration-form__trap')).toBe(true)
+    // la etiqueta vive DENTRO del contenedor aria-hidden: un lector de pantalla no la anuncia
+    expect(holder.querySelector('label')).not.toBeNull()
+    expect(wrapper.findAll('label').filter((l) => !l.element.closest('[aria-hidden="true"]')).map((l) => l.text())).not.toContain('Déjalo vacío')
+  })
+
+  it('su nombre no delata para qué sirve (ni "trampa" ni el nombre del contrato)', () => {
+    const name = trap(mountForm()).attributes('name')!
+
+    expect(name).not.toMatch(/trampa|honeypot|bot|sitioWebEmpresa/i)
+  })
+
+  it('un bot que lo llena se envía tal cual en sitioWebEmpresa (el servidor lo ignora en silencio)', async () => {
+    const wrapper = mountForm()
+    await fillValid(wrapper)
+    await trap(wrapper).setValue('http://spam.example')
+    await submit(wrapper)
+
+    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ sitioWebEmpresa: 'http://spam.example' })
+  })
+
+  it('una persona lo deja vacío: se envía vacío', async () => {
+    const wrapper = mountForm()
+    await fillValid(wrapper)
+    await submit(wrapper)
+
+    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ sitioWebEmpresa: '' })
   })
 })
 
