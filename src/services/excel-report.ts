@@ -2,7 +2,7 @@ import type { Workbook, Row } from 'exceljs'
 import { REPORT_COLORS, toArgb } from '@/config/report-palette'
 import { businessWallClock, formatBusinessDateTime } from '@/utils/business-time'
 import { saveBlob } from '@/utils/report-files'
-import { deudaTypeLabel, GANANCIA_NO_DISPONIBLE, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
+import { deudaTypeLabel, GANANCIA_NO_DISPONIBLE, plural, profitPartialNote, reportRowLabel, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
 import { PAYMENT_METHODS, paymentMethodLabel } from '@/utils/payment-method'
 import type { SalesReport } from '@/types/report.types'
 
@@ -138,7 +138,7 @@ export function buildExcelData(report: SalesReport): ExcelReportData {
     },
     product: report.detail && {
       rows: report.detail.rows.map((row) => ({
-        product: row.productName,
+        product: reportRowLabel(row),
         member: row.memberName,
         units: row.units,
         income: toPesos(row.ingresoMinor),

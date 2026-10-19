@@ -98,6 +98,9 @@ export interface SalesDetailQuery extends ReportRangeParams {
 export interface SalesDetailRow {
   productId: string
   productName: string
+  /** Ausentes si el servidor es anterior a estos datos. */
+  productBrand?: string | null
+  productPresentation?: string | null
   /** Quien vendió (socio o colaborador). */
   memberId: string
   memberName: string | null
@@ -189,6 +192,9 @@ export interface SalesReportConsistency {
 export interface SalesReportDetailRow {
   productId: string
   productName: string
+  /** Marca y presentación actuales del producto (nulas si no tiene). */
+  productBrand: string | null
+  productPresentation: string | null
   memberId: string
   memberName: string
   units: number

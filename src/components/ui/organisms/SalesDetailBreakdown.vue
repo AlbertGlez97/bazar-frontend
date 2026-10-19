@@ -56,6 +56,11 @@
           >
             <td class="sales-detail-breakdown__name">
               {{ row.productName }}
+              <span
+                v-if="subtitleOf(row)"
+                class="sales-detail-breakdown__subtitle"
+                :title="subtitleOf(row)"
+              >{{ subtitleOf(row) }}</span>
             </td>
             <td>
               {{ row.memberName }}
@@ -79,12 +84,18 @@
 <script setup lang="ts">
 import { VOICE } from '@/config/voice'
 import { formatMinorMoney } from '@/utils/money'
+import { productSubtitle } from '@/utils/product-label'
+
+const subtitleOf = (row: { productBrand?: string | null; productPresentation?: string | null }) =>
+  productSubtitle({ brand: row.productBrand, presentation: row.productPresentation })
 import { gananciaCellText } from '@/utils/sales-report'
 
 export interface SalesDetailBreakdownRow {
   productId: string
   memberId: string
   productName: string
+  productBrand?: string | null
+  productPresentation?: string | null
   memberName: string
   units: number
   ingresoMinor: number
@@ -133,6 +144,15 @@ defineProps<{
   padding: var(--spacing-sm) var(--spacing-md);
   text-align: left;
   border-top: 1px solid var(--color-border);
+}
+.sales-detail-breakdown__subtitle {
+  display: block;
+  max-width: 14rem;
+  font-size: var(--font-size-xs, 0.75rem);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sales-detail-breakdown__table th {
   font-weight: 600;

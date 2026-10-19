@@ -468,7 +468,7 @@ describe('ReportsView — desglose por producto (D4: ganancia real)', () => {
     const [report] = pdf.mock.calls[0] as [SalesReport, string]
     expect(report.detail).toEqual({
       rows: [{
-        productId: 'p-1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos Núñez',
+        productId: 'p-1', productName: 'Reloj', productBrand: null, productPresentation: null, memberId: 'm-carlos', memberName: 'Carlos Núñez',
         units: 3, ingresoMinor: 125000, gananciaMinor: 35000, gananciaDisponible: true,
       }],
       totals: { ingresoMinor: 1250, gananciaMinor: 350, lineasSinCosto: 1 },

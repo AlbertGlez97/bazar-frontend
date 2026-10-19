@@ -420,3 +420,13 @@ describe('buildWorkbook — ventas sin efectivo (null)', () => {
     expect(ws.getCell('E2').value).toBe(50)
   })
 })
+describe('buildExcelData — marca y presentación en Por producto', () => {
+  it('el producto va como "Nombre (Marca · Presentación)"', () => {
+    const rows = [
+      { productId: 'p1', productName: 'Playera', productBrand: 'Nike', productPresentation: 'XL', memberId: 'm', memberName: 'Ana', units: 1, ingresoMinor: 1000, costoMinor: 500, gananciaMinor: 500, gananciaDisponible: true },
+      { productId: 'p2', productName: 'Taza', productBrand: null, productPresentation: null, memberId: 'm', memberName: 'Ana', units: 1, ingresoMinor: 1000, costoMinor: 500, gananciaMinor: 500, gananciaDisponible: true },
+    ]
+    const { product } = buildExcelData(makeReport(DEFAULT_SALES, undefined, { detail: { rows, totals: { ingresoMinor: 2000, gananciaMinor: 1000, lineasSinCosto: 0 } } }))
+    expect(product!.rows.map((r) => r.product)).toEqual(['Playera (Nike · XL)', 'Taza'])
+  })
+})

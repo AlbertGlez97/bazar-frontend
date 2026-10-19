@@ -345,3 +345,15 @@ describe('buildPdfDefinition — ventas sin efectivo (null)', () => {
     expect(JSON.stringify(def)).not.toMatch(/NaN|null/)
   })
 })
+describe('buildPdfDefinition — marca y presentación en Por producto', () => {
+  it('el producto va como "Nombre (Marca · Presentación)"', () => {
+    const rows = [
+      { productId: 'p1', productName: 'Playera', productBrand: 'Nike', productPresentation: 'XL', memberId: 'm', memberName: 'Ana', units: 1, ingresoMinor: 1000, costoMinor: 500, gananciaMinor: 500, gananciaDisponible: true },
+      { productId: 'p2', productName: 'Taza', memberId: 'm', memberName: 'Ana', units: 1, ingresoMinor: 1000, costoMinor: 500, gananciaMinor: 500, gananciaDisponible: true },
+    ]
+    const def = buildPdfDefinition(makeReport({ detail: { rows, totals: { ingresoMinor: 2000, gananciaMinor: 1000, lineasSinCosto: 0 } } }))
+    const table = findTable(def, 'Producto')
+    expect(rowTexts(table.body[1])[0]).toBe('Playera (Nike · XL)')
+    expect(rowTexts(table.body[2])[0]).toBe('Taza')
+  })
+})

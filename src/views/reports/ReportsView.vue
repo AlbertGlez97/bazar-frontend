@@ -271,6 +271,8 @@ const productRows = computed(() => {
     productId: row.productId,
     memberId: row.memberId,
     productName: row.productName,
+    productBrand: row.productBrand ?? null,
+    productPresentation: row.productPresentation ?? null,
     memberName: row.memberName?.trim() || UNKNOWN_SELLER,
     units: row.units,
     ingresoMinor: row.ingresoMinor,

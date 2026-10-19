@@ -4,7 +4,7 @@ import { formatBusinessDateTime } from '@/utils/business-time'
 import { saveBlob } from '@/utils/report-files'
 import { formatMinorMoney } from '@/utils/money'
 import { PAYMENT_METHODS, paymentMethodLabel } from '@/utils/payment-method'
-import { deudaTypeLabel, gananciaCellText, plural, profitPartialNote, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
+import { deudaTypeLabel, gananciaCellText, plural, profitPartialNote, reportRowLabel, rangeDescription, reportNotes, roleLabel } from '@/utils/sales-report'
 import type { SalesReport } from '@/types/report.types'
 
 const C = REPORT_COLORS
@@ -138,7 +138,7 @@ function productTable(report: SalesReport): Content {
           headerCell('Ganancia', 'right'),
         ],
         ...detail.rows.map((row) => [
-          cell(row.productName),
+          cell(reportRowLabel(row)),
           cell(row.memberName),
           cell(String(row.units), 'right'),
           cell(formatMinorMoney(row.ingresoMinor), 'right'),

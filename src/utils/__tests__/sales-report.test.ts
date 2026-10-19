@@ -3,6 +3,7 @@ import { methodTotals } from '@/test/factories'
 import {
   buildSalesReport,
   formatDayRange,
+  reportRowLabel,
   gananciaCellText,
   GANANCIA_NO_DISPONIBLE,
   profitPartialNote,
@@ -315,8 +316,8 @@ describe('buildSalesReport — detail (D4: real profit by product/member)', () =
     const report = build([], { detail: { rows: detailRows, totals: detailTotals } })
     expect(report.detail).toEqual({
       rows: [
-        { productId: 'p1', productName: 'Reloj', memberId: 'm-carlos', memberName: 'Carlos', units: 2, ingresoMinor: 1000, gananciaMinor: 600, gananciaDisponible: true },
-        { productId: 'p2', productName: 'Pulsera', memberId: 'm-x', memberName: 'Sin nombre', units: 1, ingresoMinor: 200, gananciaMinor: null, gananciaDisponible: false },
+        { productId: 'p1', productName: 'Reloj', productBrand: null, productPresentation: null, memberId: 'm-carlos', memberName: 'Carlos', units: 2, ingresoMinor: 1000, gananciaMinor: 600, gananciaDisponible: true },
+        { productId: 'p2', productName: 'Pulsera', productBrand: null, productPresentation: null, memberId: 'm-x', memberName: 'Sin nombre', units: 1, ingresoMinor: 200, gananciaMinor: null, gananciaDisponible: false },
       ],
       totals: detailTotals,
     })
@@ -389,5 +390,28 @@ describe('buildSalesReport — ventas sin efectivo (cashReceivedMinor y changeMi
 
     expect(report.totals).toMatchObject({ totalMinor: 7000, cashReceivedMinor: 3000, changeMinor: 1000 })
     expect(Number.isNaN(report.totals.cashReceivedMinor)).toBe(false)
+  })
+})
+describe('buildSalesReport — marca y presentación en el desglose', () => {
+  const totals: SalesDetailTotals = { ingresoMinor: 1000, gananciaMinor: 0, lineasSinCosto: 0 }
+  const row = (extra: Partial<SalesDetailRow>): SalesDetailRow => ({
+    productId: 'p1', productName: 'Playera', memberId: 'm', memberName: 'Ana', units: 1, ingresoMinor: 1000,
+    costoMinor: 500, gananciaMinor: 500, gananciaDisponible: true, ...extra,
+  })
+
+  it('pasa la marca y la presentación a cada fila', () => {
+    const report = build([], { detail: { rows: [row({ productBrand: 'Nike', productPresentation: 'XL' })], totals } })
+    expect(report.detail!.rows[0]).toMatchObject({ productBrand: 'Nike', productPresentation: 'XL' })
+  })
+
+  it('un servidor que aún no las manda: nulos', () => {
+    const report = build([], { detail: { rows: [row({})], totals } })
+    expect(report.detail!.rows[0]).toMatchObject({ productBrand: null, productPresentation: null })
+  })
+
+  it('reportRowLabel: nombre y, si hay, "(Marca · Presentación)"', () => {
+    expect(reportRowLabel({ productName: 'Playera', productBrand: 'Nike', productPresentation: 'XL' })).toBe('Playera (Nike · XL)')
+    expect(reportRowLabel({ productName: 'Playera', productBrand: null, productPresentation: 'XL' })).toBe('Playera (XL)')
+    expect(reportRowLabel({ productName: 'Playera', productBrand: null, productPresentation: null })).toBe('Playera')
   })
 })

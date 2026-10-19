@@ -43,3 +43,18 @@ describe('SalesDetailBreakdown', () => {
     expect(headers).not.toContain('Cambio')
   })
 })
+
+describe('SalesDetailBreakdown — marca y presentación', () => {
+  const base = { productId: 'p1', memberId: 'm', productName: 'Playera', memberName: 'Ana', units: 1, ingresoMinor: 1000, gananciaMinor: 500, gananciaDisponible: true }
+
+  it('línea tenue bajo el nombre', () => {
+    const wrapper = mount(SalesDetailBreakdown, { props: { rows: [{ ...base, productBrand: 'Nike', productPresentation: 'XL' }] } })
+    expect(wrapper.get('.sales-detail-breakdown__subtitle').text()).toBe('Nike · XL')
+  })
+
+  it('sin datos no hay línea y la celda queda como antes', () => {
+    const wrapper = mount(SalesDetailBreakdown, { props: { rows: [base] } })
+    expect(wrapper.find('.sales-detail-breakdown__subtitle').exists()).toBe(false)
+    expect(wrapper.findAll('tbody td')[0].text()).toBe('Playera')
+  })
+})

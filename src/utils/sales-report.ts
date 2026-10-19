@@ -1,3 +1,4 @@
+import { productSubtitle } from '@/utils/product-label'
 import { businessDayOf, formatDateKey } from './business-time'
 import { addMinor, formatMinorMoney } from './money'
 import { resolvePaymentMethod } from './payment-method'
@@ -185,6 +186,8 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
     rows: rawDetail.rows.map((row) => ({
       productId: row.productId,
       productName: row.productName,
+      productBrand: row.productBrand ?? null,
+      productPresentation: row.productPresentation ?? null,
       memberId: row.memberId,
       memberName: row.memberName?.trim() || UNKNOWN_SELLER,
       units: row.units,
@@ -224,4 +227,10 @@ export function buildSalesReport(input: BuildSalesReportInput): SalesReport {
     totalIngresadoMinor: period.totalIngresadoMinor,
     porMetodoPago: period.porMetodoPago,
   }
+}
+
+/** Producto como se escribe en PDF y Excel: "Playera (Nike · XL)"; sin marca ni presentación, solo el nombre. */
+export function reportRowLabel(row: { productName: string; productBrand?: string | null; productPresentation?: string | null }): string {
+  const extra = productSubtitle({ brand: row.productBrand, presentation: row.productPresentation })
+  return extra ? `${row.productName} (${extra})` : row.productName
 }
