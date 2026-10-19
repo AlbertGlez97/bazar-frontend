@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import ProductsService from '@/services/products.service'
+import { productIdFromScan } from '@/utils/product-qr'
 import type {
   CreateProductPayload,
   Product,
@@ -138,6 +139,22 @@ export const useProductsStore = defineStore('products', () => {
     return uploadProductImage(targetId, file)
   }
 
+  /**
+   * El producto de un QR leído en Gestión (necesita internet: es el servidor quien lo dice).
+   * `null` si el texto no trae un id o el servidor no lo conoce (404); otro error (sin red)
+   * se propaga para que quien llama lo avise.
+   */
+  async function findByScannedText(text: string): Promise<Product | null> {
+    const id = productIdFromScan(text)
+    if (!id) return null
+    try {
+      return await ProductsService.getProduct(id)
+    } catch (cause) {
+      if ((cause as { response?: { status?: number } })?.response?.status === 404) return null
+      throw cause
+    }
+  }
+
   async function restockProduct(id: string, payload: RestockProductPayload): Promise<RestockProductResult> {
     const result = await ProductsService.restockProduct(id, payload)
     // La reposición ya quedó hecha. Un refresco caído no debe hacerla pasar por
@@ -166,7 +183,7 @@ export const useProductsStore = defineStore('products', () => {
   return {
     items, total, page, limit, search, includeInactive, umbral, agotados, sinCosto, tipo, brand, loading, error, totalPages,
     brandSuggestions, presentationSuggestions, loadSuggestions,
-    fetchProducts, createProduct, updateProduct, uploadProductImage, copyProductImage,
+    fetchProducts, createProduct, updateProduct, uploadProductImage, copyProductImage, findByScannedText,
     restockProduct, deactivateProduct, reactivateProduct,
   }
 })

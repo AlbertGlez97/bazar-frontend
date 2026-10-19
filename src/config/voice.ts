@@ -301,6 +301,8 @@ export const VOICE = {
     inStock: (stock: number) => `${stock} en existencia`,
     cost: (amount: string) => `Costo de compra: $${amount}`,
     noCost: 'Sin costo registrado',
+    scanQr: 'Escanear QR',
+    loadFailed: 'No pudimos buscar el producto',
   },
   /** "Crear otro igual": dar de alta otro producto a partir de uno (otra talla, otro color). */
   productDuplicate: {

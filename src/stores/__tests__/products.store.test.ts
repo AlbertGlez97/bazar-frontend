@@ -15,6 +15,7 @@ vi.mock('@/services/products.service', () => ({
     restockProduct: vi.fn(),
     getSuggestions: vi.fn(),
     fetchImageFile: vi.fn(),
+    getProduct: vi.fn(),
   },
 }))
 
@@ -379,5 +380,24 @@ describe('products.store — copiar la foto de otro producto', () => {
     const store = useProductsStore()
 
     await expect(store.copyProductImage('nuevo', '/uploads/products/abc.png', 'Playera')).rejects.toThrow('500')
+  })
+})
+
+describe('products.store — producto leído por QR', () => {
+  it('pide el producto por su id y lo devuelve', async () => {
+    vi.mocked(ProductsService.getProduct).mockResolvedValue(product)
+    expect(await useProductsStore().findByScannedText('https://x.example/p/0190a5f0-7c3e-7000-8000-00000000000a')).toEqual(product)
+    expect(ProductsService.getProduct).toHaveBeenCalledWith('0190a5f0-7c3e-7000-8000-00000000000a')
+  })
+  it('un texto sin id no pide nada', async () => {
+    expect(await useProductsStore().findByScannedText('hola')).toBeNull()
+    expect(ProductsService.getProduct).not.toHaveBeenCalled()
+  })
+  it('404: null; otro error (sin red): se propaga', async () => {
+    const store = useProductsStore()
+    vi.mocked(ProductsService.getProduct).mockRejectedValueOnce({ response: { status: 404 } })
+    expect(await store.findByScannedText('0190a5f0-7c3e-7000-8000-00000000000a')).toBeNull()
+    vi.mocked(ProductsService.getProduct).mockRejectedValueOnce(new Error('Network Error'))
+    await expect(store.findByScannedText('0190a5f0-7c3e-7000-8000-00000000000a')).rejects.toThrow('Network Error')
   })
 })

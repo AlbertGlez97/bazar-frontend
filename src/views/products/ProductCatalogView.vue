@@ -8,14 +8,42 @@
         Tu catálogo
       </h1>
       <!-- Alta de productos es gestión: en Modo Venta no se ofrece -->
-      <AppButton
+      <div
         v-if="isSocio && !isVenta"
-        variant="primary"
-        @click="openCreateModal"
+        class="product-catalog-view__header-actions"
       >
-        + Nuevo producto
-      </AppButton>
+        <!-- Ver la ficha de un producto con su QR -->
+        <AppButton
+          variant="secondary"
+          @click="openScanner"
+        >
+          {{ VOICE.productSheet.scanQr }}
+        </AppButton>
+        <AppButton
+          variant="primary"
+          @click="openCreateModal"
+        >
+          + Nuevo producto
+        </AppButton>
+      </div>
     </div>
+
+    <!-- Escáner en modo ficha fijo (sin agregar a ninguna venta) y la ficha encima -->
+    <QrScannerModal
+      v-model="scanOpen"
+      mode="sheet"
+      :notice="scanNotice.current.value"
+      @scan="onScan"
+    />
+    <ProductSheet
+      v-if="sheetScan.sheetProduct.value"
+      :model-value="true"
+      :product="sheetScan.sheetProduct.value"
+      is-socio
+      @update:model-value="sheetScan.closeSheet()"
+      @edit="editFromSheet"
+      @restock="restockFromSheet"
+    />
 
     <!-- Quien no es socio ve el catálogo, pero no lo cambia (el servidor igual
          respondería 403): se le dice en vez de dejarle botones que fallan. -->
@@ -156,9 +184,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ActiveFilterChips, AppAlert, AppButton, AppModal, LabelPrintDialog, ProductCatalogGrid, ProductFiltersPanel, ProductFormModal, ProductRestockModal, ProductSelectionBar } from '@/components'
+import { ActiveFilterChips, AppAlert, AppButton, AppModal, LabelPrintDialog, ProductCatalogGrid, ProductFiltersPanel, ProductFormModal, ProductRestockModal, ProductSelectionBar, ProductSheet, QrScannerModal } from '@/components'
 import { VOICE } from '@/config/voice'
 import { useLabelPrinting } from '@/composables/useLabelPrinting'
+import { useProductSheetScan } from '@/composables/useProductSheetScan'
+import { useScanNotice } from '@/composables/useScanNotice'
 import { useProductFilters } from '@/composables/useProductFilters'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
 import { useManageCatalogViewStore } from '@/stores/manageCatalogView.store'
@@ -294,6 +324,43 @@ function openEditModal(product: Product) {
   editingProduct.value = product
   draft.value = null
   isFormModalOpen.value = true
+}
+
+// ── Escanear QR (ficha) ──────────────────────────────────────────────────
+const scanOpen = ref(false)
+const scanNotice = useScanNotice()
+const sheetScan = useProductSheetScan('sheet')
+
+function openScanner() {
+  scanNotice.clear()
+  sheetScan.reset()
+  scanOpen.value = true
+}
+
+async function onScan(text: string) {
+  if (sheetScan.sheetProduct.value) return
+  try {
+    const found = await store.findByScannedText(text)
+    if (!found) scanNotice.unknown()
+    else sheetScan.showSheet(found)
+  } catch (error) {
+    // Sin conexión u otro fallo: el aviso rojo de siempre y el motivo real en un toast.
+    scanNotice.unknown()
+    reportFailure(VOICE.productSheet.loadFailed, error)
+  }
+}
+
+/** Desde la ficha: se cierra el escáner y se abre la edición de ese producto. */
+function editFromSheet(product: Product) {
+  sheetScan.closeSheet()
+  scanOpen.value = false
+  openEditModal(product)
+}
+
+function restockFromSheet(product: Product) {
+  sheetScan.closeSheet()
+  scanOpen.value = false
+  openRestockModal(product)
 }
 
 // ── Crear otro igual ─────────────────────────────────────────────────────
@@ -464,6 +531,7 @@ async function handleReactivate(product: Product) {
   align-items: center;
   justify-content: space-between;
 }
+.product-catalog-view__header-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); justify-content: flex-end; }
 .product-catalog-view__title {
   font-size: var(--font-size-lg);
   font-weight: 700;

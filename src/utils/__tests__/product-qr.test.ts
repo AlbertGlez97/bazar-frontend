@@ -134,3 +134,17 @@ describe('lazy loading', () => {
     expect(source).toMatch(/import\(\s*['"]qrcode['"]\s*\)/)
   })
 })
+
+describe('productIdFromScan', () => {
+  const id = '0190a5f0-7c3e-7000-8000-00000000000a'
+  it('el id solo, o dentro de una URL, sale en minúsculas', async () => {
+    const { productIdFromScan } = await import('../product-qr')
+    expect(productIdFromScan(id.toUpperCase())).toBe(id)
+    expect(productIdFromScan(`https://tienda.example/p/${id}`)).toBe(id)
+  })
+  it('sin id: null', async () => {
+    const { productIdFromScan } = await import('../product-qr')
+    expect(productIdFromScan('hola')).toBeNull()
+    expect(productIdFromScan('')).toBeNull()
+  })
+})

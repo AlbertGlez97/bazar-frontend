@@ -101,3 +101,9 @@ export function productQrFileName(name: string, productId: string): string {
     .replace(/-+$/g, '')
   return `qr-${slug || 'producto'}-${productId.slice(0, 8)}.png`
 }
+
+/** El id de producto dentro de un texto leído (el id solo, o dentro de una URL); `null` si no hay. */
+export function productIdFromScan(text: string): string | null {
+  const found = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.exec(text)
+  return found ? found[0].toLowerCase() : null
+}
