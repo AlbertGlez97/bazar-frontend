@@ -10,4 +10,7 @@ export interface CartLineView {
   /** Existencia local: tope de la cantidad */
   stockAvailable: number
   image: string | null
+  /** Marca y presentación que vio quien vende (ausentes en una línea anterior a esos datos). */
+  brand?: string | null
+  presentation?: string | null
 }

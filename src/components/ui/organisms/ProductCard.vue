@@ -60,9 +60,19 @@
     </div>
 
     <div class="product-card__body">
-      <p class="product-card__name">
-        {{ product.name }}
-      </p>
+      <div class="product-card__text">
+        <p class="product-card__name">
+          {{ product.name }}
+        </p>
+        <!-- "Marca · Presentación": línea tenue; si no cabe se trunca (el título trae el texto completo) -->
+        <p
+          v-if="subtitle"
+          class="product-card__subtitle"
+          :title="subtitle"
+        >
+          {{ subtitle }}
+        </p>
+      </div>
       <p class="product-card__price">
         ${{ minorToDisplay(product.unitPriceMinor) }}
       </p>
@@ -129,6 +139,7 @@
 import { computed } from 'vue'
 import { VOICE } from '@/config/voice'
 import { minorToDisplay } from '@/utils/money'
+import { productSubtitle } from '@/utils/product-label'
 import { canRestock } from '@/utils/product-restock'
 import { isProductAvailable } from '@/utils/product-status'
 import type { Product } from '@/types/product.types'
@@ -184,6 +195,7 @@ defineEmits<{
 }>()
 
 const restockable = computed(() => canRestock(props.product))
+const subtitle = computed(() => productSubtitle(props.product))
 
 // tipo="unica" siempre tiene stock 1 (o 0 si ya se vendió); tipo="cantidad"
 // muestra el número real de existencias. En tamaño grande (venta) solo importa
@@ -238,6 +250,16 @@ const stockBadgeColor = computed(() => (isProductAvailable(props.product) ? 'gre
   gap: var(--spacing-xs, 4px);
 }
 .product-card__name { font-weight: 600; font-size: var(--font-size-sm); color: var(--color-text); margin: 0; overflow-wrap: anywhere; }
+.product-card__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.product-card__subtitle {
+  margin: 0;
+  font-size: var(--font-size-xs, 0.75rem);
+  line-height: 1.3;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .product-card__price { font-size: 1.1rem; font-weight: 700; color: var(--color-primary); margin: 0; }
 /* Grid rows share height; the body absorbs spare space above the price. */
 .product-card:not(.product-card--list) .product-card__body { flex: 1; }
@@ -327,8 +349,8 @@ const stockBadgeColor = computed(() => (isProductAvailable(props.product) ? 'gre
   padding: var(--spacing-sm) 0;
   gap: var(--spacing-md);
 }
+.product-card--list .product-card__text { flex: 1 1 auto; }
 .product-card--list .product-card__name {
-  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

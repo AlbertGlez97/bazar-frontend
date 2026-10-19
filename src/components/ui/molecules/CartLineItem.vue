@@ -19,9 +19,19 @@
       >📦</span>
     </div>
 
-    <p class="cart-line__name">
-      {{ line.name }}
-    </p>
+    <div class="cart-line__text">
+      <p class="cart-line__name">
+        {{ line.name }}
+      </p>
+      <!-- "Marca · Presentación": lo que distingue una talla o un color de otro -->
+      <p
+        v-if="subtitle"
+        class="cart-line__subtitle"
+        :title="subtitle"
+      >
+        {{ subtitle }}
+      </p>
+    </div>
 
     <div class="cart-line__controls">
       <!-- Una pieza única siempre es 1: un stepper solo confundiría -->
@@ -36,7 +46,7 @@
         size="md"
         :quantity="line.quantity"
         :max="line.stockAvailable"
-        :product-name="line.name"
+        :product-name="accessibleName"
         :disabled="disabled"
         @increment="emit('increment')"
         @decrement="emit('decrement')"
@@ -47,7 +57,7 @@
         type="button"
         class="cart-line__remove"
         data-action="remove"
-        :aria-label="`Quitar ${line.name}`"
+        :aria-label="`Quitar ${accessibleName}`"
         :disabled="disabled"
         @click="emit('remove')"
       >
@@ -85,6 +95,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { minorToDisplay, multiplyMinor } from '@/utils/money'
+import { productSubtitle } from '@/utils/product-label'
 import type { CartLineView } from '@/types/cart.types'
 import QuantityStepper from '../molecules/QuantityStepper.vue'
 
@@ -93,6 +104,10 @@ const props = defineProps<{
   /** Bloquea los controles (mientras se cobra) */
   disabled?: boolean
 }>()
+
+const subtitle = computed(() => productSubtitle(props.line))
+/** Para lectores de pantalla: dos líneas del mismo producto (XL y M) se distinguen por su talla. */
+const accessibleName = computed(() => (subtitle.value ? `${props.line.name}, ${subtitle.value}` : props.line.name))
 
 /** Subtotal exacto de la línea (precio × cantidad) con la aritmética central de dinero. */
 const subtotalMinor = computed(() => multiplyMinor(props.line.unitPriceMinor, props.line.quantity))
@@ -135,8 +150,17 @@ const emit = defineEmits<{
 .cart-line__img { width: 100%; height: 100%; object-fit: cover; }
 .cart-line__placeholder { font-size: 1.5rem; opacity: 0.5; }
 
+.cart-line__text { grid-area: name; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cart-line__subtitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.3;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .cart-line__name {
-  grid-area: name;
   min-width: 0;
   margin: 0;
   display: -webkit-box;

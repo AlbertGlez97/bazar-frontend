@@ -30,6 +30,7 @@ describe('cart.store — agregar', () => {
       {
         productId: 'p-1', name: 'Taza de barro', unitPriceMinor: 1999, quantity: 1,
         tipo: 'cantidad', stockAvailable: 10, image: '/uploads/products/x.png',
+        brand: null, presentation: null,
       },
     ])
   })

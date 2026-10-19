@@ -14,7 +14,7 @@ import type { Product, ProductType } from '@/types/product.types'
  */
 
 /** Lo mínimo que el carrito necesita saber de un producto del catálogo. */
-export type CartProductInput = Pick<Product, 'id' | 'name' | 'unitPriceMinor' | 'tipo' | 'stock' | 'image'>
+export type CartProductInput = Pick<Product, 'id' | 'name' | 'unitPriceMinor' | 'tipo' | 'stock' | 'image' | 'brand' | 'presentation'>
 
 /** Snapshot de lo que vio quien vende al agregar el producto. */
 export interface CartLine {
@@ -26,6 +26,9 @@ export interface CartLine {
   /** Existencia local al agregarlo: tope de `quantity` (una `unica` nunca pasa de 1). */
   stockAvailable: number
   image: string | null
+  /** Para distinguir en pantalla una talla o un color de otro; nunca viajan en la venta. */
+  brand: string | null
+  presentation: string | null
 }
 
 export type CartRefusal =
@@ -164,6 +167,8 @@ export const useCartStore = defineStore('cart', () => {
       tipo: product.tipo,
       stockAvailable: product.stock,
       image: product.image,
+      brand: product.brand ?? null,
+      presentation: product.presentation ?? null,
     })
     return OK
   }
