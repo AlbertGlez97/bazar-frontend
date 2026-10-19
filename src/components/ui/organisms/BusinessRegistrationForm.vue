@@ -124,7 +124,7 @@
         inputmode="tel"
         label="Número de WhatsApp"
         placeholder="Ej. 55 1234 5678"
-        autocomplete="tel-national"
+        autocomplete="tel"
         aria-describedby="registro-telefono-hint"
         :disabled="loading"
         :error="errors.telefono"
@@ -147,8 +147,10 @@
       :error="errors.recomendadoPor"
     />
 
-    <!-- Campo trampa: las personas no lo ven ni lo alcanzan con el teclado; los bots lo
-         llenan. Su nombre no dice para qué sirve. -->
+    <!-- Campo trampa: las personas no lo ven ni lo alcanzan con el teclado ni lo anuncian los
+         lectores de pantalla (aria-hidden en el contenedor); los bots lo llenan. Su nombre no
+         dice para qué sirve. Lleva id y etiqueta propios (dentro del mismo contenedor oculto)
+         para que cualquier revisor de accesibilidad vea un campo con nombre. -->
     <div
       class="business-registration-form__trap"
       aria-hidden="true"
@@ -332,7 +334,7 @@ const [aceptaLegal, aceptaLegalAttrs] = defineField('aceptaLegal', checkboxConfi
 
 const queVendeLength = computed(() => (queVende.value ?? '').length)
 
-// Campo trampa (no pasa por el esquema: se manda tal cual)
+// Campo trampa (no pasa por el esquema: se manda tal cual). El id es único por instancia.
 const trap = ref('')
 
 // ── Verificación de seguridad (Turnstile) ──

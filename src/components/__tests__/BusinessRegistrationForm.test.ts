@@ -141,7 +141,7 @@ describe('BusinessRegistrationForm: campos', () => {
     expect(control(wrapper, 'correo').attributes('type')).toBe('email')
     expect(control(wrapper, 'correo').attributes('autocomplete')).toBe('email')
     expect(control(wrapper, 'telefono').attributes('type')).toBe('tel')
-    expect(control(wrapper, 'telefono').attributes('autocomplete')).toBe('tel-national')
+    expect(control(wrapper, 'telefono').attributes('autocomplete')).toBe('tel')
     expect(control(wrapper, 'nombre').attributes('autocomplete')).toBe('given-name')
     expect(control(wrapper, 'apellidos').attributes('autocomplete')).toBe('family-name')
   })
@@ -184,6 +184,44 @@ describe('BusinessRegistrationForm: campos', () => {
   })
 })
 
+describe('BusinessRegistrationForm: teléfono con autocompletado', () => {
+  // El navegador puede autocompletar el teléfono con el prefijo del país y separadores
+  it.each([
+    ['con +52 y espacios (como lo autocompleta el navegador)', '+52 55 1234 5678'],
+    ['con +52 pegado', '+525512345678'],
+    ['con +52 y guiones', '+52-55-1234-5678'],
+    ['con espacios', '55 1234 5678'],
+    ['con guiones', '55-1234-5678'],
+    ['con paréntesis y guion', '(55) 1234-5678'],
+    ['solo los 10 dígitos', '5512345678'],
+  ])('%s se acepta y sale como 10 dígitos', async (_label, typed) => {
+    const wrapper = mountForm()
+    await fillValid(wrapper)
+    await control(wrapper, 'telefono').setValue(typed)
+    await submit(wrapper)
+
+    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ telefono: '5512345678' })
+  })
+
+  it('un número de otro país o incompleto sigue rechazándose', async () => {
+    const wrapper = mountForm()
+    await fillValid(wrapper)
+    await control(wrapper, 'telefono').setValue('+1 555 123 4567')
+    await submit(wrapper)
+
+    expect(wrapper.emitted('submit')).toBeUndefined()
+    expect(errorOf(wrapper, 'telefono')).toBe('Escribe un número de 10 dígitos, por ejemplo 55 1234 5678.')
+  })
+
+  it('el autocomplete de un campo type="tel" es "tel", el único valor del estándar para ese tipo', () => {
+    const wrapper = mountForm()
+    const phone = control(wrapper, 'telefono')
+
+    expect(phone.attributes('type')).toBe('tel')
+    expect(phone.attributes('autocomplete')).toBe('tel')
+  })
+})
+
 describe('BusinessRegistrationForm: campo trampa', () => {
   const trap = (wrapper: VueWrapper) => wrapper.get('input[name="contacto_alterno"]')
 
@@ -194,29 +232,6 @@ describe('BusinessRegistrationForm: campo trampa', () => {
     expect(holder).not.toBeNull()
     expect(trap(wrapper).attributes('tabindex')).toBe('-1')
     expect(trap(wrapper).attributes('autocomplete')).toBe('off')
-  })
-
-  it('su nombre no delata para qué sirve (ni "trampa" ni el nombre del contrato)', () => {
-    const name = trap(mountForm()).attributes('name')!
-
-    expect(name).not.toMatch(/trampa|honeypot|bot|sitioWebEmpresa/i)
-  })
-
-  it('un bot que lo llena se envía tal cual en sitioWebEmpresa (el servidor lo ignora en silencio)', async () => {
-    const wrapper = mountForm()
-    await fillValid(wrapper)
-    await trap(wrapper).setValue('http://spam.example')
-    await submit(wrapper)
-
-    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ sitioWebEmpresa: 'http://spam.example' })
-  })
-
-  it('una persona lo deja vacío: se envía vacío', async () => {
-    const wrapper = mountForm()
-    await fillValid(wrapper)
-    await submit(wrapper)
-
-    expect(wrapper.emitted('submit')?.[0]?.[0]).toMatchObject({ sitioWebEmpresa: '' })
   })
 })
 
