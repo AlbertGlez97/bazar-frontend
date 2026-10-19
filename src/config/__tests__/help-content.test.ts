@@ -269,11 +269,11 @@ const ORIGINAL_IDS = [
 ]
 
 describe('help content v2', () => {
-  it('keeps all 40 original articles and adds only the contributions and data articles', () => {
+  it('keeps all 40 original articles and adds only the contributions, data and product-sheet articles', () => {
     expect(ORIGINAL_IDS).toHaveLength(40)
     expect(HELP_ARTICLES.map((article) => article.id)).toEqual(expect.arrayContaining(ORIGINAL_IDS))
-    expect(HELP_ARTICLES).toHaveLength(42)
-    expect(HELP_ARTICLES.filter((article) => !ORIGINAL_IDS.includes(article.id)).map((article) => article.id).sort()).toEqual(['aportaciones', 'tus-datos'])
+    expect(HELP_ARTICLES).toHaveLength(45)
+    expect(HELP_ARTICLES.filter((article) => !ORIGINAL_IDS.includes(article.id)).map((article) => article.id).sort()).toEqual(['aportaciones', 'crear-otro-igual', 'marca-presentacion-descripcion', 'tus-datos', 'ver-ficha-qr'])
   })
   it('gives every article a topic', () => {
     for (const article of HELP_ARTICLES) expect(article.topic, article.id).toMatch(/^[a-z-]+(\.[a-z-]+)?$/)

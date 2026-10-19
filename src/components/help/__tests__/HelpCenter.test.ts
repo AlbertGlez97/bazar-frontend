@@ -442,7 +442,7 @@ describe('Help Center: content and audience', () => {
       ids.forEach((id) => seen.add(id))
     }
     expect([...seen].sort()).toEqual(HELP_ARTICLES.map((article) => article.id).sort())
-    expect(HELP_ARTICLES).toHaveLength(42)
+    expect(HELP_ARTICLES).toHaveLength(45)
     wrapper.unmount()
   })
 

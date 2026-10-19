@@ -98,6 +98,48 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['Cuando se te acabe un producto por cantidad, súmale lo que compraste con Reponer en su tarjeta. Las piezas únicas no se reponen: si vuelve una, créala como producto nuevo.'],
   },
   {
+    id: 'marca-presentacion-descripcion', topic: 'productos.catalogo', title: 'Marca, presentación y descripción', category: 'Productos', audience: 'socio',
+    keywords: ['marca', 'presentación', 'talla', 'color', 'descripción', 'sugerencias'],
+    intro: 'Tres datos opcionales ayudan a distinguir productos parecidos. Aparecen en la tarjeta, el carrito y la ficha.',
+    steps: [
+      'En Nuevo producto o en Editar, escribe la Marca. Mientras escribes, la app sugiere marcas que ya usaste.',
+      'En Presentación pon la talla, el tamaño o la capacidad. Ejemplos: XL, 24 oz.',
+      'Si importa el color, escríbelo en la misma Presentación. Ejemplo: Azul · 28.',
+      'En Descripción breve escribe una frase corta que ayude a reconocerlo. El contador te dice cuánto te queda.',
+    ],
+    tips: [
+      'Cada combinación que quieras controlar es un producto aparte, con su propia existencia y su propio QR.',
+      'Para buscar, escribe la marca o la presentación en el buscador. También puedes filtrar por Marca en Filtros.',
+    ],
+  },
+  {
+    id: 'crear-otro-igual', topic: 'productos.catalogo', title: 'Crear otro producto igual', category: 'Productos', audience: 'socio',
+    keywords: ['copiar', 'duplicar', 'talla', 'color', 'igual', 'otro'],
+    intro: 'Sirve para dar de alta otra talla o color del mismo producto sin escribir todo otra vez.',
+    steps: [
+      'En la tarjeta o la fila del producto toca Crear otro igual. También está dentro de Editar.',
+      'Se abre un producto nuevo con el nombre, la marca, el precio, el costo y la foto copiados.',
+      'La Presentación y la Existencia inicial quedan vacías. Escríbelas y revisa lo demás.',
+      'Toca Crear producto. Si vas a crear varios, usa Guardar y crear otro igual y repite.',
+    ],
+    tips: ['Si la foto no se puede copiar, el producto se crea igual y la app te avisa. Puedes subir otra foto.'],
+  },
+  {
+    id: 'ver-ficha-qr', topic: 'productos.catalogo', title: 'Ver la ficha de un producto con el QR', category: 'Productos', audience: 'all',
+    keywords: ['ficha', 'qr', 'escanear', 'foto', 'confirmar', 'cámara'],
+    intro: 'La ficha muestra la foto, la presentación, la descripción, el precio y la existencia. Sirve para confirmar que es el producto correcto.',
+    steps: [
+      'En Venta toca Escanear. Elige Ver ficha en lugar de Agregar a la venta.',
+      'Apunta la cámara al QR del producto. La ficha se abre encima del escáner y no agrega nada.',
+      'Si es el producto que pidieron, toca Agregar a la venta. Si no, toca Escanear otro.',
+      'En Productos, los socios tienen el botón Escanear QR. La ficha ahí ofrece Editar y Reponer.',
+    ],
+    tips: [
+      'El escáner vuelve a Agregar a la venta cada vez que lo abres.',
+      'Los colaboradores ven la ficha sin el costo de compra.',
+    ],
+  },
+  {
     id: 'editar-producto', topic: 'productos.catalogo', title: 'Editar, desactivar y reactivar productos', category: 'Productos', audience: 'socio',
     keywords: ['editar', 'desactivar', 'reactivar', 'inactivos', 'existencia', 'precio'],
     intro: 'Editar corrige los datos permitidos del catálogo. Desactivar retira un producto de la oferta sin tratarlo como una venta.',
@@ -724,6 +766,9 @@ export const HELP_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
   'acuerdos-efecto-legal': ['doc/finance-distribution-agreements.md', 'src/views/finance/AgreementDetailView.vue', 'src/services/agreement-pdf.ts'],
   'crear-producto': ['src/components/ui/organisms/ProductForm.vue', 'src/views/products/ProductCatalogView.vue'],
   'editar-producto': ['src/components/ui/organisms/ProductForm.vue', 'src/views/products/ProductCatalogView.vue'],
+  'marca-presentacion-descripcion': ['src/components/ui/organisms/ProductForm.vue', 'src/components/ui/molecules/AppSuggestInput.vue'],
+  'crear-otro-igual': ['src/utils/product-duplicate.ts', 'src/components/ui/organisms/ProductForm.vue', 'src/views/products/ProductCatalogView.vue'],
+  'ver-ficha-qr': ['src/components/ui/organisms/ProductSheet.vue', 'src/components/ui/organisms/QrScannerModal.vue', 'src/views/sales/SaleView.vue'],
   fotos: ['src/components/ui/organisms/ProductForm.vue'],
   'imprimir-qr': ['src/views/products/CodigosQrView.vue', 'src/components/ui/organisms/LabelPrintDialog.vue'],
   'crear-deuda': ['src/components/ui/organisms/RegistrarDeudaModal.vue', 'src/views/sales/SaleView.vue'],
