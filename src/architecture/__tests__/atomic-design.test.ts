@@ -19,6 +19,8 @@ const completeSections = [
   'ProductFiltersPanel',
   // Reponer existencia: formulario completo y su modal.
   'ProductRestockForm', 'ProductRestockModal',
+  // Ficha de producto (al escanear su QR).
+  'ProductSheet',
 ]
 
 function imports(source: string): string[] {

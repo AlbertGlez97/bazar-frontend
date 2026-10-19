@@ -290,6 +290,18 @@ export const VOICE = {
     descriptionLabel: 'Descripción breve (opcional)',
     descriptionHint: 'Una frase corta que ayude a reconocerlo.',
   },
+  /** Ficha de un producto (al escanear su QR). */
+  productSheet: {
+    title: 'Ficha del producto',
+    add: 'Agregar a la venta',
+    scanAnother: 'Escanear otro',
+    edit: 'Editar',
+    available: 'Disponible',
+    soldOut: 'Agotado',
+    inStock: (stock: number) => `${stock} en existencia`,
+    cost: (amount: string) => `Costo de compra: $${amount}`,
+    noCost: 'Sin costo registrado',
+  },
   /** "Crear otro igual": dar de alta otro producto a partir de uno (otra talla, otro color). */
   productDuplicate: {
     action: 'Crear otro igual',

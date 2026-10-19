@@ -120,6 +120,7 @@ export { default as ProductCatalogGrid } from './ui/organisms/ProductCatalogGrid
 export { default as ProductFiltersPanel } from './ui/organisms/ProductFiltersPanel.vue'
 export { default as ProductRestockForm } from './ui/organisms/ProductRestockForm.vue'
 export { default as ProductRestockModal } from './ui/organisms/ProductRestockModal.vue'
+export { default as ProductSheet } from './ui/organisms/ProductSheet.vue'
 export { default as ProductFormModal   } from './ui/organisms/ProductFormModal.vue'
 export { default as LabelPrintDialog   } from './ui/organisms/LabelPrintDialog.vue'
 export { default as LabelPrintList     } from './ui/organisms/LabelPrintList.vue'
