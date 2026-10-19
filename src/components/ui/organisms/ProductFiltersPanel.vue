@@ -85,6 +85,22 @@
       />
     </fieldset>
 
+    <!-- Marca: texto (exacto, sin distinguir mayúsculas). Se aplica al terminar de escribir
+         (change: salir del campo, Enter o elegir una sugerencia), no en cada letra. -->
+    <fieldset class="product-filters-panel__group">
+      <legend class="product-filters-panel__legend">
+        {{ labels.groups.marca }}
+      </legend>
+      <AppSuggestInput
+        v-model="brandText"
+        :label="labels.brandLabel"
+        :hint="labels.brandHint"
+        :suggestions="brandSuggestions"
+        :maxlength="PRODUCT_TEXT_LIMITS.brand"
+        @change="applyBrand"
+      />
+    </fieldset>
+
     <template #footer>
       <AppButton
         variant="ghost"
@@ -99,10 +115,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { PRODUCT_TEXT_LIMITS } from '@/config/catalog'
 import { VOICE } from '@/config/voice'
 import type { ProductFilters, ProductTipoFilter } from '@/types/product-filters.types'
 import { countActiveFilters, emptyProductFilters } from '@/utils/product-filters'
+import { collapseSpaces } from '@/utils/short-text'
+import AppSuggestInput from '../molecules/AppSuggestInput.vue'
 import AppBadge from '../atoms/AppBadge.vue'
 import AppButton from '../atoms/AppButton.vue'
 import AppDropdownPanel from '../molecules/AppDropdownPanel.vue'
@@ -112,7 +131,9 @@ const props = withDefaults(defineProps<{
   filters: ProductFilters
   /** Ofrece "Mostrar inactivos" (solo socios). */
   showInactive?: boolean
-}>(), { showInactive: false })
+  /** Marcas ya usadas (solo las tienen los socios); sin ellas el campo es de texto libre. */
+  brandSuggestions?: string[]
+}>(), { showInactive: false, brandSuggestions: () => [] })
 
 const emit = defineEmits<{ 'update:filters': [filters: ProductFilters] }>()
 
@@ -130,6 +151,16 @@ function set(key: 'pocaExistencia' | 'agotados' | 'inactivos' | 'sinCosto', valu
 /** Única y Por cantidad son excluyentes: encender una reemplaza a la otra; apagar la activa deja el tipo sin filtrar. */
 function setTipo(tipo: ProductTipoFilter, value: boolean) {
   emit('update:filters', { ...props.filters, tipo: value ? tipo : undefined })
+}
+
+// Lo que se está escribiendo en el campo Marca; el filtro real cambia al confirmar.
+const brandText = ref(props.filters.marca ?? '')
+watch(() => props.filters.marca, (marca) => { brandText.value = marca ?? '' })
+
+function applyBrand() {
+  const marca = collapseSpaces(brandText.value) || undefined
+  if (marca === props.filters.marca) return
+  emit('update:filters', { ...props.filters, marca })
 }
 
 function clear() {

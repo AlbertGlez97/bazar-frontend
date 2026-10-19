@@ -89,6 +89,7 @@
         <ProductFiltersPanel
           :filters="filters"
           :show-inactive="isSocio"
+          :brand-suggestions="suggestionsBrands"
           @update:filters="setFilters"
         />
       </template>

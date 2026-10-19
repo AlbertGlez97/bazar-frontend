@@ -76,11 +76,11 @@ describe('ProductFiltersPanel', () => {
   })
 
   describe('contenido del panel', () => {
-    it('agrupa las filas: Existencia, Estado, Tipo y Costo', async () => {
+    it('agrupa las filas: Existencia, Estado, Tipo, Costo y Marca', async () => {
       const wrapper = await open(mountPanel())
 
       const groups = wrapper.findAll('fieldset')
-      expect(groups.map((g) => g.get('legend').text())).toEqual(['Existencia', 'Estado', 'Tipo', 'Costo'])
+      expect(groups.map((g) => g.get('legend').text())).toEqual(['Existencia', 'Estado', 'Tipo', 'Costo', 'Marca'])
       expect(groups[0]!.text()).toContain('Poca existencia')
       expect(groups[0]!.text()).toContain('Agotados')
       expect(groups[1]!.text()).toContain('Mostrar inactivos')
@@ -94,7 +94,7 @@ describe('ProductFiltersPanel', () => {
       const wrapper = await open(mountPanel({}, { showInactive: false }))
 
       expect(wrapper.text()).not.toContain('Mostrar inactivos')
-      expect(wrapper.findAll('legend').map((l) => l.text())).toEqual(['Existencia', 'Tipo', 'Costo'])
+      expect(wrapper.findAll('legend').map((l) => l.text())).toEqual(['Existencia', 'Tipo', 'Costo', 'Marca'])
       wrapper.unmount()
     })
 
