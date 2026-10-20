@@ -434,6 +434,9 @@
       :error="agreements.saveError"
       :pending="agreements.pendingCreate"
       :created="agreements.created"
+      :commitment="agreements.commitment"
+      :commitment-loading="agreements.commitmentLoading"
+      :commitment-error="agreements.commitmentError"
       :pdf-busy="agreements.pdfLoading"
       :pdf-error="agreements.pdfError"
       :pdf-allowed="agreementAccess && online && !agreements.pendingCreate && !agreements.pendingReversal"
@@ -601,6 +604,10 @@ function openAgreement() {
     ? { id: target.id, folio: target.folio } : null
   agreements.created = null
   agreements.clearMessages()
+  // Aviso de lo disponible / comprometido / libre de ESTE período; el servidor revisa de nuevo al crear.
+  const period = confirmationRequest.value
+  if (period) void agreements.loadCommitment(period.from, period.to)
+  else agreements.clearCommitment()
   agreementOpen.value = true
 }
 async function createAgreement(fields: AgreementFields) {

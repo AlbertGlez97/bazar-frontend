@@ -3,9 +3,9 @@ import { asObject, isInstant, isUuid, sameInstant } from './finance-shared'
 import { currentQueueOrigin } from './queue-origin'
 import { validDistributionSimulation } from './finance-distribution.service'
 import { isValidDateKey } from '@/utils/business-time'
-import { FinanceAgreementContractError, isAgreementId, normalizeAgreementFields, agreementReason } from '@/utils/finance-agreements'
+import { FinanceAgreementContractError, isAgreementId, normalizeAgreementFields, agreementReason, validCommitment } from '@/utils/finance-agreements'
 import type { FinanceOrigin } from './contributions-records'
-import type { AgreementFilter, AgreementPage, AgreementReversalReceipt, CreateAgreementPayload,
+import type { AgreementCommitment, AgreementFilter, AgreementPage, AgreementReversalReceipt, CreateAgreementPayload,
   DistributionAgreement, ReverseAgreementPayload } from '@/types/finance-agreement.types'
 
 type Rec = Record<string, unknown>
@@ -120,6 +120,13 @@ export const FinanceAgreementsService = {
     }
     const { data } = await api.get<unknown>(endpoint, { ...config(origin), params })
     if (!validAgreementPage(data)) throw new FinanceAgreementContractError()
+    return data
+  },
+  /** Disponible / comprometido / libre de un período exacto. Solo es un aviso: al crear, el servidor revisa de nuevo. */
+  async commitment(origin: FinanceOrigin, range: { from: string; to: string }): Promise<AgreementCommitment> {
+    if (!period(range.from, range.to)) throw new Error('Invalid commitment period')
+    const { data } = await api.get<unknown>(endpoint + '/commitment', { ...config(origin), params: { from: range.from, to: range.to } })
+    if (!validCommitment(data) || data.from !== range.from || data.to !== range.to) throw new FinanceAgreementContractError()
     return data
   },
   async get(origin: FinanceOrigin, id: string): Promise<DistributionAgreement> {

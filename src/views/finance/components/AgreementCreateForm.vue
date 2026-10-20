@@ -109,6 +109,21 @@
       >
         <p>Actualiza los datos y calcula una nueva simulación antes de crear el acuerdo.</p>
       </AppAlert>
+      <!-- Lo disponible del período, lo que otros acuerdos vigentes ya reparten y lo que queda libre -->
+      <CommitmentSummary
+        :commitment="shownCommitment"
+        :loading="commitmentLoading"
+        :error="commitmentError"
+      />
+      <AppAlert
+        v-if="commitmentBlock"
+        type="warning"
+        title="No hay suficiente disponible libre"
+        role="alert"
+        data-test="commitment-block"
+      >
+        <p>{{ commitmentBlock }}</p>
+      </AppAlert>
       <AppInput
         id="agreement-title"
         v-model="title"
@@ -195,7 +210,7 @@
           v-else
           type="submit"
           :loading="busy"
-          :disabled="!eligible || busy || !title.trim() || title.trim().length > 120 || note.trim().length > 1000"
+          :disabled="!eligible || busy || !title.trim() || title.trim().length > 120 || note.trim().length > 1000 || !!commitmentBlock"
           data-test="confirm-agreement"
         >
           Crear acuerdo de reparto
@@ -216,13 +231,13 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { AppAlert, AppButton, AppInput, AppModal, AppTextarea } from '@/components'
-import { AGREEMENT_NOTICE, formatAgreementInstant, agreementWarningText, normalizeAgreementFields, agreementErrorMessage } from '@/utils/finance-agreements'
+import { AppAlert, AppButton, AppInput, AppModal, AppTextarea, CommitmentSummary } from '@/components'
+import { AGREEMENT_NOTICE, formatAgreementInstant, agreementWarningText, normalizeAgreementFields, agreementErrorMessage, commitmentNotice } from '@/utils/finance-agreements'
 import { bpsToPercentText } from '@/utils/finance-distribution'
 import { formatReservePeriod } from '@/utils/finance-reserves'
 import { formatMinorMoney } from '@/utils/money'
 import type { DistributionSimulation, DistributionSimulationRequest } from '@/types/finance-distribution.types'
-import type { AgreementFields, CreateAgreementPayload, DistributionAgreement } from '@/types/finance-agreement.types'
+import type { AgreementCommitment, AgreementFields, CreateAgreementPayload, DistributionAgreement } from '@/types/finance-agreement.types'
 
 const props = defineProps<{
   modelValue: boolean
@@ -238,11 +253,25 @@ const props = defineProps<{
   pdfError?: string
   replacement?: { id: string; folio: string } | null
   created: DistributionAgreement | null
+  /** Disponible / comprometido / libre del período; solo un aviso, el servidor revisa de nuevo al crear. */
+  commitment?: AgreementCommitment | null
+  commitmentLoading?: boolean
+  commitmentError?: string
 }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; create: [fields: AgreementFields]; retry: []; pdf: [] }>()
 const title = ref(''), note = ref(''), formError = ref('')
 const errorBox = ref<HTMLElement | null>(null), successHeading = ref<HTMLElement | null>(null)
 const reviewRequest = computed(() => props.pending ?? props.request)
+// Solo vale la cifra del mismo período que se va a guardar; una de otro período no se usa.
+const shownCommitment = computed(() => {
+  const value = props.commitment, target = reviewRequest.value
+  return value && target && value.from === target.from && value.to === target.to ? value : null
+})
+// Repetir un intento ya enviado no es un acuerdo nuevo: el aviso solo frena una creación nueva.
+const commitmentBlock = computed(() => {
+  if (props.pending || !shownCommitment.value || !props.request) return ''
+  return commitmentNotice(shownCommitment.value, props.request.requestedAmountMinor).message
+})
 const reviewSimulation = computed(() => props.simulation && (!props.pending || props.simulation.simulationFingerprint === props.pending.simulationFingerprint) ? props.simulation : null)
 watch(() => props.modelValue, (open) => {
   if (!open) return
@@ -256,7 +285,7 @@ function close(open: boolean) { if (!props.busy && !props.pdfBusy) emit('update:
 function generatePdf() { if (props.created && props.pdfAllowed && !props.pdfBusy) emit('pdf') }
 function retry() { if (props.pending && props.retryAllowed && !props.busy) emit('retry') }
 async function submit() {
-  if (!props.eligible || props.busy || props.pending || !props.request || !props.simulation) return
+  if (!props.eligible || props.busy || props.pending || !props.request || !props.simulation || commitmentBlock.value) return
   try {
     const fields = normalizeAgreementFields({ ...props.request, title: title.value, note: note.value,
       simulationFingerprint: props.simulation.simulationFingerprint,

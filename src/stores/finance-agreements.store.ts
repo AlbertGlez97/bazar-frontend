@@ -9,7 +9,7 @@ import { useSessionStore } from './session.store'
 import { agreementErrorCode, agreementErrorMessage, agreementReason, isSimulationChanged, isSimulationFingerprint,
   isUncertainAgreementFailure, normalizeAgreementFields } from '@/utils/finance-agreements'
 import type { FinanceOrigin } from '@/services/contributions-records'
-import type { AgreementFields, AgreementFilter, AgreementListItem, AgreementReversalReceipt,
+import type { AgreementCommitment, AgreementFields, AgreementFilter, AgreementListItem, AgreementReversalReceipt,
   CreateAgreementPayload, DistributionAgreement, ReverseAgreementPayload } from '@/types/finance-agreement.types'
 
 interface CreateAttempt { origin: FinanceOrigin; fields: AgreementFields; payload: CreateAgreementPayload }
@@ -35,13 +35,15 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
   const alreadyVoided = ref(false)
   const pdfLoading = ref(false), pdfError = ref('')
   const simulationChanged = ref(false)
+  const commitment = ref<AgreementCommitment | null>(null)
+  const commitmentLoading = ref(false), commitmentError = ref('')
   const createAttempt = ref<CreateAttempt | null>(null)
   const reverseAttempt = ref<ReverseAttempt | null>(null)
   const pendingCreate = computed(() => createAttempt.value ? copy(createAttempt.value.payload) : null)
   const pendingReversal = computed(() => reverseAttempt.value ? {
     agreementId: reverseAttempt.value.agreementId, payload: copy(reverseAttempt.value.payload),
   } : null)
-  let generation = 0, listRevision = 0, detailRevision = 0
+  let generation = 0, listRevision = 0, detailRevision = 0, commitmentRevision = 0
   let rejectedFingerprint = ''
 
   function origin(): FinanceOrigin | null {
@@ -255,6 +257,25 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
       return false
     } finally { if (current(run, selected)) pdfLoading.value = false }
   }
+  /** Disponible / comprometido / libre del período, solo como aviso al crear un acuerdo; el servidor revisa de nuevo al crear. */
+  async function loadCommitment(from: string, to: string): Promise<void> {
+    const revision = ++commitmentRevision, run = generation, selected = origin()
+    commitment.value = null
+    commitmentError.value = ''
+    commitmentLoading.value = false
+    if (!selected || !online()) { commitmentError.value = selected ? offlineMessage : accessMessage; return }
+    commitmentLoading.value = true
+    try {
+      const value = await FinanceAgreementsService.commitment(selected, { from, to })
+      if (current(run, selected) && revision === commitmentRevision) commitment.value = value
+    } catch {
+      if (current(run, selected) && revision === commitmentRevision)
+        commitmentError.value = 'No pudimos consultar cuánto está comprometido. El servidor lo revisará de todos modos al crear el acuerdo.'
+    } finally {
+      if (current(run, selected) && revision === commitmentRevision) commitmentLoading.value = false
+    }
+  }
+  function clearCommitment() { commitmentRevision++; commitment.value = null; commitmentError.value = ''; commitmentLoading.value = false }
   /** Call only after the server successfully recalculated a simulation; never discard an uncertain write. */
   function acceptSimulation(fingerprint: string) {
     if (!isSimulationFingerprint(fingerprint) || createAttempt.value || saving.value) return
@@ -271,6 +292,7 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
     loading.value = false; loadingMore.value = false; detailLoading.value = false
     saving.value = false; reversing.value = false
     simulationChanged.value = false; rejectedFingerprint = ''
+    clearCommitment()
     clearMessages()
   }
   // Store-owned synchronous invalidation also applies when no agreement view is mounted.
@@ -279,5 +301,6 @@ export const useFinanceAgreementsStore = defineStore('finance-agreements', () =>
     () => session.member?.role, () => session.member?.active], reset, { flush: 'sync' })
   return { items, nextCursor, shown, loading, loadingMore, error, detail, detailLoading, detailError,
     detailCurrent, alreadyVoided, pdfLoading, pdfError, exportPdf, saving, saveError, created, reversing, reverseError, reversed, simulationChanged,
+    commitment, commitmentLoading, commitmentError, loadCommitment, clearCommitment,
     pendingCreate, pendingReversal, acceptSimulation, load, loadMore, loadDetail, create, retryCreate, reverse, clearMessages, reset }
 })

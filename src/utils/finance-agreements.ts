@@ -1,6 +1,7 @@
 import { isValidDateKey } from './business-time'
 import { simulationErrorMessage } from './finance-distribution'
-import type { AgreementFields } from '@/types/finance-agreement.types'
+import { formatMinorMoney } from './money'
+import type { AgreementCommitment, AgreementFields } from '@/types/finance-agreement.types'
 
 export const isAgreementId = (value: unknown): value is string => typeof value === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -59,6 +60,42 @@ export function isUncertainAgreementFailure(error: unknown): boolean {
   return error instanceof FinanceAgreementContractError || status === null || status >= 500 || status === 408 || status === 429
 }
 
+const MAX_MINOR = 2147483647
+const wholeNumber = (v: unknown, min: number, max: number): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v >= min && v <= max
+
+/** Forma y coherencia de la respuesta del servidor; el navegador no recalcula nada. */
+export function validCommitment(value: unknown): value is AgreementCommitment {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const r = value as Record<string, unknown>
+  if (typeof r.from !== 'string' || typeof r.to !== 'string' || !isValidDateKey(r.from) || !isValidDateKey(r.to) || r.from >= r.to) return false
+  if (!wholeNumber(r.availableMinor, -MAX_MINOR * 4, MAX_MINOR * 4) || !wholeNumber(r.committedMinor, 0, MAX_MINOR * 4)) return false
+  if (!wholeNumber(r.freeMinor, 0, MAX_MINOR) || !wholeNumber(r.agreementCount, 0, 1_000_000)) return false
+  return r.freeMinor === Math.max(0, r.availableMinor - r.committedMinor)
+}
+
+export interface CommitmentNotice { fits: boolean; missingMinor: number; message: string }
+
+/** ¿Cabe lo que se pide en lo que queda libre? Si no, el texto dice cuánto falta y qué hacer. */
+export function commitmentNotice(commitment: AgreementCommitment, requestedMinor: number): CommitmentNotice {
+  const missingMinor = Math.max(0, requestedMinor - commitment.freeMinor)
+  if (missingMinor === 0) return { fits: true, missingMinor, message: '' }
+  return {
+    fits: false,
+    missingMinor,
+    // Frases cortas, para quien tiene poca experiencia con tecnología.
+    message: `No alcanza. Este acuerdo pide ${formatMinorMoney(requestedMinor)} y solo quedan ${formatMinorMoney(commitment.freeMinor)} libres. `
+      + `Faltan ${formatMinorMoney(missingMinor)}. `
+      + `Hay ${formatMinorMoney(commitment.availableMinor)} disponibles y ${formatMinorMoney(commitment.committedMinor)} ya están comprometidos en otros acuerdos vigentes. `
+      + 'Baja el monto o anula un acuerdo vigente de este período.',
+  }
+}
+
+const EXCEEDS_UNCOMMITTED_FALLBACK = 'No alcanza el disponible del período para este acuerdo. Revisa lo comprometido en otros acuerdos vigentes, baja el monto o anula uno de ellos.'
+function serverMessage(error: unknown): string {
+  const message = (error as { response?: { data?: { message?: unknown } } } | null)?.response?.data?.message
+  return typeof message === 'string' && message.trim() ? message : ''
+}
+
 /** Messages never imply a write was confirmed when its response was lost. */
 export function agreementErrorMessage(error: unknown, basis: AgreementFields['workBasis'] = 'WORK_SHIFTS'): string {
   if (error instanceof AgreementFormError) return error.message
@@ -66,6 +103,8 @@ export function agreementErrorMessage(error: unknown, basis: AgreementFields['wo
     return 'La respuesta del acuerdo tiene un formato inesperado. No pudimos confirmar el resultado; reintenta el mismo intento.'
   if (isSimulationChanged(error)) return 'Los datos cambiaron. Calcula una nueva simulación y confirma sus resultados antes de crear el acuerdo.'
   const code = agreementErrorCode(error)
+  // Este mensaje lo escribe el servidor ya en español, con las cifras del período.
+  if (code === 'FINANCE_AGREEMENT_EXCEEDS_UNCOMMITTED') return serverMessage(error) || EXCEEDS_UNCOMMITTED_FALLBACK
   if (code === 'FINANCE_AGREEMENT_ID_CONFLICT') return 'Ese identificador corresponde a otro intento. Revisa el historial antes de continuar.'
   if (code === 'FINANCE_AGREEMENT_ALREADY_VOIDED') return 'El acuerdo ya fue anulado. Actualiza su detalle.'
   if (code === 'FINANCE_AGREEMENT_REPLACEMENT_INVALID') return 'Solo puedes reemplazar un acuerdo anulado que no tenga reemplazo.'

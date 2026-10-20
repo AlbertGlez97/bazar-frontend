@@ -71,6 +71,18 @@ export interface AgreementListItem extends AgreementReference {
   replacesAgreement: AgreementReference | null
   voidedAt: string | null
 }
+/**
+ * GET /finance/distribution-agreements/commitment: lo disponible de un período, lo que los acuerdos
+ * vigentes de ese mismo período ya reparten y lo que queda libre. Es un aviso: al crear, el servidor revisa de nuevo.
+ */
+export interface AgreementCommitment {
+  from: string
+  to: string
+  availableMinor: number
+  committedMinor: number
+  freeMinor: number
+  agreementCount: number
+}
 export interface AgreementFilter {
   from?: string
   to?: string

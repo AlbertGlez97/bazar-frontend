@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { reactive } from 'vue'
-import { mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
+import { DOMWrapper, mount, flushPromises, RouterLinkStub } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SimulatorView from '../SimulatorView.vue'
@@ -15,8 +15,8 @@ import { useFinanceAgreementsStore } from '@/stores/finance-agreements.store'
 import { agreementFixture } from '@/services/__tests__/finance-agreements.fixture'
 import type { DistributionSimulation } from '@/types/finance-distribution.types'
 
-const mocks = vi.hoisted(() => ({ simulate: vi.fn(), overview: vi.fn(), create: vi.fn(), list: vi.fn(), get: vi.fn(), reverse: vi.fn() }))
-vi.mock('@/services/finance-agreements.service', () => ({ FinanceAgreementsService: { create: mocks.create, list: mocks.list, get: mocks.get, reverse: mocks.reverse } }))
+const mocks = vi.hoisted(() => ({ simulate: vi.fn(), overview: vi.fn(), create: vi.fn(), list: vi.fn(), get: vi.fn(), reverse: vi.fn(), commitment: vi.fn() }))
+vi.mock('@/services/finance-agreements.service', () => ({ FinanceAgreementsService: { create: mocks.create, list: mocks.list, get: mocks.get, reverse: mocks.reverse, commitment: mocks.commitment } }))
 vi.mock('@/services/queue-origin', async (importOriginal) => ({ ...(await importOriginal<object>()), currentQueueOrigin: () => ({ ...access.session.owner, memberId: access.session.memberId, deviceId: access.session.deviceId }) }))
 vi.mock('@/services/finance-distribution.service', () => ({
   FinanceDistributionService: { simulate: mocks.simulate },
@@ -56,6 +56,9 @@ beforeEach(() => {
   mocks.get.mockReset()
   mocks.create.mockReset()
   mocks.create.mockResolvedValue(agreementFixture())
+  mocks.commitment.mockReset()
+  mocks.commitment.mockImplementation(async (_origin: unknown, range: { from: string; to: string }) =>
+    ({ ...range, availableMinor: 800000, committedMinor: 0, freeMinor: 800000, agreementCount: 0 }))
   access.session = freshSession()
   access.mode = { currentMode: 'gestion' }
   access.auth = { token: 'token-a' }
@@ -934,6 +937,65 @@ describe('agreement creation readiness', () => {
   })
 })
 
+
+describe('agreement commitment notice', () => {
+  const openForm = async (w: Wrapper) => {
+    await setAmount(w, '6,000')
+    await calculate(w)
+    await q(w, 'create-agreement').trigger('click')
+    await flushPromises()
+    return w.findComponent(AgreementCreateForm)
+  }
+
+  it('al abrir la confirmación consulta lo comprometido del período de ESA simulación y se lo pasa al formulario', async () => {
+    const w = await mounted(true)
+    const form = await openForm(w)
+
+    expect(mocks.commitment).toHaveBeenCalledTimes(1)
+    expect(mocks.commitment.mock.calls[0][1]).toEqual({ from: form.props('request')!.from, to: form.props('request')!.to })
+    expect(form.props('commitment')).toMatchObject({ availableMinor: 800000, freeMinor: 800000 })
+    expect(document.body.querySelector('.commitment-summary')).not.toBeNull()
+    w.unmount()
+  })
+
+  it('si lo libre no alcanza, el formulario deshabilita crear y explica por qué', async () => {
+    mocks.commitment.mockImplementation(async (_origin: unknown, range: { from: string; to: string }) =>
+      ({ ...range, availableMinor: 800000, committedMinor: 500000, freeMinor: 300000, agreementCount: 1 }))
+    const w = await mounted(true)
+    await openForm(w)
+    await new DOMWrapper(document.body.querySelector('#agreement-title')!).setValue('Octubre')
+
+    expect(document.body.querySelector('[data-test="commitment-block"]')!.textContent).toContain('Faltan $3,000.00.')
+    expect(document.body.querySelector('[data-test="confirm-agreement"]')!.hasAttribute('disabled')).toBe(true)
+    w.unmount()
+  })
+
+  it('si la consulta falla, no estorba: se puede crear y el servidor decide', async () => {
+    mocks.commitment.mockRejectedValue(http(500))
+    const w = await mounted(true)
+    const form = await openForm(w)
+    await new DOMWrapper(document.body.querySelector('#agreement-title')!).setValue('Octubre')
+
+    expect(form.props('commitment')).toBeNull()
+    expect(form.props('commitmentError')).toContain('No pudimos consultar')
+    expect(document.body.querySelector('[data-test="confirm-agreement"]')!.hasAttribute('disabled')).toBe(false)
+    w.unmount()
+  })
+
+  it('si el servidor rechaza por no alcanzar, muestra su mensaje en español y no queda un intento pendiente', async () => {
+    const message = 'No alcanza el disponible del período: hay $8,000.00 disponibles.'
+    mocks.create.mockRejectedValueOnce(http(422, { code: 'FINANCE_AGREEMENT_EXCEEDS_UNCOMMITTED', message }))
+    const w = await mounted()
+    const form = await openForm(w)
+
+    form.vm.$emit('create', { ...sent(), title: 'October agreement', simulationFingerprint: simulationFixture().simulationFingerprint })
+    await flushPromises()
+
+    expect(form.props('error')).toBe(message)
+    expect(form.props('pending')).toBeNull()
+    w.unmount()
+  })
+})
 
 describe('agreement confirmation integration', () => {
   it('closes without a write and only submits reviewed fields after explicit confirmation', async () => {
