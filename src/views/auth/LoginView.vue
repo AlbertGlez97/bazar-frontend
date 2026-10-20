@@ -1,5 +1,8 @@
 <template>
-  <div class="login">
+  <div
+    ref="root"
+    class="login"
+  >
     <!-- Título -->
     <div class="login__header">
       <h2 class="login__title">
@@ -9,6 +12,16 @@
         Entra con el usuario y la contraseña de tu negocio.
       </p>
     </div>
+
+    <!-- Viene de crear la cuenta por invitación: no inicia sesión sola, solo avisa. -->
+    <AppAlert
+      v-if="accountCreated"
+      type="success"
+      role="status"
+      data-test="account-created"
+    >
+      Cuenta creada, ya puedes entrar. Escribe tu contraseña.
+    </AppAlert>
 
     <!-- Alerta de error global (molécula AppAlert) -->
     <AppAlert
@@ -176,18 +189,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, nextTick, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { AppButton, AppInput, AppAlert } from '@/components'
 
 const authStore = useAuthStore()
 const router    = useRouter()
+const route     = useRoute()
+const root      = ref<HTMLElement | null>(null)
+
+// Tras crear la cuenta por invitación llegan ?email=…&created=1: solo se muestra el correo ya
+// escrito y un aviso. Nunca inicia sesión sola y un correo sin la marca no se usa.
+const MAX_EMAIL = 100
+const createdEmail =
+  route.query.created === '1' && typeof route.query.email === 'string' && route.query.email.length <= MAX_EMAIL
+    ? route.query.email
+    : ''
+const accountCreated = createdEmail !== ''
 
 // ── Estado del formulario ──────────────────────────────────────────────────
 const form = ref({
-  username: '',
+  username: createdEmail,
   password: '',
+})
+
+onMounted(async () => {
+  if (!accountCreated) return
+  await nextTick()
+  root.value?.querySelector<HTMLInputElement>('input[type=password]')?.focus()
 })
 const errors       = ref({ username: '', password: '' })
 const showPassword = ref(false)

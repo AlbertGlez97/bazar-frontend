@@ -5,13 +5,41 @@ import LoginView from '../LoginView.vue'
 import { useAuthStore } from '@/stores/auth.store'
 
 const push = vi.fn()
-vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
+const route = vi.hoisted(() => ({ query: {} as Record<string, unknown> }))
+vi.mock('vue-router', () => ({ useRouter: () => ({ push }), useRoute: () => route }))
 
-beforeEach(() => { localStorage.clear(); vi.clearAllMocks() })
+beforeEach(() => { localStorage.clear(); vi.clearAllMocks(); route.query = {} })
 
 function render() {
   return mount(LoginView, { global: { plugins: [createTestingPinia({ createSpy: vi.fn })] } })
 }
+
+describe('después de crear la cuenta por invitación', () => {
+  it('muestra el correo ya escrito y el aviso "Cuenta creada, ya puedes entrar", sin iniciar sesión sola', async () => {
+    route.query = { email: 'beto@example.test', created: '1' }
+    const wrapper = mount(LoginView, { attachTo: document.body, global: { plugins: [createTestingPinia({ createSpy: vi.fn })] } })
+    await flushPromises()
+
+    expect((wrapper.get('input[autocomplete=username]').element as HTMLInputElement).value).toBe('beto@example.test')
+    expect(wrapper.get('[data-test="account-created"]').text()).toContain('Cuenta creada, ya puedes entrar')
+    expect(wrapper.get('[data-test="account-created"]').attributes('role')).toBe('status')
+    expect(document.activeElement).toBe(wrapper.get('input[type=password]').element)
+    expect(useAuthStore().login).not.toHaveBeenCalled()
+    expect(push).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('sin la marca de cuenta creada no pone nada, y un correo suelto no se aprovecha', () => {
+    for (const query of [{}, { email: 'beto@example.test' }, { created: '1' }, { email: ['a', 'b'], created: '1' }, { email: 'x'.repeat(101), created: '1' }]) {
+      route.query = query
+      const wrapper = render()
+      const shown = (wrapper.get('input[autocomplete=username]').element as HTMLInputElement).value
+      expect(shown === '' || (query as { created?: string }).created === '1' && query.email === 'beto@example.test').toBe(true)
+      expect(wrapper.find('[data-test="account-created"]').exists()).toBe(query.created === '1' && typeof query.email === 'string' && query.email.length <= 100)
+      wrapper.unmount()
+    }
+  })
+})
 
 describe('login form', () => {
   it('envía usuario/contraseña y navega al shell tras éxito', async () => {
