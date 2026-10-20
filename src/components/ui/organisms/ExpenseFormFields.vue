@@ -77,6 +77,7 @@
       placeholder="Selecciona quién pagó"
       :disabled="disabled || !payers.length"
       required
+      :aria-describedby="`${idPrefix}-payer-hint`"
       @update:model-value="patch({ paidByMemberId: $event as string })"
     >
       <option
@@ -87,6 +88,13 @@
         {{ member.name }}
       </option>
     </AppSelect>
+    <p
+      :id="`${idPrefix}-payer-hint`"
+      class="expense-fields__hint expense-fields__wide"
+      data-test="paid-by-hint"
+    >
+      La app no le devuelve a nadie el dinero que ponga de su bolsa. El gasto cuenta igual en el resultado.
+    </p>
 
     <AppSelect
       :id="`${idPrefix}-funds`"
