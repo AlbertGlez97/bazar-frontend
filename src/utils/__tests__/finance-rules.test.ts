@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   BASE_PRESETS,
   RULE_GUIDES,
+  STATUS_TEXT,
   defaultRulesConfig,
+  formatRuleDate,
+  formatRuleDateTime,
+  joinNames,
   parsePctText,
   rebalanceBase,
   rulesErrorMessage,
@@ -162,6 +166,26 @@ describe('rulesStateText', () => {
     const text = rulesStateText(overview({ state: 'vigente', inForce }))
     expect(text).toMatchObject({ tone: 'success', title: 'Vigentes' })
     expect(text.detail).toBe('Versión 3, desde el 20/10/2026.')
+  })
+})
+
+describe('fechas y estados', () => {
+  it('la fecha y la hora van en hora de Ciudad de México', () => {
+    expect(formatRuleDate('2026-10-20T03:30:00.000Z')).toBe('19/10/2026')
+    expect(formatRuleDateTime('2026-10-20T16:05:00.000Z')).toBe('20/10/2026, 10:05')
+  })
+
+  it('cada estado tiene un nombre sencillo', () => {
+    expect(STATUS_TEXT).toEqual({
+      borrador: 'Borrador', pendiente: 'Pendiente', vigente: 'Vigente', reemplazada: 'Reemplazada', retirada: 'Descartada',
+    })
+  })
+
+  it('una lista de nombres se une con comas y "y"', () => {
+    expect(joinNames([])).toBe('')
+    expect(joinNames(['Ana'])).toBe('Ana')
+    expect(joinNames(['Ana', 'Beto'])).toBe('Ana y Beto')
+    expect(joinNames(['Ana', 'Beto', 'Carla'])).toBe('Ana, Beto y Carla')
   })
 })
 

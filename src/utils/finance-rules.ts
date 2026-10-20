@@ -164,6 +164,19 @@ const dateText = (iso: string) =>
   new Intl.DateTimeFormat('es-MX', { timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric' })
     .format(new Date(iso))
 export const formatRuleDate = dateText
+export const formatRuleDateTime = (iso: string) =>
+  new Intl.DateTimeFormat('es-MX', {
+    timeZone: 'America/Mexico_City', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(new Date(iso))
+
+export const STATUS_TEXT = {
+  borrador: 'Borrador',
+  pendiente: 'Pendiente',
+  vigente: 'Vigente',
+  reemplazada: 'Reemplazada',
+  retirada: 'Descartada',
+} as const
 
 export function joinNames(names: readonly string[]): string {
   if (names.length <= 1) return names[0] ?? ''

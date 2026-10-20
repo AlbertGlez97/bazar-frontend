@@ -22,6 +22,8 @@ vi.mock('@/services/finance-distribution.service', () => ({
   FinanceDistributionService: { simulate: mocks.simulate },
 }))
 vi.mock('@/services/finance-overview.service', () => ({ FinanceOverviewService: { get: mocks.overview } }))
+// Las reglas de reparto tienen sus propias pruebas; aquí solo importa que el panel esté en la página.
+vi.mock('@/services/finance-rules.service', () => ({ FinanceRulesService: { overview: vi.fn(() => new Promise(() => undefined)) } }))
 const freshSession = () => ({ member: { role: 'socio', active: true } as { role: string; active?: boolean } | null, memberId: 'member-a', deviceId: 'device-a', owner: { accountId: 'account-a', apiBase: '/api/v1' } })
 const access = reactive({ session: freshSession(), mode: { currentMode: 'gestion' }, auth: { token: 'token-a' } })
 vi.mock('@/stores/auth.store', () => ({ useAuthStore: () => access.auth }))
@@ -100,6 +102,7 @@ describe('access, header and tabs', () => {
   it('has one h2 per step plus the result', async () => {
     const w = await mounted()
     expect(w.findAll('h2').map((h) => h.text())).toEqual([
+      'Reglas de reparto',
       'Período',
       'Base financiera',
       'Cuánto quiero simular',

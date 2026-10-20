@@ -19,6 +19,8 @@
       </p>
     </header>
 
+    <RulesPanel />
+
     <div class="sim-layout">
       <div
         ref="configBox"
@@ -481,6 +483,7 @@ import {
 import type { DistributionSimulation, DistributionSimulationRequest, DistributionWorkBasis } from '@/types/finance-distribution.types'
 import type { AgreementFields, DistributionAgreement } from '@/types/finance-agreement.types'
 import AgreementCreateForm from './components/AgreementCreateForm.vue'
+import RulesPanel from './components/RulesPanel.vue'
 import { FINANCE_TABS } from './finance-tabs'
 import OverviewFigure from './components/OverviewFigure.vue'
 import SimulatorRuleForm from './components/SimulatorRuleForm.vue'
