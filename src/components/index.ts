@@ -78,6 +78,8 @@ export { default as ProductQrCard       } from './ui/molecules/ProductQrCard.vue
 export { default as ProductSelectionBar } from './ui/molecules/ProductSelectionBar.vue'
 export { default as CartLineItem        } from './ui/molecules/CartLineItem.vue'
 export { default as CommitmentSummary   } from './ui/molecules/CommitmentSummary.vue'
+export { default as PercentField        } from './ui/molecules/PercentField.vue'
+export { default as RuleGuide           } from './ui/molecules/RuleGuide.vue'
 export { default as CartSummary         } from './ui/molecules/CartSummary.vue'
 export { default as AmountInput        } from './ui/molecules/AmountInput.vue'
 export { default as SegmentedControl   } from './ui/molecules/SegmentedControl.vue'
