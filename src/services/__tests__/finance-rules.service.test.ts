@@ -81,6 +81,7 @@ describe('FinanceRulesService', () => {
       ['una fecha inválida', overviewFixture({ pending: ruleSet({ status: 'pendiente', submittedAt: 'ayer' }) })],
       ['socios sin nombre', overviewFixture({ partners: [{ memberId: ANA.memberId, name: '' }] })],
       ['sin aviso legal', overviewFixture({ disclaimer: '' })],
+      ['un permiso de aprobar que no es sí o no', { ...overviewFixture(), me: { ...overviewFixture().me, canApprove: 'si' } }],
     ]
     it.each(broken)('rechaza %s', async (_name, data) => {
       vi.mocked(api.get).mockResolvedValue({ data })

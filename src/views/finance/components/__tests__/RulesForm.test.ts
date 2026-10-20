@@ -79,6 +79,15 @@ describe('RulesForm', () => {
       expect(last(w).reinvestment.untilAmountMinor).toBeNull()
     })
 
+    it('si el monto escrito es ambiguo, el tope se enciende en 0 y no adivina', async () => {
+      const w = mountIt()
+      await w.get('[data-test="until-switch"]').setValue(true)
+      await w.get('.amount-input input').setValue('100,50')
+      await w.get('[data-test="until-switch"]').setValue(false)
+      await w.get('[data-test="until-switch"]').setValue(true)
+      expect(last(w).reinvestment.untilAmountMinor).toBe(0)
+    })
+
     it('un tope ya guardado se muestra encendido', () => {
       const config = defaultRulesConfig()
       config.reinvestment.untilAmountMinor = 250000
