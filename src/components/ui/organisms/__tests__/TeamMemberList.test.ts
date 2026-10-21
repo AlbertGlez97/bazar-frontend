@@ -101,8 +101,12 @@ describe('TeamMemberList: cuentas personales de los socios', () => {
     expect(button.attributes('aria-label')).toBe('Invitar a Beto Gil')
   })
 
-  it('un colaborador y un socio inactivo no muestran nada de cuenta', () => {
-    const w = list(status())
+  it('un colaborador y un socio inactivo no muestran nada de cuenta, aunque el servidor los incluyera', () => {
+    const w = list([
+      ...status(),
+      { memberId: 'm-3', name: 'Carla Paz', hasPersonalAccount: false, invitation: null },
+      { memberId: 'm-4', name: 'Dani Soto', hasPersonalAccount: false, invitation: null },
+    ])
     for (const index of [2, 3]) {
       expect(rows(w)[index].text()).not.toContain('cuenta personal')
       expect(rows(w)[index].find('[data-test="invite"]').exists()).toBe(false)
