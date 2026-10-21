@@ -14,6 +14,32 @@ function render() {
   return mount(LoginView, { global: { plugins: [createTestingPinia({ createSpy: vi.fn })] } })
 }
 
+describe('después de crear la cuenta por invitación con el dispositivo registrado', () => {
+  it('dice que el dispositivo ya quedó registrado y que solo falta la contraseña', () => {
+    route.query = { email: 'beto@example.test', created: '1', device: '1' }
+    const wrapper = render()
+    expect(wrapper.get('[data-test="account-created"]').text()).toBe(
+      'Cuenta creada. Este dispositivo ya quedó registrado. Escribe tu contraseña para entrar.',
+    )
+    wrapper.unmount()
+  })
+
+  it('sin la marca de dispositivo, usa el aviso anterior (no promete lo que no se hizo)', () => {
+    route.query = { email: 'beto@example.test', created: '1' }
+    const wrapper = render()
+    expect(wrapper.get('[data-test="account-created"]').text()).toBe('Cuenta creada, ya puedes entrar. Escribe tu contraseña.')
+    expect(wrapper.text()).not.toContain('ya quedó registrado')
+    wrapper.unmount()
+  })
+
+  it('la marca de dispositivo sola, sin cuenta creada, no muestra nada', () => {
+    route.query = { email: 'beto@example.test', device: '1' }
+    const wrapper = render()
+    expect(wrapper.find('[data-test="account-created"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+})
+
 describe('después de crear la cuenta por invitación', () => {
   it('muestra el correo ya escrito y el aviso "Cuenta creada, ya puedes entrar", sin iniciar sesión sola', async () => {
     route.query = { email: 'beto@example.test', created: '1' }

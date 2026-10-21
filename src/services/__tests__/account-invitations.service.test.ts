@@ -28,11 +28,39 @@ describe('página pública', () => {
     expect(api.post).toHaveBeenCalledWith('/invitations/inspect', { token: TOKEN })
   })
 
-  it('accept manda token y contraseña, y no guarda ni devuelve credenciales', async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: { ok: true, email: 'beto@example.test' } })
+  const DEVICE_TOKEN = 'dG9rZW4tZGUtcHJ1ZWJhLTMyLWJ5dGVzLWJhc2U2NHU'
+  const accepted = (over: object = {}) => ({
+    ok: true, email: 'beto@example.test', accountId: MEMBER,
+    device: { id: '0190aaaa-0000-7000-8000-0000000000d1', identifier: '0190aaaa-0000-7000-8000-0000000000d2', name: 'Dispositivo de Beto', token: DEVICE_TOKEN },
+    ...over,
+  })
 
-    await expect(AccountInvitationsService.accept(TOKEN, 'una-clave-larga-1')).resolves.toEqual({ email: 'beto@example.test' })
+  it('accept manda token y contraseña y devuelve la cuenta y el dispositivo registrado, sin sesión', async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: accepted() })
+
+    const result = await AccountInvitationsService.accept(TOKEN, 'una-clave-larga-1')
+
+    expect(result).toEqual({
+      email: 'beto@example.test',
+      accountId: MEMBER,
+      device: { deviceId: '0190aaaa-0000-7000-8000-0000000000d1', name: 'Dispositivo de Beto', deviceToken: DEVICE_TOKEN },
+    })
+    // El identificador de un solo uso ya está gastado: no se devuelve ni se guarda.
+    expect(JSON.stringify(result)).not.toContain('0190aaaa-0000-7000-8000-0000000000d2')
     expect(api.post).toHaveBeenCalledWith('/invitations/accept', { token: TOKEN, password: 'una-clave-larga-1' })
+  })
+
+  it.each([
+    ['sin dispositivo', { device: undefined }],
+    ['dispositivo sin token', { device: { ...accepted().device, token: '' } }],
+    ['token con otra forma', { device: { ...accepted().device, token: 'corto' } }],
+    ['dispositivo sin nombre', { device: { ...accepted().device, name: '' } }],
+    ['id de dispositivo que no es UUID', { device: { ...accepted().device, id: 'x' } }],
+    ['sin cuenta', { accountId: undefined }],
+    ['cuenta que no es UUID', { accountId: 'x' }],
+  ])('accept rechaza una respuesta %s', async (_name, over) => {
+    vi.mocked(api.post).mockResolvedValue({ data: accepted(over) })
+    await expect(AccountInvitationsService.accept(TOKEN, 'una-clave-larga-1')).rejects.toBeInstanceOf(AccountInvitationsContractError)
   })
 
   it.each([

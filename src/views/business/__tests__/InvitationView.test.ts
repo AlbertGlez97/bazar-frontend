@@ -1,6 +1,7 @@
 import { flushPromises, mount, RouterLinkStub, type VueWrapper } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
+import { createPinia, setActivePinia } from 'pinia'
 import InvitationView from '../InvitationView.vue'
 import { AccountInvitationsService } from '@/services/account-invitations.service'
 
@@ -14,6 +15,11 @@ vi.mock('vue-router', () => ({ useRoute: () => route, useRouter: () => ({ replac
 const TOKEN = 'dG9rZW4tZGUtcHJ1ZWJhLTMyLWJ5dGVzLWJhc2U2NHU' // 43 caracteres, como el servidor
 const preview = { memberName: 'Beto', email: 'beto@example.test', expiresAt: '2026-10-23T17:59:00.000Z' }
 const PASSWORD = 'una-clave-larga-1'
+const accepted = {
+  email: 'beto@example.test',
+  accountId: '0190aaaa-0000-7000-8000-0000000000a9',
+  device: { deviceId: '0190aaaa-0000-7000-8000-0000000000d1', name: 'Dispositivo de Beto', deviceToken: 'dG9rZW4tZGUtZGlzcG9zaXRpdm8tMzItYnl0ZXMtYmE' },
+}
 
 async function open(params: Record<string, unknown> = { token: TOKEN }) {
   route.params = params
@@ -30,6 +36,8 @@ const failure = (status: number, code?: string, message?: string) => ({ response
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
+  setActivePinia(createPinia())
   document.body.innerHTML = ''
   document.head.querySelectorAll('meta[name="referrer"]').forEach((m) => m.remove())
   vi.mocked(AccountInvitationsService.inspect).mockResolvedValue(preview)
@@ -129,22 +137,51 @@ describe('InvitationView: crear la contraseña', () => {
   })
 
   it('al crearla va al login con el correo ya escrito, sin iniciar sesión ni guardar la contraseña', async () => {
-    vi.mocked(AccountInvitationsService.accept).mockResolvedValue({ email: 'beto@example.test' })
+    vi.mocked(AccountInvitationsService.accept).mockResolvedValue(accepted)
     const w = await open()
     await fill(w)
     await submitButton(w)!.trigger('click')
     await flushPromises()
 
     expect(AccountInvitationsService.accept).toHaveBeenCalledWith(TOKEN, PASSWORD)
-    expect(replace).toHaveBeenCalledWith({ name: 'Login', query: { email: 'beto@example.test', created: '1' } })
+    expect(replace).toHaveBeenCalledWith({ name: 'Login', query: { email: 'beto@example.test', created: '1', device: '1' } })
     expect(JSON.stringify(replace.mock.calls)).not.toContain(PASSWORD)
     expect(JSON.stringify(replace.mock.calls)).not.toContain(TOKEN)
-    expect(localStorage.length).toBe(0)
+    expect(JSON.stringify(replace.mock.calls)).not.toContain(accepted.device.deviceToken)
+    // Sin sesión: ni token de acceso ni persona elegida; solo el dispositivo, a nombre de la cuenta nueva.
+    expect(localStorage.getItem('access_token')).toBeNull()
+    w.unmount()
+  })
+
+  it('el dispositivo que llega queda guardado a nombre de la cuenta nueva y no toca el de otra cuenta', async () => {
+    localStorage.setItem('device_contexts', JSON.stringify({
+      version: 1, devices: { 'cuenta-compartida|/api/v1': { deviceId: 'device-a', name: 'Tablet', deviceToken: 'secret-a' } },
+    }))
+    vi.mocked(AccountInvitationsService.accept).mockResolvedValue(accepted)
+    const w = await open()
+    await fill(w)
+    await submitButton(w)!.trigger('click')
+    await flushPromises()
+
+    const saved = JSON.parse(localStorage.getItem('device_contexts')!).devices
+    expect(saved[`${accepted.accountId}|/api/v1`]).toEqual(accepted.device)
+    expect(saved['cuenta-compartida|/api/v1']).toEqual({ deviceId: 'device-a', name: 'Tablet', deviceToken: 'secret-a' })
+    expect(w.text()).not.toContain(accepted.device.deviceToken)
+    w.unmount()
+  })
+
+  it('si la contraseña falla, no se guarda ningún dispositivo', async () => {
+    vi.mocked(AccountInvitationsService.accept).mockRejectedValue(failure(429, 'INVITATION_RATE_LIMITED'))
+    const w = await open()
+    await fill(w)
+    await submitButton(w)!.trigger('click')
+    await flushPromises()
+    expect(localStorage.getItem('device_contexts')).toBeNull()
     w.unmount()
   })
 
   it('un doble toque envía una sola vez', async () => {
-    let finish!: (v: { email: string }) => void
+    let finish!: (v: typeof accepted) => void
     vi.mocked(AccountInvitationsService.accept).mockReturnValue(new Promise((r) => { finish = r }))
     const w = await open()
     await fill(w)
@@ -155,7 +192,7 @@ describe('InvitationView: crear la contraseña', () => {
 
     expect(AccountInvitationsService.accept).toHaveBeenCalledTimes(1)
     expect(w.get('form button').attributes('disabled')).toBeDefined()
-    finish({ email: 'beto@example.test' })
+    finish(accepted)
     await flushPromises()
     w.unmount()
   })

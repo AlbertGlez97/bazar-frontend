@@ -11,6 +11,15 @@ export class AccountInvitationsContractError extends Error {
   }
 }
 
+/** 32 random bytes in base64url, like the server issues. */
+const DEVICE_TOKEN_SHAPE = /^[A-Za-z0-9_-]{43}$/
+export interface AcceptedInvitation {
+  email: string
+  accountId: string
+  /** The device this browser now has, in the shape the session store keeps. */
+  device: { deviceId: string; name: string; deviceToken: string }
+}
+
 const text = (v: unknown): v is string => typeof v === 'string' && v.length > 0
 const checked = <T>(ok: boolean, data: T): T => {
   if (!ok) throw new AccountInvitationsContractError()
@@ -38,11 +47,25 @@ export const AccountInvitationsService = {
     return checked(!!r && text(r.memberName) && text(r.email) && isInstant(r.expiresAt), data as InvitationPreview)
   },
 
-  async accept(token: string, password: string): Promise<{ email: string }> {
+  /**
+   * Creates the login and registers the device of THIS browser. The device token comes back once
+   * and only here; the one-time identifier is already spent, so it is not returned onward.
+   */
+  async accept(token: string, password: string): Promise<AcceptedInvitation> {
     const { data } = await api.post<unknown>('/invitations/accept', { token, password })
     const r = asObject(data)
-    checked(!!r && r.ok === true && text(r.email), data)
-    return { email: (r as { email: string }).email }
+    const device = asObject(r?.device)
+    checked(
+      !!r && r.ok === true && text(r.email) && isUuid(r.accountId) &&
+        !!device && isUuid(device.id) && text(device.name) &&
+        typeof device.token === 'string' && DEVICE_TOKEN_SHAPE.test(device.token),
+      data,
+    )
+    return {
+      email: r!.email as string,
+      accountId: r!.accountId as string,
+      device: { deviceId: device!.id as string, name: device!.name as string, deviceToken: device!.token as string },
+    }
   },
 
   // ── Team screen (socios only) ──

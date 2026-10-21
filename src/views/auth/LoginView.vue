@@ -20,7 +20,9 @@
       role="status"
       data-test="account-created"
     >
-      Cuenta creada, ya puedes entrar. Escribe tu contraseña.
+      {{ deviceRegistered
+        ? 'Cuenta creada. Este dispositivo ya quedó registrado. Escribe tu contraseña para entrar.'
+        : 'Cuenta creada, ya puedes entrar. Escribe tu contraseña.' }}
     </AppAlert>
 
     <!-- Alerta de error global (molécula AppAlert) -->
@@ -207,6 +209,8 @@ const createdEmail =
     ? route.query.email
     : ''
 const accountCreated = createdEmail !== ''
+// La invitación también dejó registrado el dispositivo de este navegador.
+const deviceRegistered = accountCreated && route.query.device === '1'
 
 // ── Estado del formulario ──────────────────────────────────────────────────
 const form = ref({

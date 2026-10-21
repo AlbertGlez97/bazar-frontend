@@ -115,6 +115,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AppButton, AppInput } from '@/components'
 import { AccountInvitationsService } from '@/services/account-invitations.service'
+import { useSessionStore } from '@/stores/session.store'
 import { MIN_PASSWORD, invitationErrorMessage, passwordProblem } from '@/utils/account-invitations'
 import type { InvitationPreview } from '@/types/account-invitation.types'
 
@@ -126,6 +127,7 @@ const TOKEN_SHAPE = /^[A-Za-z0-9_-]{43}$/
 
 const route = useRoute()
 const router = useRouter()
+const session = useSessionStore()
 const token = typeof route.params.token === 'string' && TOKEN_SHAPE.test(route.params.token) ? route.params.token : ''
 
 const state = ref<State>(token ? 'loading' : 'invalid')
@@ -182,11 +184,14 @@ async function create() {
   if (problem.value) return
   state.value = 'working'
   try {
-    const { email } = await AccountInvitationsService.accept(token, password.value)
+    const { email, accountId, device } = await AccountInvitationsService.accept(token, password.value)
     password.value = ''
     confirm.value = ''
-    // No inicia sesión sola: lleva al login con el correo ya escrito.
-    await router.replace({ name: 'Login', query: { email, created: '1' } })
+    // El dispositivo de este navegador queda registrado a nombre de la cuenta NUEVA, sin tocar los de
+    // otras cuentas: al entrar, la app lo encuentra y no pide identificarlo.
+    session.saveDeviceForAccount(accountId, device)
+    // No inicia sesión sola: lleva al login con el correo ya escrito. Nada secreto va en la dirección.
+    await router.replace({ name: 'Login', query: { email, created: '1', device: '1' } })
   } catch (cause) {
     problem.value = invitationErrorMessage(cause)
     state.value = isInvalidLink(cause) ? 'invalid' : 'ready'
