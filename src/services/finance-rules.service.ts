@@ -1,6 +1,6 @@
 import api from './api'
 import { asObject, isInstant, isUuid } from './finance-shared'
-import { currentQueueOrigin } from './queue-origin'
+import { socioRequest } from './finance-request'
 import type { FinanceOrigin } from './contributions-records'
 import type {
   FinanceRulesConfig,
@@ -28,6 +28,26 @@ const partner = (v: unknown) => {
 }
 const partners = (v: unknown) => Array.isArray(v) && v.every(partner)
 
+/** How the approving login was created (frozen with the approval), or null for older approvals. */
+function validOrigin(value: unknown): boolean {
+  if (value === null) return true
+  const o = asObject(value)
+  if (!o) return false
+  if (o.kind === 'shared_single_partner') return true
+  if (o.kind === 'own_account') return o.accountCreatedAt === null || isInstant(o.accountCreatedAt)
+  return o.kind === 'invited' && isUuid(o.invitedByMemberId) && text(o.invitedByName) &&
+    isInstant(o.invitedAt) && isInstant(o.acceptedAt) && typeof o.recent === 'boolean'
+}
+// `origin` must be present (null when unknown): a missing key is a broken contract, not "no data".
+const validApproval = (a: unknown) => {
+  const r = asObject(a)
+  return partner(a) && isInstant(r?.approvedAt) && !!r && 'origin' in r && validOrigin(r.origin)
+}
+const validRecentInvited = (a: unknown) => {
+  const r = asObject(a)
+  return partner(a) && text(r?.invitedByName) && isInstant(r?.acceptedAt)
+}
+
 /** Shape only: the server owns every rule, the browser recomputes nothing. */
 export function validRuleSet(value: unknown): value is RuleSetView {
   const r = asObject(value)
@@ -36,7 +56,8 @@ export function validRuleSet(value: unknown): value is RuleSetView {
   if (!partner(r.proposedBy) || !isInstant(r.createdAt)) return false
   if (![r.submittedAt, r.activatedAt, r.supersededAt, r.withdrawnAt].every(optionalInstant)) return false
   if (!Array.isArray(r.warnings) || !r.warnings.every((w) => text(asObject(w)?.code) && text(asObject(w)?.message))) return false
-  return Array.isArray(r.approvals) && r.approvals.every((a) => partner(a) && isInstant(asObject(a)?.approvedAt)) && partners(r.missing)
+  return Array.isArray(r.approvals) && r.approvals.every(validApproval) && partners(r.missing) &&
+    Array.isArray(r.recentInvitedApprovers) && r.recentInvitedApprovers.every(validRecentInvited)
 }
 
 export function validOverview(value: unknown): value is RulesOverview {
@@ -57,16 +78,7 @@ function validRemind(value: unknown): value is RemindResult {
     r.skipped.every((v) => partner(v) && isInstant(asObject(v)?.nextAt))
 }
 
-function assertOrigin(origin: FinanceOrigin) {
-  if (!navigator.onLine) throw new Error('Rules requests require a connection')
-  const current = currentQueueOrigin()
-  if (!current || (['accountId', 'apiBase', 'memberId', 'deviceId'] as const).some((key) => current[key] !== origin[key]))
-    throw new Error('Rules origin no longer matches the active selection')
-}
-function config(origin: FinanceOrigin) {
-  assertOrigin(origin)
-  return { headers: { 'x-member-id': origin.memberId, 'x-device-id': origin.deviceId }, financialOrigin: origin }
-}
+const config = socioRequest
 const checked = <T>(ok: boolean, data: T): T => {
   if (!ok) throw new FinanceRulesContractError()
   return data
