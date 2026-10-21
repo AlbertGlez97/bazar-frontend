@@ -54,6 +54,21 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/business/InvitationView.vue'),
       },
       {
+        // Destino del botón "Revisar y responder" del correo de reglas de reparto: cada socio ve las reglas
+        // y aprueba o no está de acuerdo con botones (POST). Pública y sin redirecciones de sesión;
+        // abrirla solo consulta, no gasta el enlace.
+        path: '/acuerdo/:token',
+        name: 'Agreement',
+        component: () => import('@/views/business/AgreementView.vue'),
+      },
+      {
+        // Destino del enlace del correo de "Escribir mi correo": un botón confirma que el correo es de la
+        // persona (POST). Pública y sin redirecciones de sesión; abrirla solo consulta.
+        path: '/confirmar-correo/:token',
+        name: 'ConfirmEmail',
+        component: () => import('@/views/business/ConfirmEmailView.vue'),
+      },
+      {
         // Textos legales: públicos (con o sin sesión) y con su propio pie. Ver src/legal.
         path: '/privacidad',
         name: 'Privacy',

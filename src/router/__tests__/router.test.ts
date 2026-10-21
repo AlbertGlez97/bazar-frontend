@@ -51,6 +51,19 @@ describe('session routing', () => {
     expect(router.currentRoute.value.name).toBe('Invitation')
     expect(router.currentRoute.value.params.token).toBe('abc_DEF-123')
   })
+  it.each([
+    ['/acuerdo/abc_DEF-123', 'Agreement'],
+    ['/confirmar-correo/abc_DEF-123', 'ConfirmEmail'],
+  ])('allows logged-out visitors to open the emailed link %s, with the token as a path parameter', async (path, name) => {
+    await router.push(path)
+    expect(router.currentRoute.value.name).toBe(name)
+    expect(router.currentRoute.value.params.token).toBe('abc_DEF-123')
+  })
+  it.each(['/acuerdo/abc_DEF-123', '/confirmar-correo/abc_DEF-123'])('does not redirect a logged-in visitor away from %s', async (path) => {
+    restoreFullSession()
+    await router.push(path)
+    expect(router.currentRoute.value.path).toBe(path)
+  })
   it.each(['/', '/unknown', '/login'])('sends restored-session %s to shell', async (path) => {
     restoreFullSession()
     await router.push(path); expect(router.currentRoute.value.name).toBe('AppHome')
