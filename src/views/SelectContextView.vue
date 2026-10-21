@@ -74,6 +74,26 @@
             @select="handleMemberSelect"
           />
         </template>
+
+        <!-- Salida SIEMPRE disponible: el router devuelve aquí a quien no tiene contexto, así que
+             sin esto, quien no tiene el código quedaría atrapado. Cierra la sesión y va al login. -->
+        <div class="select-context__exit">
+          <AppButton
+            type="button"
+            variant="secondary"
+            block
+            data-test="exit"
+            @click="handleSignOut"
+          >
+            {{ needsDevice ? 'No lo tengo, salir' : 'Cerrar sesión' }}
+          </AppButton>
+          <p
+            v-if="needsDevice"
+            class="select-context__exit-help"
+          >
+            Puedes volver cuando un socio te dé el código.
+          </p>
+        </div>
       </template>
     </div>
   </section>
@@ -118,6 +138,9 @@ const isInactive = computed(() => authStore.bindingStatus === 'inactive')
 const showSelector = computed(
   () => sessionStore.isDeviceIdentified && !isBound.value && !isInactive.value,
 )
+
+// Falta el dispositivo: la persona puede no tener el código, y necesita poder irse sin él.
+const needsDevice = computed(() => !sessionStore.isDeviceIdentified)
 
 const heading = computed(() => {
   if (showSelector.value) return { title: '¿Quién atiende hoy?', subtitle: 'Toca tu nombre para seguir.' }
@@ -199,6 +222,8 @@ function handleSignOut() {
 
 <style scoped>
 .select-context { padding: var(--spacing-2xl) var(--spacing-md); }
+.select-context__exit { margin-top: var(--spacing-xl); display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.select-context__exit-help { margin: 0; text-align: center; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 .select-context__inner { max-width: 40rem; margin: 0 auto; }
 .select-context__title {
   font-size:   var(--font-size-xl);
