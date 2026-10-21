@@ -217,6 +217,19 @@ describe('RulesPanel: la propuesta abierta', () => {
     expect(w.get('[data-test="rules-proposal"] [data-test="rules-objections"]').text()).toContain('b***@e***.com')
   })
 
+  it('el motivo de quien no está de acuerdo se ve como texto, nunca como HTML, también en la propuesta', async () => {
+    const proposal = pendingSet({
+      status: 'en_revision', approvals: [],
+      objections: [objection(BETO, { reason: 'Más reservas <b>por favor</b> <img src=x onerror=alert(1)>' })],
+    })
+    const w = await show(reviewOverview({ proposal, history: [] }))
+    const reasons = w.get('[data-test="rules-proposal"] [data-test="rules-objections"]')
+
+    expect(reasons.text()).toContain('Más reservas <b>por favor</b> <img src=x onerror=alert(1)>')
+    expect(reasons.find('b').exists()).toBe(false)
+    expect(reasons.find('img').exists()).toBe(false)
+  })
+
   it('cualquier socio puede modificar: se crea una copia para él y se ve su borrador', async () => {
     const draft = ruleSet({ version: 2, basedOn: { id: RULE_SET_ID, version: 1, objections: [objection(BETO)] } })
     mocks.modify.mockResolvedValue(draft)

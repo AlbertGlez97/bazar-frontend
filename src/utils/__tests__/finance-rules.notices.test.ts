@@ -53,6 +53,9 @@ describe('de dónde vino cada respuesta', () => {
   it('una aprobación por correo dice desde qué correo (enmascarado); una anterior, que fue desde una sesión', () => {
     expect(approvalSource({ correo: 'a***@e***.com', via: 'correo' })).toBe('Aprobó desde el correo a***@e***.com.')
     expect(approvalSource({ correo: null, via: 'sesion' })).toBe('Aprobó desde su sesión, antes de que se aprobara por correo.')
+    // Una aprobación desde sesión nunca se presenta como hecha por correo, aunque traiga un correo.
+    expect(approvalSource({ correo: 'a***@e***.com', via: 'sesion' })).toBe('Aprobó desde su sesión, antes de que se aprobara por correo.')
+    expect(approvalSource({ correo: null, via: 'correo' })).toBe('Aprobó desde su sesión, antes de que se aprobara por correo.')
   })
 
   const proposal = ruleSet({ status: 'pendiente', approvals: [approval(ANA)] })

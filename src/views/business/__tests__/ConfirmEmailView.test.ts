@@ -110,6 +110,21 @@ describe('ConfirmEmailView', () => {
     w.unmount()
   })
 
+  it('dos toques seguidos, antes de que la pantalla se actualice, confirman una sola vez', async () => {
+    let finish!: (v: { correo: string }) => void
+    vi.mocked(MemberEmailService.confirm).mockReturnValue(new Promise((done) => { finish = done }))
+    const w = await open()
+    const confirm = confirmButton(w).element as HTMLButtonElement
+
+    confirm.click()
+    confirm.click()
+
+    expect(MemberEmailService.confirm).toHaveBeenCalledTimes(1)
+    finish({ correo: 'a***@e***.com' })
+    await flushPromises()
+    w.unmount()
+  })
+
   it('si falla la red al confirmar, deja intentar otra vez; si el enlace ya no sirve, lo dice', async () => {
     vi.mocked(MemberEmailService.confirm).mockRejectedValueOnce(new Error('red'))
     const w = await open()

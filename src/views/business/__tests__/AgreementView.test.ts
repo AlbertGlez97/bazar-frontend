@@ -197,6 +197,21 @@ describe('AgreementView: aprobar', () => {
     w.unmount()
   })
 
+  it('dos toques seguidos, antes de que la pantalla se actualice, envían una sola vez', async () => {
+    let finish!: (v: { outcome: 'aprobada' }) => void
+    vi.mocked(AgreementsService.respond).mockReturnValue(new Promise((done) => { finish = done }))
+    const w = await open()
+    const approve = button(w, 'agreement-approve').element as HTMLButtonElement
+
+    approve.click()
+    approve.click()
+
+    expect(AgreementsService.respond).toHaveBeenCalledTimes(1)
+    finish({ outcome: 'aprobada' })
+    await flushPromises()
+    w.unmount()
+  })
+
   it('si llega tarde porque alguien objetó, dice que está en revisión y no que aprobó', async () => {
     vi.mocked(AgreementsService.respond).mockResolvedValue({ outcome: 'en_revision' })
     const w = await open()
@@ -264,6 +279,22 @@ describe('AgreementView: no estoy de acuerdo', () => {
     expect(AgreementsService.respond).toHaveBeenCalledWith(TOKEN, 'object', 'Quiero más reservas')
     expect(w.get('h1').text()).toBe('Guardamos tu respuesta')
     expect(w.get('[data-test="agreement-done"]').text()).toBe('Los demás socios verán tu motivo. Recibirás la versión nueva por correo.')
+    w.unmount()
+  })
+
+  it('dos envíos seguidos del formulario, antes de que la pantalla se actualice, mandan el motivo una sola vez', async () => {
+    let finish!: (v: { outcome: 'objetada' }) => void
+    vi.mocked(AgreementsService.respond).mockReturnValue(new Promise((done) => { finish = done }))
+    const w = await objecting()
+    await w.get('textarea').setValue('Quiero más reservas')
+    const form = w.get('form').element
+
+    form.dispatchEvent(new Event('submit', { cancelable: true }))
+    form.dispatchEvent(new Event('submit', { cancelable: true }))
+
+    expect(AgreementsService.respond).toHaveBeenCalledTimes(1)
+    finish({ outcome: 'objetada' })
+    await flushPromises()
     w.unmount()
   })
 

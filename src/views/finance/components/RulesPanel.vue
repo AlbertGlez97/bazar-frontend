@@ -303,7 +303,6 @@ async function save() {
 }
 async function submit() {
   if (!editing.value) return
-  store.clearNotices()
   const saved = await store.saveDraft(editing.value)
   if (saved) await store.submit(saved.id)
 }
