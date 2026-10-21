@@ -73,9 +73,11 @@ describe('TeamMemberList: cuentas personales de los socios', () => {
     { id: 'm-3', name: 'Carla Paz', role: 'colaborador', active: true },
     { id: 'm-4', name: 'Dani Soto', role: 'socio', active: false },
   ]
+  const YES = { allowed: true, reason: null }
+  const NO = { allowed: false, reason: null }
   const status = (over: Record<string, unknown> = {}) => [
-    { memberId: 'm-1', name: 'Ana Ruiz', hasPersonalAccount: true, invitation: null },
-    { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invitation: null },
+    { memberId: 'm-1', name: 'Ana Ruiz', hasPersonalAccount: true, invite: NO, invitation: null },
+    { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invite: YES, invitation: null },
     ...(over.extra as unknown[] ?? []),
   ]
   const list = (invitations: unknown, extra: Record<string, unknown> = {}) =>
@@ -104,8 +106,8 @@ describe('TeamMemberList: cuentas personales de los socios', () => {
   it('un colaborador y un socio inactivo no muestran nada de cuenta, aunque el servidor los incluyera', () => {
     const w = list([
       ...status(),
-      { memberId: 'm-3', name: 'Carla Paz', hasPersonalAccount: false, invitation: null },
-      { memberId: 'm-4', name: 'Dani Soto', hasPersonalAccount: false, invitation: null },
+      { memberId: 'm-3', name: 'Carla Paz', hasPersonalAccount: false, invite: YES, invitation: null },
+      { memberId: 'm-4', name: 'Dani Soto', hasPersonalAccount: false, invite: YES, invitation: null },
     ])
     for (const index of [2, 3]) {
       expect(rows(w)[index].text()).not.toContain('cuenta personal')
@@ -120,19 +122,54 @@ describe('TeamMemberList: cuentas personales de los socios', () => {
   })
 
   it('con invitación vigente dice a quién se mandó y cuándo vence, y ofrece reenviar', () => {
-    const w = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invitation: info() }])
+    const w = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invite: YES, invitation: info() }])
     expect(rows(w)[1].get('[data-test="invite-status"]').text()).toBe('Invitación enviada a beto@example.test. Vence el 23/10/2026.')
     expect(rows(w)[1].get('[data-test="invite"]').text()).toBe('Reenviar invitación')
     expect(rows(w)[1].get('[data-test="invite"]').attributes('disabled')).toBeUndefined()
   })
 
   it('el reenvío espera un minuto o se agota por el día, y lo explica en texto', () => {
-    const soon = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invitation: info({ canResendAt: '2026-10-20T18:00:30.000Z' }) }])
+    const soon = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invite: YES, invitation: info({ canResendAt: '2026-10-20T18:00:30.000Z' }) }])
     expect(rows(soon)[1].get('[data-test="invite"]').attributes('disabled')).toBeDefined()
     expect(rows(soon)[1].get('[data-test="invite-hint"]').text()).toBe('Espera un minuto antes de reenviar.')
 
-    const spent = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invitation: info({ resendsLeftToday: 0 }) }])
+    const spent = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invite: YES, invitation: info({ resendsLeftToday: 0 }) }])
     expect(rows(spent)[1].get('[data-test="invite-hint"]').text()).toBe('Ya se enviaron 3 invitaciones hoy. Intenta mañana.')
+  })
+
+  describe('con acceso compartido: el botón no se oculta, queda deshabilitado con la explicación', () => {
+    const BLOCKED = 'Tu acceso es compartido y ya hay cuentas personales. Pídele a un socio con cuenta personal que te invite.'
+    const SELF_ONLY = 'Con el acceso compartido solo puedes invitar al socio que elegiste en este momento.'
+
+    it('con cuentas personales existentes: botón visible, deshabilitado y con la razón en texto', () => {
+      const w = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invite: { allowed: false, reason: BLOCKED }, invitation: null }])
+      const button = rows(w)[1].get('[data-test="invite"]')
+      expect(button.text()).toBe('Invitar')
+      expect(button.attributes('disabled')).toBeDefined()
+      expect(rows(w)[1].get('[data-test="invite-hint"]').text()).toBe(BLOCKED)
+    })
+
+    it('puede invitarse al socio elegido, pero no a otro, y a los otros se les explica por qué', () => {
+      const w = list([
+        { memberId: 'm-1', name: 'Ana Ruiz', hasPersonalAccount: false, invite: YES, invitation: null },
+        { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invite: { allowed: false, reason: SELF_ONLY }, invitation: null },
+      ])
+      expect(rows(w)[0].get('[data-test="invite"]').attributes('disabled')).toBeUndefined()
+      expect(rows(w)[1].get('[data-test="invite"]').attributes('disabled')).toBeDefined()
+      expect(rows(w)[1].get('[data-test="invite-hint"]').text()).toBe(SELF_ONLY)
+    })
+
+    it('un botón deshabilitado no avisa al tocarlo', async () => {
+      const w = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invite: { allowed: false, reason: BLOCKED }, invitation: null }])
+      await rows(w)[1].get('[data-test="invite"]').trigger('click')
+      expect(w.emitted('invite')).toBeUndefined()
+    })
+
+    it('la razón también aparece aunque haya una invitación vieja', () => {
+      const w = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invite: { allowed: false, reason: BLOCKED }, invitation: info() }])
+      expect(rows(w)[1].get('[data-test="invite-hint"]').text()).toBe(BLOCKED)
+      expect(rows(w)[1].get('[data-test="invite"]').attributes('disabled')).toBeDefined()
+    })
   })
 
   it('mientras se envía, los botones se bloquean', () => {

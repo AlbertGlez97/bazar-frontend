@@ -57,7 +57,7 @@ describe('invitationErrorMessage', () => {
 describe('estado de una invitación', () => {
   const NOW = new Date('2026-10-20T18:00:00.000Z')
   const status = (over: Partial<NonNullable<InvitationStatus['invitation']>> = {}): InvitationStatus => ({
-    memberId: 'm1', name: 'Beto', hasPersonalAccount: false,
+    memberId: 'm1', name: 'Beto', hasPersonalAccount: false, invite: { allowed: true, reason: null },
     invitation: {
       email: 'beto@example.test', sentAt: '2026-10-20T17:59:00.000Z', expiresAt: '2026-10-23T17:59:00.000Z',
       canResendAt: '2026-10-20T18:00:00.000Z', resendsLeftToday: 2, ...over,
@@ -70,6 +70,13 @@ describe('estado de una invitación', () => {
 
   it('sin invitación o con cuenta, no hay texto', () => {
     expect(inviteStatusText({ ...status(), invitation: null })).toBe('')
+  })
+
+  it('si el servidor no deja invitar, el botón queda deshabilitado con la razón, aunque pasara el minuto', () => {
+    const reason = 'Tu acceso es compartido y ya hay cuentas personales. Pídele a un socio con cuenta personal que te invite.'
+    expect(resendState({ ...status(), invite: { allowed: false, reason } }, NOW)).toEqual({ allowed: false, hint: reason })
+    expect(resendState({ ...status(), invitation: null, invite: { allowed: false, reason } }, NOW)).toEqual({ allowed: false, hint: reason })
+    expect(resendState({ ...status(), invite: { allowed: false, reason: null } }, NOW)).toEqual({ allowed: false, hint: '' })
   })
 
   it('se puede reenviar pasado el minuto y mientras queden envíos', () => {
@@ -101,17 +108,37 @@ describe('origen de la cuenta de quien aprobó', () => {
     expect(originText({ kind: 'own_account', accountCreatedAt: null })).toBe('Cuenta personal.')
     expect(originText(null)).toBe('Sin dato de cómo se creó la cuenta.')
   })
+
+  it('invitación desde el acceso compartido: lo dice claro y avisa que no se sabe quién invitó', () => {
+    expect(originText({
+      kind: 'invited_from_shared_login', invitedAt: '2026-10-18T16:00:00.000Z', acceptedAt: '2026-10-18T16:30:00.000Z', recent: false,
+    })).toBe('Cuenta creada por invitación desde el acceso compartido el 18/10/2026, 10:00. No se sabe quién invitó.')
+  })
 })
 
 describe('recentInviteNotice', () => {
+  const invited = (memberId: string, name: string, acceptedAt: string) => ({ memberId, name, invitedByName: 'Ana', acceptedAt, fromSharedLogin: false })
+  const shared = (memberId: string, name: string, acceptedAt: string) => ({ memberId, name, invitedByName: null, acceptedAt, fromSharedLogin: true })
+
   it('nombra a quien aprobó con una cuenta invitada hace poco y quién lo invitó', () => {
+    expect(recentInviteNotice([invited('1', 'Beto', '2026-10-18T16:30:00.000Z')])).toBe('Beto aprobó con una cuenta invitada por Ana el 18/10/2026.')
     expect(recentInviteNotice([
-      { memberId: '1', name: 'Beto', invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' },
-    ])).toBe('Beto aprobó con una cuenta invitada por Ana el 18/10/2026.')
-    expect(recentInviteNotice([
-      { memberId: '1', name: 'Beto', invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' },
-      { memberId: '2', name: 'Carla', invitedByName: 'Ana', acceptedAt: '2026-10-19T16:30:00.000Z' },
+      invited('1', 'Beto', '2026-10-18T16:30:00.000Z'),
+      invited('2', 'Carla', '2026-10-19T16:30:00.000Z'),
     ])).toBe('Beto y Carla aprobaron con cuentas invitadas hace poco. Revisa el historial.')
+  })
+
+  it('una cuenta creada desde el acceso compartido se avisa distinto: sin inventar quién invitó', () => {
+    expect(recentInviteNotice([shared('1', 'Beto', '2026-10-18T16:30:00.000Z')])).toBe(
+      'Beto aprobó con una cuenta creada desde el acceso compartido el 18/10/2026. No se sabe quién la invitó.',
+    )
+  })
+
+  it('si entre varias hay una del acceso compartido, el aviso lo menciona', () => {
+    expect(recentInviteNotice([
+      invited('1', 'Beto', '2026-10-18T16:30:00.000Z'),
+      shared('2', 'Carla', '2026-01-02T16:30:00.000Z'),
+    ])).toBe('Beto y Carla aprobaron con cuentas invitadas, alguna desde el acceso compartido. Revisa el historial.')
   })
 
   it('sin cuentas invitadas recientes, no hay aviso', () => {

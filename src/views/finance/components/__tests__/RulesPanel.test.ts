@@ -131,7 +131,9 @@ describe('RulesPanel: estado visible', () => {
 })
 
 describe('RulesPanel: aviso de quién aprobó con una cuenta invitada hace poco', () => {
-  const vigente = (recent: { memberId: string; name: string; invitedByName: string; acceptedAt: string }[]) => {
+  type Recent = { memberId: string; name: string; invitedByName: string | null; acceptedAt: string; fromSharedLogin?: boolean }
+  const vigente = (list: Recent[]) => {
+    const recent = list.map((r) => ({ fromSharedLogin: false, ...r }))
     const set = ruleSet({ status: 'vigente', activatedAt: '2026-10-20T18:30:00.000Z', recentInvitedApprovers: recent })
     return overviewFixture({ state: 'vigente', inForce: set, history: [set] })
   }
@@ -141,6 +143,22 @@ describe('RulesPanel: aviso de quién aprobó con una cuenta invitada hace poco'
     const notice = w.get('[data-test="rules-recent-invite"]')
     expect(notice.text()).toBe('Beto aprobó con una cuenta invitada por Ana el 18/10/2026.')
     expect(w.get('[data-test="rules-inforce"]').element.contains(notice.element)).toBe(true)
+  })
+
+  it('quien aprobó con una cuenta creada desde el acceso compartido se avisa aunque haya pasado mucho tiempo', async () => {
+    const w = await show(vigente([{ ...BETO, invitedByName: null, acceptedAt: '2025-01-02T16:30:00.000Z', fromSharedLogin: true }]))
+    expect(w.get('[data-test="rules-recent-invite"]').text()).toBe(
+      'Beto aprobó con una cuenta creada desde el acceso compartido el 02/01/2025. No se sabe quién la invitó.',
+    )
+  })
+
+  it('el historial muestra el origen "desde el acceso compartido" con su texto', async () => {
+    const set = ruleSet({
+      status: 'vigente', activatedAt: '2026-10-20T18:30:00.000Z',
+      approvals: [{ ...BETO, approvedAt: '2026-10-20T18:30:00.000Z', origin: { kind: 'invited_from_shared_login', invitedAt: '2025-01-02T16:00:00.000Z', acceptedAt: '2025-01-02T16:30:00.000Z', recent: false } }],
+    })
+    const w = await show(overviewFixture({ state: 'vigente', inForce: set, history: [set] }))
+    expect(w.get('[data-test="rules-history"]').text()).toContain('Cuenta creada por invitación desde el acceso compartido el 02/01/2025, 10:00. No se sabe quién invitó.')
   })
 
   it('con varias personas, las nombra y manda al historial', async () => {

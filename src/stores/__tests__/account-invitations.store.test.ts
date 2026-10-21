@@ -15,7 +15,7 @@ vi.mock('../session.store', () => ({ useSessionStore: () => state.session }))
 vi.mock('@/services/queue-origin', () => ({ currentQueueOrigin: () => ({ ...state.session.owner, memberId: state.session.memberId, deviceId: state.session.deviceId }) }))
 
 const MEMBER = '0190aaaa-0000-7000-8000-000000000002'
-const rows = [{ memberId: MEMBER, name: 'Beto', hasPersonalAccount: false, invitation: null }]
+const rows = [{ memberId: MEMBER, name: 'Beto', hasPersonalAccount: false, invite: { allowed: true, reason: null }, invitation: null }]
 const fail = (status: number, code: string, message?: string) => ({ response: { status, data: { code, message } } })
 
 beforeEach(() => {

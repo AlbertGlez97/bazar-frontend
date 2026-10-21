@@ -58,6 +58,8 @@ export function inviteStatusText(status: InvitationStatus): string {
 }
 
 export function resendState(status: InvitationStatus, now: Date): { allowed: boolean; hint: string } {
+  // The server decides who may invite whom; the button stays visible, disabled, with its reason.
+  if (!status.invite.allowed) return { allowed: false, hint: status.invite.reason ?? '' }
   const invitation = status.invitation
   if (!invitation) return { allowed: true, hint: '' }
   if (invitation.resendsLeftToday <= 0)
@@ -73,6 +75,8 @@ export function originText(origin: AccountOrigin | null): string {
   switch (origin.kind) {
     case 'invited':
       return `Cuenta creada por invitación de ${origin.invitedByName} el ${formatRuleDateTime(origin.invitedAt)}.`
+    case 'invited_from_shared_login':
+      return `Cuenta creada por invitación desde el acceso compartido el ${formatRuleDateTime(origin.invitedAt)}. No se sabe quién invitó.`
     case 'shared_single_partner':
       return 'Acceso compartido de un solo socio.'
     case 'own_account':
@@ -87,7 +91,13 @@ export function recentInviteNotice(approvers: readonly RecentInvitedApprover[]):
   if (!approvers.length) return ''
   if (approvers.length === 1) {
     const [one] = approvers as [RecentInvitedApprover]
-    return `${one.name} aprobó con una cuenta invitada por ${one.invitedByName} el ${formatRuleDate(one.acceptedAt)}.`
+    const date = formatRuleDate(one.acceptedAt)
+    return one.fromSharedLogin
+      ? `${one.name} aprobó con una cuenta creada desde el acceso compartido el ${date}. No se sabe quién la invitó.`
+      : `${one.name} aprobó con una cuenta invitada por ${one.invitedByName} el ${date}.`
   }
-  return `${joinNames(approvers.map((a) => a.name))} aprobaron con cuentas invitadas hace poco. Revisa el historial.`
+  const names = joinNames(approvers.map((a) => a.name))
+  return approvers.some((a) => a.fromSharedLogin)
+    ? `${names} aprobaron con cuentas invitadas, alguna desde el acceso compartido. Revisa el historial.`
+    : `${names} aprobaron con cuentas invitadas hace poco. Revisa el historial.`
 }

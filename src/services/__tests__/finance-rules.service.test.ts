@@ -113,12 +113,34 @@ describe('FinanceRulesService', () => {
         { kind: 'own_account', accountCreatedAt: '2026-09-01T12:00:00.000Z' },
         { kind: 'own_account', accountCreatedAt: null },
         { kind: 'shared_single_partner' },
+        { kind: 'invited_from_shared_login', invitedAt: '2026-10-18T16:00:00.000Z', acceptedAt: '2026-10-18T16:30:00.000Z', recent: false },
         null,
       ]
       const approvals = origins.map((origin) => ({ ...BETO, approvedAt: '2026-10-20T16:05:00.000Z', origin }))
-      const set = ruleSet({ approvals: approvals as never, recentInvitedApprovers: [{ ...BETO, invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' }] })
+      const set = ruleSet({
+        approvals: approvals as never,
+        recentInvitedApprovers: [
+          { ...BETO, invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z', fromSharedLogin: false },
+          { ...BETO, invitedByName: null, acceptedAt: '2026-01-18T16:30:00.000Z', fromSharedLogin: true },
+        ],
+      })
       vi.mocked(api.get).mockResolvedValue({ data: overviewFixture({ history: [set] }) })
       await expect(FinanceRulesService.overview(rulesOrigin)).resolves.toBeDefined()
+    })
+
+    it.each([
+      ['una invitación desde acceso compartido sin fechas', { kind: 'invited_from_shared_login', recent: false }],
+      ['una invitación desde acceso compartido que dice quién invitó', { kind: 'invited_from_shared_login', invitedAt: '2026-10-18T16:00:00.000Z', acceptedAt: '2026-10-18T16:30:00.000Z', recent: false, invitedByName: 'Ana' }],
+    ])('rechaza %s', async (_name, origin) => {
+      const approval = { ...BETO, approvedAt: '2026-10-20T16:05:00.000Z', origin }
+      vi.mocked(api.get).mockResolvedValue({ data: overviewFixture({ history: [ruleSet({ approvals: [approval] as never })] }) })
+      await expect(FinanceRulesService.overview(rulesOrigin)).rejects.toBeInstanceOf(FinanceRulesContractError)
+    })
+
+    it('rechaza un aviso sin saber si vino del acceso compartido', async () => {
+      const set = ruleSet({ recentInvitedApprovers: [{ ...BETO, invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' }] as never })
+      vi.mocked(api.get).mockResolvedValue({ data: overviewFixture({ inForce: set }) })
+      await expect(FinanceRulesService.overview(rulesOrigin)).rejects.toBeInstanceOf(FinanceRulesContractError)
     })
 
     it.each([

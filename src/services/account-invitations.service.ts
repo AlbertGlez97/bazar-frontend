@@ -24,7 +24,9 @@ function validInfo(value: unknown): value is InvitationInfo {
 }
 function validStatus(value: unknown): value is InvitationStatus {
   const r = asObject(value)
+  const invite = asObject(r?.invite)
   return !!r && isUuid(r.memberId) && text(r.name) && typeof r.hasPersonalAccount === 'boolean' &&
+    !!invite && typeof invite.allowed === 'boolean' && (invite.reason === null || text(invite.reason)) &&
     (r.invitation === null || validInfo(r.invitation))
 }
 

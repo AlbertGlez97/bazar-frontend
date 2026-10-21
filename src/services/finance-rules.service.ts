@@ -35,6 +35,10 @@ function validOrigin(value: unknown): boolean {
   if (!o) return false
   if (o.kind === 'shared_single_partner') return true
   if (o.kind === 'own_account') return o.accountCreatedAt === null || isInstant(o.accountCreatedAt)
+  // The shared login cannot prove who used it, so no inviter may appear here.
+  if (o.kind === 'invited_from_shared_login')
+    return isInstant(o.invitedAt) && isInstant(o.acceptedAt) && typeof o.recent === 'boolean' &&
+      !('invitedByName' in o) && !('invitedByMemberId' in o)
   return o.kind === 'invited' && isUuid(o.invitedByMemberId) && text(o.invitedByName) &&
     isInstant(o.invitedAt) && isInstant(o.acceptedAt) && typeof o.recent === 'boolean'
 }
@@ -45,7 +49,8 @@ const validApproval = (a: unknown) => {
 }
 const validRecentInvited = (a: unknown) => {
   const r = asObject(a)
-  return partner(a) && text(r?.invitedByName) && isInstant(r?.acceptedAt)
+  return partner(a) && (r?.invitedByName === null || text(r?.invitedByName)) && isInstant(r?.acceptedAt) &&
+    typeof r?.fromSharedLogin === 'boolean'
 }
 
 /** Shape only: the server owns every rule, the browser recomputes nothing. */

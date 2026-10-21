@@ -409,8 +409,8 @@ describe('TeamView — invitar a un socio a crear su cuenta', () => {
   const withElena = (invitation: ReturnType<typeof info> | null = null) => {
     list.mockResolvedValue([...TEAM, ELENA])
     inviteStatus.mockResolvedValue([
-      { memberId: 'm-1', name: 'Ana Ruiz', hasPersonalAccount: true, invitation: null },
-      { memberId: ELENA.id, name: ELENA.name, hasPersonalAccount: false, invitation },
+      { memberId: 'm-1', name: 'Ana Ruiz', hasPersonalAccount: true, invite: { allowed: false, reason: null }, invitation: null },
+      { memberId: ELENA.id, name: ELENA.name, hasPersonalAccount: false, invite: { allowed: true, reason: null }, invitation },
     ])
   }
   const inviteButton = () => dom('[data-test="invite"]')!
@@ -419,6 +419,23 @@ describe('TeamView — invitar a un socio a crear su cuenta', () => {
     useAuthStore().$patch({ token: 't' })
     return mountView()
   }
+
+  it('con acceso compartido y cuentas personales existentes, el botón sigue visible pero deshabilitado con la explicación', async () => {
+    const reason = 'Tu acceso es compartido y ya hay cuentas personales. Pídele a un socio con cuenta personal que te invite.'
+    list.mockResolvedValue([...TEAM, ELENA])
+    inviteStatus.mockResolvedValue([
+      { memberId: 'm-1', name: 'Ana Ruiz', hasPersonalAccount: true, invite: { allowed: false, reason: null }, invitation: null },
+      { memberId: ELENA.id, name: ELENA.name, hasPersonalAccount: false, invite: { allowed: false, reason }, invitation: null },
+    ])
+    await mountAsSocio()
+
+    expect(inviteButton().text()).toBe('Invitar')
+    expect(inviteButton().attributes('disabled')).toBeDefined()
+    expect(dom('[data-test="invite-hint"]')!.text()).toBe(reason)
+    await inviteButton().trigger('click')
+    expect(dom('[role="dialog"]')).toBeNull()
+    expect(sendInvite).not.toHaveBeenCalled()
+  })
 
   it('pide el estado de las cuentas al abrir y lo muestra junto a cada socio', async () => {
     withElena()

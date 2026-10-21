@@ -11,7 +11,7 @@ const TOKEN = 'dG9rZW4tZGUtcHJ1ZWJhLWRlLTMyLWJ5dGVzLWJhc2U2NHVybA'
 const MEMBER = '0190aaaa-0000-7000-8000-000000000002'
 const headers = { 'x-member-id': rulesOrigin.memberId, 'x-device-id': rulesOrigin.deviceId }
 const info = { email: 'beto@example.test', sentAt: '2026-10-20T17:59:00.000Z', expiresAt: '2026-10-23T17:59:00.000Z', canResendAt: '2026-10-20T18:00:00.000Z', resendsLeftToday: 2 }
-const statusRow = (over = {}) => ({ memberId: MEMBER, name: 'Beto', hasPersonalAccount: false, invitation: info, ...over })
+const statusRow = (over = {}) => ({ memberId: MEMBER, name: 'Beto', hasPersonalAccount: false, invite: { allowed: true, reason: null }, invitation: info, ...over })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -48,7 +48,8 @@ describe('página pública', () => {
 
 describe('equipo (solo socios)', () => {
   it('status pide la lista con la identidad del socio y valida cada fila', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [statusRow(), statusRow({ memberId: rulesOrigin.memberId, name: 'Ana', hasPersonalAccount: true, invitation: null })] })
+    const blocked = { allowed: false, reason: 'Tu acceso es compartido y ya hay cuentas personales. Pídele a un socio con cuenta personal que te invite.' }
+    vi.mocked(api.get).mockResolvedValue({ data: [statusRow({ invite: blocked }), statusRow({ memberId: rulesOrigin.memberId, name: 'Ana', hasPersonalAccount: true, invite: { allowed: false, reason: null }, invitation: null })] })
 
     const list = await AccountInvitationsService.status(rulesOrigin)
 
@@ -62,6 +63,9 @@ describe('equipo (solo socios)', () => {
     ['invitación con envíos negativos', [statusRow({ invitation: { ...info, resendsLeftToday: -1 } })]],
     ['invitación con fecha mala', [statusRow({ invitation: { ...info, expiresAt: 'x' } })]],
     ['sin booleano de cuenta', [statusRow({ hasPersonalAccount: 'si' })]],
+    ['sin saber si se puede invitar', [statusRow({ invite: undefined })]],
+    ['permiso de invitar que no es booleano', [statusRow({ invite: { allowed: 'si', reason: null } })]],
+    ['razón vacía en vez de nula', [statusRow({ invite: { allowed: false, reason: '' } })]],
   ])('status rechaza: %s', async (_name, data) => {
     vi.mocked(api.get).mockResolvedValue({ data })
     await expect(AccountInvitationsService.status(rulesOrigin)).rejects.toBeInstanceOf(AccountInvitationsContractError)
