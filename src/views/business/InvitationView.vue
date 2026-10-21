@@ -205,6 +205,9 @@ async function create() {
 .invitation__form { display: flex; flex-direction: column; gap: var(--spacing-md); }
 .invitation__link {
   align-self: center;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--color-primary-hover);
   font-weight: 600;
   text-decoration: underline;
