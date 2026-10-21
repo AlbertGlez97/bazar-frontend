@@ -75,6 +75,29 @@ describe('DeviceIdentifyForm', () => {
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
   })
 
+  it('cuenta personal: pide un código a un socio y lo dice con sus pasos, con la ayuda debajo', () => {
+    const wrapper = mount(DeviceIdentifyForm, { props: { bound: true } })
+    expect(wrapper.text()).toContain('Un socio te puede dar un código. Pídele que entre a Ajustes y luego a Dispositivos, y toque Registrar dispositivo. Escribe aquí el código y el nombre que te dé.')
+    expect(wrapper.text()).toContain('El código sirve una sola vez.')
+    expect(wrapper.findAll('label').map((l) => l.text())).toEqual(['Código del dispositivo', 'Nombre del dispositivo'])
+    expect(wrapper.text()).not.toContain('Este dispositivo aún no está identificado')
+  })
+
+  it('cuenta personal: valida y emite igual que siempre', async () => {
+    const wrapper = mount(DeviceIdentifyForm, { props: { bound: true } })
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('submit')).toBeUndefined()
+    await fillValidForm(wrapper)
+    await wrapper.find('form').trigger('submit')
+    expect(wrapper.emitted('submit')?.[0]).toEqual([{ identifier: 'shared-tablet', name: 'Shared tablet' }])
+  })
+
+  it('el login compartido no ve la ayuda de "código" ni cambia sus textos', () => {
+    const wrapper = mount(DeviceIdentifyForm)
+    expect(wrapper.text()).not.toContain('El código sirve una sola vez.')
+    expect(wrapper.findAll('label').map((l) => l.text())).toEqual(['Identificador del dispositivo', 'Nombre del dispositivo'])
+  })
+
   it('deshabilita el botón de envío mientras loading es true', () => {
     const wrapper = mount(DeviceIdentifyForm, { props: { loading: true } })
     expect(wrapper.find('button').attributes('disabled')).toBeDefined()

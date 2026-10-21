@@ -28,7 +28,10 @@
         <h1 class="select-context__title">
           {{ heading.title }}
         </h1>
-        <p class="select-context__subtitle">
+        <p
+          v-if="heading.subtitle"
+          class="select-context__subtitle"
+        >
           {{ heading.subtitle }}
         </p>
 
@@ -45,6 +48,7 @@
              cada apertura de la app). -->
         <DeviceIdentifyForm
           v-if="!sessionStore.isDeviceIdentified"
+          :bound="isBound"
           :loading="deviceLoading"
           :error="deviceError"
           :error-type="deviceErrorType"
@@ -118,6 +122,9 @@ const showSelector = computed(
 const heading = computed(() => {
   if (showSelector.value) return { title: '¿Quién atiende hoy?', subtitle: 'Toca tu nombre para seguir.' }
   if (!sessionStore.isDeviceIdentified) {
+    // Cuenta personal sin dispositivo (p. ej. aceptó la invitación en otra computadora): se le
+    // explica qué hacer; el texto del formulario ya lo dice, aquí no se repite.
+    if (isBound.value) return { title: 'Falta registrar este dispositivo', subtitle: '' }
     return { title: 'Identifica este dispositivo', subtitle: 'Solo lo haces una vez por dispositivo.' }
   }
   // Cuenta ligada con el dispositivo ya identificado: la vista solo redirige.
@@ -155,7 +162,7 @@ async function handleDeviceSubmit(payload: DeviceIdentifyPayload) {
     // 409 (identificador ya usado / dispositivo revocado) se explica aparte de
     // 403 (datos que no coinciden): son problemas distintos con salidas
     // distintas. El formulario queda editable para reintentar.
-    const { message, type } = deviceIdentifyError(cause)
+    const { message, type } = deviceIdentifyError(cause, isBound.value)
     deviceError.value = message
     deviceErrorType.value = type
   } finally {

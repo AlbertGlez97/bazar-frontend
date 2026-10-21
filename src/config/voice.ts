@@ -24,6 +24,8 @@ export const VOICE = {
   device: {
     /** 409: el identificador es de un solo uso y ya se gastó (o el equipo se revocó). */
     alreadyUsed: 'Este identificador ya fue usado. Pide a un socio que te genere uno nuevo.',
+    /** 409 para una cuenta personal: el "código" que le dio un socio ya se gastó. */
+    codeAlreadyUsed: 'Este código ya se usó. Pide a un socio que te registre un dispositivo nuevo.',
     /** 403: identificador o nombre que no coinciden con ningún dispositivo del negocio. */
     notRegistered: 'Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.',
     /** Cualquier otra falla al verificar (red, servidor). */
@@ -653,8 +655,10 @@ export function isNetworkError(cause: unknown): boolean {
  * y distingue "ya usado" de "revocado"); si no, el de respaldo. Se muestra como
  * aviso, no como error, y nunca incluye el identificador que se escribió.
  */
-export function deviceIdentifyError(cause: unknown): { message: string; type: 'warning' | 'error' } {
+export function deviceIdentifyError(cause: unknown, bound = false): { message: string; type: 'warning' | 'error' } {
   const response = (cause as { response?: { status?: number; data?: { message?: unknown } } } | null)?.response
+  // Una cuenta personal recibe un "código" de un socio, no un "identificador": se le habla así.
+  if (response?.status === 409 && bound) return { message: VOICE.device.codeAlreadyUsed, type: 'warning' }
   if (response?.status === 409) {
     const message = response.data?.message
     return {

@@ -8,7 +8,18 @@
     novalidate
     @submit.prevent="handleSubmit"
   >
-    <p class="device-identify-form__hint">
+    <!-- Cuenta personal: aún no hay dispositivo registrado en este teléfono o computadora. -->
+    <p
+      v-if="bound"
+      class="device-identify-form__hint"
+    >
+      Un socio te puede dar un código. Pídele que entre a Ajustes y luego a Dispositivos, y toque
+      Registrar dispositivo. Escribe aquí el código y el nombre que te dé.
+    </p>
+    <p
+      v-else
+      class="device-identify-form__hint"
+    >
       Este dispositivo aún no está identificado. Pídele a un socio el
       <strong>identificador</strong> y el <strong>nombre</strong> exactos con
       los que autorizó esta tablet o teléfono.
@@ -16,8 +27,8 @@
 
     <AppInput
       v-model="form.identifier"
-      label="Identificador del dispositivo"
-      placeholder="Ej. shared-tablet"
+      :label="bound ? 'Código del dispositivo' : 'Identificador del dispositivo'"
+      :placeholder="bound ? 'Ej. 0190a5f0…' : 'Ej. shared-tablet'"
       :disabled="loading"
       :error="errors.identifier"
       @blur="validateIdentifier"
@@ -31,6 +42,12 @@
       :error="errors.name"
       @blur="validateName"
     />
+    <p
+      v-if="bound"
+      class="device-identify-form__hint"
+    >
+      El código sirve una sola vez.
+    </p>
 
     <!-- El padre pasa aquí el mensaje (403 "no registrado", 409 "identificador
          ya usado" u otro error de red) y su gravedad: la molécula solo lo
@@ -70,10 +87,13 @@ withDefaults(defineProps<{
   error?: string | null
   /** Gravedad de la alerta: "error" por defecto; "warning" para un identificador ya usado */
   errorType?: 'error' | 'warning'
+  /** Cuenta personal (atada a un socio): pide un código a un socio en vez del identificador de la tablet. */
+  bound?: boolean
 }>(), {
   loading: false,
   error: null,
   errorType: 'error',
+  bound: false,
 })
 
 const emit = defineEmits<{

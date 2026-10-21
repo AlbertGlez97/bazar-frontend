@@ -161,3 +161,68 @@ describe('SelectContextView with the shared business login', () => {
     expect(wrapper.findAll('[role="listitem"]')).toHaveLength(2)
   })
 })
+
+describe('cuenta atada que llega sin dispositivo (aceptó en otra computadora y ahora usa otro teléfono)', () => {
+  it('dice "Falta registrar este dispositivo" y explica cómo conseguir el código, en frases cortas', async () => {
+    await signInAs(socio)
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+
+    expect(wrapper.get('h1').text()).toBe('Falta registrar este dispositivo')
+    const text = wrapper.text()
+    expect(text).toContain('Un socio te puede dar un código. Pídele que entre a Ajustes y luego a Dispositivos, y toque Registrar dispositivo. Escribe aquí el código y el nombre que te dé.')
+    expect(text).toContain('El código sirve una sola vez.')
+    expect(text).not.toContain('Solo lo haces una vez por dispositivo')
+    for (const sentence of text.split(/(?<=[.!?])\s+/))
+      expect(sentence.split(/\s+/).length, sentence).toBeLessThanOrEqual(20)
+    expect(MembersService.list).not.toHaveBeenCalled()
+  })
+
+  it('el campo se llama "Código del dispositivo" y sigue pidiendo el nombre exacto', async () => {
+    await signInAs(socio)
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+    const labels = wrapper.findAll('label').map((l) => l.text())
+    expect(labels).toEqual(['Código del dispositivo', 'Nombre del dispositivo'])
+  })
+
+  it('un código ya usado (409) dice "Este código ya se usó…", aunque el servidor hable de "identificador"', async () => {
+    vi.mocked(DevicesService.identify).mockRejectedValue({ response: { status: 409, data: { message: 'Este identificador ya fue usado. Pide a un socio que te genere uno nuevo.' } } })
+    await signInAs(socio)
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+    await wrapper.findAll('input')[0]!.setValue('abc')
+    await wrapper.findAll('input')[1]!.setValue('Tablet')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Este código ya se usó. Pide a un socio que te registre un dispositivo nuevo.')
+    expect(wrapper.text()).not.toContain('identificador')
+  })
+
+  it('al registrarlo con un código válido entra directo a la app, sin selector de persona', async () => {
+    vi.mocked(DevicesService.identify).mockResolvedValue({ deviceId: 'd-new', deviceToken: 'tok' })
+    await signInAs(socio)
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+    await wrapper.findAll('input')[0]!.setValue('abc')
+    await wrapper.findAll('input')[1]!.setValue('Tablet')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(push).toHaveBeenCalledWith({ name: 'AppHome' })
+    expect(MembersService.list).not.toHaveBeenCalled()
+  })
+
+  it('el login compartido sigue viendo el texto de siempre', async () => {
+    await signInAs(null)
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+
+    expect(wrapper.get('h1').text()).toBe('Identifica este dispositivo')
+    expect(wrapper.text()).toContain('Solo lo haces una vez por dispositivo.')
+    expect(wrapper.text()).toContain('el identificador')
+    expect(wrapper.text()).not.toContain('Falta registrar')
+    expect(wrapper.findAll('label').map((l) => l.text())).toEqual(['Identificador del dispositivo', 'Nombre del dispositivo'])
+  })
+})

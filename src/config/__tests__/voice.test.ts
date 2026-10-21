@@ -189,6 +189,16 @@ describe('deviceIdentifyError (POST /devices/identify)', () => {
       .toEqual({ message, type: 'warning' })
   })
 
+  it('cuenta personal: un 409 dice "código", siempre el mismo texto, sea cual sea el del servidor', () => {
+    const text = 'Este código ya se usó. Pide a un socio que te registre un dispositivo nuevo.'
+    expect(VOICE.device.codeAlreadyUsed).toBe(text)
+    for (const data of [{ message: 'Este identificador ya fue usado.' }, {}, undefined])
+      expect(deviceIdentifyError({ response: { status: 409, data } }, true)).toEqual({ message: text, type: 'warning' })
+    // Los demás errores no cambian para una cuenta personal.
+    expect(deviceIdentifyError({ response: { status: 403 } }, true).message).toBe(VOICE.device.notRegistered)
+    expect(deviceIdentifyError(new Error('x'), true).message).toBe(VOICE.device.verifyFailed)
+  })
+
   it('409 sin mensaje utilizable: usa el mensaje de respaldo, como aviso', () => {
     for (const data of [undefined, null, {}, { message: '' }, { message: '  ' }, { message: 42 }, { message: ['x'] }]) {
       expect(deviceIdentifyError({ response: { status: 409, data } }))
