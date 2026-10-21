@@ -92,6 +92,11 @@ describe('DeviceIdentifyForm', () => {
     expect(wrapper.emitted('submit')?.[0]).toEqual([{ identifier: 'shared-tablet', name: 'Shared tablet' }])
   })
 
+  it.each([false, true])('los dos campos apagan el autocompletado (un código no es un dato personal) [bound=%s]', (bound) => {
+    const wrapper = mount(DeviceIdentifyForm, { props: { bound } })
+    for (const input of wrapper.findAll('input')) expect(input.attributes('autocomplete')).toBe('off')
+  })
+
   it('el login compartido no ve la ayuda de "código" ni cambia sus textos', () => {
     const wrapper = mount(DeviceIdentifyForm)
     expect(wrapper.text()).not.toContain('El código sirve una sola vez.')
