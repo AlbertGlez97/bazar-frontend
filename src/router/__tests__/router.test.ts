@@ -46,6 +46,11 @@ describe('session routing', () => {
     await router.push('/registro-negocio'); expect(router.currentRoute.value.name).toBe('BusinessRegistration')
     await router.push('/verificar-correo?token=abc'); expect(router.currentRoute.value.name).toBe('VerifyEmail')
   })
+  it('allows logged-out visitors to open an invitation link, with the token as a path parameter', async () => {
+    await router.push('/invitacion/abc_DEF-123')
+    expect(router.currentRoute.value.name).toBe('Invitation')
+    expect(router.currentRoute.value.params.token).toBe('abc_DEF-123')
+  })
   it.each(['/', '/unknown', '/login'])('sends restored-session %s to shell', async (path) => {
     restoreFullSession()
     await router.push(path); expect(router.currentRoute.value.name).toBe('AppHome')

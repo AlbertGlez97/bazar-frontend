@@ -1,3 +1,5 @@
+import type { AccountOrigin, RecentInvitedApprover } from './account-invitation.types'
+
 export type BusinessPhase = 'arranque' | 'operacion' | 'cierre'
 export type RecoveryMode = 'ninguna' | 'por_diferencia' | 'total' | 'proporcional'
 export type RecoveryTiming = 'durante' | 'al_cierre'
@@ -31,7 +33,13 @@ export interface FinanceRulesConfig {
 
 export interface RulesWarning { code: string; message: string }
 export interface RulesPartner { memberId: string; name: string }
-export interface RuleApproval { memberId: string; name: string; approvedAt: string }
+export interface RuleApproval {
+  memberId: string
+  name: string
+  approvedAt: string
+  /** How the approving login was created, as recorded with the approval; null for older approvals. */
+  origin: AccountOrigin | null
+}
 
 export interface RuleSetView {
   id: string
@@ -47,6 +55,8 @@ export interface RuleSetView {
   supersededAt: string | null
   withdrawnAt: string | null
   approvals: RuleApproval[]
+  /** Approvers whose login was created by an invitation accepted shortly before approving. */
+  recentInvitedApprovers: RecentInvitedApprover[]
   missing: RulesPartner[]
 }
 

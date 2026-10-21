@@ -105,6 +105,7 @@ export { default as DeviceCreateForm } from './ui/organisms/DeviceCreateForm.vue
 export { default as DeviceList } from './ui/organisms/DeviceList.vue'
 export { default as MemberCreateForm } from './ui/organisms/MemberCreateForm.vue'
 export { default as TeamMemberList } from './ui/organisms/TeamMemberList.vue'
+export { default as InviteMemberForm } from './ui/organisms/InviteMemberForm.vue'
 export { default as ProductCard         } from './ui/organisms/ProductCard.vue'
 export { default as ExpenseFormFields } from './ui/organisms/ExpenseFormFields.vue'
 export { default as ProductForm         } from './ui/organisms/ProductForm.vue'

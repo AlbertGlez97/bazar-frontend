@@ -47,6 +47,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/business/VerifyEmailView.vue'),
       },
       {
+        // Destino del enlace del correo de invitación: la persona elige su contraseña con un botón (POST).
+        // Pública y sin redirecciones de sesión; abrirla solo consulta, no gasta el enlace.
+        path: '/invitacion/:token',
+        name: 'Invitation',
+        component: () => import('@/views/business/InvitationView.vue'),
+      },
+      {
         // Textos legales: públicos (con o sin sesión) y con su propio pie. Ver src/legal.
         path: '/privacidad',
         name: 'Privacy',

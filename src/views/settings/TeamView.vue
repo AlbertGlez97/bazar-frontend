@@ -77,11 +77,44 @@
       </AppButton>
     </div>
 
+    <!-- Aviso de la invitación enviada (la cuenta se crea cuando la persona abre su enlace) -->
+    <AppAlert
+      v-if="invitations.sentTo && !inviteTarget"
+      type="success"
+      role="status"
+      data-test="invite-sent"
+    >
+      Listo. Le mandamos la invitación a {{ invitations.sentTo }}. El enlace dura 72 horas.
+    </AppAlert>
+
     <TeamMemberList
-      v-else
+      v-if="status !== 'loading' && status !== 'error'"
       :members="members"
       :current-member-id="session.memberId"
+      :invitations="invitations.items"
+      :busy="invitations.working"
+      @invite="openInvite"
     />
+
+    <AppModal
+      :model-value="!!inviteTarget"
+      :title="inviteTarget ? `Invitar a ${inviteTarget.name}` : ''"
+      size="md"
+      hide-footer
+      :close-on-backdrop="!invitations.working"
+      @update:model-value="onInviteModalChange"
+    >
+      <InviteMemberForm
+        v-if="inviteTarget"
+        :member-name="inviteTarget.name"
+        :initial-email="inviteTarget.email"
+        :resend="inviteTarget.resend"
+        :loading="invitations.working"
+        :error="invitations.actionError"
+        @submit="sendInvitation"
+        @cancel="onInviteModalChange(false)"
+      />
+    </AppModal>
 
     <AppModal
       :model-value="showForm"
@@ -106,15 +139,17 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  AppAlert, AppButton, AppModal, AppSkeleton, MemberCreateForm, MemberCreatedNotice, TeamMemberList,
+  AppAlert, AppButton, AppModal, AppSkeleton, InviteMemberForm, MemberCreateForm, MemberCreatedNotice, TeamMemberList,
 } from '@/components'
 import { VOICE, createMemberError, type CreateMemberField } from '@/config/voice'
 import MembersService from '@/services/members.service'
+import { useAccountInvitationsStore } from '@/stores/account-invitations.store'
 import { useSessionStore } from '@/stores/session.store'
 import type { CreatedMember, CreateMemberPayload, Member } from '@/types/member.types'
 
 const router = useRouter()
 const session = useSessionStore()
+const invitations = useAccountInvitationsStore()
 
 // ── Permisos vivos ────────────────────────────────────────────────────────
 // El guard del router ya impide entrar; aquí se vigila lo que cambia con la
@@ -157,6 +192,31 @@ function loadFailureMessage(cause: unknown): string {
 }
 
 load()
+void invitations.load()
+
+// ── Invitar a un socio a crear su cuenta personal ─────────────────────────
+const inviteTarget = ref<{ id: string; name: string; email: string; resend: boolean } | null>(null)
+
+function openInvite(memberId: string) {
+  const member = members.value.find((m) => m.id === memberId)
+  if (!member) return
+  const previous = invitations.byMember(memberId)?.invitation ?? null
+  invitations.actionError = ''
+  invitations.sentTo = ''
+  inviteTarget.value = { id: member.id, name: member.name, email: previous?.email ?? '', resend: !!previous }
+}
+
+// Mientras se envía no se puede cerrar el cuadro: el resultado llega de todos modos.
+function onInviteModalChange(open: boolean) {
+  if (!open && invitations.working) return
+  if (!open) inviteTarget.value = null
+}
+
+async function sendInvitation(email: string) {
+  const target = inviteTarget.value
+  if (!target || invitations.working) return
+  if (await invitations.invite(target.id, email)) inviteTarget.value = null
+}
 
 // ── Alta ──────────────────────────────────────────────────────────────────
 const showForm = ref(false)

@@ -49,6 +49,10 @@
             :key="approval.memberId"
           >
             {{ approval.name }} aprobó el {{ formatRuleDateTime(approval.approvedAt) }}.
+            <span
+              class="rules-history__origin"
+              data-test="approval-origin"
+            >{{ originText(approval.origin) }}</span>
           </li>
           <li
             v-for="partner in item.missing"
@@ -76,6 +80,7 @@
 
 <script setup lang="ts">
 import { AppBadge } from '@/components'
+import { originText } from '@/utils/account-invitations'
 import { STATUS_TEXT, formatRuleDateTime, versionSummary } from '@/utils/finance-rules'
 import type { RuleSetStatus, RuleSetView } from '@/types/finance-rules.types'
 
@@ -103,6 +108,7 @@ const BADGE: Record<RuleSetStatus, 'green' | 'amber' | 'gray' | 'blue'> = {
 .rules-history__meta, .rules-history__approvals { margin: 0; font-size: var(--font-size-sm); color: var(--color-text-muted); }
 .rules-history__approvals { padding-left: var(--spacing-md); }
 .rules-history__missing { color: var(--color-warning); }
+.rules-history__origin { display: block; font-size: var(--font-size-xs); }
 .rules-history__details summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--color-primary); font-weight: 600; }
 .rules-history__details ul { margin: 0; padding-left: var(--spacing-md); font-size: var(--font-size-sm); }
 </style>

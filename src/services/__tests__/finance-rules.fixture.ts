@@ -25,6 +25,7 @@ export const ruleSet = (over: Partial<RuleSetView> = {}): RuleSetView => ({
   supersededAt: null,
   withdrawnAt: null,
   approvals: [] as RuleApproval[],
+  recentInvitedApprovers: [],
   missing: [],
   ...over,
 })

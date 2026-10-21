@@ -19,7 +19,8 @@ vi.mock('@/services/queue-origin', async (importOriginal) => ({
 
 const pendingSet = (over = {}) => ruleSet({
   status: 'pendiente', submittedAt: '2026-10-20T16:00:00.000Z', proposedBy: BETO,
-  approvals: [{ ...BETO, approvedAt: '2026-10-20T16:05:00.000Z' }], missing: [ANA], ...over,
+  approvals: [{ ...BETO, approvedAt: '2026-10-20T16:05:00.000Z', origin: { kind: 'own_account' as const, accountCreatedAt: '2026-09-01T12:00:00.000Z' } }],
+  missing: [ANA], ...over,
 })
 const pendingOverview = (over: Partial<RulesOverview> = {}) => {
   const pending = pendingSet()
@@ -108,6 +109,51 @@ describe('RulesPanel: estado visible', () => {
     expect(history).toContain('Versión 1')
     expect(history).toContain('Beto aprobó el 20/10/2026, 10:05.')
     expect(history).toContain('Ana todavía no aprueba.')
+  })
+
+  it('el historial dice cómo se creó la cuenta de cada persona que aprobó', async () => {
+    const invited = { kind: 'invited' as const, invitedByMemberId: ANA.memberId, invitedByName: 'Ana', invitedAt: '2026-10-18T16:00:00.000Z', acceptedAt: '2026-10-18T16:30:00.000Z', recent: true }
+    const set = ruleSet({
+      status: 'vigente', version: 3, activatedAt: '2026-10-20T18:30:00.000Z',
+      approvals: [
+        { ...ANA, approvedAt: '2026-10-20T18:00:00.000Z', origin: { kind: 'shared_single_partner' } },
+        { ...BETO, approvedAt: '2026-10-20T18:30:00.000Z', origin: invited },
+        { memberId: 'x', name: 'Carla', approvedAt: '2026-10-20T18:31:00.000Z', origin: null },
+      ],
+    })
+    const w = await show(overviewFixture({ state: 'vigente', inForce: set, history: [set] }))
+    const history = w.get('[data-test="rules-history"]').text()
+
+    expect(history).toContain('Acceso compartido de un solo socio.')
+    expect(history).toContain('Cuenta creada por invitación de Ana el 18/10/2026, 10:00.')
+    expect(history).toContain('Sin dato de cómo se creó la cuenta.')
+  })
+})
+
+describe('RulesPanel: aviso de quién aprobó con una cuenta invitada hace poco', () => {
+  const vigente = (recent: { memberId: string; name: string; invitedByName: string; acceptedAt: string }[]) => {
+    const set = ruleSet({ status: 'vigente', activatedAt: '2026-10-20T18:30:00.000Z', recentInvitedApprovers: recent })
+    return overviewFixture({ state: 'vigente', inForce: set, history: [set] })
+  }
+
+  it('cuando las reglas pasan a vigentes, nombra a quien aprobó con una cuenta invitada hace poco y quién lo invitó', async () => {
+    const w = await show(vigente([{ ...BETO, invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' }]))
+    const notice = w.get('[data-test="rules-recent-invite"]')
+    expect(notice.text()).toBe('Beto aprobó con una cuenta invitada por Ana el 18/10/2026.')
+    expect(w.get('[data-test="rules-inforce"]').element.contains(notice.element)).toBe(true)
+  })
+
+  it('con varias personas, las nombra y manda al historial', async () => {
+    const w = await show(vigente([
+      { ...BETO, invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' },
+      { memberId: 'c', name: 'Carla', invitedByName: 'Ana', acceptedAt: '2026-10-19T16:30:00.000Z' },
+    ]))
+    expect(w.get('[data-test="rules-recent-invite"]').text()).toBe('Beto y Carla aprobaron con cuentas invitadas hace poco. Revisa el historial.')
+  })
+
+  it('si nadie aprobó con una cuenta invitada reciente, no hay aviso', async () => {
+    const w = await show(vigente([]))
+    expect(w.find('[data-test="rules-recent-invite"]').exists()).toBe(false)
   })
 })
 

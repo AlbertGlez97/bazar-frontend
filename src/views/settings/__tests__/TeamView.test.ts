@@ -7,13 +7,22 @@ import { DOMWrapper, flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import TeamView from '../TeamView.vue'
 import MembersService from '@/services/members.service'
+import { AccountInvitationsService } from '@/services/account-invitations.service'
+import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
 import { VOICE } from '@/config/voice'
 import type { CreatedMember, Member } from '@/types/member.types'
 
 vi.mock('@/services/members.service', () => ({ default: { list: vi.fn(), create: vi.fn() } }))
+vi.mock('@/services/account-invitations.service', () => ({ AccountInvitationsService: { status: vi.fn(), invite: vi.fn() } }))
+vi.mock('@/services/queue-origin', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  currentQueueOrigin: () => ({ accountId: 'a', memberId: 'm-1', deviceId: 'd', apiBase: '/api/v1' }),
+}))
 const list = vi.mocked(MembersService.list)
 const create = vi.mocked(MembersService.create)
+const inviteStatus = vi.mocked(AccountInvitationsService.status)
+const sendInvite = vi.mocked(AccountInvitationsService.invite)
 
 const TEAM: Member[] = [
   { id: 'm-1', name: 'Ana Ruiz', role: 'socio', active: true },
@@ -81,6 +90,8 @@ beforeEach(() => {
   sessionStorage.clear()
   list.mockReset().mockResolvedValue(TEAM)
   create.mockReset().mockResolvedValue(CREATED)
+  inviteStatus.mockReset().mockResolvedValue([])
+  sendInvite.mockReset()
 })
 
 afterEach(() => {
@@ -385,5 +396,98 @@ describe('TeamView — envío en curso', () => {
     await openAndFill({ correo: 'sin-arroba' })
     await submitForm()
     expect(create).not.toHaveBeenCalled()
+  })
+})
+
+describe('TeamView — invitar a un socio a crear su cuenta', () => {
+  const ELENA = { id: '0190aaaa-0000-7000-8000-000000000005', name: 'Elena Mora', role: 'socio', active: true } as Member
+  const info = (over = {}) => ({
+    // Fechas ya pasadas respecto del reloj real: el botón de reenviar está habilitado.
+    email: 'elena@example.test', sentAt: '2026-10-01T17:50:00.000Z', expiresAt: '2036-10-04T17:50:00.000Z',
+    canResendAt: '2026-10-01T17:51:00.000Z', resendsLeftToday: 2, ...over,
+  })
+  const withElena = (invitation: ReturnType<typeof info> | null = null) => {
+    list.mockResolvedValue([...TEAM, ELENA])
+    inviteStatus.mockResolvedValue([
+      { memberId: 'm-1', name: 'Ana Ruiz', hasPersonalAccount: true, invitation: null },
+      { memberId: ELENA.id, name: ELENA.name, hasPersonalAccount: false, invitation },
+    ])
+  }
+  const inviteButton = () => dom('[data-test="invite"]')!
+
+  async function mountAsSocio() {
+    useAuthStore().$patch({ token: 't' })
+    return mountView()
+  }
+
+  it('pide el estado de las cuentas al abrir y lo muestra junto a cada socio', async () => {
+    withElena()
+    await mountAsSocio()
+    expect(inviteStatus).toHaveBeenCalledTimes(1)
+    expect(rows()[0].text()).toContain('Con cuenta personal')
+    expect(rows()[3].text()).toContain('Sin cuenta personal')
+  })
+
+  it('"Invitar" abre un cuadro con el nombre, pide el correo y lo manda; luego avisa a dónde fue', async () => {
+    withElena()
+    sendInvite.mockResolvedValue({ expiresAt: '2026-10-23T17:50:00.000Z' })
+    await mountAsSocio()
+    await inviteButton().trigger('click')
+
+    expect(dom('[role="dialog"]')!.text()).toContain('Invitar a Elena Mora')
+    await inputByLabel('Correo de la persona').setValue('ELENA@example.test')
+    await dom('.invite-form')!.trigger('submit')
+    await flushPromises()
+
+    expect(sendInvite).toHaveBeenCalledWith(expect.objectContaining({ memberId: 'm-1' }), ELENA.id, 'elena@example.test')
+    expect(dom('[role="dialog"]')).toBeNull()
+    expect(dom('[data-test="invite-sent"]')!.text()).toBe('Listo. Le mandamos la invitación a elena@example.test. El enlace dura 72 horas.')
+    expect(inviteStatus).toHaveBeenCalledTimes(2)
+  })
+
+  it('si el servidor rechaza, el cuadro sigue abierto con el mensaje y no dice que se envió', async () => {
+    withElena()
+    sendInvite.mockRejectedValue({ response: { status: 422, data: { code: 'INVITATION_NOT_SENT', message: 'No pudimos enviar la invitación a ese correo.' } } })
+    await mountAsSocio()
+    await inviteButton().trigger('click')
+    await inputByLabel('Correo de la persona').setValue('elena@example.test')
+    await dom('.invite-form')!.trigger('submit')
+    await flushPromises()
+
+    expect(dom('[role="dialog"]')).not.toBeNull()
+    expect(dom('.invite-form')!.text()).toContain('No pudimos enviar la invitación a ese correo.')
+    expect(dom('[data-test="invite-sent"]')).toBeNull()
+  })
+
+  it('reenviar parte del correo de la invitación anterior', async () => {
+    withElena(info())
+    await mountAsSocio()
+    expect(inviteButton().text()).toBe('Reenviar invitación')
+    await inviteButton().trigger('click')
+    await flushPromises()
+    expect(inputValue('Correo de la persona')).toBe('elena@example.test')
+    expect(dom('.invite-form button[type="submit"]')!.text()).toBe('Reenviar invitación')
+  })
+
+  it('cancelar cierra el cuadro sin enviar nada', async () => {
+    withElena()
+    await mountAsSocio()
+    await inviteButton().trigger('click')
+    await button('Cancelar')!.trigger('click')
+    expect(dom('[role="dialog"]')).toBeNull()
+    expect(sendInvite).not.toHaveBeenCalled()
+  })
+
+  it('un aviso de envío anterior se retira al abrir otra invitación', async () => {
+    withElena()
+    sendInvite.mockResolvedValue({ expiresAt: '2026-10-23T17:50:00.000Z' })
+    await mountAsSocio()
+    await inviteButton().trigger('click')
+    await inputByLabel('Correo de la persona').setValue('elena@example.test')
+    await dom('.invite-form')!.trigger('submit')
+    await flushPromises()
+    expect(dom('[data-test="invite-sent"]')).not.toBeNull()
+    await inviteButton().trigger('click')
+    expect(dom('[data-test="invite-sent"]')).toBeNull()
   })
 })

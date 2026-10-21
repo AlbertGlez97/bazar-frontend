@@ -101,10 +101,38 @@ describe('FinanceRulesService', () => {
     it('acepta el historial con aprobaciones y faltantes', async () => {
       const pending = ruleSet({
         status: 'pendiente', submittedAt: '2026-10-20T16:00:00.000Z',
-        approvals: [{ ...ANA, approvedAt: '2026-10-20T16:05:00.000Z' }], missing: [BETO],
+        approvals: [{ ...ANA, approvedAt: '2026-10-20T16:05:00.000Z', origin: { kind: 'shared_single_partner' } }], missing: [BETO],
       })
       vi.mocked(api.get).mockResolvedValue({ data: overviewFixture({ state: 'pendiente', pending, history: [pending] }) })
       await expect(FinanceRulesService.overview(rulesOrigin)).resolves.toMatchObject({ state: 'pendiente' })
+    })
+
+    it('acepta el origen de cada cuenta: invitación, cuenta propia, acceso compartido o sin dato', async () => {
+      const origins = [
+        { kind: 'invited', invitedByMemberId: ANA.memberId, invitedByName: 'Ana', invitedAt: '2026-10-18T16:00:00.000Z', acceptedAt: '2026-10-18T16:30:00.000Z', recent: true },
+        { kind: 'own_account', accountCreatedAt: '2026-09-01T12:00:00.000Z' },
+        { kind: 'own_account', accountCreatedAt: null },
+        { kind: 'shared_single_partner' },
+        null,
+      ]
+      const approvals = origins.map((origin) => ({ ...BETO, approvedAt: '2026-10-20T16:05:00.000Z', origin }))
+      const set = ruleSet({ approvals: approvals as never, recentInvitedApprovers: [{ ...BETO, invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' }] })
+      vi.mocked(api.get).mockResolvedValue({ data: overviewFixture({ history: [set] }) })
+      await expect(FinanceRulesService.overview(rulesOrigin)).resolves.toBeDefined()
+    })
+
+    it.each([
+      ['un origen de tipo desconocido', { ...BETO, approvedAt: '2026-10-20T16:05:00.000Z', origin: { kind: 'magia' } }],
+      ['una invitación sin quien invitó', { ...BETO, approvedAt: '2026-10-20T16:05:00.000Z', origin: { kind: 'invited', invitedByName: '', invitedAt: '2026-10-18T16:00:00.000Z', acceptedAt: '2026-10-18T16:30:00.000Z', recent: true } }],
+      ['una aprobación sin el campo origen', { ...BETO, approvedAt: '2026-10-20T16:05:00.000Z' }],
+    ])('rechaza %s', async (_name, approval) => {
+      vi.mocked(api.get).mockResolvedValue({ data: overviewFixture({ history: [ruleSet({ approvals: [approval] as never })] }) })
+      await expect(FinanceRulesService.overview(rulesOrigin)).rejects.toBeInstanceOf(FinanceRulesContractError)
+    })
+
+    it('rechaza una lista de aprobados recientes mal formada', async () => {
+      vi.mocked(api.get).mockResolvedValue({ data: overviewFixture({ inForce: ruleSet({ recentInvitedApprovers: [{ name: '' }] as never }) }) })
+      await expect(FinanceRulesService.overview(rulesOrigin)).rejects.toBeInstanceOf(FinanceRulesContractError)
     })
   })
 })

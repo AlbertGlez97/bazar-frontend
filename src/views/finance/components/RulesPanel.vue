@@ -90,6 +90,13 @@
           <h3 id="rules-inforce-title">
             Reglas vigentes: versión {{ overview.inForce.version }}
           </h3>
+          <AppAlert
+            v-if="recentInvite"
+            type="info"
+            data-test="rules-recent-invite"
+          >
+            {{ recentInvite }}
+          </AppAlert>
           <ul>
             <li
               v-for="line in versionSummary(overview.inForce.config)"
@@ -278,6 +285,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { Settings } from '@lucide/vue'
 import { AppAlert, AppButton, AppCard, AppCheckbox } from '@/components'
 import { useFinanceRulesStore } from '@/stores/finance-rules.store'
+import { recentInviteNotice } from '@/utils/account-invitations'
 import {
   RULES_INTRO,
   defaultRulesConfig,
@@ -301,6 +309,9 @@ const submitReady = ref(false)
 
 const ownDraft = computed(() => !!overview.value?.draft && overview.value.draft.proposedBy.memberId === overview.value.me.memberId)
 const editTitle = computed(() => (overview.value?.inForce ? 'Cambiar las reglas' : 'Configurar las reglas'))
+
+// Dato guardado con cada aprobación: aquí solo se lee, nunca se recalcula.
+const recentInvite = computed(() => recentInviteNotice(overview.value?.inForce?.recentInvitedApprovers ?? []))
 
 const reminderNotice = computed(() => {
   const received = overview.value?.me.reminderReceivedAt

@@ -60,3 +60,79 @@ describe('TeamMemberList', () => {
     expect(text).not.toContain('m-1')
   })
 })
+
+describe('TeamMemberList: cuentas personales de los socios', () => {
+  const NOW = new Date('2026-10-20T18:00:00.000Z')
+  const info = (over = {}) => ({
+    email: 'beto@example.test', sentAt: '2026-10-20T17:50:00.000Z', expiresAt: '2026-10-23T17:50:00.000Z',
+    canResendAt: '2026-10-20T17:51:00.000Z', resendsLeftToday: 2, ...over,
+  })
+  const socios: Member[] = [
+    { id: 'm-1', name: 'Ana Ruiz', role: 'socio', active: true },
+    { id: 'm-2', name: 'Beto Gil', role: 'socio', active: true },
+    { id: 'm-3', name: 'Carla Paz', role: 'colaborador', active: true },
+    { id: 'm-4', name: 'Dani Soto', role: 'socio', active: false },
+  ]
+  const status = (over: Record<string, unknown> = {}) => [
+    { memberId: 'm-1', name: 'Ana Ruiz', hasPersonalAccount: true, invitation: null },
+    { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invitation: null },
+    ...(over.extra as unknown[] ?? []),
+  ]
+  const list = (invitations: unknown, extra: Record<string, unknown> = {}) =>
+    mountList({ members: socios, invitations, now: NOW, ...extra })
+
+  it('sin la información de invitaciones no muestra nada de cuentas (colaboradores, o aún cargando)', () => {
+    const w = mountList({ members: socios })
+    expect(w.text()).not.toContain('cuenta personal')
+    expect(w.find('[data-test="invite"]').exists()).toBe(false)
+  })
+
+  it('el socio con cuenta lo dice y no ofrece invitar', () => {
+    const w = list(status())
+    expect(rows(w)[0].text()).toContain('Con cuenta personal')
+    expect(rows(w)[0].find('[data-test="invite"]').exists()).toBe(false)
+  })
+
+  it('el socio sin cuenta ofrece "Invitar", con el nombre en su etiqueta accesible', () => {
+    const w = list(status())
+    const button = rows(w)[1].get('[data-test="invite"]')
+    expect(rows(w)[1].text()).toContain('Sin cuenta personal')
+    expect(button.text()).toBe('Invitar')
+    expect(button.attributes('aria-label')).toBe('Invitar a Beto Gil')
+  })
+
+  it('un colaborador y un socio inactivo no muestran nada de cuenta', () => {
+    const w = list(status())
+    for (const index of [2, 3]) {
+      expect(rows(w)[index].text()).not.toContain('cuenta personal')
+      expect(rows(w)[index].find('[data-test="invite"]').exists()).toBe(false)
+    }
+  })
+
+  it('tocar el botón avisa a qué socio', async () => {
+    const w = list(status())
+    await rows(w)[1].get('[data-test="invite"]').trigger('click')
+    expect(w.emitted('invite')).toEqual([['m-2']])
+  })
+
+  it('con invitación vigente dice a quién se mandó y cuándo vence, y ofrece reenviar', () => {
+    const w = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invitation: info() }])
+    expect(rows(w)[1].get('[data-test="invite-status"]').text()).toBe('Invitación enviada a beto@example.test. Vence el 23/10/2026.')
+    expect(rows(w)[1].get('[data-test="invite"]').text()).toBe('Reenviar invitación')
+    expect(rows(w)[1].get('[data-test="invite"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('el reenvío espera un minuto o se agota por el día, y lo explica en texto', () => {
+    const soon = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invitation: info({ canResendAt: '2026-10-20T18:00:30.000Z' }) }])
+    expect(rows(soon)[1].get('[data-test="invite"]').attributes('disabled')).toBeDefined()
+    expect(rows(soon)[1].get('[data-test="invite-hint"]').text()).toBe('Espera un minuto antes de reenviar.')
+
+    const spent = list([status()[0], { memberId: 'm-2', name: 'Beto Gil', hasPersonalAccount: false, invitation: info({ resendsLeftToday: 0 }) }])
+    expect(rows(spent)[1].get('[data-test="invite-hint"]').text()).toBe('Ya se enviaron 3 invitaciones hoy. Intenta mañana.')
+  })
+
+  it('mientras se envía, los botones se bloquean', () => {
+    const w = list(status(), { busy: true })
+    expect(rows(w)[1].get('[data-test="invite"]').attributes('disabled')).toBeDefined()
+  })
+})
