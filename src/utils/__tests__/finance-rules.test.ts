@@ -141,8 +141,8 @@ describe('textos de ayuda', () => {
 
 describe('rulesStateText', () => {
   const overview = (patch: Partial<RulesOverview>): RulesOverview => ({
-    state: 'sin_aprobar', inForce: null, pending: null, draft: null, history: [], partners: [],
-    me: { memberId: 'm', canApprove: true, cannotApproveReason: null, hasApproved: false, isProposer: false, reminderReceivedAt: null },
+    state: 'sin_aprobar', inForce: null, proposal: null, draft: null, history: [], partners: [],
+    me: { memberId: 'm', correo: null, hasCorreo: false, pendingCorreo: null },
     disclaimer: '', ...patch,
   })
 
@@ -150,15 +150,25 @@ describe('rulesStateText', () => {
     expect(rulesStateText(overview({}))).toEqual({ tone: 'neutral', title: 'Sin aprobar', detail: 'Todavía no hay reglas de reparto aprobadas.' })
   })
 
-  it('pendiente nombra a quien falta', () => {
-    const pending = { missing: [{ memberId: '1', name: 'Ana' }, { memberId: '2', name: 'Beto' }] } as never
-    expect(rulesStateText(overview({ state: 'pendiente', pending }))).toMatchObject({
-      tone: 'warning', title: 'Pendiente', detail: 'Faltan por aprobar: Ana y Beto.',
+  it('pendiente nombra a quien falta por responder', () => {
+    const proposal = { missing: [{ memberId: '1', name: 'Ana' }, { memberId: '2', name: 'Beto' }] } as never
+    expect(rulesStateText(overview({ state: 'pendiente', proposal }))).toMatchObject({
+      tone: 'warning', title: 'Pendiente', detail: 'Faltan por responder: Ana y Beto.',
     })
     const one = { missing: [{ memberId: '1', name: 'Ana' }] } as never
-    expect(rulesStateText(overview({ state: 'pendiente', pending: one })).detail).toBe('Falta por aprobar: Ana.')
+    expect(rulesStateText(overview({ state: 'pendiente', proposal: one })).detail).toBe('Falta por responder: Ana.')
     const three = { missing: ['A', 'B', 'C'].map((name, i) => ({ memberId: String(i), name })) } as never
-    expect(rulesStateText(overview({ state: 'pendiente', pending: three })).detail).toBe('Faltan por aprobar: A, B y C.')
+    expect(rulesStateText(overview({ state: 'pendiente', proposal: three })).detail).toBe('Faltan por responder: A, B y C.')
+  })
+
+  it('en revisión dice quién no está de acuerdo y qué hacer, sin pasar de 20 palabras por frase', () => {
+    const one = { objections: [{ name: 'Beto' }] } as never
+    const text = rulesStateText(overview({ state: 'en_revision', proposal: one }))
+    expect(text).toMatchObject({ tone: 'warning', title: 'En revisión' })
+    expect(text.detail).toBe('Beto no está de acuerdo. Modifiquen la propuesta o descártenla. Siguen las reglas anteriores.')
+    const two = { objections: [{ name: 'Ana' }, { name: 'Beto' }] } as never
+    expect(rulesStateText(overview({ state: 'en_revision', proposal: two })).detail).toContain('Ana y Beto no están de acuerdo.')
+    for (const sentence of text.detail.split('. ')) expect(sentence.split(' ').length).toBeLessThanOrEqual(20)
   })
 
   it('vigentes muestra la fecha en que entraron', () => {
@@ -177,7 +187,8 @@ describe('fechas y estados', () => {
 
   it('cada estado tiene un nombre sencillo', () => {
     expect(STATUS_TEXT).toEqual({
-      borrador: 'Borrador', pendiente: 'Pendiente', vigente: 'Vigente', reemplazada: 'Reemplazada', retirada: 'Descartada',
+      borrador: 'Borrador', pendiente: 'Pendiente', en_revision: 'En revisión', vigente: 'Vigente',
+      reemplazada: 'Reemplazada', descartada: 'Descartada', retirada: 'Descartada',
     })
   })
 
@@ -212,17 +223,28 @@ describe('versionSummary', () => {
 describe('rulesErrorMessage', () => {
   const fail = (status: number, code?: string, message?: string) => ({ response: { status, data: { code, message } } })
 
-  it('usa el mensaje en español que manda el servidor para el acceso compartido', () => {
-    expect(rulesErrorMessage(fail(403, 'FINANCE_RULES_SHARED_LOGIN', 'Tu acceso es compartido.'))).toBe('Tu acceso es compartido.')
+  it('usa el mensaje en español que manda el servidor cuando lleva nombres', () => {
+    expect(rulesErrorMessage(fail(422, 'FINANCE_RULES_MISSING_EMAIL', 'No se puede enviar. Falta el correo de Beto.'))).toBe('No se puede enviar. Falta el correo de Beto.')
+    expect(rulesErrorMessage(fail(409, 'FINANCE_RULES_DRAFT_EXISTS', 'Beto ya tiene un borrador abierto.'))).toBe('Beto ya tiene un borrador abierto.')
+  })
+
+  it('si el servidor no manda el texto, usa uno propio', () => {
+    expect(rulesErrorMessage(fail(422, 'FINANCE_RULES_MISSING_EMAIL'))).toBe('No se puede enviar. A algún socio le falta el correo.')
+    expect(rulesErrorMessage(fail(409, 'FINANCE_RULES_DRAFT_EXISTS'))).toBe('Ya existe otro borrador abierto. Envíalo o descártalo primero.')
   })
 
   it.each([
     ['FINANCE_RULES_DRAFT_OWNED', 409, 'Otro socio ya tiene un borrador abierto.'],
-    ['FINANCE_RULES_PENDING_EXISTS', 409, 'Ya hay una propuesta esperando aprobación.'],
-    ['FINANCE_RULES_NOT_PROPOSER', 403, 'Solo quien creó la propuesta puede hacer esto.'],
+    ['FINANCE_RULES_PENDING_EXISTS', 409, 'Ya hay una propuesta abierta.'],
+    ['FINANCE_RULES_NOT_PROPOSER', 403, 'Solo quien creó el borrador puede enviarlo.'],
     ['FINANCE_RULES_WRONG_STATE', 409, 'La propuesta cambió mientras tanto. Actualiza la pantalla.'],
     ['FINANCE_RULES_NOT_FOUND', 404, 'No encontramos esas reglas.'],
-    ['FINANCE_RULES_DRAFT_EXISTS', 409, 'Ya existe otro borrador abierto.'],
+    ['FINANCE_RULES_IN_REVIEW', 409, 'Esta propuesta está en revisión. Modifícala o descártala.'],
+    ['MEMBER_EMAIL_INVALID', 400, 'Escribe un correo válido'],
+    ['MEMBER_EMAIL_IN_USE', 409, 'Ese correo ya está en uso. Usa otro correo.'],
+    ['MEMBER_EMAIL_ALREADY_SET', 409, 'Ya tienes un correo registrado.'],
+    ['MEMBER_EMAIL_NOT_SENT', 422, 'No pudimos enviar el correo.'],
+    ['MEMBER_EMAIL_TOO_MANY', 429, 'Pediste muchos correos de confirmación.'],
   ])('traduce %s', (code, status, text) => expect(rulesErrorMessage(fail(status, code))).toContain(text))
 
   it('los demás casos dan un mensaje sencillo', () => {

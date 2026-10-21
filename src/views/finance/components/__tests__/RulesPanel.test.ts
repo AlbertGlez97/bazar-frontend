@@ -3,11 +3,13 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import RulesPanel from '../RulesPanel.vue'
 import { defaultRulesConfig } from '@/utils/finance-rules'
-import { ANA, BETO, RULE_SET_ID, overviewFixture, ruleSet } from '@/services/__tests__/finance-rules.fixture'
+import {
+  ANA, BETO, RULE_SET_ID, approval, objection, overviewFixture, partnerStatus, ruleSet,
+} from '@/services/__tests__/finance-rules.fixture'
 import type { RulesOverview } from '@/types/finance-rules.types'
 
 const mocks = vi.hoisted(() => ({
-  overview: vi.fn(), saveDraft: vi.fn(), discard: vi.fn(), submit: vi.fn(), withdraw: vi.fn(), approve: vi.fn(), remind: vi.fn(),
+  overview: vi.fn(), saveDraft: vi.fn(), discard: vi.fn(), submit: vi.fn(), modify: vi.fn(), resend: vi.fn(), requestCorreo: vi.fn(),
 }))
 vi.mock('@/services/finance-rules.service', () => ({ FinanceRulesService: mocks }))
 vi.mock('@/stores/auth.store', () => ({ useAuthStore: () => ({ token: 't' }) }))
@@ -19,12 +21,21 @@ vi.mock('@/services/queue-origin', async (importOriginal) => ({
 
 const pendingSet = (over = {}) => ruleSet({
   status: 'pendiente', submittedAt: '2026-10-20T16:00:00.000Z', proposedBy: BETO,
-  approvals: [{ ...BETO, approvedAt: '2026-10-20T16:05:00.000Z', origin: { kind: 'own_account' as const, accountCreatedAt: '2026-09-01T12:00:00.000Z' } }],
-  missing: [ANA], ...over,
+  approvals: [approval(BETO)], missing: [ANA], ...over,
 })
 const pendingOverview = (over: Partial<RulesOverview> = {}) => {
-  const pending = pendingSet()
-  return overviewFixture({ state: 'pendiente', pending, history: [pending], ...over })
+  const proposal = pendingSet()
+  return overviewFixture({
+    state: 'pendiente', proposal, history: [proposal],
+    partners: [partnerStatus(ANA), partnerStatus(BETO, { response: 'aprobo' })], ...over,
+  })
+}
+const reviewOverview = (over: Partial<RulesOverview> = {}) => {
+  const proposal = pendingSet({ status: 'en_revision', inReviewAt: '2026-10-20T17:00:00.000Z', approvals: [], objections: [objection(BETO)], missing: [ANA] })
+  return overviewFixture({
+    state: 'en_revision', proposal, history: [proposal],
+    partners: [partnerStatus(ANA), partnerStatus(BETO, { response: 'objeto' })], ...over,
+  })
 }
 const show = async (overview: RulesOverview) => {
   mocks.overview.mockResolvedValue(overview)
@@ -44,17 +55,26 @@ beforeEach(() => {
 })
 
 describe('RulesPanel: lo que se ve primero', () => {
-  it('lleva el engrane, explica por qué configurar primero y dice que no es asesoría', async () => {
+  it('lleva el engrane, explica que se aprueba por correo y dice que no es asesoría', async () => {
     const w = await show(overviewFixture())
 
     expect(w.get('h2').text()).toBe('Reglas de reparto')
     expect(w.find('h2 svg, header svg').exists()).toBe(true)
     const intro = w.get('[data-test="rules-intro"]').text()
     expect(intro).toContain('Configura estas reglas antes de repartir')
-    expect(intro).toContain('Cada socio debe aprobarlas')
+    expect(intro).toContain('Cada socio recibe un correo con las reglas y las aprueba desde ahí')
     expect(intro).toContain('nueva aprobación de todos')
     expect(w.text()).toContain('No es asesoría contable ni legal')
     expect(w.text()).toContain('contador')
+  })
+
+  it('no hay ningún botón para aprobar dentro de la app', async () => {
+    for (const overview of [overviewFixture(), pendingOverview(), reviewOverview()]) {
+      const w = await show(overview)
+      expect(w.find('[data-test="rules-approve"]').exists()).toBe(false)
+      expect(w.find('[data-test="rules-approve-check"]').exists()).toBe(false)
+      expect(w.findAll('button').map((b) => b.text()).filter((t) => /aprobar estas|^aprobar$/i.test(t))).toEqual([])
+    }
   })
 
   it('mientras consulta lo dice', async () => {
@@ -86,11 +106,19 @@ describe('RulesPanel: estado visible', () => {
     expect(w.get('[data-test="rules-start"]').text()).toBe('Configurar las reglas')
   })
 
-  it('Pendiente nombra a quien falta', async () => {
+  it('Pendiente dice "Pendiente: faltan ..." y nombra a quien falta', async () => {
     const w = await show(pendingOverview())
     expect(w.get('[data-test="rules-state"]').text()).toContain('Pendiente')
-    expect(w.get('[data-test="rules-state"]').text()).toContain('Falta por aprobar: Ana.')
-    expect(w.get('[data-test="rules-pending"]').text()).toContain('siguen las reglas anteriores')
+    expect(w.get('[data-test="rules-state"]').text()).toContain('Falta por responder: Ana.')
+    expect(w.get('[data-test="rules-proposal"]').text()).toContain('siguen las reglas anteriores')
+  })
+
+  it('En revisión dice quién no está de acuerdo y cuáles reglas siguen', async () => {
+    const w = await show(reviewOverview())
+    const state = w.get('[data-test="rules-state"]').text()
+    expect(state).toContain('En revisión')
+    expect(state).toContain('Beto no está de acuerdo.')
+    expect(state).toContain('Siguen las reglas anteriores.')
   })
 
   it('Vigentes muestra la versión y la fecha, y las reglas en frases', async () => {
@@ -103,75 +131,192 @@ describe('RulesPanel: estado visible', () => {
     expect(w.get('[data-test="rules-start"]').text()).toBe('Proponer cambios')
   })
 
-  it('el historial muestra quién aprobó y cuándo', async () => {
+  it('el historial muestra quién aprobó, desde qué correo (enmascarado) y quién falta', async () => {
     const w = await show(pendingOverview())
     const history = w.get('[data-test="rules-history"]').text()
     expect(history).toContain('Versión 1')
     expect(history).toContain('Beto aprobó el 20/10/2026, 10:05.')
-    expect(history).toContain('Ana todavía no aprueba.')
+    expect(history).toContain('Aprobó desde el correo b***@e***.com.')
+    expect(history).toContain('Ana todavía no responde.')
   })
 
-  it('el historial dice cómo se creó la cuenta de cada persona que aprobó', async () => {
-    const invited = { kind: 'invited' as const, invitedByMemberId: ANA.memberId, invitedByName: 'Ana', invitedAt: '2026-10-18T16:00:00.000Z', acceptedAt: '2026-10-18T16:30:00.000Z', recent: true }
+  it('el historial muestra las objeciones con su motivo y las propuestas descartadas con su nota', async () => {
+    const closed = ruleSet({
+      version: 2, status: 'descartada', discardedAt: '2026-10-21T10:00:00.000Z',
+      closedNote: 'Reemplazada por la versión 3.', objections: [objection(BETO, { reason: 'Más reservas <b>por favor</b>' })],
+    })
+    const w = await show(overviewFixture({ history: [closed] }))
+    const history = w.get('[data-test="rules-history"]').text()
+
+    expect(history).toContain('Descartada')
+    expect(history).toContain('Se descartó el 21/10/2026, 04:00.')
+    expect(history).toContain('Reemplazada por la versión 3.')
+    expect(history).toContain('Beto no estuvo de acuerdo el 20/10/2026, 11:00 (b***@e***.com)')
+    // El motivo lo escribe una persona: se ve como texto, nunca como HTML.
+    expect(history).toContain('Más reservas <b>por favor</b>')
+    expect(w.get('[data-test="rules-history"]').find('b').exists()).toBe(false)
+  })
+
+  it('el historial dice qué cambió en una versión y distingue las aprobaciones de antes', async () => {
     const set = ruleSet({
-      status: 'vigente', version: 3, activatedAt: '2026-10-20T18:30:00.000Z',
-      approvals: [
-        { ...ANA, approvedAt: '2026-10-20T18:00:00.000Z', origin: { kind: 'shared_single_partner' } },
-        { ...BETO, approvedAt: '2026-10-20T18:30:00.000Z', origin: invited },
-        { memberId: 'x', name: 'Carla', approvedAt: '2026-10-20T18:31:00.000Z', origin: null },
-      ],
+      status: 'vigente', version: 4, activatedAt: '2026-10-20T18:30:00.000Z',
+      approvals: [approval(ANA, { correo: null, via: 'sesion' })],
+      changes: [{ topic: 'Reservas', before: 'Se aparta 10 %.', after: 'Se aparta 20 %.' }],
     })
     const w = await show(overviewFixture({ state: 'vigente', inForce: set, history: [set] }))
     const history = w.get('[data-test="rules-history"]').text()
 
-    expect(history).toContain('Acceso compartido de un solo socio.')
-    expect(history).toContain('Cuenta creada por invitación de Ana el 18/10/2026, 10:00.')
-    expect(history).toContain('Sin dato de cómo se creó la cuenta.')
+    expect(history).toContain('Aprobó desde su sesión, antes de que se aprobara por correo.')
+    expect(history).toContain('Cambió Reservas. Antes: Se aparta 10 %. Ahora: Se aparta 20 %.')
+  })
+
+  it('pasó a revisión, se reemplazó o descartó: el historial dice cuándo', async () => {
+    const review = ruleSet({ version: 5, status: 'en_revision', inReviewAt: '2026-10-20T17:00:00.000Z' })
+    const old = ruleSet({ version: 4, status: 'reemplazada', supersededAt: '2026-10-19T17:00:00.000Z' })
+    const w = await show(overviewFixture({ history: [review, old] }))
+    const history = w.get('[data-test="rules-history"]').text()
+    expect(history).toContain('Pasó a revisión el 20/10/2026, 11:00.')
+    expect(history).toContain('La reemplazó una versión nueva el 19/10/2026, 11:00.')
   })
 })
 
-describe('RulesPanel: aviso de quién aprobó con una cuenta invitada hace poco', () => {
-  type Recent = { memberId: string; name: string; invitedByName: string | null; acceptedAt: string; fromSharedLogin?: boolean }
-  const vigente = (list: Recent[]) => {
-    const recent = list.map((r) => ({ fromSharedLogin: false, ...r }))
-    const set = ruleSet({ status: 'vigente', activatedAt: '2026-10-20T18:30:00.000Z', recentInvitedApprovers: recent })
-    return overviewFixture({ state: 'vigente', inForce: set, history: [set] })
-  }
+describe('RulesPanel: la propuesta abierta', () => {
+  it('muestra quién respondió y quién falta, con el correo enviado', async () => {
+    const link = { sentAt: '2026-10-20T16:00:00.000Z', expiresAt: '2026-10-27T16:00:00.000Z', expired: false, canResendAt: null }
+    const w = await show(pendingOverview({ partners: [partnerStatus(ANA, { link }), partnerStatus(BETO, { response: 'aprobo' })] }))
+    const partners = w.get('[data-test="rules-partners"]').text()
 
-  it('cuando las reglas pasan a vigentes, nombra a quien aprobó con una cuenta invitada hace poco y quién lo invitó', async () => {
-    const w = await show(vigente([{ ...BETO, invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' }]))
-    const notice = w.get('[data-test="rules-recent-invite"]')
-    expect(notice.text()).toBe('Beto aprobó con una cuenta invitada por Ana el 18/10/2026.')
-    expect(w.get('[data-test="rules-inforce"]').element.contains(notice.element)).toBe(true)
+    expect(partners).toContain('Ana: falta responder. Correo enviado el 20/10/2026, 10:00.')
+    expect(partners).toContain('Beto: aprobó el 20/10/2026, 10:05.')
   })
 
-  it('quien aprobó con una cuenta creada desde el acceso compartido se avisa aunque haya pasado mucho tiempo', async () => {
-    const w = await show(vigente([{ ...BETO, invitedByName: null, acceptedAt: '2025-01-02T16:30:00.000Z', fromSharedLogin: true }]))
-    expect(w.get('[data-test="rules-recent-invite"]').text()).toBe(
-      'Beto aprobó con una cuenta creada desde el acceso compartido el 02/01/2025. No se sabe quién la invitó.',
-    )
+  it('"Reenviar correo" reenvía y cuenta a quién llegó', async () => {
+    mocks.resend.mockResolvedValue({ activated: false, resent: [{ ...ANA, emailSent: true }], skipped: [], noEmail: [] })
+    const w = await show(pendingOverview())
+
+    await click(w, 'rules-resend')
+
+    expect(mocks.resend).toHaveBeenCalledWith(expect.anything(), RULE_SET_ID)
+    expect(w.get('[data-test="rules-resend-notice"]').text()).toBe('Reenviamos el correo a Ana.')
   })
 
-  it('el historial muestra el origen "desde el acceso compartido" con su texto', async () => {
-    const set = ruleSet({
-      status: 'vigente', activatedAt: '2026-10-20T18:30:00.000Z',
-      approvals: [{ ...BETO, approvedAt: '2026-10-20T18:30:00.000Z', origin: { kind: 'invited_from_shared_login', invitedAt: '2025-01-02T16:00:00.000Z', acceptedAt: '2025-01-02T16:30:00.000Z', recent: false } }],
-    })
-    const w = await show(overviewFixture({ state: 'vigente', inForce: set, history: [set] }))
-    expect(w.get('[data-test="rules-history"]').text()).toContain('Cuenta creada por invitación desde el acceso compartido el 02/01/2025, 10:00. No se sabe quién invitó.')
+  it('si a todos los que faltan ya se les reenvió, el botón queda desactivado y dice cuándo se puede de nuevo', async () => {
+    const link = { sentAt: '2026-10-20T16:00:00.000Z', expiresAt: '2026-10-27T16:00:00.000Z', expired: false, canResendAt: '2026-10-22T20:00:00.000Z' }
+    const w = await show(pendingOverview({ partners: [partnerStatus(ANA, { link }), partnerStatus(BETO, { response: 'aprobo' })] }))
+
+    expect(w.get('[data-test="rules-resend"]').attributes('disabled')).toBeDefined()
+    expect(w.get('[data-test="rules-resend-hint"]').text()).toBe('Ya reenviaste el correo hace menos de 24 horas. Podrás hacerlo de nuevo el 22/10/2026, 14:00.')
   })
 
-  it('con varias personas, las nombra y manda al historial', async () => {
-    const w = await show(vigente([
-      { ...BETO, invitedByName: 'Ana', acceptedAt: '2026-10-18T16:30:00.000Z' },
-      { memberId: 'c', name: 'Carla', invitedByName: 'Ana', acceptedAt: '2026-10-19T16:30:00.000Z' },
-    ]))
-    expect(w.get('[data-test="rules-recent-invite"]').text()).toBe('Beto y Carla aprobaron con cuentas invitadas hace poco. Revisa el historial.')
+  it('en revisión no hay "Reenviar correo", y se ven los motivos de quien no está de acuerdo', async () => {
+    const w = await show(reviewOverview())
+
+    expect(w.find('[data-test="rules-resend"]').exists()).toBe(false)
+    expect(w.get('[data-test="rules-proposal"]').text()).toContain('En revisión')
+    expect(w.get('[data-test="rules-proposal"] [data-test="rules-objections"]').text()).toContain('Quiero más reservas')
+    expect(w.get('[data-test="rules-proposal"] [data-test="rules-objections"]').text()).toContain('b***@e***.com')
   })
 
-  it('si nadie aprobó con una cuenta invitada reciente, no hay aviso', async () => {
-    const w = await show(vigente([]))
-    expect(w.find('[data-test="rules-recent-invite"]').exists()).toBe(false)
+  it('cualquier socio puede modificar: se crea una copia para él y se ve su borrador', async () => {
+    const draft = ruleSet({ version: 2, basedOn: { id: RULE_SET_ID, version: 1, objections: [objection(BETO)] } })
+    mocks.modify.mockResolvedValue(draft)
+    const w = await show(reviewOverview())
+    mocks.overview.mockResolvedValue(reviewOverview({ draft }))
+
+    await click(w, 'rules-modify')
+
+    expect(mocks.modify).toHaveBeenCalledWith(expect.anything(), RULE_SET_ID)
+  })
+
+  it('al descartar pide confirmar, y "No, conservarla" no hace nada', async () => {
+    mocks.discard.mockResolvedValue(ruleSet({ status: 'descartada' }))
+    const w = await show(pendingOverview())
+    expect(w.find('[data-test="rules-discard-confirm"]').exists()).toBe(false)
+
+    await click(w, 'rules-discard-proposal')
+    expect(w.get('[data-test="rules-discard-confirm"]').text()).toContain('¿Descartar esta propuesta? Quedará en el historial')
+    await click(w, 'rules-discard-no')
+    expect(w.find('[data-test="rules-discard-confirm"]').exists()).toBe(false)
+    expect(mocks.discard).not.toHaveBeenCalled()
+
+    await click(w, 'rules-discard-proposal')
+    await click(w, 'rules-discard-yes')
+    expect(mocks.discard).toHaveBeenCalledWith(expect.anything(), RULE_SET_ID)
+  })
+
+  it('con una propuesta abierta no se puede editar nada', async () => {
+    const w = await show(pendingOverview())
+    expect(w.find('[data-test="rules-form"]').exists()).toBe(false)
+    expect(w.find('[data-test="rules-start"]').exists()).toBe(false)
+  })
+
+  it('"Qué cambió" aparece cuando la versión trae cambios', async () => {
+    const proposal = pendingSet({ changes: [{ topic: 'Reservas', before: 'Se aparta 10 %.', after: 'Se aparta 20 %.' }] })
+    const w = await show(pendingOverview({ proposal, history: [proposal] }))
+    expect(w.get('[data-test="rules-changes"]').text()).toContain('Reservas. Antes: Se aparta 10 %. Ahora: Se aparta 20 %.')
+  })
+})
+
+describe('RulesPanel: escribir mi correo', () => {
+  const sin = (over = {}) => overviewFixture({ me: { memberId: ANA.memberId, correo: null, hasCorreo: false, pendingCorreo: null, ...over } })
+
+  it('quien ya tiene correo no ve la tarjeta', async () => {
+    const w = await show(overviewFixture())
+    expect(w.find('[data-test="rules-correo"]').exists()).toBe(false)
+  })
+
+  it('quien no lo tiene ve cómo escribirlo y que se confirma con un enlace', async () => {
+    const w = await show(sin())
+    const card = w.get('[data-test="rules-correo"]').text()
+    expect(card).toContain('Escribe tu correo')
+    expect(card).toContain('Te mandamos un enlace para confirmar que es tuyo')
+  })
+
+  it('manda el correo escrito y dice adónde se envió la confirmación', async () => {
+    mocks.requestCorreo.mockResolvedValue({ correo: 'a***@e***.com', expiresAt: '2026-10-23T12:00:00.000Z' })
+    const w = await show(sin())
+    await w.get('[data-test="rules-correo"] input').setValue('  ana@example.com ')
+
+    await w.get('[data-test="rules-correo"] form').trigger('submit')
+    await flushPromises()
+
+    expect(mocks.requestCorreo).toHaveBeenCalledWith(expect.anything(), 'ana@example.com')
+    expect(w.get('[data-test="rules-correo-sent"]').text()).toContain('Te enviamos un correo a a***@e***.com. Ábrelo y confirma.')
+  })
+
+  it('no manda lo que claramente no es un correo, y lo dice', async () => {
+    const w = await show(sin())
+    await w.get('[data-test="rules-correo"] input').setValue('ana')
+    await w.get('[data-test="rules-correo"] form').trigger('submit')
+    await flushPromises()
+
+    expect(mocks.requestCorreo).not.toHaveBeenCalled()
+    expect(w.get('[data-test="rules-correo"]').text()).toContain('Escribe un correo válido, por ejemplo nombre@dominio.com')
+  })
+
+  it('un correo que ya está en uso se dice en español', async () => {
+    mocks.requestCorreo.mockRejectedValue({ response: { status: 409, data: { code: 'MEMBER_EMAIL_IN_USE' } } })
+    const w = await show(sin())
+    await w.get('[data-test="rules-correo"] input').setValue('ana@example.com')
+    await w.get('[data-test="rules-correo"] form').trigger('submit')
+    await flushPromises()
+
+    expect(w.get('[data-test="rules-action-error"]').text()).toBe('Ese correo ya está en uso. Usa otro correo.')
+    expect(w.find('[data-test="rules-correo-sent"]').exists()).toBe(false)
+  })
+
+  it('si ya hay una confirmación esperando, dice a qué correo y hasta cuándo', async () => {
+    const w = await show(sin({ pendingCorreo: { correo: 'a***@e***.com', expiresAt: '2026-10-23T18:00:00.000Z' } }))
+    expect(w.get('[data-test="rules-correo-pending"]').text()).toContain('Ya enviamos un correo a a***@e***.com.')
+    expect(w.get('[data-test="rules-correo-pending"]').text()).toContain('Vence el 23/10/2026, 12:00.')
+  })
+
+  it('el campo tiene etiqueta, tipo correo y autocompletado válido', async () => {
+    const w = await show(sin())
+    const input = w.get('[data-test="rules-correo"] input')
+    expect(input.attributes('type')).toBe('email')
+    expect(input.attributes('autocomplete')).toBe('email')
+    expect(w.get(`[data-test="rules-correo"] label[for="${input.attributes('id')}"]`).text()).toBe('Tu correo')
   })
 })
 
@@ -211,9 +356,9 @@ describe('RulesPanel: proponer', () => {
     expect(w.find('[data-test="rules-save"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('enviar pide la casilla de conciencia, guarda y luego envía', async () => {
+  it('enviar pide la casilla de conciencia, guarda, envía y dice a quién llegó el correo', async () => {
     mocks.saveDraft.mockResolvedValue(ruleSet())
-    mocks.submit.mockResolvedValue(ruleSet({ status: 'pendiente' }))
+    mocks.submit.mockResolvedValue({ rules: ruleSet({ status: 'pendiente' }), emails: { sent: ['Ana', 'Beto'], failed: [] } })
     const w = await show(overviewFixture())
     await click(w, 'rules-start')
     expect(w.get('[data-test="rules-submit"]').attributes('disabled')).toBeDefined()
@@ -224,6 +369,41 @@ describe('RulesPanel: proponer', () => {
     expect(mocks.saveDraft).toHaveBeenCalledTimes(1)
     expect(mocks.submit).toHaveBeenCalledWith(expect.anything(), RULE_SET_ID)
     expect(mocks.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(mocks.submit.mock.invocationCallOrder[0]!)
+    expect(w.get('[data-test="rules-submit-notice"]').text()).toBe('Enviamos el correo a Ana y Beto.')
+  })
+
+  it('si a alguien no le llegó el correo, el aviso lo dice y manda a reenviar', async () => {
+    mocks.saveDraft.mockResolvedValue(ruleSet())
+    mocks.submit.mockResolvedValue({ rules: ruleSet({ status: 'pendiente' }), emails: { sent: ['Ana'], failed: ['Beto'] } })
+    const w = await show(overviewFixture())
+    await click(w, 'rules-start')
+    await w.get('[data-test="rules-submit-check"]').setValue(true)
+    await click(w, 'rules-submit')
+
+    expect(w.get('[data-test="rules-submit-notice"]').text()).toContain('No pudimos enviar el correo a Beto.')
+    expect(w.get('[data-test="rules-submit-notice"]').text()).toContain('Reenviar correo')
+  })
+
+  it('mientras a un socio le falte el correo no se puede enviar, y se dice a quién', async () => {
+    const partners = [partnerStatus(ANA), partnerStatus(BETO, { hasCorreo: false, correo: null })]
+    const w = await show(overviewFixture({ partners }))
+    await click(w, 'rules-start')
+    await w.get('[data-test="rules-submit-check"]').setValue(true)
+
+    expect(w.get('[data-test="rules-missing-correo"]').text()).toBe('Falta el correo de Beto. Hasta que lo escriban, no se puede enviar la propuesta.')
+    expect(w.get('[data-test="rules-submit"]').attributes('disabled')).toBeDefined()
+    expect(w.find('[data-test="rules-save"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('si el servidor rechaza el envío por un correo faltante, muestra su mensaje', async () => {
+    mocks.saveDraft.mockResolvedValue(ruleSet())
+    mocks.submit.mockRejectedValue({ response: { status: 422, data: { code: 'FINANCE_RULES_MISSING_EMAIL', message: 'No se puede enviar. Falta el correo de Carla.' } } })
+    const w = await show(overviewFixture())
+    await click(w, 'rules-start')
+    await w.get('[data-test="rules-submit-check"]').setValue(true)
+    await click(w, 'rules-submit')
+
+    expect(w.get('[data-test="rules-action-error"]').text()).toBe('No se puede enviar. Falta el correo de Carla.')
   })
 
   it('si guardar falla, no envía nada', async () => {
@@ -239,7 +419,7 @@ describe('RulesPanel: proponer', () => {
 
   it('un borrador propio se abre para seguir editando y se puede descartar', async () => {
     const draft = ruleSet({ config: { ...defaultRulesConfig(), profitBase: { partnerPct: 10, capitalPct: 90, workPct: 0 } } })
-    mocks.discard.mockResolvedValue(ruleSet({ status: 'retirada' }))
+    mocks.discard.mockResolvedValue(ruleSet({ status: 'descartada' }))
     const w = await show(overviewFixture({ draft }))
 
     expect((w.get('[data-test="base-capital"] input').element as HTMLInputElement).value).toBe('90')
@@ -249,112 +429,37 @@ describe('RulesPanel: proponer', () => {
     expect(w.find('[data-test="rules-form"]').exists()).toBe(false)
   })
 
-  it('el borrador de otro socio solo se ve como aviso', async () => {
+  it('un borrador hecho con "Modificar" muestra de qué versión viene y los motivos que responde', async () => {
+    const draft = ruleSet({ version: 2, basedOn: { id: RULE_SET_ID, version: 1, objections: [objection(BETO, { reason: 'Más reservas' })] } })
+    const w = await show(overviewFixture({ draft }))
+    const based = w.get('[data-test="rules-based-on"]').text()
+
+    expect(based).toContain('Estás cambiando la versión 1')
+    expect(based).toContain('Estos son los motivos de quienes no estaban de acuerdo:')
+    expect(based).toContain('Más reservas')
+  })
+
+  it('el borrador de otro socio se ve como aviso, y cualquier socio puede descartarlo', async () => {
     const draft = ruleSet({ proposedBy: BETO })
+    mocks.discard.mockResolvedValue(ruleSet({ status: 'descartada' }))
     const w = await show(overviewFixture({ draft }))
     expect(w.get('[data-test="rules-foreign-draft"]').text()).toContain('Beto está preparando una propuesta')
     expect(w.find('[data-test="rules-form"]').exists()).toBe(false)
+
+    await click(w, 'rules-discard-foreign')
+    expect(mocks.discard).toHaveBeenCalledWith(expect.anything(), RULE_SET_ID)
   })
 
-  it('con una propuesta pendiente no se puede editar nada', async () => {
+  it('empezar a proponer quita los avisos de la acción anterior', async () => {
+    mocks.resend.mockResolvedValue({ activated: false, resent: [{ ...ANA, emailSent: true }], skipped: [], noEmail: [] })
     const w = await show(pendingOverview())
-    expect(w.find('[data-test="rules-form"]').exists()).toBe(false)
-    expect(w.find('[data-test="rules-start"]').exists()).toBe(false)
-  })
-})
+    await click(w, 'rules-resend')
+    expect(w.find('[data-test="rules-resend-notice"]').exists()).toBe(true)
 
-describe('RulesPanel: aprobar', () => {
-  it('pide leer y aceptar antes de aprobar', async () => {
-    mocks.approve.mockResolvedValue(pendingSet())
-    const w = await show(pendingOverview())
-    expect(w.get('[data-test="rules-approve"]').attributes('disabled')).toBeDefined()
-
-    await w.get('[data-test="rules-approve-check"]').setValue(true)
-    await click(w, 'rules-approve')
-
-    expect(mocks.approve).toHaveBeenCalledWith(expect.anything(), RULE_SET_ID)
-  })
-
-  it('quien ya aprobó lo ve y no puede aprobar de nuevo', async () => {
-    const w = await show(pendingOverview({ me: { ...overviewFixture().me, hasApproved: true } }))
-    expect(w.get('[data-test="rules-already-approved"]').text()).toContain('Ya aprobaste')
-    expect(w.find('[data-test="rules-approve"]').exists()).toBe(false)
-  })
-
-  it('con acceso compartido explica por qué no puede, en español y sin botón', async () => {
-    const reason = 'Tu acceso es compartido con otros socios. Por eso no podemos saber quién aprueba. Cada socio necesita su propia cuenta para aprobar.'
-    const w = await show(pendingOverview({ me: { ...overviewFixture().me, canApprove: false, cannotApproveReason: reason } }))
-
-    expect(w.get('[data-test="rules-cannot-approve"]').text()).toBe(reason)
-    expect(w.find('[data-test="rules-approve"]').exists()).toBe(false)
-    expect(w.find('[data-test="rules-approve-check"]').exists()).toBe(false)
-  })
-
-  it('si el servidor lo rechaza, muestra su mensaje en español', async () => {
-    mocks.approve.mockRejectedValue({ response: { status: 403, data: { code: 'FINANCE_RULES_SHARED_LOGIN', message: 'Cada socio necesita su propia cuenta para aprobar.' } } })
-    const w = await show(pendingOverview())
-    await w.get('[data-test="rules-approve-check"]').setValue(true)
-    await click(w, 'rules-approve')
-    expect(w.get('[data-test="rules-action-error"]').text()).toBe('Cada socio necesita su propia cuenta para aprobar.')
-  })
-
-  it('al llegar la última aprobación, el panel pasa a Vigentes', async () => {
-    mocks.approve.mockResolvedValue(pendingSet())
-    const w = await show(pendingOverview())
-    const inForce = ruleSet({ status: 'vigente', activatedAt: '2026-10-21T10:00:00.000Z' })
-    mocks.overview.mockResolvedValue(overviewFixture({ state: 'vigente', inForce, history: [inForce] }))
-
-    await w.get('[data-test="rules-approve-check"]').setValue(true)
-    await click(w, 'rules-approve')
-
-    expect(w.get('[data-test="rules-state"]').text()).toContain('Vigentes')
-    expect(w.find('[data-test="rules-pending"]').exists()).toBe(false)
-  })
-})
-
-describe('RulesPanel: retirar y recordar', () => {
-  const mine = (over = {}) => pendingOverview({
-    pending: pendingSet({ proposedBy: ANA, approvals: [], missing: [ANA, BETO] }),
-    me: { ...overviewFixture().me, isProposer: true, ...over },
-  })
-
-  it('quien no propuso no ve retirar ni recordar', async () => {
-    const w = await show(pendingOverview())
-    expect(w.find('[data-test="rules-withdraw"]').exists()).toBe(false)
-    expect(w.find('[data-test="rules-remind"]').exists()).toBe(false)
-  })
-
-  it('el proponente retira y se le avisa que se borran las aprobaciones', async () => {
-    mocks.withdraw.mockResolvedValue(ruleSet())
-    const w = await show(mine())
-    expect(w.get('[data-test="rules-pending"]').text()).toContain('se borran las aprobaciones')
-
-    await click(w, 'rules-withdraw')
-
-    expect(mocks.withdraw).toHaveBeenCalledWith(expect.anything(), RULE_SET_ID)
-  })
-
-  it('recuerda y cuenta a quién se avisó y a quién ya se le había avisado', async () => {
-    mocks.remind.mockResolvedValue({
-      reminded: [{ ...BETO, emailSent: true }],
-      skipped: [{ ...ANA, nextAt: '2026-10-21T15:00:00.000Z' }],
-    })
-    const w = await show(mine())
-
-    await click(w, 'rules-remind')
-
-    const result = w.get('[data-test="rules-remind-result"]').text()
-    expect(result).toContain('Avisamos a Beto.')
-    expect(result).toContain('A Ana ya se le avisó hace menos de 24 horas.')
-  })
-
-  it('quien recibió un recordatorio lo ve en la app', async () => {
-    const w = await show(pendingOverview({ me: { ...overviewFixture().me, reminderReceivedAt: '2026-10-20T20:00:00.000Z' } }))
-    expect(w.get('[data-test="rules-reminder-notice"]').text()).toBe('Beto te recordó el 20/10/2026, 14:00 que falta tu aprobación.')
-  })
-
-  it('quien ya aprobó no ve el recordatorio', async () => {
-    const w = await show(pendingOverview({ me: { ...overviewFixture().me, hasApproved: true, reminderReceivedAt: '2026-10-20T20:00:00.000Z' } }))
-    expect(w.find('[data-test="rules-reminder-notice"]').exists()).toBe(false)
+    mocks.overview.mockResolvedValue(overviewFixture())
+    await click(w, 'rules-discard-proposal')
+    mocks.discard.mockResolvedValue(ruleSet({ status: 'descartada' }))
+    await click(w, 'rules-discard-yes')
+    expect(w.find('[data-test="rules-resend-notice"]').exists()).toBe(false)
   })
 })

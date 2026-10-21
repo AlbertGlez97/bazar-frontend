@@ -2,7 +2,9 @@ import { formatMinorMoney } from './money'
 import type {
   FinanceRulesConfig,
   ProfitBase,
+  RuleSetView,
   RulesOverview,
+  RulesPartnerStatus,
 } from '@/types/finance-rules.types'
 
 /** Lee un porcentaje escrito a mano: 0 a 100, hasta 2 decimales, coma o punto. */
@@ -153,7 +155,7 @@ export const RULE_GUIDES = {
 
 export const RULES_INTRO = [
   'Configura estas reglas antes de repartir. Así todos saben cómo se calcula.',
-  'Cada socio debe aprobarlas. Si falta uno, no entran en vigor.',
+  'Cada socio recibe un correo con las reglas y las aprueba desde ahí. Si falta uno, no entran en vigor.',
   'Cualquier cambio pide una nueva aprobación de todos. Tómalo con calma.',
 ] as const
 
@@ -173,8 +175,10 @@ export const formatRuleDateTime = (iso: string) =>
 export const STATUS_TEXT = {
   borrador: 'Borrador',
   pendiente: 'Pendiente',
+  en_revision: 'En revisión',
   vigente: 'Vigente',
   reemplazada: 'Reemplazada',
+  descartada: 'Descartada',
   retirada: 'Descartada',
 } as const
 
@@ -186,10 +190,18 @@ export function joinNames(names: readonly string[]): string {
 export interface RulesStateText { tone: 'neutral' | 'warning' | 'success'; title: string; detail: string }
 
 export function rulesStateText(overview: RulesOverview): RulesStateText {
-  if (overview.state === 'pendiente' && overview.pending) {
-    const names = overview.pending.missing.map((m) => m.name)
+  if (overview.state === 'en_revision' && overview.proposal) {
+    const names = overview.proposal.objections.map((o) => o.name)
+    return {
+      tone: 'warning',
+      title: 'En revisión',
+      detail: `${joinNames(names)} no ${names.length === 1 ? 'está' : 'están'} de acuerdo. Modifiquen la propuesta o descártenla. Siguen las reglas anteriores.`,
+    }
+  }
+  if (overview.state === 'pendiente' && overview.proposal) {
+    const names = overview.proposal.missing.map((m) => m.name)
     const lead = names.length === 1 ? 'Falta' : 'Faltan'
-    return { tone: 'warning', title: 'Pendiente', detail: `${lead} por aprobar: ${joinNames(names)}.` }
+    return { tone: 'warning', title: 'Pendiente', detail: `${lead} por responder: ${joinNames(names)}.` }
   }
   if (overview.state === 'vigente' && overview.inForce) {
     const since = dateText(overview.inForce.activatedAt ?? overview.inForce.createdAt)
@@ -247,27 +259,101 @@ const serverMessage = (error: unknown): string => {
   return typeof message === 'string' ? message.trim() : ''
 }
 
-const SHARED_LOGIN_FALLBACK =
-  'Tu acceso es compartido con otros socios. Por eso no podemos saber quién aprueba. Cada socio necesita su propia cuenta para aprobar.'
-
 const CODE_TEXT: Record<string, string> = {
   FINANCE_RULES_DRAFT_OWNED: 'Otro socio ya tiene un borrador abierto. Pídele que lo envíe o lo descarte.',
-  FINANCE_RULES_PENDING_EXISTS: 'Ya hay una propuesta esperando aprobación. Apruébenla o retírenla antes de enviar otra.',
-  FINANCE_RULES_NOT_PROPOSER: 'Solo quien creó la propuesta puede hacer esto.',
+  FINANCE_RULES_PENDING_EXISTS: 'Ya hay una propuesta abierta. Descártenla o modifíquenla antes de enviar otra.',
+  FINANCE_RULES_NOT_PROPOSER: 'Solo quien creó el borrador puede enviarlo.',
   FINANCE_RULES_WRONG_STATE: 'La propuesta cambió mientras tanto. Actualiza la pantalla.',
   FINANCE_RULES_NOT_FOUND: 'No encontramos esas reglas.',
-  FINANCE_RULES_DRAFT_EXISTS: 'Ya existe otro borrador abierto. Envíalo o descártalo primero.',
+  FINANCE_RULES_IN_REVIEW: 'Esta propuesta está en revisión. Modifícala o descártala.',
   FINANCE_RULES_INVALID: 'Revisa los datos de las reglas. Alguno no es válido.',
+  MEMBER_EMAIL_INVALID: 'Escribe un correo válido, por ejemplo nombre@dominio.com',
+  MEMBER_EMAIL_IN_USE: 'Ese correo ya está en uso. Usa otro correo.',
+  MEMBER_EMAIL_ALREADY_SET: 'Ya tienes un correo registrado.',
+  MEMBER_EMAIL_NOT_SENT: 'No pudimos enviar el correo. Revisa que esté bien escrito e inténtalo de nuevo.',
+  MEMBER_EMAIL_TOO_MANY: 'Pediste muchos correos de confirmación. Espera una hora e inténtalo de nuevo.',
 }
 
-/** Mensajes sencillos; el del acceso compartido lo escribe el servidor en español. */
+/** The server writes these in plain Spanish and puts the names in them: shown as they come. */
+const SERVER_TEXT = new Set(['FINANCE_RULES_MISSING_EMAIL', 'FINANCE_RULES_DRAFT_EXISTS'])
+const MISSING_EMAIL_FALLBACK = 'No se puede enviar. A algún socio le falta el correo.'
+const DRAFT_EXISTS_FALLBACK = 'Ya existe otro borrador abierto. Envíalo o descártalo primero.'
+
+/** Mensajes sencillos; los que llevan nombres los escribe el servidor en español. */
 export function rulesErrorMessage(error: unknown): string {
   const code = codeOf(error)
-  if (code === 'FINANCE_RULES_SHARED_LOGIN') return serverMessage(error) || SHARED_LOGIN_FALLBACK
+  if (SERVER_TEXT.has(code))
+    return serverMessage(error) || (code === 'FINANCE_RULES_MISSING_EMAIL' ? MISSING_EMAIL_FALLBACK : DRAFT_EXISTS_FALLBACK)
   if (CODE_TEXT[code]) return CODE_TEXT[code]
   switch (statusOf(error)) {
     case 401: return 'La sesión venció. Inicia sesión de nuevo.'
     case 403: return 'Solo las personas socias pueden usar las reglas de reparto.'
     default: return 'No pudimos completar la acción. Revisa tu conexión e inténtalo de nuevo.'
   }
+}
+
+/** What the screen says after sending a proposal: who the emails reached and who they did not. */
+export function submitNotice(emails: { sent: readonly string[]; failed: readonly string[] }): string {
+  const parts: string[] = []
+  if (emails.sent.length) parts.push(`Enviamos el correo a ${joinNames(emails.sent)}.`)
+  if (emails.failed.length)
+    parts.push(`No pudimos enviar el correo a ${joinNames(emails.failed)}. Usa «Reenviar correo» para intentarlo otra vez.`)
+  return parts.join(' ')
+}
+
+/** What the screen says after "Reenviar correo". */
+export function resendNotice(result: {
+  activated: boolean
+  resent: readonly { name: string; emailSent: boolean }[]
+  skipped: readonly { name: string }[]
+  noEmail: readonly { name: string }[]
+}): string {
+  if (result.activated) return 'Ya respondieron todos. Las reglas quedaron vigentes.'
+  const parts: string[] = []
+  const sent = result.resent.filter((r) => r.emailSent).map((r) => r.name)
+  const failed = result.resent.filter((r) => !r.emailSent).map((r) => r.name)
+  if (sent.length) parts.push(`Reenviamos el correo a ${joinNames(sent)}.`)
+  if (failed.length) parts.push(`No pudimos enviar el correo a ${joinNames(failed)}. Inténtalo otra vez.`)
+  if (result.skipped.length) parts.push(`A ${joinNames(result.skipped.map((s) => s.name))} ya se le reenvió hace menos de 24 horas.`)
+  if (result.noEmail.length) parts.push(`A ${joinNames(result.noEmail.map((s) => s.name))} le falta el correo.`)
+  return parts.join(' ') || 'No falta nadie por responder.'
+}
+
+/** De dónde vino una aprobación: del enlace del correo (con el correo enmascarado) o de una sesión, antes. */
+export function approvalSource(approval: { correo: string | null; via: 'correo' | 'sesion' }): string {
+  return approval.via === 'correo' && approval.correo
+    ? `Aprobó desde el correo ${approval.correo}.`
+    : 'Aprobó desde su sesión, antes de que se aprobara por correo.'
+}
+
+/** Una línea por socio: qué respondió, o qué falta para que responda. */
+export function partnerStatusText(partner: RulesPartnerStatus, proposal: RuleSetView): string {
+  if (partner.response === 'aprobo') {
+    const approval = proposal.approvals.find((a) => a.memberId === partner.memberId)
+    return approval ? `${partner.name}: aprobó el ${formatRuleDateTime(approval.approvedAt)}.` : `${partner.name}: aprobó.`
+  }
+  if (partner.response === 'objeto') return `${partner.name}: no está de acuerdo.`
+  if (!partner.hasCorreo) return `${partner.name}: falta su correo.`
+  if (!partner.link) return `${partner.name}: falta responder.`
+  if (partner.link.expired)
+    return `${partner.name}: el enlace venció el ${formatRuleDate(partner.link.expiresAt)}. Reenvía el correo.`
+  return `${partner.name}: falta responder. Correo enviado el ${formatRuleDateTime(partner.link.sentAt)}.`
+}
+
+/** "Reenviar correo": se puede mientras a alguien que falta no se le haya reenviado en las últimas 24 horas. */
+export function resendState(partners: readonly RulesPartnerStatus[]): { allowed: boolean; hint: string } {
+  const waiting = partners.filter((p) => p.response === null)
+  if (!waiting.length) return { allowed: false, hint: 'No falta nadie por responder.' }
+  const reachable = waiting.filter((p) => p.hasCorreo)
+  if (!reachable.length) return { allowed: false, hint: 'A quienes faltan les falta el correo. Primero deben escribirlo.' }
+  const blocked = reachable.map((p) => p.link?.canResendAt ?? null)
+  if (blocked.some((at) => at === null)) return { allowed: true, hint: '' }
+  const next = (blocked as string[]).reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b))
+  return { allowed: false, hint: `Ya reenviaste el correo hace menos de 24 horas. Podrás hacerlo de nuevo el ${formatRuleDateTime(next)}.` }
+}
+
+/** Quién falta de dar su correo, para avisar antes de enviar. */
+export function missingCorreoText(names: readonly string[]): string {
+  if (!names.length) return ''
+  return `Falta el correo de ${joinNames(names)}. Hasta que lo escriban, no se puede enviar la propuesta.`
 }

@@ -3,15 +3,17 @@ import { asObject, isInstant, isUuid } from './finance-shared'
 import { socioRequest } from './finance-request'
 import type { FinanceOrigin } from './contributions-records'
 import type {
+  CorreoRequestResult,
   FinanceRulesConfig,
-  RemindResult,
+  ResendResult,
   RuleSetView,
   RulesOverview,
+  SubmitResult,
 } from '@/types/finance-rules.types'
 
 const endpoint = '/finance/rules'
-const STATES = ['sin_aprobar', 'pendiente', 'vigente']
-const STATUSES = ['borrador', 'pendiente', 'vigente', 'reemplazada', 'retirada']
+const STATES = ['sin_aprobar', 'pendiente', 'en_revision', 'vigente']
+const STATUSES = ['borrador', 'pendiente', 'en_revision', 'vigente', 'reemplazada', 'descartada', 'retirada']
 
 export class FinanceRulesContractError extends Error {
   constructor() {
@@ -20,37 +22,35 @@ export class FinanceRulesContractError extends Error {
   }
 }
 
-const text = (v: unknown): v is string => typeof v === 'string' && v.length > 0
+export const text = (v: unknown): v is string => typeof v === 'string' && v.length > 0
 const optionalInstant = (v: unknown) => v === null || isInstant(v)
+const optionalText = (v: unknown) => v === null || text(v)
 const partner = (v: unknown) => {
   const r = asObject(v)
   return !!r && isUuid(r.memberId) && text(r.name)
 }
 const partners = (v: unknown) => Array.isArray(v) && v.every(partner)
+const strings = (v: unknown) => Array.isArray(v) && v.every(text)
 
-/** How the approving login was created (frozen with the approval), or null for older approvals. */
-function validOrigin(value: unknown): boolean {
-  if (value === null) return true
-  const o = asObject(value)
-  if (!o) return false
-  if (o.kind === 'shared_single_partner') return true
-  if (o.kind === 'own_account') return o.accountCreatedAt === null || isInstant(o.accountCreatedAt)
-  // The shared login cannot prove who used it, so no inviter may appear here.
-  if (o.kind === 'invited_from_shared_login')
-    return isInstant(o.invitedAt) && isInstant(o.acceptedAt) && typeof o.recent === 'boolean' &&
-      !('invitedByName' in o) && !('invitedByMemberId' in o)
-  return o.kind === 'invited' && isUuid(o.invitedByMemberId) && text(o.invitedByName) &&
-    isInstant(o.invitedAt) && isInstant(o.acceptedAt) && typeof o.recent === 'boolean'
-}
-// `origin` must be present (null when unknown): a missing key is a broken contract, not "no data".
+// `correo` and `via` must be present: a missing key is a broken contract, not "no data".
 const validApproval = (a: unknown) => {
   const r = asObject(a)
-  return partner(a) && isInstant(r?.approvedAt) && !!r && 'origin' in r && validOrigin(r.origin)
+  return partner(a) && isInstant(r?.approvedAt) && !!r && 'correo' in r && optionalText(r.correo) &&
+    (r.via === 'correo' || r.via === 'sesion')
 }
-const validRecentInvited = (a: unknown) => {
-  const r = asObject(a)
-  return partner(a) && (r?.invitedByName === null || text(r?.invitedByName)) && isInstant(r?.acceptedAt) &&
-    typeof r?.fromSharedLogin === 'boolean'
+const validObjection = (o: unknown) => {
+  const r = asObject(o)
+  return partner(o) && text(r?.correo) && text(r?.reason) && isInstant(r?.createdAt)
+}
+export const validChange = (c: unknown) => {
+  const r = asObject(c)
+  return !!r && text(r.topic) && text(r.before) && text(r.after)
+}
+const validChanges = (v: unknown) => v === null || (Array.isArray(v) && v.every(validChange))
+const validBasedOn = (v: unknown) => {
+  if (v === null) return true
+  const r = asObject(v)
+  return !!r && isUuid(r.id) && Number.isInteger(r.version) && Array.isArray(r.objections) && r.objections.every(validObjection)
 }
 
 /** Shape only: the server owns every rule, the browser recomputes nothing. */
@@ -59,27 +59,47 @@ export function validRuleSet(value: unknown): value is RuleSetView {
   if (!r || !isUuid(r.id) || !Number.isInteger(r.version) || (r.version as number) < 1) return false
   if (!STATUSES.includes(r.status as string) || !asObject(r.config) || !/^[0-9a-f]{64}$/.test(String(r.configHash))) return false
   if (!partner(r.proposedBy) || !isInstant(r.createdAt)) return false
-  if (![r.submittedAt, r.activatedAt, r.supersededAt, r.withdrawnAt].every(optionalInstant)) return false
+  if (![r.submittedAt, r.inReviewAt, r.activatedAt, r.supersededAt, r.discardedAt, r.withdrawnAt].every(optionalInstant)) return false
+  if (!optionalText(r.closedNote)) return false
   if (!Array.isArray(r.warnings) || !r.warnings.every((w) => text(asObject(w)?.code) && text(asObject(w)?.message))) return false
-  return Array.isArray(r.approvals) && r.approvals.every(validApproval) && partners(r.missing) &&
-    Array.isArray(r.recentInvitedApprovers) && r.recentInvitedApprovers.every(validRecentInvited)
+  return Array.isArray(r.approvals) && r.approvals.every(validApproval) &&
+    Array.isArray(r.objections) && r.objections.every(validObjection) &&
+    validChanges(r.changes) && validBasedOn(r.basedOn) && partners(r.missing)
+}
+
+function validPartnerStatus(value: unknown): boolean {
+  const r = asObject(value)
+  if (!r || !partner(value) || typeof r.hasCorreo !== 'boolean' || !optionalText(r.correo)) return false
+  if (r.response !== null && r.response !== 'aprobo' && r.response !== 'objeto') return false
+  if (r.link === null) return true
+  const link = asObject(r.link)
+  return !!link && isInstant(link.sentAt) && isInstant(link.expiresAt) && typeof link.expired === 'boolean' &&
+    optionalInstant(link.canResendAt)
 }
 
 export function validOverview(value: unknown): value is RulesOverview {
   const r = asObject(value)
   const me = asObject(r?.me)
   if (!r || !me || !STATES.includes(r.state as string) || !text(r.disclaimer)) return false
-  if (![r.inForce, r.pending, r.draft].every((v) => v === null || validRuleSet(v))) return false
-  if (!Array.isArray(r.history) || !r.history.every(validRuleSet) || !partners(r.partners)) return false
-  return isUuid(me.memberId) && typeof me.canApprove === 'boolean' && typeof me.hasApproved === 'boolean' &&
-    typeof me.isProposer === 'boolean' && (me.cannotApproveReason === null || text(me.cannotApproveReason)) &&
-    optionalInstant(me.reminderReceivedAt)
+  if (![r.inForce, r.proposal, r.draft].every((v) => v === null || validRuleSet(v))) return false
+  if (!Array.isArray(r.history) || !r.history.every(validRuleSet)) return false
+  if (!Array.isArray(r.partners) || !r.partners.every(validPartnerStatus)) return false
+  const pending = me.pendingCorreo === null ||
+    (!!asObject(me.pendingCorreo) && text(asObject(me.pendingCorreo)?.correo) && isInstant(asObject(me.pendingCorreo)?.expiresAt))
+  return isUuid(me.memberId) && optionalText(me.correo) && typeof me.hasCorreo === 'boolean' && pending
 }
 
-function validRemind(value: unknown): value is RemindResult {
+function validSubmit(value: unknown): boolean {
+  const emails = asObject(asObject(value)?.emails)
+  return validRuleSet(value) && !!emails && strings(emails.sent) && strings(emails.failed) &&
+    Array.isArray(emails.sent) && Array.isArray(emails.failed)
+}
+
+function validResend(value: unknown): value is ResendResult {
   const r = asObject(value)
-  return !!r && Array.isArray(r.reminded) && Array.isArray(r.skipped) &&
-    r.reminded.every((v) => partner(v) && typeof asObject(v)?.emailSent === 'boolean') &&
+  return !!r && typeof r.activated === 'boolean' && Array.isArray(r.resent) && Array.isArray(r.skipped) &&
+    partners(r.noEmail) &&
+    r.resent.every((v) => partner(v) && typeof asObject(v)?.emailSent === 'boolean') &&
     r.skipped.every((v) => partner(v) && isInstant(asObject(v)?.nextAt))
 }
 
@@ -106,20 +126,29 @@ export const FinanceRulesService = {
     const { data } = await api.post<unknown>(ruleSetUrl(id, 'discard'), {}, config(origin))
     return checked(validRuleSet(data), data as RuleSetView)
   },
-  async submit(origin: FinanceOrigin, id: string): Promise<RuleSetView> {
+  /** Sends the draft: every socio gets an email with their own link. */
+  async submit(origin: FinanceOrigin, id: string): Promise<SubmitResult> {
     const { data } = await api.post<unknown>(ruleSetUrl(id, 'submit'), {}, config(origin))
+    checked(validSubmit(data), data)
+    const { emails, ...rules } = data as RuleSetView & { emails: SubmitResult['emails'] }
+    return { rules: rules as RuleSetView, emails }
+  },
+  /** Copies an open proposal into a draft the caller owns. */
+  async modify(origin: FinanceOrigin, id: string): Promise<RuleSetView> {
+    const { data } = await api.post<unknown>(ruleSetUrl(id, 'modify'), {}, config(origin))
     return checked(validRuleSet(data), data as RuleSetView)
   },
-  async withdraw(origin: FinanceOrigin, id: string): Promise<RuleSetView> {
-    const { data } = await api.post<unknown>(ruleSetUrl(id, 'withdraw'), {}, config(origin))
-    return checked(validRuleSet(data), data as RuleSetView)
+  async resend(origin: FinanceOrigin, id: string): Promise<ResendResult> {
+    const { data } = await api.post<unknown>(ruleSetUrl(id, 'resend'), {}, config(origin))
+    return checked(validResend(data), data as ResendResult)
   },
-  async approve(origin: FinanceOrigin, id: string): Promise<RuleSetView> {
-    const { data } = await api.post<unknown>(ruleSetUrl(id, 'approve'), {}, config(origin))
-    return checked(validRuleSet(data), data as RuleSetView)
-  },
-  async remind(origin: FinanceOrigin, id: string): Promise<RemindResult> {
-    const { data } = await api.post<unknown>(ruleSetUrl(id, 'remind'), {}, config(origin))
-    return checked(validRemind(data), data as RemindResult)
+  /** Starts the confirmation of the caller's own address: the link goes to that address. */
+  async requestCorreo(origin: FinanceOrigin, correo: string): Promise<CorreoRequestResult> {
+    const { data } = await api.put<unknown>('/members/me/email', { correo }, config(origin))
+    const r = asObject(data)
+    return checked(!!r && r.ok === true && text(r.correo) && isInstant(r.expiresAt), {
+      correo: r?.correo as string,
+      expiresAt: r?.expiresAt as string,
+    })
   },
 }

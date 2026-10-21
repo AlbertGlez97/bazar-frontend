@@ -6,7 +6,7 @@ import { defaultRulesConfig } from '@/utils/finance-rules'
 import { BETO, RULE_SET_ID, overviewFixture, ruleSet, rulesOrigin } from '@/services/__tests__/finance-rules.fixture'
 
 const mocks = vi.hoisted(() => ({
-  overview: vi.fn(), saveDraft: vi.fn(), discard: vi.fn(), submit: vi.fn(), withdraw: vi.fn(), approve: vi.fn(), remind: vi.fn(),
+  overview: vi.fn(), saveDraft: vi.fn(), discard: vi.fn(), submit: vi.fn(), modify: vi.fn(), resend: vi.fn(), requestCorreo: vi.fn(),
 }))
 vi.mock('@/services/finance-rules.service', () => ({ FinanceRulesService: mocks }))
 const state = reactive({ auth: { token: 'token-a' }, session: {
@@ -65,10 +65,10 @@ describe('finance-rules.store', () => {
     const store = useFinanceRulesStore()
 
     await store.load()
-    expect(await store.approve(RULE_SET_ID)).toBeNull()
+    expect(await store.resend(RULE_SET_ID)).toBeNull()
 
     expect(mocks.overview).not.toHaveBeenCalled()
-    expect(mocks.approve).not.toHaveBeenCalled()
+    expect(mocks.resend).not.toHaveBeenCalled()
     expect(store.error).toContain('conexión')
     expect(store.actionError).toContain('conexión')
   })
@@ -108,7 +108,7 @@ describe('finance-rules.store', () => {
     expect(store.working).toBe(false)
   })
 
-  it.each(['discard', 'submit', 'withdraw', 'approve'] as const)('%s pasa el id de la propuesta', async (name) => {
+  it.each(['discard', 'modify'] as const)('%s pasa el id de la propuesta', async (name) => {
     mocks[name].mockResolvedValue(ruleSet())
     const store = useFinanceRulesStore()
 
@@ -118,31 +118,80 @@ describe('finance-rules.store', () => {
   })
 
   it('un rechazo del servidor se explica en español y refresca la pantalla', async () => {
-    mocks.approve.mockRejectedValue(fail(403, 'FINANCE_RULES_SHARED_LOGIN', 'Tu acceso es compartido con otros socios.'))
+    mocks.submit.mockRejectedValue(fail(422, 'FINANCE_RULES_MISSING_EMAIL', 'No se puede enviar. Falta el correo de Beto.'))
     const store = useFinanceRulesStore()
 
-    const result = await store.approve(RULE_SET_ID)
+    const result = await store.submit(RULE_SET_ID)
 
     expect(result).toBeNull()
-    expect(store.actionError).toBe('Tu acceso es compartido con otros socios.')
+    expect(store.actionError).toBe('No se puede enviar. Falta el correo de Beto.')
+    expect(store.submitted).toBeNull()
     expect(mocks.overview).toHaveBeenCalledTimes(1)
   })
 
-  it('guarda a quién se recordó y a quién no', async () => {
-    const answer = { reminded: [{ ...BETO, emailSent: false }], skipped: [] }
-    mocks.remind.mockResolvedValue(answer)
+  it('guarda a quién llegó el correo al enviar, y a quién no', async () => {
+    const emails = { sent: ['Ana'], failed: ['Beto'] }
+    mocks.submit.mockResolvedValue({ rules: ruleSet({ status: 'pendiente' }), emails })
     const store = useFinanceRulesStore()
 
-    await store.remind(RULE_SET_ID)
+    await store.submit(RULE_SET_ID)
 
-    expect(store.reminders).toEqual(answer)
+    expect(store.submitted).toEqual(emails)
+  })
+
+  it('guarda a quién se reenvió y a quién no', async () => {
+    const answer = { activated: false, resent: [{ ...BETO, emailSent: false }], skipped: [], noEmail: [] }
+    mocks.resend.mockResolvedValue(answer)
+    const store = useFinanceRulesStore()
+
+    await store.resend(RULE_SET_ID)
+
+    expect(store.resent).toEqual(answer)
+  })
+
+  it('al pedir el correo propio guarda adónde se mandó la confirmación', async () => {
+    mocks.requestCorreo.mockResolvedValue({ correo: 'a***@e***.com', expiresAt: '2026-10-23T12:00:00.000Z' })
+    const store = useFinanceRulesStore()
+
+    expect(await store.requestCorreo('ana@example.com')).toBe(true)
+
+    expect(mocks.requestCorreo).toHaveBeenCalledWith(expect.anything(), 'ana@example.com')
+    expect(store.correoSentTo).toBe('a***@e***.com')
+  })
+
+  it('un correo que ya está en uso se explica y no queda como enviado', async () => {
+    mocks.requestCorreo.mockRejectedValue(fail(409, 'MEMBER_EMAIL_IN_USE'))
+    const store = useFinanceRulesStore()
+
+    expect(await store.requestCorreo('ana@example.com')).toBe(false)
+
+    expect(store.actionError).toBe('Ese correo ya está en uso. Usa otro correo.')
+    expect(store.correoSentTo).toBe('')
+  })
+
+  it('un aviso es de una sola acción: clearNotices los quita todos', async () => {
+    mocks.submit.mockResolvedValue({ rules: ruleSet(), emails: { sent: ['Ana'], failed: [] } })
+    mocks.resend.mockResolvedValue({ activated: false, resent: [], skipped: [], noEmail: [] })
+    mocks.requestCorreo.mockResolvedValue({ correo: 'a***@e***.com', expiresAt: '2026-10-23T12:00:00.000Z' })
+    const store = useFinanceRulesStore()
+    await store.submit(RULE_SET_ID)
+    await store.resend(RULE_SET_ID)
+    await store.requestCorreo('a@b.co')
+
+    store.clearNotices()
+
+    expect([store.submitted, store.resent, store.correoSentTo, store.actionError]).toEqual([null, null, '', ''])
   })
 
   it('reset borra todo lo mostrado', async () => {
+    mocks.resend.mockResolvedValue({ activated: false, resent: [], skipped: [], noEmail: [] })
     const store = useFinanceRulesStore()
     await store.load()
+    await store.resend(RULE_SET_ID)
     store.reset()
     expect(store.overview).toBeNull()
-    expect(store.reminders).toBeNull()
+    expect(store.resent).toBeNull()
+    expect(store.submitted).toBeNull()
+    expect(store.correoSentTo).toBe('')
   })
 })

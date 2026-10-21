@@ -72,14 +72,28 @@
         >
           {{ store.actionError }}
         </AppAlert>
-
         <AppAlert
-          v-if="reminderNotice"
-          type="info"
-          data-test="rules-reminder-notice"
+          v-if="submitNoticeText"
+          :type="store.submitted?.failed.length ? 'warning' : 'success'"
+          data-test="rules-submit-notice"
         >
-          {{ reminderNotice }}
+          {{ submitNoticeText }}
         </AppAlert>
+        <AppAlert
+          v-if="resendNoticeText"
+          type="info"
+          data-test="rules-resend-notice"
+        >
+          {{ resendNoticeText }}
+        </AppAlert>
+
+        <RulesCorreoCard
+          v-if="!overview.me.hasCorreo"
+          :pending="overview.me.pendingCorreo"
+          :sent-to="store.correoSentTo"
+          :working="store.working"
+          @submit="store.requestCorreo($event)"
+        />
 
         <section
           v-if="overview.inForce"
@@ -90,13 +104,6 @@
           <h3 id="rules-inforce-title">
             Reglas vigentes: versión {{ overview.inForce.version }}
           </h3>
-          <AppAlert
-            v-if="recentInvite"
-            type="info"
-            data-test="rules-recent-invite"
-          >
-            {{ recentInvite }}
-          </AppAlert>
           <ul>
             <li
               v-for="line in versionSummary(overview.inForce.config)"
@@ -107,96 +114,18 @@
           </ul>
         </section>
 
-        <section
-          v-if="overview.pending"
-          class="rules-panel__block"
-          aria-labelledby="rules-pending-title"
-          data-test="rules-pending"
-        >
-          <h3 id="rules-pending-title">
-            Propuesta en espera: versión {{ overview.pending.version }}
-          </h3>
-          <p>Propuso {{ overview.pending.proposedBy.name }}. Mientras no la aprueben todos, siguen las reglas anteriores.</p>
-          <ul>
-            <li
-              v-for="line in versionSummary(overview.pending.config)"
-              :key="line"
-            >
-              {{ line }}
-            </li>
-          </ul>
-          <WarningList :warnings="overview.pending.warnings" />
-
-          <AppAlert
-            v-if="!overview.me.canApprove && !overview.me.hasApproved"
-            type="warning"
-            data-test="rules-cannot-approve"
-          >
-            {{ overview.me.cannotApproveReason }}
-          </AppAlert>
-          <p
-            v-else-if="overview.me.hasApproved"
-            data-test="rules-already-approved"
-          >
-            Ya aprobaste esta propuesta. Esperamos a los demás socios.
-          </p>
-          <AppCheckbox
-            v-else
-            v-model="approveReady"
-            data-test="rules-approve-check"
-          >
-            Leí estas reglas y estoy de acuerdo.
-          </AppCheckbox>
-
-          <div class="rules-panel__actions">
-            <AppButton
-              v-if="overview.me.canApprove && !overview.me.hasApproved"
-              type="button"
-              :disabled="!approveReady || store.working"
-              :loading="store.working"
-              data-test="rules-approve"
-              @click="approve(overview.pending.id)"
-            >
-              Aprobar estas reglas
-            </AppButton>
-            <template v-if="overview.me.isProposer">
-              <AppButton
-                type="button"
-                variant="secondary"
-                :disabled="store.working"
-                data-test="rules-remind"
-                @click="store.remind(overview.pending.id)"
-              >
-                Recordar a quien falta
-              </AppButton>
-              <AppButton
-                type="button"
-                variant="soft-warning"
-                :disabled="store.working"
-                data-test="rules-withdraw"
-                @click="withdraw(overview.pending.id)"
-              >
-                Retirar la propuesta
-              </AppButton>
-            </template>
-          </div>
-          <p
-            v-if="overview.me.isProposer"
-            class="rules-panel__note"
-          >
-            Al retirarla, vuelve a borrador y se borran las aprobaciones que ya dieron.
-          </p>
-          <p
-            v-if="remindText"
-            role="status"
-            data-test="rules-remind-result"
-          >
-            {{ remindText }}
-          </p>
-        </section>
+        <RulesProposal
+          v-if="overview.proposal"
+          :proposal="overview.proposal"
+          :partners="overview.partners"
+          :working="store.working"
+          @resend="store.resend(overview.proposal.id)"
+          @modify="modify(overview.proposal.id)"
+          @discard="discard(overview.proposal.id)"
+        />
 
         <section
-          v-if="!overview.pending"
+          v-else
           class="rules-panel__block"
           aria-labelledby="rules-edit-title"
         >
@@ -206,16 +135,48 @@
 
           <template v-if="overview.draft && !ownDraft">
             <p data-test="rules-foreign-draft">
-              {{ overview.draft.proposedBy.name }} está preparando una propuesta. Cuando la envíe, podrán aprobarla.
+              {{ overview.draft.proposedBy.name }} está preparando una propuesta. Cuando la envíe, podrán responderla.
             </p>
+            <div class="rules-panel__actions">
+              <AppButton
+                type="button"
+                variant="soft-danger"
+                :disabled="store.working"
+                data-test="rules-discard-foreign"
+                @click="discard(overview.draft.id)"
+              >
+                Descartar ese borrador
+              </AppButton>
+            </div>
           </template>
 
           <template v-else-if="editing">
+            <section
+              v-if="overview.draft?.basedOn"
+              class="rules-panel__based"
+              aria-labelledby="rules-based-title"
+              data-test="rules-based-on"
+            >
+              <h4 id="rules-based-title">
+                Estás cambiando la versión {{ overview.draft.basedOn.version }}
+              </h4>
+              <p v-if="overview.draft.basedOn.objections.length">
+                Estos son los motivos de quienes no estaban de acuerdo:
+              </p>
+              <RulesObjections :items="overview.draft.basedOn.objections" />
+            </section>
             <RulesForm
               v-model="editing"
               :disabled="store.working"
             />
             <WarningList :warnings="overview.draft?.warnings ?? []" />
+            <AppAlert
+              v-if="missingCorreo"
+              type="warning"
+              data-test="rules-missing-correo"
+            >
+              {{ missingCorreo }}
+            </AppAlert>
             <AppCheckbox
               v-model="submitReady"
               data-test="rules-submit-check"
@@ -234,7 +195,7 @@
               </AppButton>
               <AppButton
                 type="button"
-                :disabled="!submitReady || store.working"
+                :disabled="!submitReady || !!missingCorreo || store.working"
                 :loading="store.working"
                 data-test="rules-submit"
                 @click="submit"
@@ -285,17 +246,20 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { Settings } from '@lucide/vue'
 import { AppAlert, AppButton, AppCard, AppCheckbox } from '@/components'
 import { useFinanceRulesStore } from '@/stores/finance-rules.store'
-import { recentInviteNotice } from '@/utils/account-invitations'
 import {
   RULES_INTRO,
   defaultRulesConfig,
-  formatRuleDateTime,
-  joinNames,
+  missingCorreoText,
+  resendNotice,
+  submitNotice,
   versionSummary,
 } from '@/utils/finance-rules'
 import type { FinanceRulesConfig } from '@/types/finance-rules.types'
+import RulesCorreoCard from './RulesCorreoCard.vue'
 import RulesForm from './RulesForm.vue'
 import RulesHistory from './RulesHistory.vue'
+import RulesObjections from './RulesObjections.vue'
+import RulesProposal from './RulesProposal.vue'
 import WarningList from './RulesWarningList.vue'
 
 const ALERT_TYPE = { neutral: 'info', warning: 'warning', success: 'success' } as const
@@ -304,32 +268,17 @@ const store = useFinanceRulesStore()
 const overview = computed(() => store.overview)
 const state = computed(() => store.stateText!)
 const editing = ref<FinanceRulesConfig | null>(null)
-const approveReady = ref(false)
 const submitReady = ref(false)
 
 const ownDraft = computed(() => !!overview.value?.draft && overview.value.draft.proposedBy.memberId === overview.value.me.memberId)
 const editTitle = computed(() => (overview.value?.inForce ? 'Cambiar las reglas' : 'Configurar las reglas'))
 
-// Dato guardado con cada aprobación: aquí solo se lee, nunca se recalcula.
-const recentInvite = computed(() => recentInviteNotice(overview.value?.inForce?.recentInvitedApprovers ?? []))
-
-const reminderNotice = computed(() => {
-  const received = overview.value?.me.reminderReceivedAt
-  const pending = overview.value?.pending
-  if (!received || !pending || overview.value?.me.hasApproved) return ''
-  return `${pending.proposedBy.name} te recordó el ${formatRuleDateTime(received)} que falta tu aprobación.`
-})
-
-const remindText = computed(() => {
-  const result = store.reminders
-  if (!result) return ''
-  const sent = result.reminded.map((r) => r.name)
-  const waiting = result.skipped.map((r) => r.name)
-  const parts: string[] = []
-  if (sent.length) parts.push(`Avisamos a ${joinNames(sent)}.`)
-  if (waiting.length) parts.push(`A ${joinNames(waiting)} ya se le avisó hace menos de 24 horas.`)
-  return parts.join(' ') || 'No falta nadie por aprobar.'
-})
+// Nada se envía mientras a un socio le falte el correo: se dice a quién antes de intentarlo.
+const missingCorreo = computed(() =>
+  missingCorreoText((overview.value?.partners ?? []).filter((p) => !p.hasCorreo).map((p) => p.name)),
+)
+const submitNoticeText = computed(() => (store.submitted ? submitNotice(store.submitted) : ''))
+const resendNoticeText = computed(() => (store.resent ? resendNotice(store.resent) : ''))
 
 // Un borrador propio se abre listo para seguir editándolo.
 watch(
@@ -341,11 +290,11 @@ watch(
   },
   { immediate: true },
 )
-// Las casillas de "estoy de acuerdo" no se arrastran de una propuesta a otra.
-watch(() => overview.value?.pending?.id, () => { approveReady.value = false })
+// La casilla de "entiendo" no se arrastra de un borrador a otro.
 watch(() => overview.value?.draft?.id, () => { submitReady.value = false })
 
 function startEditing() {
+  store.clearNotices()
   const base = overview.value?.inForce?.config ?? defaultRulesConfig()
   editing.value = JSON.parse(JSON.stringify(base)) as FinanceRulesConfig
 }
@@ -354,17 +303,17 @@ async function save() {
 }
 async function submit() {
   if (!editing.value) return
+  store.clearNotices()
   const saved = await store.saveDraft(editing.value)
   if (saved) await store.submit(saved.id)
 }
 async function discard(id: string) {
+  store.clearNotices()
   await store.discard(id)
 }
-async function approve(id: string) {
-  await store.approve(id)
-}
-async function withdraw(id: string) {
-  await store.withdraw(id)
+async function modify(id: string) {
+  store.clearNotices()
+  await store.modify(id)
 }
 
 onMounted(() => { void store.load() })
@@ -381,5 +330,7 @@ onMounted(() => { void store.load() })
 .rules-panel__block h3 { margin: 0; font-size: var(--font-size-md); }
 .rules-panel__block ul { margin: 0; padding-left: var(--spacing-md); }
 .rules-panel__block p { margin: 0; }
+.rules-panel__based { display: grid; gap: var(--spacing-xs); }
+.rules-panel__based h4 { margin: 0; font-size: var(--font-size-base); }
 .rules-panel__actions { display: flex; flex-wrap: wrap; gap: var(--spacing-sm); }
 </style>
