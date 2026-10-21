@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { Member } from '@/types/member.types'
 import { isMember } from '@/utils/member'
-import { currentSessionOwner, sameOwner } from '@/services/session-owner'
+import { API_BASE_URL, currentSessionOwner, sameOwner } from '@/services/session-owner'
 import type { SessionOwner } from '@/services/session-owner'
 
 // El dispositivo es físico y fijo: una vez identificado en este navegador/
@@ -42,24 +42,64 @@ function normalizeStoredDevice(value: unknown): StoredDevice | null {
   return { deviceId: v.deviceId, name: v.name, deviceToken: v.deviceToken }
 }
 
-function readDevice(): StoredDevice | null {
+// Un dispositivo POR CUENTA. Una cuenta personal y la cuenta compartida conviven en el mismo
+// navegador sin que una borre el dispositivo de la otra. La clave es "<cuenta>|<API>".
+const DEVICES_KEY = 'device_contexts'
+const DEVICES_VERSION = 1
+type DeviceMap = Record<string, StoredDevice>
+const deviceSlot = (owner: SessionOwner) => `${owner.accountId}|${owner.apiBase}`
+
+/** Lee el mapa de dispositivos; lo dañado se ignora entrada por entrada, sin romper nada. */
+function readDeviceMap(): DeviceMap {
   try {
-    const raw = localStorage.getItem(DEVICE_KEY)
-    const parsed: unknown = raw ? JSON.parse(raw) : null
-    const device = normalizeStoredDevice(parsed)
-    if (device) {
-      // Valor heredado (con `identifier`) o con claves de más: se reescribe ya
-      // normalizado para que el identificador no siga guardado en el equipo.
-      if (Object.keys(parsed as object).length !== Object.keys(device).length) {
-        localStorage.setItem(DEVICE_KEY, JSON.stringify(device))
-      }
-      return device
+    const parsed: unknown = JSON.parse(localStorage.getItem(DEVICES_KEY) ?? 'null')
+    const devices = (parsed as { version?: unknown; devices?: unknown } | null)
+    if (!devices || devices.version !== DEVICES_VERSION || !devices.devices || typeof devices.devices !== 'object' || Array.isArray(devices.devices)) return {}
+    const map: DeviceMap = {}
+    for (const [slot, value] of Object.entries(devices.devices as Record<string, unknown>)) {
+      const device = normalizeStoredDevice(value)
+      if (device) map[slot] = device
     }
+    return map
   } catch {
-    // Storage corrupto ⇒ se trata como "dispositivo aún no identificado".
+    // Storage corrupto ⇒ se trata como "sin dispositivos".
+    return {}
   }
-  localStorage.removeItem(DEVICE_KEY)
-  return null
+}
+
+function writeDeviceMap(map: DeviceMap) {
+  if (Object.keys(map).length === 0) localStorage.removeItem(DEVICES_KEY)
+  else localStorage.setItem(DEVICES_KEY, JSON.stringify({ version: DEVICES_VERSION, devices: map }))
+}
+
+/**
+ * Pasa el dispositivo guardado con la clave anterior (un solo dispositivo, con su dueño) al mapa
+ * por cuenta, a nombre de su dueño: no se pierde ni se reasigna. Sin dueño conocido no se puede
+ * atribuir, y se descarta como antes.
+ */
+function migrateSingleDevice(): 'none' | 'migrated' | 'legacy' {
+  const raw = localStorage.getItem(DEVICE_KEY)
+  if (raw === null) return 'none'
+  const ownerRaw = storedOwnerOf(localStorage, DEVICE_KEY)
+  const drop = () => { localStorage.removeItem(DEVICE_KEY); localStorage.removeItem(DEVICE_KEY + '_owner') }
+  let device: StoredDevice | null = null
+  try { device = normalizeStoredDevice(JSON.parse(raw)) } catch { device = null }
+  if (!ownerRaw) { drop(); return 'legacy' }
+  if (!device) { drop(); return 'none' }
+  const map = readDeviceMap()
+  const slot = deviceSlot(ownerRaw)
+  if (!map[slot]) { map[slot] = device; writeDeviceMap(map) }
+  drop()
+  return 'migrated'
+}
+
+function storedOwnerOf(storage: Storage, key: string): SessionOwner | null {
+  try {
+    const owner = JSON.parse(storage.getItem(key + '_owner') ?? 'null') as Partial<SessionOwner> | null
+    return owner && typeof owner.accountId === 'string' && typeof owner.apiBase === 'string' && owner.accountId
+      ? { accountId: owner.accountId, apiBase: owner.apiBase }
+      : null
+  } catch { return null }
 }
 
 function readMember(): Member | null {
@@ -109,17 +149,13 @@ export const useSessionStore = defineStore('session', () => {
     member.value = null
     memberId.value = null
     if (!current) return
-    const deviceOwner = storedOwner(localStorage, DEVICE_KEY)
+    if (migrateSingleDevice() === 'legacy') recoveryReason.value = 'legacy'
+    // El dispositivo de ESTA cuenta; los de otras cuentas se quedan guardados, intactos.
+    const device = readDeviceMap()[deviceSlot(current)]
+    deviceId.value = device?.deviceId ?? null
+    deviceName.value = device?.name ?? null
+    deviceToken.value = device?.deviceToken ?? null
     const memberOwner = storedOwner(sessionStorage, MEMBER_KEY)
-    if (sameOwner(deviceOwner, current)) {
-      const device = readDevice()
-      deviceId.value = device?.deviceId ?? null
-      deviceName.value = device?.name ?? null
-      deviceToken.value = device?.deviceToken ?? null
-    } else if (localStorage.getItem(DEVICE_KEY)) {
-      recoveryReason.value = deviceOwner ? 'changed' : 'legacy'
-      clearDevice()
-    }
     if (sameOwner(memberOwner, current)) {
       const selected = readMember()
       member.value = selected
@@ -142,8 +178,18 @@ export const useSessionStore = defineStore('session', () => {
     deviceId.value    = device.deviceId
     deviceName.value  = device.name
     deviceToken.value = device.deviceToken ?? null
-    if (owner.value) localStorage.setItem(DEVICE_KEY + '_owner', JSON.stringify(owner.value))
-    localStorage.setItem(DEVICE_KEY, JSON.stringify(device))
+    // Se guarda a nombre de la cuenta con sesión abierta; sin sesión no hay a nombre de quién.
+    if (owner.value) writeDeviceMap({ ...readDeviceMap(), [deviceSlot(owner.value)]: device })
+  }
+
+  /**
+   * Guarda un dispositivo a nombre de OTRA cuenta (la que acaba de crear una invitación) sin tocar
+   * la sesión actual: cuando esa cuenta entre, lo encuentra y no se le pide identificarlo.
+   */
+  function saveDeviceForAccount(accountId: string, payload: StoredDevice) {
+    const device = normalizeStoredDevice(payload)
+    if (!accountId || !device || !device.deviceId) return
+    writeDeviceMap({ ...readDeviceMap(), [deviceSlot({ accountId, apiBase: API_BASE_URL })]: device })
   }
 
   function setMember(payload: Member) {
@@ -165,8 +211,11 @@ export const useSessionStore = defineStore('session', () => {
     deviceId.value    = null
     deviceName.value  = null
     deviceToken.value = null
-    localStorage.removeItem(DEVICE_KEY)
-    localStorage.removeItem(DEVICE_KEY + '_owner')
+    // Solo el dispositivo de la cuenta actual: los de las demás cuentas no se tocan.
+    if (!owner.value) return
+    const map = readDeviceMap()
+    delete map[deviceSlot(owner.value)]
+    writeDeviceMap(map)
   }
 
   /** Retain owned device storage, but expose no selection after logout. */
@@ -180,6 +229,6 @@ export const useSessionStore = defineStore('session', () => {
     deviceId, deviceName, deviceToken, owner, recoveryReason, reconcileOwnership,
     member, memberId,
     isDeviceIdentified, isMemberSelected, isContextReady,
-    setDevice, setMember, clearMember, clearDevice, clearOnLogout,
+    setDevice, saveDeviceForAccount, setMember, clearMember, clearDevice, clearOnLogout,
   }
 })

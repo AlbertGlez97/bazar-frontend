@@ -160,7 +160,8 @@ describe('auth session (contrato real bazar-api)', () => {
 
     expect(session.memberId).toBeNull()
     expect(session.deviceId).toBeNull()
-    expect(JSON.parse(localStorage.getItem('device_context')!).deviceId).toBe('d-1')
+    const kept = Object.values(JSON.parse(localStorage.getItem('device_contexts')!).devices) as { deviceId: string }[]
+    expect(kept.map((d) => d.deviceId)).toEqual(['d-1'])
   })
 })
 

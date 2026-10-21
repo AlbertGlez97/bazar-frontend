@@ -19,6 +19,9 @@ const members: Member[] = [
   { id: 'm-2', name: 'Carlos', role: 'colaborador', active: true },
 ]
 
+// El dispositivo se guarda por cuenta: aquí, el de la cuenta con sesión abierta en estas pruebas.
+const storedDevice = () => JSON.parse(localStorage.getItem('device_contexts') ?? 'null')?.devices?.['account-a|/api/v1'] ?? null
+
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
@@ -61,7 +64,7 @@ describe('SelectContextView', () => {
     const session = useSessionStore()
     expect(session.deviceId).toBe('d-1')
     expect(session.deviceToken).toBeNull()
-    expect(JSON.parse(localStorage.getItem('device_context') ?? 'null')).toEqual({
+    expect(storedDevice()).toEqual({
       deviceId: 'd-1', name: 'Shared tablet',
     })
 
@@ -85,10 +88,10 @@ describe('SelectContextView', () => {
     expect(session.deviceId).toBe('d-9')
     expect(session.deviceToken).toBe('tok-secreto')
     expect(session.deviceName).toBe('Tablet del mostrador')
-    expect(JSON.parse(localStorage.getItem('device_context') ?? 'null')).toEqual({
+    expect(storedDevice()).toEqual({
       deviceId: 'd-9', name: 'Tablet del mostrador', deviceToken: 'tok-secreto',
     })
-    expect(localStorage.getItem('device_context')).not.toContain('0190a5f0-codigo-unico')
+    expect(localStorage.getItem('device_contexts')).not.toContain('0190a5f0-codigo-unico')
 
     // El token nunca se pinta en pantalla.
     expect(wrapper.text()).not.toContain('tok-secreto')
@@ -107,7 +110,7 @@ describe('SelectContextView', () => {
 
     expect(wrapper.find('form').exists()).toBe(false)
     expect(MembersService.list).toHaveBeenCalledOnce()
-    expect(JSON.parse(localStorage.getItem('device_context') ?? 'null')).toEqual({
+    expect(storedDevice()).toEqual({
       deviceId: 'd-legacy', name: 'Shared tablet',
     })
   })

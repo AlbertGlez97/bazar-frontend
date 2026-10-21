@@ -5,7 +5,8 @@ import type { Member } from '@/types/member.types'
 
 const socio: Member = { id: 'm-1', name: 'Alberto', role: 'socio', active: true }
 
-const storedDevice = () => JSON.parse(localStorage.getItem('device_context') ?? 'null')
+// El dispositivo se guarda por cuenta: aquí, el de la cuenta con sesión abierta en estas pruebas.
+const storedDevice = () => JSON.parse(localStorage.getItem('device_contexts') ?? 'null')?.devices?.['account-a|/api/v1'] ?? null
 
 beforeEach(() => {
   localStorage.clear()
@@ -58,7 +59,7 @@ describe('session.store', () => {
     store.setDevice({ deviceId: 'd-1', name: 'Shared tablet', deviceToken: 'tok-secret' })
 
     expect(store).not.toHaveProperty('deviceIdentifier')
-    expect(localStorage.getItem('device_context')).not.toContain('identifier')
+    expect(localStorage.getItem('device_contexts')).not.toContain('identifier')
   })
 
   it('restaura el dispositivo (con su token) desde localStorage al crear el store', () => {
@@ -92,15 +93,17 @@ describe('session.store', () => {
       useSessionStore()
 
       expect(storedDevice()).toEqual({ deviceId: 'd-legacy', name: 'Shared tablet' })
-      expect(localStorage.getItem('device_context')).not.toContain('shared-tablet')
+      expect(localStorage.getItem('device_contexts')).not.toContain('shared-tablet')
+      expect(localStorage.getItem('device_context')).toBeNull()
     })
 
-    it('un valor ya normalizado no se reescribe con otra forma', () => {
-      const normalized = JSON.stringify({ deviceId: 'd-1', name: 'Tablet', deviceToken: 'tok' })
-      localStorage.setItem('device_context', normalized)
+    it('un valor ya normalizado se pasa a la clave por cuenta tal cual, sin cambiarle la forma', () => {
+      const normalized = { deviceId: 'd-1', name: 'Tablet', deviceToken: 'tok' }
+      localStorage.setItem('device_context', JSON.stringify(normalized))
       useSessionStore()
 
-      expect(localStorage.getItem('device_context')).toBe(normalized)
+      expect(storedDevice()).toEqual(normalized)
+      expect(localStorage.getItem('device_context')).toBeNull()
     })
   })
 
