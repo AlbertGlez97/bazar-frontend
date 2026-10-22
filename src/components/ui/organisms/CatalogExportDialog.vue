@@ -41,6 +41,7 @@
           :hint="VOICE.catalogExport.businessNameHint"
           :model-value="settings.businessName"
           :maxlength="BUSINESS_NAME_MAX"
+          name="businessName"
           autocomplete="organization"
           @update:model-value="emitSettings({ businessName: String($event) })"
         />
