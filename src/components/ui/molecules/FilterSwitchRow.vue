@@ -5,10 +5,15 @@
     class="filter-switch-row"
     :class="{ 'filter-switch-row--disabled': disabled }"
   >
-    <label
-      class="filter-switch-row__label"
-      :for="switchId"
-    >{{ label }}</label>
+    <div class="filter-switch-row__text">
+      <label
+        class="filter-switch-row__label"
+        :for="switchId"
+      >{{ label }}</label>
+      <AppHint v-if="hint">
+        {{ hint }}
+      </AppHint>
+    </div>
     <AppSwitch
       :id="switchId"
       :model-value="modelValue"
@@ -20,13 +25,16 @@
 
 <script setup lang="ts">
 import { useId } from 'vue'
+import AppHint from '../atoms/AppHint.vue'
 import AppSwitch from '../atoms/AppSwitch.vue'
 
 withDefaults(defineProps<{
   label: string
+  /** Línea de ayuda opcional bajo la etiqueta. */
+  hint?: string
   modelValue?: boolean
   disabled?: boolean
-}>(), { modelValue: false, disabled: false })
+}>(), { hint: '', modelValue: false, disabled: false })
 
 defineEmits<{ 'update:modelValue': [value: boolean] }>()
 
@@ -41,8 +49,8 @@ const switchId = useId()
   gap: var(--spacing-md);
   min-height: 2.75rem;
 }
+.filter-switch-row__text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .filter-switch-row__label {
-  flex: 1;
   font-size: var(--font-size-md);
   color: var(--color-text);
   cursor: pointer;

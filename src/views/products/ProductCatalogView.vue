@@ -19,6 +19,13 @@
         >
           {{ VOICE.productSheet.scanQr }}
         </AppButton>
+        <!-- Catálogo en Word: solo socios, en Gestión -->
+        <AppButton
+          variant="secondary"
+          @click="isCatalogDialogOpen = true"
+        >
+          {{ VOICE.catalogExport.open }}
+        </AppButton>
         <AppButton
           variant="primary"
           @click="openCreateModal"
@@ -157,6 +164,25 @@
       @submit="handleRestockSubmit"
     />
 
+    <CatalogExportDialog
+      v-if="isSocio && !isVenta"
+      v-model="isCatalogDialogOpen"
+      :settings="catalogSettings.settings"
+      :categories="catalogExport.categories.value"
+      :candidates="catalogExport.candidates.value"
+      :summary="catalogSummary"
+      :loaded="catalogExport.loaded.value"
+      :phase="catalogExport.phase.value"
+      :progress="catalogExport.progress.value"
+      :offline="!online"
+      :error="catalogExport.error.value"
+      @update:settings="catalogSettings.set($event)"
+      @restore="catalogSettings.reset()"
+      @retry="catalogExport.load()"
+      @cancel="catalogExport.cancel()"
+      @generate="generateCatalog"
+    />
+
     <LabelPrintDialog
       v-model="isPrintDialogOpen"
       :label-count="selection.count"
@@ -187,12 +213,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ActiveFilterChips, AppAlert, AppButton, AppModal, LabelPrintDialog, ProductCatalogGrid, ProductFiltersPanel, ProductFormModal, ProductRestockModal, ProductSelectionBar, ProductSheet, QrScannerModal } from '@/components'
+import { ActiveFilterChips, AppAlert, AppButton, AppModal, CatalogExportDialog, LabelPrintDialog, ProductCatalogGrid, ProductFiltersPanel, ProductFormModal, ProductRestockModal, ProductSelectionBar, ProductSheet, QrScannerModal } from '@/components'
 import { VOICE } from '@/config/voice'
+import { useCatalogExport } from '@/composables/useCatalogExport'
 import { useLabelPrinting } from '@/composables/useLabelPrinting'
+import { useOnlineStatus } from '@/composables/useOnlineStatus'
 import { useProductSheetScan } from '@/composables/useProductSheetScan'
 import { useScanNotice } from '@/composables/useScanNotice'
 import { useProductFilters } from '@/composables/useProductFilters'
+import { useCatalogExportStore } from '@/stores/catalog-export.store'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
 import { useLabelDesignStore } from '@/stores/label-design.store'
 import { useManageCatalogViewStore } from '@/stores/manageCatalogView.store'
@@ -250,6 +279,35 @@ const labelCalibration = useLabelCalibrationStore()
 const labelDesign = useLabelDesignStore()
 const { busy: printBusy, error: printError, preview: previewLabels, download: downloadLabels } = useLabelPrinting()
 const isPrintDialogOpen = ref(false)
+
+// ── Catálogo en Word (solo socios, en Gestión; necesita internet) ───────────
+const catalogSettings = useCatalogExportStore()
+const catalogExport = useCatalogExport()
+const online = useOnlineStatus()
+const isCatalogDialogOpen = ref(false)
+const catalogSummary = computed(() => ({
+  products: catalogExport.data.value.productCount,
+  merged: catalogExport.data.value.mergedCount,
+  photos: catalogExport.data.value.photoCount,
+  categories: catalogExport.data.value.categories.length,
+}))
+
+// Al abrir se bajan los productos (siempre frescos). Al cerrar a media generación se cancela.
+watch(isCatalogDialogOpen, (open) => {
+  if (open) {
+    if (online.value && isSocio.value && !isVenta.value) void catalogExport.load()
+  } else if (catalogExport.busy.value) {
+    catalogExport.cancel()
+  }
+})
+// Si cambia el modo o la persona con el diálogo abierto, se cierra (no es de colaboradores ni de Venta).
+watch([isSocio, isVenta], () => {
+  if (!isSocio.value || isVenta.value) isCatalogDialogOpen.value = false
+})
+
+async function generateCatalog() {
+  if (await catalogExport.generate()) isCatalogDialogOpen.value = false
+}
 const selectedIds = computed(() => selection.items.map((item) => item.id))
 
 async function handleSelectAll() {

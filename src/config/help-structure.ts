@@ -50,6 +50,7 @@ const DEFINITIONS: readonly CategoryDefinition[] = [
     topics: [
       { id: 'productos.catalogo', title: 'Catálogo', description: 'Crear, editar, desactivar y poner foto a los productos.' },
       { id: 'productos.etiquetas-qr', title: 'Etiquetas QR', description: 'Preparar e imprimir etiquetas para tus productos.' },
+      { id: 'productos.catalogo-word', title: 'Catálogo en Word', description: 'Generar un catálogo editable para compartir.' },
     ],
   },
   {

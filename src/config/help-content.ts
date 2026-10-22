@@ -181,6 +181,25 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
     tips: ['No sustituyas el QR generado por un código de barras comercial. Comprueba que el lector agrega el producto esperado.'],
   },
   {
+    id: 'catalogo-word', topic: 'productos.catalogo-word', title: 'Generar un catálogo en Word', category: 'Productos', audience: 'socio',
+    keywords: ['catálogo', 'word', 'docx', 'precios', 'fotos', 'variantes', 'categorías', 'índice'],
+    intro: 'El catálogo es un Word editable con tus productos. Tú le pones el diseño, los colores y tus datos de contacto. Necesita internet.',
+    steps: [
+      'En Gestión abre Productos y toca Generar catálogo. Se cargan tus productos.',
+      'Revisa el nombre del negocio: sale en la portada y puedes cambiarlo.',
+      'Elige qué productos entran y qué datos llevan. El costo nunca sale en el catálogo.',
+      'Agrupar variantes junta tallas o colores del mismo producto si el nombre, la marca y la categoría coinciden.',
+      'Elige cómo mostrar la existencia: exacta, disponibilidad u ocultarla. Los productos sin categoría van al final, en Otros.',
+      'Mira el resumen y toca Generar catálogo. El archivo se descarga solo.',
+      'Si activaste el índice, Word te preguntará si quieres actualizar el documento: di que sí.',
+    ],
+    tips: [
+      'Las opciones se recuerdan. Restaurar sugeridos las deja como al principio.',
+      'Una marca vacía en un producto y llena en otro no se agrupa. Tampoco Playera azul con Playera roja: escribe el nombre igual en ambos.',
+      'Las fotos se reducen para que el archivo no pese demasiado. Un producto sin foto lleva un cuadro gris que puedes reemplazar en Word.',
+    ],
+  },
+  {
     id: 'crear-deuda', topic: 'deudas', title: 'Registrar fiado o apartado desde una venta', category: 'Deudas', audience: 'socio',
     keywords: ['deudor', 'cliente', 'abono inicial', 'fiado', 'apartado', 'una línea'],
     intro: 'Fiado entrega el producto y deja un saldo por cobrar. Apartado reserva el producto. Registrar estas operaciones corresponde a socios, aunque el ofrecimiento pueda aparecer en el carrito de un colaborador.',
@@ -774,6 +793,7 @@ export const HELP_EVIDENCE: Readonly<Record<string, readonly string[]>> = {
   'ver-ficha-qr': ['src/components/ui/organisms/ProductSheet.vue', 'src/components/ui/organisms/QrScannerModal.vue', 'src/views/sales/SaleView.vue'],
   fotos: ['src/components/ui/organisms/ProductForm.vue'],
   'imprimir-qr': ['src/views/products/CodigosQrView.vue', 'src/components/ui/organisms/LabelPrintDialog.vue'],
+  'catalogo-word': ['src/views/products/ProductCatalogView.vue', 'src/components/ui/organisms/CatalogExportDialog.vue', 'src/services/catalog-docx.ts'],
   'crear-deuda': ['src/components/ui/organisms/RegistrarDeudaModal.vue', 'src/views/sales/SaleView.vue'],
   abonos: ['src/components/ui/organisms/DeudaDetailModal.vue'],
   calendario: ['src/components/ui/molecules/CuotasPlaneadasEditor.vue', 'src/views/deudas/DeudasView.vue'],
