@@ -78,3 +78,34 @@ export interface CatalogData {
   /** Fotos que habría que procesar (productos con foto). */
   photoCount: number
 }
+
+/** Calidad de las fotos: lado largo de 400 px (Normal) u 800 px (Alta). */
+export type PhotoQualityChoice = 'normal' | 'high'
+
+/** Todo lo que la persona elige en el diálogo "Generar catálogo" (se recuerda en localStorage). */
+export interface CatalogExportSettings {
+  /** Nombre que sale en la portada; editable antes de generar. */
+  businessName: string
+  filter: CatalogFilter
+  groupVariants: boolean
+  fields: {
+    photo: boolean
+    brand: boolean
+    presentation: boolean
+    description: boolean
+    price: boolean
+    stock: boolean
+  }
+  stockMode: StockMode
+  lowStockThreshold: number
+  columns: 1 | 2 | 3
+  pageBreakPerCategory: boolean
+  showDate: boolean
+  tableOfContents: boolean
+  photoQuality: PhotoQualityChoice
+}
+
+/** Un cambio parcial de las opciones; los datos por producto (`fields`) también pueden ir parciales. */
+export type CatalogSettingsPatch = Partial<Omit<CatalogExportSettings, 'fields'>> & {
+  fields?: Partial<CatalogExportSettings['fields']>
+}
