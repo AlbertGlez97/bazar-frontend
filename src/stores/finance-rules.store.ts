@@ -26,8 +26,6 @@ export const useFinanceRulesStore = defineStore('finance-rules', () => {
   /** Who the emails reached after the last "Enviar", and who they did not. */
   const submitted = ref<SubmitResult['emails'] | null>(null)
   const resent = ref<ResendResult | null>(null)
-  /** The masked address a confirmation email was just sent to. */
-  const correoSentTo = ref('')
   let revision = 0
 
   const stateText = computed(() => (overview.value ? rulesStateText(overview.value) : null))
@@ -94,18 +92,15 @@ export const useFinanceRulesStore = defineStore('finance-rules', () => {
     resent.value = result
     return result
   }
-  /** Asks for the confirmation email of the caller's own address. */
+  /** Asks for the confirmation email of the caller's own address; the overview then shows it as waiting. */
   async function requestCorreo(correo: string): Promise<boolean> {
-    const result = await change((o) => FinanceRulesService.requestCorreo(o, correo))
-    correoSentTo.value = result?.correo ?? ''
-    return result !== null
+    return (await change((o) => FinanceRulesService.requestCorreo(o, correo))) !== null
   }
 
   /** The notices of one action belong to that action only: a new proposal starts without them. */
   function clearNotices() {
     submitted.value = null
     resent.value = null
-    correoSentTo.value = ''
     actionError.value = ''
   }
 
@@ -116,13 +111,12 @@ export const useFinanceRulesStore = defineStore('finance-rules', () => {
     actionError.value = ''
     submitted.value = null
     resent.value = null
-    correoSentTo.value = ''
     loading.value = false
     working.value = false
   }
 
   return {
-    overview, loading, error, working, actionError, submitted, resent, correoSentTo, stateText,
+    overview, loading, error, working, actionError, submitted, resent, stateText,
     load, saveDraft, discard, modify, submit, resend, requestCorreo, clearNotices, reset,
   }
 })

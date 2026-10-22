@@ -4,7 +4,7 @@ import RulesCorreoCard from '../RulesCorreoCard.vue'
 import { AppInput } from '@/components'
 
 const card = (props: Partial<InstanceType<typeof RulesCorreoCard>['$props']> = {}) =>
-  mount(RulesCorreoCard, { props: { pending: null, sentTo: '', working: false, ...props } })
+  mount(RulesCorreoCard, { props: { pending: null, working: false, ...props } })
 /** Escribe como lo haría el campo: sin pasar por el navegador, que ya recorta los espacios de un campo de correo. */
 const write = async (w: ReturnType<typeof card>, value: string) => {
   w.findComponent(AppInput).vm.$emit('update:modelValue', value)
@@ -49,15 +49,12 @@ describe('RulesCorreoCard', () => {
     expect(w.emitted('submit')).toEqual([['ana@example.com']])
   })
 
-  it('con una confirmación esperando, dice a qué correo y hasta cuándo; si no, dice adónde se mandó', () => {
-    const waiting = card({ pending: { correo: 'a***@e***.com', expiresAt: '2026-10-23T18:00:00.000Z' }, sentTo: 'x***@e***.com' })
+  it('con una confirmación esperando, dice a qué correo y hasta cuándo; si no hay, no dice nada', () => {
+    const waiting = card({ pending: { correo: 'a***@e***.com', expiresAt: '2026-10-23T18:00:00.000Z' } })
     expect(waiting.get('[data-test="rules-correo-pending"]').text()).toBe(
       'Ya enviamos un correo a a***@e***.com. Ábrelo y confirma. Vence el 23/10/2026, 12:00. Si no llegó, escríbelo de nuevo.',
     )
-    expect(waiting.find('[data-test="rules-correo-sent"]').exists()).toBe(false)
-
-    const sent = card({ sentTo: 'a***@e***.com' })
-    expect(sent.get('[data-test="rules-correo-sent"]').text()).toBe('Te enviamos un correo a a***@e***.com. Ábrelo y confirma.')
+    expect(waiting.find('[role="status"]').exists()).toBe(true)
     expect(card().find('[role="status"]').exists()).toBe(false)
   })
 

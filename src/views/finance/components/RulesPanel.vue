@@ -90,7 +90,6 @@
         <RulesCorreoCard
           v-if="!overview.me.hasCorreo"
           :pending="overview.me.pendingCorreo"
-          :sent-to="store.correoSentTo"
           :working="store.working"
           @submit="store.requestCorreo($event)"
         />
@@ -124,8 +123,10 @@
           @discard="discard(overview.proposal.id)"
         />
 
+        <!-- Con una propuesta abierta solo se ve este bloque si ya hay un borrador (el de "Modificar" o el
+             de otro socio): sin borrador no hay nada que editar hasta que la propuesta se cierre. -->
         <section
-          v-else
+          v-if="!overview.proposal || overview.draft"
           class="rules-panel__block"
           aria-labelledby="rules-edit-title"
         >

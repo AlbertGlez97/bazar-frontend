@@ -19,14 +19,6 @@
       Ya enviamos un correo a {{ pending.correo }}. Ábrelo y confirma. Vence el {{ formatRuleDateTime(pending.expiresAt) }}.
       Si no llegó, escríbelo de nuevo.
     </p>
-    <p
-      v-else-if="sentTo"
-      class="rules-correo__pending"
-      role="status"
-      data-test="rules-correo-sent"
-    >
-      Te enviamos un correo a {{ sentTo }}. Ábrelo y confirma.
-    </p>
     <form
       class="rules-correo__form"
       novalidate
@@ -59,10 +51,8 @@ import { AppButton, AppInput } from '@/components'
 import { formatRuleDateTime } from '@/utils/finance-rules'
 
 defineProps<{
-  /** The confirmation still waiting, with the address masked. */
+  /** The confirmation still waiting, with the address masked: what the server says right after sending too. */
   pending: { correo: string; expiresAt: string } | null
-  /** The masked address a confirmation was just sent to. */
-  sentTo: string
   working: boolean
 }>()
 const emit = defineEmits<{ submit: [correo: string] }>()

@@ -149,38 +149,41 @@ describe('finance-rules.store', () => {
     expect(store.resent).toEqual(answer)
   })
 
-  it('al pedir el correo propio guarda adónde se mandó la confirmación', async () => {
+  it('al pedir el correo propio vuelve a leer lo que dice el servidor: la confirmación queda esperando', async () => {
     mocks.requestCorreo.mockResolvedValue({ correo: 'a***@e***.com', expiresAt: '2026-10-23T12:00:00.000Z' })
+    const waiting = { correo: 'a***@e***.com', expiresAt: '2026-10-23T12:00:00.000Z' }
+    mocks.overview.mockResolvedValue(overviewFixture({ me: { ...overviewFixture().me, hasCorreo: false, correo: null, pendingCorreo: waiting } }))
     const store = useFinanceRulesStore()
 
     expect(await store.requestCorreo('ana@example.com')).toBe(true)
 
     expect(mocks.requestCorreo).toHaveBeenCalledWith(expect.anything(), 'ana@example.com')
-    expect(store.correoSentTo).toBe('a***@e***.com')
+    expect(mocks.overview).toHaveBeenCalledTimes(1)
+    expect(store.overview?.me.pendingCorreo).toEqual(waiting)
   })
 
-  it('un correo que ya está en uso se explica y no queda como enviado', async () => {
+  it('un correo que ya está en uso se explica y no se da por enviado', async () => {
     mocks.requestCorreo.mockRejectedValue(fail(409, 'MEMBER_EMAIL_IN_USE'))
     const store = useFinanceRulesStore()
 
     expect(await store.requestCorreo('ana@example.com')).toBe(false)
 
     expect(store.actionError).toBe('Ese correo ya está en uso. Usa otro correo.')
-    expect(store.correoSentTo).toBe('')
   })
 
   it('un aviso es de una sola acción: clearNotices los quita todos', async () => {
     mocks.submit.mockResolvedValue({ rules: ruleSet(), emails: { sent: ['Ana'], failed: [] } })
     mocks.resend.mockResolvedValue({ activated: false, resent: [], skipped: [], noEmail: [] })
-    mocks.requestCorreo.mockResolvedValue({ correo: 'a***@e***.com', expiresAt: '2026-10-23T12:00:00.000Z' })
+    mocks.saveDraft.mockRejectedValue(fail(409, 'FINANCE_RULES_DRAFT_OWNED'))
     const store = useFinanceRulesStore()
     await store.submit(RULE_SET_ID)
     await store.resend(RULE_SET_ID)
-    await store.requestCorreo('a@b.co')
+    await store.saveDraft(defaultRulesConfig())
+    expect(store.actionError).not.toBe('')
 
     store.clearNotices()
 
-    expect([store.submitted, store.resent, store.correoSentTo, store.actionError]).toEqual([null, null, '', ''])
+    expect([store.submitted, store.resent, store.actionError]).toEqual([null, null, ''])
   })
 
   it('reset borra todo lo mostrado', async () => {
@@ -192,6 +195,5 @@ describe('finance-rules.store', () => {
     expect(store.overview).toBeNull()
     expect(store.resent).toBeNull()
     expect(store.submitted).toBeNull()
-    expect(store.correoSentTo).toBe('')
   })
 })

@@ -230,15 +230,28 @@ describe('RulesPanel: la propuesta abierta', () => {
     expect(reasons.find('img').exists()).toBe(false)
   })
 
-  it('cualquier socio puede modificar: se crea una copia para él y se ve su borrador', async () => {
-    const draft = ruleSet({ version: 2, basedOn: { id: RULE_SET_ID, version: 1, objections: [objection(BETO)] } })
+  it('cualquier socio puede modificar: se crea una copia para él y su borrador se ve y se edita aunque la propuesta siga abierta', async () => {
+    const draft = ruleSet({ id: '0190aaaa-0000-7000-8000-0000000000b2', version: 2, basedOn: { id: RULE_SET_ID, version: 1, objections: [objection(BETO)] } })
     mocks.modify.mockResolvedValue(draft)
     const w = await show(reviewOverview())
+    expect(w.find('[data-test="rules-form"]').exists()).toBe(false)
     mocks.overview.mockResolvedValue(reviewOverview({ draft }))
 
     await click(w, 'rules-modify')
 
     expect(mocks.modify).toHaveBeenCalledWith(expect.anything(), RULE_SET_ID)
+    expect(w.find('[data-test="rules-proposal"]').exists()).toBe(true)
+    expect(w.get('[data-test="rules-based-on"]').text()).toContain('Estás cambiando la versión 1')
+    expect(w.find('[data-test="rules-form"]').exists()).toBe(true)
+    expect(w.find('[data-test="rules-start"]').exists()).toBe(false)
+  })
+
+  it('con una propuesta abierta y el borrador de otro socio, se ve el aviso y se puede descartar', async () => {
+    const draft = ruleSet({ id: '0190aaaa-0000-7000-8000-0000000000b2', version: 2, proposedBy: BETO })
+    const w = await show(reviewOverview({ draft }))
+    expect(w.get('[data-test="rules-foreign-draft"]').text()).toContain('Beto Prueba'.slice(0, 4))
+    expect(w.find('[data-test="rules-discard-foreign"]').exists()).toBe(true)
+    expect(w.find('[data-test="rules-form"]').exists()).toBe(false)
   })
 
   it('al descartar pide confirmar, y "No, conservarla" no hace nada', async () => {
@@ -285,16 +298,17 @@ describe('RulesPanel: escribir mi correo', () => {
     expect(card).toContain('Te mandamos un enlace para confirmar que es tuyo')
   })
 
-  it('manda el correo escrito y dice adónde se envió la confirmación', async () => {
+  it('manda el correo escrito y, con lo que responde el servidor, dice que la confirmación quedó esperando', async () => {
     mocks.requestCorreo.mockResolvedValue({ correo: 'a***@e***.com', expiresAt: '2026-10-23T12:00:00.000Z' })
     const w = await show(sin())
     await w.get('[data-test="rules-correo"] input').setValue('  ana@example.com ')
+    mocks.overview.mockResolvedValue(sin({ pendingCorreo: { correo: 'a***@e***.com', expiresAt: '2026-10-23T18:00:00.000Z' } }))
 
     await w.get('[data-test="rules-correo"] form').trigger('submit')
     await flushPromises()
 
     expect(mocks.requestCorreo).toHaveBeenCalledWith(expect.anything(), 'ana@example.com')
-    expect(w.get('[data-test="rules-correo-sent"]').text()).toContain('Te enviamos un correo a a***@e***.com. Ábrelo y confirma.')
+    expect(w.get('[data-test="rules-correo-pending"]').text()).toContain('Ya enviamos un correo a a***@e***.com. Ábrelo y confirma.')
   })
 
   it('no manda lo que claramente no es un correo, y lo dice', async () => {
@@ -315,7 +329,7 @@ describe('RulesPanel: escribir mi correo', () => {
     await flushPromises()
 
     expect(w.get('[data-test="rules-action-error"]').text()).toBe('Ese correo ya está en uso. Usa otro correo.')
-    expect(w.find('[data-test="rules-correo-sent"]').exists()).toBe(false)
+    expect(w.find('[data-test="rules-correo-pending"]').exists()).toBe(false)
   })
 
   it('si ya hay una confirmación esperando, dice a qué correo y hasta cuándo', async () => {
