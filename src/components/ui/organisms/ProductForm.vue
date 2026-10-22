@@ -118,9 +118,11 @@
       </AppButton>
     </div>
 
-    <AppInput
+    <AppSuggestInput
       v-model="category"
       label="Categoría (opcional)"
+      :suggestions="categorySuggestions"
+      :maxlength="PRODUCT_TEXT_LIMITS.category"
     />
 
     <AppInput
@@ -234,12 +236,14 @@ const props = withDefaults(defineProps<{
   /** Marcas y presentaciones ya usadas (solo las tienen los socios); sin ellas el campo es de texto libre. */
   brandSuggestions?: string[]
   presentationSuggestions?: string[]
+  categorySuggestions?: string[]
 }>(), {
   product: null,
   draft: null,
   loading: false,
   brandSuggestions: () => [],
   presentationSuggestions: () => [],
+  categorySuggestions: () => [],
 })
 
 const emit = defineEmits<{
@@ -374,7 +378,7 @@ function buildPayload(): ProductFormSubmitPayload | null {
     if (name.value !== original.name) payload.name = name.value
     if (unitPriceMinor !== original.unitPriceMinor) payload.unitPriceMinor = unitPriceMinor
 
-    const categoryValue = category.value.trim() || null
+    const categoryValue = collapseSpaces(category.value) || null
     if (categoryValue !== original.category) payload.category = categoryValue
 
     if (purchaseCostMinor !== original.purchaseCostMinor) payload.purchaseCostMinor = purchaseCostMinor
@@ -401,7 +405,7 @@ function buildPayload(): ProductFormSubmitPayload | null {
     tipo: tipo.value,
     unitPriceMinor,
     initialStock: tipo.value === 'cantidad' ? Number(initialStock.value) : undefined,
-    category: category.value.trim() || undefined,
+    category: collapseSpaces(category.value) || undefined,
     purchaseCostMinor: purchaseCostMinor ?? undefined,
     supplier: supplier.value.trim() || undefined,
     notes: notes.value.trim() || undefined,

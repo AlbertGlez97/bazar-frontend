@@ -141,6 +141,7 @@
       :loading="isSubmitting"
       :brand-suggestions="suggestionsBrands"
       :presentation-suggestions="suggestionsPresentations"
+      :category-suggestions="suggestionsCategories"
       @submit="handleFormSubmit"
       @submit-and-duplicate="handleSubmitAndDuplicate"
       @duplicate="duplicateFromEdit"
@@ -288,11 +289,12 @@ const { filters: urlFilters, filtersKey: urlFiltersKey, chips, setFilters, remov
 const filters = computed(() => (isVenta.value ? emptyProductFilters() : urlFilters.value))
 const appliedKey = computed(() => (isVenta.value ? '{}' : urlFiltersKey.value))
 
-// Marcas y presentaciones ya usadas: solo las pide un socio (el servidor las niega al
+// Marcas, presentaciones y categorías ya usadas: solo las pide un socio (el servidor las niega al
 // resto) y solo se le dan a quien puede abrir el formulario. El store sobrevive al
 // cierre de sesión, así que un colaborador nunca recibe las de un socio anterior.
 const suggestionsBrands = computed(() => (isSocio.value ? store.brandSuggestions : []))
 const suggestionsPresentations = computed(() => (isSocio.value ? store.presentationSuggestions : []))
+const suggestionsCategories = computed(() => (isSocio.value ? store.categorySuggestions : []))
 
 onMounted(() => {
   if (isSocio.value) void store.loadSuggestions()

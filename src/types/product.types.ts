@@ -85,6 +85,8 @@ export interface ProductListParams {
 export interface ProductSuggestions {
   brands: string[]
   presentations: string[]
+  /** Ausente si el servidor es anterior a las categorías sugeridas. */
+  categories?: string[]
 }
 
 export interface ProductListResponse {

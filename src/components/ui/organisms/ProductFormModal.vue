@@ -17,6 +17,7 @@
       :loading="loading"
       :brand-suggestions="brandSuggestions"
       :presentation-suggestions="presentationSuggestions"
+      :category-suggestions="categorySuggestions"
       @submit="$emit('submit', $event)"
       @submit-and-duplicate="$emit('submit-and-duplicate', $event)"
       @duplicate="$emit('duplicate')"
@@ -51,12 +52,14 @@ const props = withDefaults(defineProps<{
   loading?: boolean
   brandSuggestions?: string[]
   presentationSuggestions?: string[]
+  categorySuggestions?: string[]
 }>(), {
   product: null,
   draft: null,
   loading: false,
   brandSuggestions: () => [],
   presentationSuggestions: () => [],
+  categorySuggestions: () => [],
 })
 
 defineEmits<{

@@ -182,3 +182,54 @@ describe('ProductForm — marca, presentación y descripción', () => {
     })
   })
 })
+
+describe('ProductForm — categoría con sugerencias', () => {
+  it('las sugerencias de categoría llegan como lista ligada al campo, como marca y presentación', () => {
+    const wrapper = mountForm({ categorySuggestions: ['Hogar', 'Ropa'] })
+
+    const list = byLabel(wrapper, 'Categoría').attributes('list')!
+    expect(wrapper.findAll(`[id="${list}"] option`).map((option) => option.attributes('value'))).toEqual(['Hogar', 'Ropa'])
+    expect(byLabel(wrapper, 'Categoría').attributes('maxlength')).toBe('100')
+  })
+
+  it('sin sugerencias el campo sigue siendo de texto libre', () => {
+    const wrapper = mountForm()
+
+    expect(byLabel(wrapper, 'Categoría').attributes('list') ?? '').toBe('')
+    expect(wrapper.text()).toContain('Categoría (opcional)')
+  })
+
+  it('al crear, la categoría se guarda sin espacios de más', async () => {
+    const wrapper = mountForm({ categorySuggestions: ['Ropa'] })
+    await fillRequired(wrapper)
+    await byLabel(wrapper, 'Categoría').setValue('   Ropa    de   cama  ')
+
+    await wrapper.find('form').trigger('submit')
+
+    expect(lastSubmit(wrapper).category).toBe('Ropa de cama')
+  })
+
+  it('una categoría de solo espacios no se manda', async () => {
+    const wrapper = mountForm()
+    await fillRequired(wrapper)
+    await byLabel(wrapper, 'Categoría').setValue('     ')
+
+    await wrapper.find('form').trigger('submit')
+
+    expect(lastSubmit(wrapper).category).toBeUndefined()
+  })
+
+  it('al editar, solo manda la categoría si cambió ya normalizada (no reescribe la que ya estaba)', async () => {
+    const product = makeProduct({ category: 'Ropa' })
+    const wrapper = mountForm({ product })
+    await byLabel(wrapper, 'Categoría').setValue('  Ropa ')
+    await wrapper.find('form').trigger('submit')
+    // Nada cambió de verdad: ni siquiera hay un envío vacío con la categoría.
+    const unchanged = wrapper.emitted('submit')?.at(-1)?.[0] as Record<string, unknown> | undefined
+    expect(unchanged?.category).toBeUndefined()
+
+    await byLabel(wrapper, 'Categoría').setValue('  Ropa   de   cama ')
+    await wrapper.find('form').trigger('submit')
+    expect(lastSubmit(wrapper).category).toBe('Ropa de cama')
+  })
+})

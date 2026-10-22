@@ -318,14 +318,24 @@ describe('products.store — marca y sugerencias', () => {
     expect(store.brand).toBeUndefined()
   })
 
-  it('loadSuggestions guarda marcas y presentaciones', async () => {
-    vi.mocked(ProductsService.getSuggestions).mockResolvedValue({ brands: ['Nike'], presentations: ['XL'] })
+  it('loadSuggestions guarda marcas, presentaciones y categorías', async () => {
+    vi.mocked(ProductsService.getSuggestions).mockResolvedValue({ brands: ['Nike'], presentations: ['XL'], categories: ['Ropa'] })
     const store = useProductsStore()
 
     await store.loadSuggestions()
 
     expect(store.brandSuggestions).toEqual(['Nike'])
     expect(store.presentationSuggestions).toEqual(['XL'])
+    expect(store.categorySuggestions).toEqual(['Ropa'])
+  })
+
+  it('un servidor sin categorías sugeridas deja la lista vacía', async () => {
+    vi.mocked(ProductsService.getSuggestions).mockResolvedValue({ brands: ['Nike'], presentations: ['XL'] })
+    const store = useProductsStore()
+
+    await store.loadSuggestions()
+
+    expect(store.categorySuggestions).toEqual([])
   })
 
   it('si no se pueden traer, quedan vacías y no se lanza (las sugerencias son un extra)', async () => {

@@ -36,6 +36,7 @@ export const useProductsStore = defineStore('products', () => {
   // Sugerencias del formulario (solo socios las pueden pedir).
   const brandSuggestions = ref<string[]>([])
   const presentationSuggestions = ref<string[]>([])
+  const categorySuggestions = ref<string[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
@@ -105,9 +106,11 @@ export const useProductsStore = defineStore('products', () => {
       const suggestions = await ProductsService.getSuggestions()
       brandSuggestions.value = suggestions.brands
       presentationSuggestions.value = suggestions.presentations
+      categorySuggestions.value = suggestions.categories ?? []
     } catch {
       brandSuggestions.value = []
       presentationSuggestions.value = []
+      categorySuggestions.value = []
     }
   }
 
@@ -182,7 +185,7 @@ export const useProductsStore = defineStore('products', () => {
 
   return {
     items, total, page, limit, search, includeInactive, umbral, agotados, sinCosto, tipo, brand, loading, error, totalPages,
-    brandSuggestions, presentationSuggestions, loadSuggestions,
+    brandSuggestions, presentationSuggestions, categorySuggestions, loadSuggestions,
     fetchProducts, createProduct, updateProduct, uploadProductImage, copyProductImage, findByScannedText,
     restockProduct, deactivateProduct, reactivateProduct,
   }
