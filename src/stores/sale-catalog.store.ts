@@ -4,6 +4,8 @@ import ProductsService from '@/services/products.service'
 import { loadCatalogSnapshot, saveCatalogSnapshot } from '@/services/local-db'
 import { VOICE, isNetworkError } from '@/config/voice'
 import type { Product } from '@/types/product.types'
+import { fetchAllProductPages } from '@/utils/fetch-all-pages'
+import { normalizeText as normalize } from '@/utils/text-normalize'
 
 /**
  * Catálogo local de la pantalla de venta.
@@ -14,9 +16,6 @@ import type { Product } from '@/types/product.types'
  * categoría) es local e instantáneo. Sin red, se usa la última copia guardada.
  */
 
-/** Máximo del contrato para `limit` en GET /products. */
-const PAGE_LIMIT = 100
-
 /** Lo mínimo que `applySoldItems` necesita de una línea vendida (compatible con `CartLine`). */
 export interface SoldItem {
   productId: string
@@ -24,11 +23,6 @@ export interface SoldItem {
 }
 
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
-
-/** Minúsculas, sin acentos y sin espacios en los extremos: "  CAFÉ " -> "cafe". */
-function normalize(text: string): string {
-  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
-}
 
 export const useSaleCatalogStore = defineStore('sale-catalog', () => {
   const products = ref<Product[]>([])
@@ -47,16 +41,7 @@ export const useSaleCatalogStore = defineStore('sale-catalog', () => {
 
   /** Trae todas las páginas; si cualquiera falla, falla todo (nunca un catálogo a medias). */
   async function fetchAllActive(): Promise<Product[]> {
-    const byId = new Map<string, Product>()
-    let page = 1
-    for (;;) {
-      const response = await ProductsService.listProducts({ page, limit: PAGE_LIMIT })
-      // La paginación por offset no es un snapshot: dedupe por id por si el catálogo cambió entre páginas.
-      for (const item of response.items) byId.set(item.id, item)
-      if (response.items.length === 0 || byId.size >= response.total || page * PAGE_LIMIT >= response.total) break
-      page += 1
-    }
-    return [...byId.values()]
+    return fetchAllProductPages((page, limit) => ProductsService.listProducts({ page, limit }))
   }
 
   async function runLoad(): Promise<void> {
