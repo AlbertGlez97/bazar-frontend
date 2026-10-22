@@ -70,6 +70,9 @@ describe('CatalogExportDialog — estructura', () => {
     const label = wrapper.findAll('label').find((l) => l.text().includes(VOICE.catalogExport.businessName))!
     const input = wrapper.get(`#${label.attributes('for')}`)
     expect((input.element as HTMLInputElement).value).toBe('Bazar Lupe')
+    // Un campo con autocompletado debe declarar su tipo (Sonar Web:S6840).
+    expect(input.attributes('type')).toBe('text')
+    expect(input.attributes('autocomplete')).toBe('organization')
     await input.setValue('Bazar Nuevo')
     expect(lastPatch(wrapper)).toEqual({ businessName: 'Bazar Nuevo' })
   })
