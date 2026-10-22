@@ -348,7 +348,8 @@ export function resendState(partners: readonly RulesPartnerStatus[]): { allowed:
   if (!reachable.length) return { allowed: false, hint: 'A quienes faltan les falta el correo. Primero deben escribirlo.' }
   const blocked = reachable.map((p) => p.link?.canResendAt ?? null)
   if (blocked.some((at) => at === null)) return { allowed: true, hint: '' }
-  const next = (blocked as string[]).reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b))
+  const dates = blocked as string[]
+  const next = dates.reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b), dates[0]!)
   return { allowed: false, hint: `Ya reenviaste el correo hace menos de 24 horas. Podrás hacerlo de nuevo el ${formatRuleDateTime(next)}.` }
 }
 
