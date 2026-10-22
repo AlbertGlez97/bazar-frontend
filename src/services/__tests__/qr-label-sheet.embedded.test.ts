@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { decode } from 'fast-png'
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader'
 import { LABEL_QR_QUIET_ZONE, LABEL_QR_SCALE, generateQrLabelSheet } from '../qr-label-sheet'
-import { DEFAULT_CALIBRATION } from '@/utils/label-sheet-plan'
+import { DEFAULT_CALIBRATION, type LabelDesign, type LabelInput } from '@/utils/label-sheet-plan'
 
 // Prueba de compatibilidad sobre el raster que REALMENTE queda dentro del PDF (ya comprimido por
 // jsPDF), no sobre lo que devuelve el codificador: se sacan las imágenes del archivo, se
@@ -65,8 +65,8 @@ function extractImages(pdf: Buffer): EmbeddedImage[] {
   return found
 }
 
-async function pdfOf(products: { id: string; name: string }[]): Promise<Buffer> {
-  const sheet = await generateQrLabelSheet(products, DEFAULT_CALIBRATION)
+async function pdfOf(products: LabelInput[], design: LabelDesign = 'qr-only'): Promise<Buffer> {
+  const sheet = await generateQrLabelSheet(products, DEFAULT_CALIBRATION, design)
   return Buffer.from(await sheet.blob.arrayBuffer())
 }
 
@@ -87,6 +87,13 @@ describe('QR images embedded in the label sheet PDF', () => {
     expect(decoded.map((d) => d[0]).sort()).toEqual([...ids].sort())
     for (const texts of decoded) expect(texts).toHaveLength(1)
   }, 120_000)
+
+  it('also decodes exactly in design B (QR + detalle)', async () => {
+    const products = [ID(1), ID(2)].map((id, i) => ({ id, name: `Producto ${i}`, brand: 'Marca', presentation: '1 L', description: 'Una descripción breve' }))
+    const images = extractImages(await pdfOf(products, 'qr-detail'))
+    const decoded = await Promise.all(images.map((image) => decodeText(image.png)))
+    expect(decoded.map((d) => d[0]).sort()).toEqual([ID(1), ID(2)])
+  }, 60_000)
 
   it('the raster is (modules + quiet zone) x integer scale on each side', async () => {
     const [image] = extractImages(await pdfOf([{ id: ID(1), name: 'Taza' }]))
@@ -133,10 +140,10 @@ describe('QR images embedded in the label sheet PDF', () => {
     for (const image of images) expect(image.streamBytes).toBeLessThan(3 * 1024) // ~1.3 kB medido; 470 kB sin comprimir
   }, 60_000)
 
-  it('the embedded images of a whole 72-label sheet weigh far less than 100 kB in total', async () => {
-    const products = Array.from({ length: 72 }, (_, i) => ({ id: ID(i), name: `Producto ${i}` }))
+  it('the embedded images of a whole 30-label sheet weigh far less than 100 kB in total', async () => {
+    const products = Array.from({ length: 30 }, (_, i) => ({ id: ID(i), name: `Producto ${i}` }))
     const images = extractImages(await pdfOf(products))
-    expect(images).toHaveLength(72)
+    expect(images).toHaveLength(30)
     const total = images.reduce((sum, image) => sum + image.streamBytes, 0)
     expect(total).toBeLessThan(100 * 1024)
   }, 120_000)

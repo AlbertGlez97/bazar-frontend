@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { DEFAULT_CALIBRATION, normalizeCalibration, type LabelCalibration } from '@/utils/label-sheet-plan'
+import { DEFAULT_CALIBRATION, isDefaultCalibration, normalizeCalibration, type LabelCalibration } from '@/utils/label-sheet-plan'
 
-/** Clave de `localStorage` con la calibración de la impresora (JSON `{offsetTopMm, offsetLeftMm, rowPitchMm}`). */
+/** Clave de `localStorage` con la calibración de la impresora (JSON con los seis valores de `LabelCalibration`). */
 export const LABEL_CALIBRATION_STORAGE_KEY = 'la-marchanta-label-calibration'
 
 /** Lee y VALIDA lo guardado; JSON roto, otro tipo o almacenamiento bloqueado -> valores por omisión. */
@@ -27,17 +27,13 @@ function save(calibration: LabelCalibration): void {
 }
 
 /**
- * Calibración de la hoja de etiquetas: desplazamiento superior e izquierdo y alto de fila
- * (mm). Se guarda al cambiar, para no recalibrar cada vez que se imprime.
+ * Calibración de la hoja de etiquetas: márgenes, ancho, alto, separación horizontal y paso
+ * vertical (mm). Se guarda al cambiar, para no recalibrar cada vez que se imprime.
  */
 export const useLabelCalibrationStore = defineStore('label-calibration', () => {
   const calibration = ref<LabelCalibration>(readSaved())
 
-  const isDefault = computed(
-    () => calibration.value.offsetTopMm === DEFAULT_CALIBRATION.offsetTopMm
-      && calibration.value.offsetLeftMm === DEFAULT_CALIBRATION.offsetLeftMm
-      && calibration.value.rowPitchMm === DEFAULT_CALIBRATION.rowPitchMm,
-  )
+  const isDefault = computed(() => isDefaultCalibration(calibration.value))
 
   /** Cambia uno o varios valores (validados y redondeados a 2 decimales) y los guarda. */
   function set(partial: Partial<LabelCalibration>) {

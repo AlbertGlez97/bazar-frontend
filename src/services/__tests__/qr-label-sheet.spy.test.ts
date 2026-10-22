@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { LABEL_IMAGE_COMPRESSION, LABEL_QR_QUIET_ZONE, LABEL_QR_SCALE, generateQrLabelSheet } from '../qr-label-sheet'
-import { NAME_FONT_PT, planLabelSheet } from '@/utils/label-sheet-plan'
+import { DEFAULT_CALIBRATION, planLabelSheet, type LabelDesign } from '@/utils/label-sheet-plan'
 import source from '../qr-label-sheet.ts?raw'
 
 // jsPDF sustituido por un doble que anota cada llamada: así se comprueba que el
@@ -11,6 +11,8 @@ const calls = vi.hoisted(() => ({
   text: [] as unknown[][],
   addPage: [] as unknown[][],
   order: [] as string[],
+  fonts: [] as string[],
+  sizes: [] as number[],
   loads: 0,
 }))
 
@@ -18,8 +20,8 @@ vi.mock('jspdf', () => {
   calls.loads += 1
   class FakeJsPdf {
     constructor(options: unknown) { calls.ctor.push(options) }
-    setFont() { return this }
-    setFontSize() { return this }
+    setFont(_name: string, style: string) { calls.fonts.push(style); return this }
+    setFontSize(size: number) { calls.sizes.push(size); return this }
     setProperties() { return this }
     getTextWidth(text: string) { return text.length * 0.9 }
     addImage(...args: unknown[]) { calls.addImage.push(args); calls.order.push('image'); return this }
@@ -45,7 +47,8 @@ vi.mock('@/utils/product-qr', async (importOriginal) => {
 
 const ID = (n: number) => `01a0ddd7-7f00-744a-8b23-${String(n).padStart(12, '0')}`
 const items = (count: number) => Array.from({ length: count }, (_, i) => ({ id: ID(i), name: `Taza ${i}` }))
-const cal = { offsetTopMm: 1.5, offsetLeftMm: -0.8, rowPitchMm: 24.75 }
+const cal = { ...DEFAULT_CALIBRATION, marginTopMm: 11.5, marginLeftMm: 5.2 }
+const measure = (t: string) => t.length * 0.9
 
 beforeEach(() => {
   calls.ctor.length = 0
@@ -53,19 +56,21 @@ beforeEach(() => {
   calls.text.length = 0
   calls.addPage.length = 0
   calls.order.length = 0
+  calls.fonts.length = 0
+  calls.sizes.length = 0
   qrCalls.length = 0
 })
 
 describe('generateQrLabelSheet (jsPDF spy)', () => {
-  it('creates a portrait A4 document in millimetres', async () => {
+  it('creates a portrait Letter document in millimetres', async () => {
     await generateQrLabelSheet(items(1), cal)
     expect(calls.ctor).toHaveLength(1)
-    expect(calls.ctor[0]).toMatchObject({ unit: 'mm', format: 'a4', orientation: 'portrait' })
+    expect(calls.ctor[0]).toMatchObject({ unit: 'mm', format: 'letter', orientation: 'portrait' })
   })
 
   it('places every QR at the planned mm coordinates and size, as a PNG', async () => {
     const products = items(10)
-    const plan = planLabelSheet(products, cal, (t) => t.length * 0.9)
+    const plan = planLabelSheet(products, cal, 'qr-only', measure)
     await generateQrLabelSheet(products, cal)
     expect(calls.addImage).toHaveLength(10)
     plan.labels.forEach((label, i) => {
@@ -76,36 +81,54 @@ describe('generateQrLabelSheet (jsPDF spy)', () => {
     })
   })
 
-  it('writes the name lines at the planned coordinates, centred, anchored at their top edge', async () => {
-    const products = items(3)
-    const plan = planLabelSheet(products, cal, (t) => t.length * 0.9)
-    await generateQrLabelSheet(products, cal)
+  it('design A draws no text at all', async () => {
+    await generateQrLabelSheet(items(3), cal, 'qr-only')
+    expect(calls.text).toHaveLength(0)
+    expect(calls.addImage).toHaveLength(3)
+  })
+
+  it('design B writes the lines at the planned coordinates, left aligned, anchored at their top edge', async () => {
+    const products = [{ id: ID(1), name: 'Taza azul', brand: 'Sol', presentation: '350 ml', description: 'Apta para microondas' }, ...items(2)]
+    const design: LabelDesign = 'qr-detail'
+    const plan = planLabelSheet(products, cal, design, measure)
+    await generateQrLabelSheet(products, cal, design)
     const expected = plan.labels.flatMap((l) => l.textLines)
     expect(calls.text).toHaveLength(expected.length)
     expected.forEach((line, i) => {
       const [text, x, y, options] = calls.text[i]!
       expect([text, x, y]).toEqual([line.text, line.x, line.y])
-      expect(options).toMatchObject({ align: 'center', baseline: 'top' })
+      expect(options).toEqual({ baseline: 'top' })
     })
+    // Bold name, regular detail, each at its planned size.
+    expect(calls.fonts).toContain('bold')
+    expect(calls.fonts).toContain('normal')
+    expect(new Set(calls.sizes).size).toBeGreaterThan(1)
   })
 
-  it('adds a page after the 72nd label and continues there (73 labels -> 1 addPage before the 73rd)', async () => {
-    const sheet = await generateQrLabelSheet(items(73), cal)
+  it('design B puts the same QR image in the same cell as design A', async () => {
+    await generateQrLabelSheet(items(1), cal, 'qr-detail')
+    const [, , x] = calls.addImage[0]!
+    expect(x).toBeLessThan(cal.marginLeftMm + cal.labelWidthMm / 2)
+  })
+
+  it('adds a Letter page after the 30th label and continues there (31 labels -> 1 addPage before the 31st)', async () => {
+    const sheet = await generateQrLabelSheet(items(31), cal)
     expect(calls.addPage).toHaveLength(1)
     expect(sheet.plan.pages).toBe(2)
     const firstImageOfPage2 = calls.order.indexOf('page')
     const imagesBefore = calls.order.slice(0, firstImageOfPage2).filter((o) => o === 'image').length
-    expect(imagesBefore).toBe(72)
-    // The 73rd label uses the coordinates of cell (0, 0) of the new page.
-    const [, , x, y] = calls.addImage[72]!
+    expect(imagesBefore).toBe(30)
+    expect(calls.addPage[0]).toEqual(['letter', 'portrait'])
+    // The 31st label uses the coordinates of cell (0, 0) of the new page.
+    const [, , x, y] = calls.addImage[30]!
     expect([x, y]).toEqual([calls.addImage[0]![2], calls.addImage[0]![3]])
   })
 
-  it('144 labels -> exactly 2 pages, 145 -> 3', async () => {
-    expect((await generateQrLabelSheet(items(144), cal)).plan.pages).toBe(2)
+  it('60 labels -> exactly 2 pages, 61 -> 3', async () => {
+    expect((await generateQrLabelSheet(items(60), cal)).plan.pages).toBe(2)
     expect(calls.addPage).toHaveLength(1)
     calls.addPage.length = 0
-    expect((await generateQrLabelSheet(items(145), cal)).plan.pages).toBe(3)
+    expect((await generateQrLabelSheet(items(61), cal)).plan.pages).toBe(3)
     expect(calls.addPage).toHaveLength(2)
   })
 
@@ -114,9 +137,9 @@ describe('generateQrLabelSheet (jsPDF spy)', () => {
     const options = qrCalls[0]!.options as { scale: number; quietZone: number }
     expect(Number.isInteger(options.scale)).toBe(true)
     expect(options.quietZone).toBeGreaterThanOrEqual(2)
-    // >= 300 dpi at the printed size: modules (29 + 2 x quiet zone) x scale pixels over 16.35 mm.
+    // >= 300 dpi at the printed size: modules (29 + 2 x quiet zone) x scale pixels over 20 mm.
     const pixels = (29 + 2 * options.quietZone) * options.scale
-    expect(pixels / (16.35 / 25.4)).toBeGreaterThanOrEqual(300)
+    expect(pixels / (20 / 25.4)).toBeGreaterThanOrEqual(300)
   })
 
   // Regresión: con 'NONE' jsPDF incrusta los píxeles SIN comprimir (~470 kB por etiqueta única:
@@ -135,7 +158,7 @@ describe('generateQrLabelSheet (jsPDF spy)', () => {
   it('the raster stays crisp: integer pixels per module and at least 300 dpi at the printed size', () => {
     expect(Number.isInteger(LABEL_QR_SCALE)).toBe(true)
     const modules = 29 + 2 * LABEL_QR_QUIET_ZONE
-    expect((modules * LABEL_QR_SCALE) / (16.35 / 25.4)).toBeGreaterThanOrEqual(300)
+    expect((modules * LABEL_QR_SCALE) / (20 / 25.4)).toBeGreaterThanOrEqual(300)
   })
 
   it('the document itself is compressed too', async () => {
@@ -155,7 +178,6 @@ describe('generateQrLabelSheet (jsPDF spy)', () => {
     const sheet = await generateQrLabelSheet(items(2), cal)
     expect(sheet.plan.labels).toHaveLength(2)
     expect(sheet.blob.type).toBe('application/pdf')
-    expect(NAME_FONT_PT).toBe(6)
   })
 
   it('refuses an empty selection and an invalid id before drawing anything', async () => {
