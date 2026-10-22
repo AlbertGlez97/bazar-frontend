@@ -167,15 +167,15 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
   },
   {
     id: 'imprimir-qr', topic: 'productos.etiquetas-qr', title: 'Preparar e imprimir etiquetas QR', category: 'Productos', audience: 'all',
-    keywords: ['etiquetas', 'selección', 'pdf', 'a4', 'calibración', 'codigo qr'],
+    keywords: ['etiquetas', 'selección', 'pdf', 'carta', 'calibración', 'codigo qr'],
     intro: 'Las etiquetas identifican los productos al escanear en Venta. Un socio tiene la pantalla Códigos QR; en Productos, cualquier rol en Gestión puede usar las etiquetas de productos seleccionados.',
     steps: [
       'En Gestión abre Productos y usa la selección para marcar los productos que necesitan etiqueta; un inactivo no se marca.',
       'Revisa cuáles elegiste antes de generar las etiquetas. Si eres socio, también puedes usar la pantalla Códigos QR.',
       'En Códigos QR busca y agrega cada producto a Tu lista de impresión. Volver a agregarlo aumenta las copias; usa los controles de cantidad o Quitar para corregir la lista.',
-      'Toca Imprimir códigos QR y luego Vista previa o Descargar PDF. Verifica nombres y códigos. Una hoja A4 admite hasta 72 etiquetas.',
+      'Toca Imprimir códigos QR y luego Vista previa o Descargar PDF. Verifica nombres y códigos. Una hoja Carta admite hasta 30 etiquetas. Elige Solo QR o QR + detalle.',
       'Imprime a tamaño real, escala 100%, sin ajustar a la página. Haz primero una prueba en papel normal.',
-      'Si no coincide con tus etiquetas, ajusta Margen superior (mm), Margen izquierdo (mm) o Alto de fila (mm). Restablecer vuelve a los ajustes iniciales. Prueba otra hoja antes de gastar etiquetas.',
+      'Si no coincide con tus etiquetas, ajusta los márgenes, el ancho, el alto, la separación o el paso vertical. Restaurar valores por defecto vuelve a los ajustes iniciales. Prueba otra hoja antes de gastar etiquetas.',
       'Pega la etiqueta en el producto correcto y prueba el QR con el lector de Vender.',
     ],
     tips: ['No sustituyas el QR generado por un código de barras comercial. Comprueba que el lector agrega el producto esperado.'],

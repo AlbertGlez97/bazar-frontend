@@ -42,18 +42,18 @@ describe('LabelPrintList — lista de impresión (D2)', () => {
     expect(wrapper.emitted('remove')).toEqual([['p-1']])
   })
 
-  it('resumen: 72 etiquetas -> 1 hoja', () => {
-    const wrapper = mount(LabelPrintList, { props: { rows: [row('p-1', 'Reloj', 72)] } })
-    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(72, 1))
+  it('resumen: 30 etiquetas -> 1 hoja', () => {
+    const wrapper = mount(LabelPrintList, { props: { rows: [row('p-1', 'Reloj', 30)] } })
+    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(30, 1))
   })
 
-  it('resumen: 73 etiquetas -> 2 hojas', () => {
-    const wrapper = mount(LabelPrintList, { props: { rows: [row('p-1', 'Reloj', 73)] } })
-    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(73, 2))
+  it('resumen: 31 etiquetas -> 2 hojas', () => {
+    const wrapper = mount(LabelPrintList, { props: { rows: [row('p-1', 'Reloj', 31)] } })
+    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(31, 2))
   })
 
   it('el resumen suma las copias de todas las filas', () => {
-    const wrapper = mount(LabelPrintList, { props: { rows: [row('p-1', 'Reloj', 40), row('p-2', 'Collar', 33)] } })
-    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(73, 2))
+    const wrapper = mount(LabelPrintList, { props: { rows: [row('p-1', 'Reloj', 20), row('p-2', 'Collar', 11)] } })
+    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(31, 2))
   })
 })

@@ -51,9 +51,11 @@
       v-model="isPrintDialogOpen"
       :label-count="totalLabels"
       :calibration="labelCalibration.calibration"
+      :design="labelDesign.design"
       :busy="printBusy"
       :error="printError"
       @update:calibration="labelCalibration.set($event)"
+      @update:design="labelDesign.set($event)"
       @reset="labelCalibration.reset()"
       @preview="previewLabels(labelInputs)"
       @download="downloadLabels(labelInputs)"
@@ -69,6 +71,7 @@ import { VOICE, isNetworkError } from '@/config/voice'
 import ProductsService from '@/services/products.service'
 import { useLabelPrinting } from '@/composables/useLabelPrinting'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
+import { useLabelDesignStore } from '@/stores/label-design.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import type { LabelInput } from '@/utils/label-sheet-plan'
@@ -128,13 +131,26 @@ async function onSearch(term: string) {
 // criterio ya usado para la selección vieja del catálogo, transitorio a
 // propósito). Agregar un producto ya en la lista incrementa `copies` en vez
 // de duplicar la fila.
-const printList = reactive(new Map<string, { id: string; name: string; copies: number }>())
+/** Fila de la lista: lo que hace falta para la etiqueta (diseño "QR + detalle") y sus copias. */
+interface PrintRow extends LabelInput {
+  copies: number
+}
+const printList = reactive(new Map<string, PrintRow>())
 const printListRows = computed(() => Array.from(printList.values()))
 
 function addToList(product: Product) {
   const existing = printList.get(product.id)
   if (existing) existing.copies += 1
-  else printList.set(product.id, { id: product.id, name: product.name, copies: 1 })
+  else {
+    printList.set(product.id, {
+      id: product.id,
+      name: product.name,
+      brand: product.brand ?? null,
+      presentation: product.presentation ?? null,
+      description: product.description ?? null,
+      copies: 1,
+    })
+  }
 }
 function increment(id: string) {
   const row = printList.get(id)
@@ -156,10 +172,11 @@ const totalLabels = computed(() => printListRows.value.reduce((sum, row) => sum 
 // LabelInput no tiene campo de copias: N copias de un producto son su
 // {id, name} repetido N veces, en el orden en que se agregó a la lista.
 const labelInputs = computed<LabelInput[]>(() =>
-  printListRows.value.flatMap((row) => Array.from({ length: row.copies }, () => ({ id: row.id, name: row.name }))),
+  printListRows.value.flatMap(({ copies, ...input }) => Array.from({ length: copies }, () => ({ ...input }))),
 )
 
 const labelCalibration = useLabelCalibrationStore()
+const labelDesign = useLabelDesignStore()
 const { busy: printBusy, error: printError, preview: previewLabels, download: downloadLabels } = useLabelPrinting()
 const isPrintDialogOpen = ref(false)
 </script>

@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { VOICE } from '@/config/voice'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
+import { useLabelDesignStore } from '@/stores/label-design.store'
 import { labelSheetFileName, type LabelInput } from '@/utils/label-sheet-plan'
 import { saveBlob } from '@/utils/report-files'
 
@@ -8,17 +9,18 @@ import { saveBlob } from '@/utils/report-files'
 const PREVIEW_URL_LIFETIME_MS = 10 * 60 * 1000
 
 /**
- * Vista previa y descarga de la hoja de etiquetas con la calibración GUARDADA.
+ * Vista previa y descarga de la hoja de etiquetas con la calibración y el diseño GUARDADOS.
  * El generador (jsPDF + qrcode, ~cientos de kB) se importa solo aquí, al pedir la hoja.
  */
 export function useLabelPrinting() {
   const calibration = useLabelCalibrationStore()
+  const design = useLabelDesignStore()
   const busy = ref<'preview' | 'download' | null>(null)
   const error = ref('')
 
   async function build(products: readonly LabelInput[]) {
     const { generateQrLabelSheet } = await import('@/services/qr-label-sheet')
-    return generateQrLabelSheet(products, { ...calibration.calibration })
+    return generateQrLabelSheet(products, { ...calibration.calibration }, design.design)
   }
 
   async function download(products: readonly LabelInput[]): Promise<void> {

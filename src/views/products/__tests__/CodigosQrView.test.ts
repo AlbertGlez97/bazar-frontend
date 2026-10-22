@@ -10,6 +10,7 @@ import ProductsService from '@/services/products.service'
 import { useSessionStore } from '@/stores/session.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
+import { useLabelDesignStore } from '@/stores/label-design.store'
 import { VOICE } from '@/config/voice'
 import type { Product } from '@/types/product.types'
 
@@ -143,20 +144,20 @@ describe('CodigosQrView — lista de impresión', () => {
     expect(rows(wrapper)).toHaveLength(0)
   })
 
-  it('el resumen calcula hojas correctamente: 72 -> 1 hoja, 73 -> 2 hojas', async () => {
+  it('el resumen calcula hojas correctamente: 30 -> 1 hoja, 31 -> 2 hojas', async () => {
     const { wrapper } = await mountView()
     await addProduct(wrapper, 'prod', 1)
-    for (let i = 0; i < 71; i += 1) {
+    for (let i = 0; i < 29; i += 1) {
       await rows(wrapper)[0].get('[data-action="increment"]').trigger('click')
     }
-    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(72, 1))
+    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(30, 1))
     await rows(wrapper)[0].get('[data-action="increment"]').trigger('click')
-    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(73, 2))
+    expect(wrapper.get('.label-print-list__summary').text()).toBe(VOICE.labels.summary(31, 2))
   })
 })
 
 describe('CodigosQrView — generar PDF', () => {
-  it('repite el id y el nombre según las copias, en el orden en que se agregaron', async () => {
+  it('repite los datos del producto según las copias, en el orden en que se agregaron', async () => {
     const { wrapper } = await mountView()
     await addProduct(wrapper, 'prod', 1)
     await rows(wrapper)[0].get('[data-action="increment"]').trigger('click')
@@ -167,12 +168,8 @@ describe('CodigosQrView — generar PDF', () => {
     await button(wrapper, VOICE.labels.preview).trigger('click')
     await button(wrapper, VOICE.labels.download).trigger('click')
 
-    const expected = [
-      { id: 'p-1', name: 'Producto 1' },
-      { id: 'p-1', name: 'Producto 1' },
-      { id: 'p-1', name: 'Producto 1' },
-      { id: 'p-2', name: 'Producto 2' },
-    ]
+    const first = { id: 'p-1', name: 'Producto 1', brand: null, presentation: null, description: null }
+    const expected = [first, first, first, { id: 'p-2', name: 'Producto 2', brand: null, presentation: null, description: null }]
     expect(printing.preview).toHaveBeenCalledWith(expected)
     expect(printing.download).toHaveBeenCalledWith(expected)
   })
@@ -186,11 +183,38 @@ describe('CodigosQrView — generar PDF', () => {
     const { wrapper } = await mountView()
     await addProduct(wrapper, 'prod', 1)
     await button(wrapper, VOICE.labels.print).trigger('click')
-    const input = wrapper.findAll('label').find((l) => l.text().includes(VOICE.labels.offsetTop))!.element.parentElement!.querySelector('input') as HTMLInputElement
+    const input = wrapper.findAll('label').find((l) => l.text().includes(VOICE.labels.marginTop))!.element.parentElement!.querySelector('input') as HTMLInputElement
     input.value = '1.5'
     input.dispatchEvent(new Event('input'))
     await flushPromises()
-    expect(useLabelCalibrationStore().calibration.offsetTopMm).toBe(1.5)
+    expect(useLabelCalibrationStore().calibration.marginTopMm).toBe(1.5)
+  })
+})
+
+describe('CodigosQrView — diseño y datos de la etiqueta', () => {
+  it('lleva marca, presentación y descripción del producto a cada copia', async () => {
+    vi.mocked(ProductsService.listProducts).mockResolvedValue({
+      items: [product(1, { brand: 'Sol', presentation: '350 ml', description: 'Apta para microondas' })], total: 1, page: 1, limit: 10,
+    })
+    const { wrapper } = await mountView()
+    await addProduct(wrapper, 'prod', 1)
+    await rows(wrapper)[0].get('[data-action="increment"]').trigger('click')
+    await button(wrapper, VOICE.labels.print).trigger('click')
+    await button(wrapper, VOICE.labels.preview).trigger('click')
+    const copy = { id: 'p-1', name: 'Producto 1', brand: 'Sol', presentation: '350 ml', description: 'Apta para microondas' }
+    expect(printing.preview).toHaveBeenCalledWith([copy, copy])
+  })
+
+  it('el diseño elegido en el diálogo se guarda y se recupera en una sesión nueva', async () => {
+    const { wrapper } = await mountView()
+    await addProduct(wrapper, 'prod', 1)
+    await button(wrapper, VOICE.labels.print).trigger('click')
+    expect(useLabelDesignStore().design).toBe('qr-only')
+    await button(wrapper, VOICE.labels.designQrDetail).trigger('click')
+    expect(useLabelDesignStore().design).toBe('qr-detail')
+    expect(localStorage.getItem('la-marchanta-label-design')).toBe('qr-detail')
+    setActivePinia(createPinia()) // sesión nueva: otro Pinia, la misma localStorage
+    expect(useLabelDesignStore().design).toBe('qr-detail')
   })
 })
 

@@ -17,6 +17,19 @@
         {{ VOICE.labels.summary(labelCount, sheets) }}
       </p>
 
+      <section class="label-print-dialog__design">
+        <h3>{{ VOICE.labels.designTitle }}</h3>
+        <SegmentedControl
+          :model-value="design"
+          :options="DESIGN_OPTIONS"
+          :label="VOICE.labels.designTitle"
+          @update:model-value="$emit('update:design', $event as LabelDesign)"
+        />
+        <p class="label-print-dialog__hint">
+          {{ VOICE.labels.designHint }}
+        </p>
+      </section>
+
       <fieldset class="label-print-dialog__calibration">
         <legend>{{ VOICE.labels.calibrationTitle }}</legend>
         <p class="label-print-dialog__hint">
@@ -45,19 +58,26 @@
           {{ VOICE.labels.reset }}
         </AppButton>
         <AppAlert
-          v-if="overflow > 0"
+          v-if="overflowBottom > 0"
           type="warning"
           :show="true"
         >
-          {{ VOICE.labels.overflow(overflow) }}
+          {{ VOICE.labels.overflowBottom(overflowBottom) }}
+        </AppAlert>
+        <AppAlert
+          v-if="overflowRight > 0"
+          type="warning"
+          :show="true"
+        >
+          {{ VOICE.labels.overflowRight(overflowRight) }}
         </AppAlert>
       </fieldset>
 
       <section class="label-print-dialog__help">
         <h3>{{ VOICE.labels.helpTitle }}</h3>
+        <p>{{ VOICE.labels.helpSheet }}</p>
         <p>{{ VOICE.labels.helpScale }}</p>
         <p>{{ VOICE.labels.helpCalibrate }}</p>
-        <p>{{ VOICE.labels.helpRowPitch }}</p>
       </section>
 
       <AppAlert
@@ -101,14 +121,18 @@
 import { computed, reactive, watch } from 'vue'
 import { VOICE } from '@/config/voice'
 import {
+  CALIBRATION_KEYS,
   CALIBRATION_LIMITS,
   gridBottomOverflowMm,
+  gridRightOverflowMm,
   sheetCount,
   type LabelCalibration,
+  type LabelDesign,
 } from '@/utils/label-sheet-plan'
 import AppAlert from '../molecules/AppAlert.vue'
 import AppButton from '../atoms/AppButton.vue'
 import AppInput from '../molecules/AppInput.vue'
+import SegmentedControl, { type SegmentedOption } from '../molecules/SegmentedControl.vue'
 import AppModal from './AppModal.vue'
 
 const props = defineProps<{
@@ -116,6 +140,8 @@ const props = defineProps<{
   /** Etiquetas que se van a imprimir (productos seleccionados). */
   labelCount: number
   calibration: LabelCalibration
+  /** Diseño elegido para todo el lote. */
+  design: LabelDesign
   /** Qué se está generando ahora (deshabilita los botones). */
   busy: 'preview' | 'download' | null
   error: string
@@ -125,6 +151,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   /** Cambio VÁLIDO de un ajuste (solo el campo que cambió). */
   'update:calibration': [partial: Partial<LabelCalibration>]
+  /** Otro diseño de etiqueta para todo el lote. */
+  'update:design': [value: LabelDesign]
   reset: []
   preview: []
   download: []
@@ -132,24 +160,32 @@ const emit = defineEmits<{
 
 type Key = keyof LabelCalibration
 
-const { offset, rowPitch } = CALIBRATION_LIMITS
-const FIELDS: { key: Key; label: string; min: number; max: number; step: number }[] = [
-  { key: 'offsetTopMm', label: VOICE.labels.offsetTop, min: offset.min, max: offset.max, step: offset.step },
-  { key: 'offsetLeftMm', label: VOICE.labels.offsetLeft, min: offset.min, max: offset.max, step: offset.step },
-  { key: 'rowPitchMm', label: VOICE.labels.rowPitch, min: rowPitch.min, max: rowPitch.max, step: rowPitch.step },
+const DESIGN_OPTIONS: SegmentedOption[] = [
+  { value: 'qr-only', label: VOICE.labels.designOnlyQr },
+  { value: 'qr-detail', label: VOICE.labels.designQrDetail },
 ]
+const FIELD_LABELS: Record<Key, string> = {
+  marginTopMm: VOICE.labels.marginTop,
+  marginLeftMm: VOICE.labels.marginLeft,
+  labelWidthMm: VOICE.labels.labelWidth,
+  labelHeightMm: VOICE.labels.labelHeight,
+  gapXMm: VOICE.labels.gapX,
+  pitchYMm: VOICE.labels.pitchY,
+}
+const FIELDS = CALIBRATION_KEYS.map((key) => ({ key, label: FIELD_LABELS[key], ...CALIBRATION_LIMITS[key] }))
 
 const sheets = computed(() => sheetCount(Math.max(0, Math.floor(props.labelCount))))
-const overflow = computed(() => gridBottomOverflowMm(props.calibration))
+const overflowBottom = computed(() => gridBottomOverflowMm(props.calibration))
+const overflowRight = computed(() => gridRightOverflowMm(props.calibration))
 
 // El texto que se escribe puede estar a medias ("-", "1."): se guarda aparte y solo se
 // emite un número cuando es válido y está en rango.
-const draft = reactive<Record<Key, string>>({
-  offsetTopMm: String(props.calibration.offsetTopMm),
-  offsetLeftMm: String(props.calibration.offsetLeftMm),
-  rowPitchMm: String(props.calibration.rowPitchMm),
-})
-const errors = reactive<Record<Key, string>>({ offsetTopMm: '', offsetLeftMm: '', rowPitchMm: '' })
+const draft = reactive<Record<Key, string>>(
+  Object.fromEntries(CALIBRATION_KEYS.map((key) => [key, String(props.calibration[key])])) as Record<Key, string>,
+)
+const errors = reactive<Record<Key, string>>(
+  Object.fromEntries(CALIBRATION_KEYS.map((key) => [key, ''])) as Record<Key, string>,
+)
 const hasErrors = computed(() => Object.values(errors).some(Boolean))
 
 // Un cambio de fuera (Restablecer, otra pestaña) actualiza el campo, salvo que ya muestre ese valor.
@@ -211,6 +247,8 @@ function onInput(key: Key, text: string | number) {
   font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }
+.label-print-dialog__design { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.label-print-dialog__design h3,
 .label-print-dialog__help h3 {
   margin: 0 0 var(--spacing-xs);
   font-size: var(--font-size-md);

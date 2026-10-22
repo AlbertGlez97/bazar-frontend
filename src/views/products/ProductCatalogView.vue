@@ -160,9 +160,11 @@
       v-model="isPrintDialogOpen"
       :label-count="selection.count"
       :calibration="labelCalibration.calibration"
+      :design="labelDesign.design"
       :busy="printBusy"
       :error="printError"
       @update:calibration="labelCalibration.set($event)"
+      @update:design="labelDesign.set($event)"
       @reset="labelCalibration.reset()"
       @preview="previewLabels(selection.items)"
       @download="downloadLabels(selection.items)"
@@ -191,6 +193,7 @@ import { useProductSheetScan } from '@/composables/useProductSheetScan'
 import { useScanNotice } from '@/composables/useScanNotice'
 import { useProductFilters } from '@/composables/useProductFilters'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
+import { useLabelDesignStore } from '@/stores/label-design.store'
 import { useManageCatalogViewStore } from '@/stores/manageCatalogView.store'
 import { useProductSelectionStore } from '@/stores/product-selection.store'
 import { useProductsStore } from '@/stores/products.store'
@@ -243,6 +246,7 @@ const isSocio = computed(() => session.member?.role === 'socio')
 // al paginar o buscar) y se descarta al salir de la pantalla.
 const selection = useProductSelectionStore()
 const labelCalibration = useLabelCalibrationStore()
+const labelDesign = useLabelDesignStore()
 const { busy: printBusy, error: printError, preview: previewLabels, download: downloadLabels } = useLabelPrinting()
 const isPrintDialogOpen = ref(false)
 const selectedIds = computed(() => selection.items.map((item) => item.id))

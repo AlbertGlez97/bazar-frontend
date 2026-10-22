@@ -162,7 +162,7 @@ describe('ProductCatalogView — selección para imprimir códigos QR', () => {
     await button(wrapper, VOICE.labels.print)!.trigger('click')
     await button(wrapper, VOICE.labels.preview)!.trigger('click')
     await button(wrapper, VOICE.labels.download)!.trigger('click')
-    const expected = [{ id: id(3), name: 'Producto 3', presentation: null }, { id: id(1), name: 'Producto 1', presentation: null }]
+    const expected = [{ id: id(3), name: 'Producto 3', brand: null, presentation: null, description: null }, { id: id(1), name: 'Producto 1', brand: null, presentation: null, description: null }]
     expect(printing.preview).toHaveBeenCalledWith(expected)
     expect(printing.download).toHaveBeenCalledWith(expected)
   })
@@ -172,14 +172,14 @@ describe('ProductCatalogView — selección para imprimir códigos QR', () => {
     await button(wrapper, VOICE.labels.select)!.trigger('click')
     await boxes(wrapper)[0]!.setValue(true)
     await button(wrapper, VOICE.labels.print)!.trigger('click')
-    const input = wrapper.findAll('label').find((l) => l.text().includes(VOICE.labels.offsetTop))!.element.parentElement!.querySelector('input') as HTMLInputElement
+    const input = wrapper.findAll('label').find((l) => l.text().includes(VOICE.labels.marginTop))!.element.parentElement!.querySelector('input') as HTMLInputElement
     input.value = '1.5'
     input.dispatchEvent(new Event('input'))
     await flushPromises()
-    expect(useLabelCalibrationStore().calibration.offsetTopMm).toBe(1.5)
-    expect(JSON.parse(localStorage.getItem('la-marchanta-label-calibration')!).offsetTopMm).toBe(1.5)
-    await button(wrapper, VOICE.labels.reset)!.trigger('click')
-    expect(useLabelCalibrationStore().calibration.offsetTopMm).toBe(0)
+    expect(useLabelCalibrationStore().calibration.marginTopMm).toBe(1.5)
+    expect(JSON.parse(localStorage.getItem('la-marchanta-label-calibration')!).marginTopMm).toBe(1.5)
+    await button(wrapper, 'Restaurar valores por defecto')!.trigger('click')
+    expect(useLabelCalibrationStore().calibration.marginTopMm).toBe(12.7)
   })
 
   it('al salir de la pantalla se descarta la selección (no queda "colgada" al volver)', async () => {

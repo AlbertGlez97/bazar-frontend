@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useLabelPrinting } from '../useLabelPrinting'
 import { useLabelCalibrationStore } from '@/stores/label-calibration.store'
+import { useLabelDesignStore } from '@/stores/label-design.store'
 import { generateQrLabelSheet } from '@/services/qr-label-sheet'
 import { saveBlob } from '@/utils/report-files'
 import { VOICE } from '@/config/voice'
@@ -33,11 +34,16 @@ afterEach(() => {
 })
 
 describe('useLabelPrinting — download', () => {
-  it('builds the sheet with the SAVED calibration and downloads it as etiquetas-qr-YYYYMMDD.pdf', async () => {
-    useLabelCalibrationStore().set({ offsetTopMm: 1.5, offsetLeftMm: -0.8, rowPitchMm: 25 })
+  it('builds the sheet with the SAVED calibration and design and downloads it as etiquetas-qr-YYYYMMDD.pdf', async () => {
+    useLabelCalibrationStore().set({ marginTopMm: 11.5, marginLeftMm: 5.5, pitchYMm: 25.6 })
+    useLabelDesignStore().set('qr-detail')
     const printing = useLabelPrinting()
     await printing.download(products)
-    expect(generateQrLabelSheet).toHaveBeenCalledWith(products, { offsetTopMm: 1.5, offsetLeftMm: -0.8, rowPitchMm: 25 })
+    expect(generateQrLabelSheet).toHaveBeenCalledWith(
+      products,
+      { marginTopMm: 11.5, marginLeftMm: 5.5, labelWidthMm: 66.7, labelHeightMm: 25.4, gapXMm: 3.2, pitchYMm: 25.6 },
+      'qr-detail',
+    )
     expect(saveBlob).toHaveBeenCalledTimes(1)
     const [saved, filename] = vi.mocked(saveBlob).mock.calls[0]!
     expect(saved).toBe(blob)
