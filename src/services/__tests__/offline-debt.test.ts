@@ -87,7 +87,7 @@ describe('shared offline debt queue', () => {
   it('sends frozen selection headers and retains unexpected responses', async () => {
     vi.mocked(api.post).mockResolvedValue({ status: 201, data: debt })
     await DeudasService.createDeuda(payload, { origin, handleAuthLocally: true })
-    expect(api.post).toHaveBeenCalledWith('/deudas', payload, { debtOrigin: origin, headers: { 'x-member-id': origin.memberId, 'x-device-id': origin.deviceId }, skipAuthRedirect: true })
+    expect(api.post).toHaveBeenCalledWith('/deudas', payload, { debtOrigin: origin, headers: { 'x-device-id': origin.deviceId }, skipAuthRedirect: true })
     vi.mocked(api.post).mockResolvedValue({ status: 200, data: { ...debt, id: 'other' } })
     await expect(DeudasService.createDeuda(payload, { origin })).rejects.toThrow()
   })

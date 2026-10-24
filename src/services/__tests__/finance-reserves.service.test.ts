@@ -50,7 +50,7 @@ describe('FinanceReservesService.create', () => {
     expect(body).toEqual(payload)
     expect(body).not.toHaveProperty('contextId')
     expect(body).not.toHaveProperty('createdByAccountId')
-    expect(config.headers).toEqual({ 'x-member-id': reserveOrigin.memberId, 'x-device-id': reserveOrigin.deviceId })
+    expect(config.headers).toEqual({ 'x-device-id': reserveOrigin.deviceId })
     expect(config.financialOrigin).toBe(reserveOrigin)
     expect(receipt.id).toBe(RESERVE_ID)
   })
@@ -95,7 +95,7 @@ describe('FinanceReservesService.list', () => {
     const [url, config] = vi.mocked(api.get).mock.calls[0] as [string, Record<string, unknown>]
     expect(url).toBe('/finance/reserves')
     expect(config.params).toEqual({ from: '2026-10-01', to: '2026-11-01', status: 'active', limit: 20, cursor: 'opaque==' })
-    expect(config.headers).toEqual({ 'x-member-id': reserveOrigin.memberId, 'x-device-id': reserveOrigin.deviceId })
+    expect(config.headers).toEqual({ 'x-device-id': reserveOrigin.deviceId })
   })
 
   it('omits from/to for all periods and drops undefined filters', async () => {

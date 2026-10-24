@@ -24,9 +24,9 @@ const SalesService = {
    * 200 = reenvío idempotente de un id ya guardado). Un 2xx cuyo cuerpo no es
    * una venta de ESTE id lanza `UnexpectedSaleResponseError`.
    *
-   * Los headers `x-member-id` / `x-device-id` se toman de la propia venta
-   * (deben coincidir con el cuerpo o el servidor responde 403) y no de la
-   * sesión actual, que puede ser de otra persona cuando se sincroniza la cola.
+   * El header `x-device-id` se toma de la propia venta (debe coincidir con el
+   * cuerpo o el servidor responde 403) y no de la sesión actual. La persona la
+   * dicta la cuenta del token: el `memberId` del cuerpo debe ser la suya.
    * Los errores de Axios se propagan tal cual: clasifícalos con `classifySaleError`.
    * `handleAuthLocally`: un 401 no cierra la sesión ni redirige (lo usa el cobro
    * interactivo, que guarda la venta y muestra "auth-needed"); la cola en
@@ -37,7 +37,7 @@ const SalesService = {
     options: { handleAuthLocally?: boolean } = {},
   ): Promise<CreateSaleResult> {
     const response = await api.post<unknown>('/sales', payload, {
-      headers: { 'x-member-id': payload.memberId, 'x-device-id': payload.deviceId },
+      headers: { 'x-device-id': payload.deviceId },
       // Cobro interactivo: un 401 no debe sacar a la persona de la pantalla a media venta.
       ...(options.handleAuthLocally ? { skipAuthRedirect: true } : {}),
     })

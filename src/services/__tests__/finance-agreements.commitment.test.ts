@@ -22,7 +22,7 @@ describe('FinanceAgreementsService.commitment', () => {
     expect(result).toEqual(answer())
     expect(api.get).toHaveBeenCalledWith('/finance/distribution-agreements/commitment', expect.objectContaining({
       params: period,
-      headers: { 'x-member-id': agreementOrigin.memberId, 'x-device-id': agreementOrigin.deviceId },
+      headers: { 'x-device-id': agreementOrigin.deviceId },
     }))
   })
 

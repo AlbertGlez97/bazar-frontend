@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import type { Member } from '@/types/member.types'
-import { isMember } from '@/utils/member'
 import { API_BASE_URL, currentSessionOwner, sameOwner } from '@/services/session-owner'
 import type { SessionOwner } from '@/services/session-owner'
 
@@ -9,13 +8,6 @@ import type { SessionOwner } from '@/services/session-owner'
 // tablet no cambia, así que persiste en localStorage (sobrevive recargas y
 // cierres de la app).
 const DEVICE_KEY = 'device_context'
-
-// La persona que atiende SÍ debe reconfirmarse en cada apertura de la app,
-// aunque el dispositivo sea el mismo (tablet compartida entre socios y
-// colaboradores) — por eso vive en sessionStorage, no en localStorage: se
-// pierde al cerrar la pestaña/navegador, pero sobrevive un recargo (F5)
-// dentro de la misma sesión de uso.
-const MEMBER_KEY = 'member_context'
 
 // `deviceToken` solo existe en dispositivos activados con el flujo de un solo
 // uso; los dispositivos heredados (anteriores a BE-12) se identifican solo con
@@ -102,18 +94,6 @@ function storedOwnerOf(storage: Storage, key: string): SessionOwner | null {
   } catch { return null }
 }
 
-function readMember(): Member | null {
-  try {
-    const raw = sessionStorage.getItem(MEMBER_KEY)
-    const parsed: unknown = raw ? JSON.parse(raw) : null
-    if (isMember(parsed)) return parsed
-  } catch {
-    // Storage corrupto ⇒ se trata como "persona aún no seleccionada".
-  }
-  sessionStorage.removeItem(MEMBER_KEY)
-  return null
-}
-
 export const useSessionStore = defineStore('session', () => {
 
   const deviceId    = ref<string | null>(null)
@@ -122,20 +102,19 @@ export const useSessionStore = defineStore('session', () => {
   // x-device-token; no se muestra en la UI ni se escribe en logs.
   const deviceToken = ref<string | null>(null)
 
+  // La persona de la cuenta (una cuenta = una persona). Solo vive en memoria y
+  // la fija auth.store con lo que responde GET /auth/me: nadie la elige.
   const member   = ref<Member | null>(null)
   const memberId = ref<string | null>(null)
 
   const isDeviceIdentified = computed(() => !!deviceId.value)
-  const isMemberSelected   = computed(() => !!memberId.value)
-  // El contexto está listo cuando ambos pasos (dispositivo + persona) se
-  // completaron — es lo que exige el guard de rutas operativas (/app).
-  const isContextReady = computed(() => isDeviceIdentified.value && isMemberSelected.value)
+  const hasPerson          = computed(() => !!memberId.value)
+  // El contexto está listo cuando el dispositivo está identificado y la cuenta
+  // ya tiene su persona: es lo que exige el guard de rutas operativas (/app).
+  const isContextReady = computed(() => isDeviceIdentified.value && hasPerson.value)
 
   const owner = ref<SessionOwner | null>(null)
-  const recoveryReason = ref<'changed' | 'legacy' | 'rejected' | null>(null)
-  function storedOwner(storage: Storage, key: string): unknown {
-    try { return JSON.parse(storage.getItem(key + '_owner') ?? 'null') } catch { return null }
-  }
+  const recoveryReason = ref<'legacy' | 'rejected' | null>(null)
   function hideDevice() {
     deviceId.value = null
     deviceName.value = null
@@ -155,15 +134,6 @@ export const useSessionStore = defineStore('session', () => {
     deviceId.value = device?.deviceId ?? null
     deviceName.value = device?.name ?? null
     deviceToken.value = device?.deviceToken ?? null
-    const memberOwner = storedOwner(sessionStorage, MEMBER_KEY)
-    if (sameOwner(memberOwner, current)) {
-      const selected = readMember()
-      member.value = selected
-      memberId.value = selected?.id ?? null
-    } else if (sessionStorage.getItem(MEMBER_KEY)) {
-      recoveryReason.value = memberOwner ? 'changed' : 'legacy'
-      clearMember()
-    }
   }
   reconcileOwnership()
 
@@ -192,19 +162,16 @@ export const useSessionStore = defineStore('session', () => {
     writeDeviceMap({ ...readDeviceMap(), [deviceSlot({ accountId, apiBase: API_BASE_URL })]: device })
   }
 
+  /** Fija la persona de la cuenta (la dicta el servidor); no se guarda en el navegador. */
   function setMember(payload: Member) {
     reconcileOwnership()
     member.value   = payload
     memberId.value = payload.id
-    sessionStorage.setItem(MEMBER_KEY, JSON.stringify(payload))
-    if (owner.value) sessionStorage.setItem(MEMBER_KEY + '_owner', JSON.stringify(owner.value))
   }
 
   function clearMember() {
     member.value   = null
     memberId.value = null
-    sessionStorage.removeItem(MEMBER_KEY)
-    sessionStorage.removeItem(MEMBER_KEY + '_owner')
   }
 
   function clearDevice() {
@@ -228,7 +195,7 @@ export const useSessionStore = defineStore('session', () => {
   return {
     deviceId, deviceName, deviceToken, owner, recoveryReason, reconcileOwnership,
     member, memberId,
-    isDeviceIdentified, isMemberSelected, isContextReady,
+    isDeviceIdentified, hasPerson, isContextReady,
     setDevice, saveDeviceForAccount, setMember, clearMember, clearDevice, clearOnLogout,
   }
 })

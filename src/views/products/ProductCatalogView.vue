@@ -254,10 +254,9 @@ function reportFailure(action: string, error: unknown) {
   toast.error(message)
 }
 
-/** El dispositivo o la persona guardados ya no valen: se borran y se vuelve a identificar. */
+/** El dispositivo guardado ya no vale: se borra y se vuelve a identificar. */
 function reidentifyDevice() {
   session.clearDevice()
-  session.clearMember()
   contextLost.value = false
   router.push({ name: 'SelectContext' })
 }

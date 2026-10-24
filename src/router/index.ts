@@ -20,7 +20,7 @@ const routes: RouteRecordRaw[] = [
   // `redirectIfAuth` lo manda directo al panel (ver guard más abajo) en vez de
   // mostrarle la página de marketing.
   // Layout público (toldo, logo y pie de marca) compartido por la landing, el
-  // registro de negocio y la selección de contexto. Los paths absolutos de los
+  // registro de negocio y la identificación del dispositivo. Los paths absolutos de los
   // hijos conservan las URLs de siempre.
   {
     path: '/',
@@ -80,10 +80,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/legal/TermsView.vue'),
       },
       {
-        // Pantalla intermedia obligatoria tras el login: identificar el
-        // dispositivo (una sola vez por tablet) y elegir quién atiende (en cada
-        // sesión). Requiere sesión válida, pero NO deviceId/memberId todavía —
-        // si ya los tiene, `redirectIfContextReady` la salta directo a /app.
+        // Pantalla intermedia tras el login cuando falta algo: identificar el
+        // dispositivo (una sola vez por tablet) o explicar por qué la cuenta no
+        // puede entrar. La persona no se elige: es la de la cuenta. Requiere
+        // sesión válida, pero NO deviceId todavía — si el contexto ya está
+        // listo, `redirectIfContextReady` la salta directo a /app.
         path: '/seleccionar-contexto',
         name: 'SelectContext',
         component: () => import('@/views/SelectContextView.vue'),
@@ -100,9 +101,9 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/app',
     component: () => import('@/layouts/AppLayout.vue'),
-    // requiresContext: además del JWT, exige deviceId y memberId ya
-    // elegidos (ver session.store) — toda ruta operativa futura debe
-    // agregar esta misma meta.
+    // requiresContext: además del JWT, exige el dispositivo identificado y la
+    // persona de la cuenta (ver session.store) — toda ruta operativa futura
+    // debe agregar esta misma meta.
     meta: { requiresAuth: true, requiresContext: true },
     children: [
       {
@@ -319,9 +320,10 @@ export function createAppRouter(history: RouterHistory = createWebHistory()) {
     }
 
     const session = useSessionStore()
-    // Cuenta ligada a un miembro que no puede entrar: la pantalla de selección
-    // le explica por qué; ninguna ruta operativa se le abre.
-    if (to.meta.requiresContext && auth.bindingStatus === 'inactive') return { name: 'SelectContext' }
+    // Cuenta que no puede entrar (persona desactivada, sin persona asignada o sin
+    // confirmar): la pantalla de contexto le explica por qué; ninguna ruta
+    // operativa se le abre.
+    if (to.meta.requiresContext && auth.bindingStatus !== 'bound') return { name: 'SelectContext' }
     if (to.meta.requiresContext && !session.isContextReady) return { name: 'SelectContext' }
     if (to.meta.redirectIfContextReady && session.isContextReady) return landing()
 

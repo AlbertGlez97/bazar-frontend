@@ -12,5 +12,5 @@ export function assertOrigin(origin: FinanceOrigin) {
 /** Axios options for a socio-only request: who is acting, on which device, checked at dispatch. */
 export function socioRequest(origin: FinanceOrigin) {
   assertOrigin(origin)
-  return { headers: { 'x-member-id': origin.memberId, 'x-device-id': origin.deviceId }, financialOrigin: origin }
+  return { headers: { 'x-device-id': origin.deviceId }, financialOrigin: origin }
 }

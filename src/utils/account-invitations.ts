@@ -76,9 +76,9 @@ export function originText(origin: AccountOrigin | null): string {
     case 'invited':
       return `Cuenta creada por invitación de ${origin.invitedByName} el ${formatRuleDateTime(origin.invitedAt)}.`
     case 'invited_from_shared_login':
-      return `Cuenta creada por invitación desde el acceso compartido el ${formatRuleDateTime(origin.invitedAt)}. No se sabe quién invitó.`
+      return `Cuenta creada por invitación desde un acceso compartido (ya no existe) el ${formatRuleDateTime(origin.invitedAt)}. No se sabe quién invitó.`
     case 'shared_single_partner':
-      return 'Acceso compartido de un solo socio.'
+      return 'Acceso compartido de un solo socio (ya no existe).'
     case 'own_account':
       return origin.accountCreatedAt
         ? `Cuenta personal creada el ${formatRuleDate(origin.accountCreatedAt)}.`
@@ -93,11 +93,11 @@ export function recentInviteNotice(approvers: readonly RecentInvitedApprover[]):
     const [one] = approvers as [RecentInvitedApprover]
     const date = formatRuleDate(one.acceptedAt)
     return one.fromSharedLogin
-      ? `${one.name} aprobó con una cuenta creada desde el acceso compartido el ${date}. No se sabe quién la invitó.`
+      ? `${one.name} aprobó con una cuenta creada desde un acceso compartido (ya no existe) el ${date}. No se sabe quién la invitó.`
       : `${one.name} aprobó con una cuenta invitada por ${one.invitedByName} el ${date}.`
   }
   const names = joinNames(approvers.map((a) => a.name))
   return approvers.some((a) => a.fromSharedLogin)
-    ? `${names} aprobaron con cuentas invitadas, alguna desde el acceso compartido. Revisa el historial.`
+    ? `${names} aprobaron con cuentas invitadas, alguna desde un acceso compartido (ya no existe). Revisa el historial.`
     : `${names} aprobaron con cuentas invitadas hace poco. Revisa el historial.`
 }

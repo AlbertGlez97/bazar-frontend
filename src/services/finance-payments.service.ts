@@ -21,7 +21,7 @@ function config(origin: FinanceOrigin) {
   assertOrigin(origin)
   const transforms = api.defaults.transformRequest
   return {
-    headers: { 'x-member-id': origin.memberId, 'x-device-id': origin.deviceId }, financialOrigin: origin,
+    headers: { 'x-device-id': origin.deviceId }, financialOrigin: origin,
     transformRequest: [function (data: unknown) { assertOrigin(origin); return data },
       ...(Array.isArray(transforms) ? transforms : transforms ? [transforms] : [])],
   }

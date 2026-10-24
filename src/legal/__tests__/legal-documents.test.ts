@@ -142,9 +142,10 @@ describe('Aviso de Privacidad: contenido mínimo', () => {
     expect(security).toMatch(/ningun sistema es totalmente seguro|no podemos prometer/)
   })
 
-  it('explica el almacenamiento del navegador: localStorage, sessionStorage, IndexedDB y cookies', () => {
+  it('explica el almacenamiento del navegador: localStorage, IndexedDB y cookies (ya no guarda la persona en sessionStorage)', () => {
     const storage = sectionText('almacenamiento-del-navegador')
-    for (const word of ['localstorage', 'sessionstorage', 'indexeddb', 'cookies', 'sin conexion']) expect(storage).toContain(word)
+    for (const word of ['localstorage', 'indexeddb', 'cookies', 'sin conexion']) expect(storage).toContain(word)
+    expect(storage).not.toContain('sessionstorage')
   })
 
   it('explica los cambios al aviso: fecha, versión y nuevo consentimiento si cambian las finalidades', () => {

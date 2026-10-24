@@ -2,8 +2,9 @@ const TEST_TOKEN = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 // Security regression: an account bound to a member (a colaborador or socio
 // created through POST /members) must never be able to act as anybody else. The
 // server refuses another x-member-id, and the frontend must not even offer the
-// choice: the bound member is fetched from GET /auth/me and forced into the
-// session, overwriting anything stored (or forged) beforehand.
+// choice: the bound member is fetched from GET /auth/me and set in the session
+// (memory only), replacing whatever was there beforehand. An account with no
+// person ("unassigned") cannot enter at all.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from '../auth.store'
@@ -23,16 +24,16 @@ const colaborador: Member = { id: 'm-col', name: 'Carla', role: 'colaborador', a
 const socio: Member = { id: 'm-soc', name: 'Alberto', role: 'socio', active: true }
 
 const bound = (member: Member): AccountBinding => ({ username: 'carla@correo.com', memberId: member.id, member })
-const shared: AccountBinding = { username: 'alberto', memberId: null, member: null }
+const unassigned: AccountBinding = { username: 'alberto', memberId: null, member: null }
 
-function forgeSocioInSession() {
-  sessionStorage.setItem('member_context', JSON.stringify(socio))
+// A socio person left in the session by someone else (memory only, nothing is persisted).
+function leaveSocioInSession() {
+  useSessionStore().setMember(socio)
 }
 function seedSession(username = 'carla@correo.com') {
   localStorage.setItem('access_token', TEST_TOKEN)
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
   localStorage.setItem('auth_username', username)
-  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
 }
 const networkError = () => Object.assign(new Error('Network Error'), { response: undefined })
 const httpError = (status: number) => ({ response: { status } })
@@ -58,7 +59,7 @@ describe('login of an account bound to a member', () => {
     const session = useSessionStore()
     expect(session.member).toEqual(colaborador)
     expect(session.memberId).toBe('m-col')
-    expect(JSON.parse(sessionStorage.getItem('member_context') ?? 'null')).toEqual(colaborador)
+    expect(sessionStorage.getItem('member_context')).toBeNull()
   })
 
   it('a bound socio gets the socio role from the server, not from anything stored', async () => {
@@ -71,8 +72,9 @@ describe('login of an account bound to a member', () => {
     expect(useAuthStore().bindingStatus).toBe('bound')
   })
 
-  it('a member_context forged to a socio BEFORE login is overwritten by the bound colaborador', async () => {
-    forgeSocioInSession()
+  it('a socio forged into sessionStorage or left in memory BEFORE login never survives: the bound colaborador wins', async () => {
+    sessionStorage.setItem('member_context', JSON.stringify(socio))
+    leaveSocioInSession()
     vi.mocked(AuthService.login).mockResolvedValue(loginResponse)
     vi.mocked(AuthService.me).mockResolvedValue(bound(colaborador))
 
@@ -81,20 +83,31 @@ describe('login of an account bound to a member', () => {
     const session = useSessionStore()
     expect(session.member?.role).toBe('colaborador')
     expect(session.memberId).toBe('m-col')
-    expect(JSON.parse(sessionStorage.getItem('member_context') ?? 'null').id).toBe('m-col')
   })
 
-  it('the shared business login ("member": null) stays "shared" and rejects an unowned previous selection', async () => {
-    sessionStorage.setItem('member_context', JSON.stringify(colaborador))
+  it('an account without a person ("member": null, "memberId": null) is "unassigned" and holds no person', async () => {
+    leaveSocioInSession()
     vi.mocked(AuthService.login).mockResolvedValue(loginResponse)
-    vi.mocked(AuthService.me).mockResolvedValue(shared)
+    vi.mocked(AuthService.me).mockResolvedValue(unassigned)
 
     const auth = useAuthStore()
     await auth.login({ username: 'alberto', password: 'secret123' })
 
-    expect(auth.bindingStatus).toBe('shared')
+    expect(auth.bindingStatus).toBe('unassigned')
     expect(auth.boundMember).toBeNull()
-    expect(useSessionStore().member).toBeNull()
+    const session = useSessionStore()
+    expect(session.member).toBeNull()
+    expect(session.hasPerson).toBe(false)
+    expect(session.isContextReady).toBe(false)
+  })
+
+  it('the login of a bound account never writes the person to sessionStorage', async () => {
+    vi.mocked(AuthService.login).mockResolvedValue(loginResponse)
+    vi.mocked(AuthService.me).mockResolvedValue(bound(colaborador))
+
+    await useAuthStore().login({ username: 'carla@correo.com', password: 'secret123' })
+
+    expect(sessionStorage.length).toBe(0)
   })
 
   it('the login still succeeds when /auth/me cannot be reached: status stays "unknown" (the previous selector flow)', async () => {
@@ -110,14 +123,14 @@ describe('login of an account bound to a member', () => {
 })
 
 describe('reload with a stored token (ensureBinding)', () => {
-  it('reconciles a tampered member_context: the bound colaborador replaces the forged socio', async () => {
+  it('the bound colaborador replaces a socio left in the session', async () => {
     seedSession()
-    forgeSocioInSession()
+    leaveSocioInSession()
     vi.mocked(AuthService.me).mockResolvedValue(bound(colaborador))
 
     const auth = useAuthStore()
     const session = useSessionStore()
-    expect(session.member?.role).toBe('socio') // what a fresh store trusts before the guard runs
+    expect(session.member?.role).toBe('socio')
     await auth.ensureBinding()
 
     expect(session.member).toEqual(colaborador)
@@ -156,10 +169,10 @@ describe('the binding cache (offline support)', () => {
     expect(localStorage.getItem(CACHE_KEY)).not.toContain(TEST_TOKEN)
   })
 
-  it('offline WITH a cache for the same username: uses it and still overwrites a forged member', async () => {
+  it('offline WITH a cache for the same username: uses it and still overwrites a member left in the session', async () => {
     seedSession()
     localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'carla@correo.com', member: colaborador }))
-    forgeSocioInSession()
+    leaveSocioInSession()
     vi.mocked(AuthService.me).mockRejectedValue(networkError())
 
     const auth = useAuthStore()
@@ -180,16 +193,37 @@ describe('the binding cache (offline support)', () => {
     expect(auth.bindingStatus).toBe('bound')
   })
 
-  it('offline WITHOUT a cache: keeps the previous behavior ("unknown" -> selector) and leaves the session alone', async () => {
+  it('offline WITHOUT a cache: stays "unknown" and sets no person', async () => {
     seedSession()
-    sessionStorage.setItem('member_context', JSON.stringify(colaborador))
     vi.mocked(AuthService.me).mockRejectedValue(networkError())
 
     const auth = useAuthStore()
     await auth.ensureBinding()
 
     expect(auth.bindingStatus).toBe('unknown')
-    expect(useSessionStore().member).toEqual(colaborador)
+    expect(useSessionStore().member).toBeNull()
+    expect(useSessionStore().isContextReady).toBe(false)
+  })
+
+  it('a cached "member: null" (the old shared login) is ignored: offline stays "unknown"', async () => {
+    seedSession('alberto')
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'alberto', member: null }))
+    vi.mocked(AuthService.me).mockRejectedValue(networkError())
+
+    const auth = useAuthStore()
+    await auth.ensureBinding()
+
+    expect(auth.bindingStatus).toBe('unknown')
+    expect(useSessionStore().member).toBeNull()
+  })
+
+  it('an "unassigned" answer is never written to the cache', async () => {
+    seedSession('alberto')
+    vi.mocked(AuthService.me).mockResolvedValue(unassigned)
+
+    await useAuthStore().ensureBinding()
+
+    expect(localStorage.getItem(CACHE_KEY)).toBeNull()
   })
 
   it('a cache that belongs to ANOTHER username is never used', async () => {
@@ -231,16 +265,16 @@ describe('the binding cache (offline support)', () => {
     expect(auth.bindingStatus).toBe('unknown')
   })
 
-  it('an online answer always wins over a stale cache (the account became shared/bound elsewhere)', async () => {
+  it('an online answer always wins over a stale cache (the account lost its person elsewhere)', async () => {
     seedSession('alberto')
     localStorage.setItem(CACHE_KEY, JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'alberto', member: colaborador }))
-    vi.mocked(AuthService.me).mockResolvedValue(shared)
+    vi.mocked(AuthService.me).mockResolvedValue(unassigned)
 
     const auth = useAuthStore()
     await auth.ensureBinding()
 
-    expect(auth.bindingStatus).toBe('shared')
-    expect(JSON.parse(localStorage.getItem(CACHE_KEY) ?? 'null')).toEqual({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'alberto', member: null })
+    expect(auth.bindingStatus).toBe('unassigned')
+    expect(useSessionStore().member).toBeNull()
   })
 
   it('logout clears the cache, the binding and the member', async () => {
@@ -272,7 +306,7 @@ describe('the binding cache (offline support)', () => {
 
   it('after logout the next login asks the server again (no memoized answer from the previous person)', async () => {
     seedSession()
-    vi.mocked(AuthService.me).mockResolvedValueOnce(bound(colaborador)).mockResolvedValueOnce(shared)
+    vi.mocked(AuthService.me).mockResolvedValueOnce(bound(colaborador)).mockResolvedValueOnce(unassigned)
     vi.mocked(AuthService.login).mockResolvedValue(loginResponse)
     const auth = useAuthStore()
     await auth.ensureBinding()
@@ -281,14 +315,14 @@ describe('the binding cache (offline support)', () => {
     await auth.login({ username: 'alberto', password: 'secret123' })
 
     expect(AuthService.me).toHaveBeenCalledTimes(2)
-    expect(auth.bindingStatus).toBe('shared')
+    expect(auth.bindingStatus).toBe('unassigned')
   })
 })
 
 describe('a deactivated or unusable bound member', () => {
   it('member.active === false: status "inactive", the session member is cleared and never set', async () => {
     seedSession()
-    sessionStorage.setItem('member_context', JSON.stringify(socio))
+    leaveSocioInSession()
     vi.mocked(AuthService.me).mockResolvedValue(bound({ ...colaborador, active: false }))
 
     const auth = useAuthStore()
@@ -296,10 +330,10 @@ describe('a deactivated or unusable bound member', () => {
 
     expect(auth.bindingStatus).toBe('inactive')
     expect(useSessionStore().member).toBeNull()
-    expect(sessionStorage.getItem('member_context')).toBeNull()
+    expect(useSessionStore().memberId).toBeNull()
   })
 
-  it('a memberId without a usable member object fails CLOSED ("inactive"), never "shared"', async () => {
+  it('a memberId without a usable member object fails CLOSED ("inactive"), never "unassigned"', async () => {
     seedSession()
     vi.mocked(AuthService.me).mockResolvedValue({ username: 'carla@correo.com', memberId: 'm-col', member: null })
 
@@ -322,10 +356,10 @@ describe('a deactivated or unusable bound member', () => {
   })
 })
 
-describe('what a bound colaborador can see even if member_context was forged to a socio', () => {
+describe('what a bound colaborador can see even if a socio was left in the session', () => {
   it('no socio menu entries (settings, navigation) after the binding is reconciled', async () => {
     seedSession()
-    forgeSocioInSession()
+    leaveSocioInSession()
     vi.mocked(AuthService.me).mockResolvedValue(bound(colaborador))
 
     await useAuthStore().ensureBinding()

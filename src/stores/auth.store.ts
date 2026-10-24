@@ -26,12 +26,12 @@ const BINDING_CACHE_KEY = 'account_binding'
 
 /**
  * Qué se sabe de la cuenta de la sesión:
- * - unknown:  todavía no se consultó, o no se pudo (sin conexión y sin caché)
- * - shared:   login compartido del negocio (sin miembro propio): se elige quién atiende
- * - bound:    cuenta ligada a UN miembro: no hay nada que elegir
- * - inactive: cuenta ligada a un miembro que no puede entrar (desactivado o ilegible)
+ * - unknown:    todavía no se consultó, o no se pudo (sin conexión y sin caché)
+ * - bound:      la cuenta es de UNA persona, que entra directo
+ * - inactive:   la persona de la cuenta no puede entrar (desactivada o ilegible)
+ * - unassigned: la cuenta no tiene persona asignada: no puede entrar
  */
-export type BindingStatus = 'unknown' | 'shared' | 'bound' | 'inactive'
+export type BindingStatus = 'unknown' | 'bound' | 'inactive' | 'unassigned'
 
 function clearStorage() {
   localStorage.removeItem(ACCESS_TOKEN_KEY)
@@ -43,7 +43,7 @@ function clearStorage() {
 interface BindingCache {
   owner: SessionOwner
   username: string
-  member:   Member | null
+  member:   Member
 }
 
 function readBindingCache(): BindingCache | null {
@@ -53,7 +53,6 @@ function readBindingCache(): BindingCache | null {
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       const { username, member, owner } = parsed as Record<string, unknown>
       if (typeof username === 'string' && username !== '' && sameOwner(owner, currentSessionOwner())) {
-        if (member === null) return { username, member: null, owner: owner as SessionOwner }
         if (isMember(member)) return { username, member, owner: owner as SessionOwner }
       }
     }
@@ -105,8 +104,8 @@ export const useAuthStore = defineStore('auth', () => {
   const error     = ref<string | null>(null)
 
   // Vínculo cuenta-persona (GET /auth/me). Ver BindingStatus. `boundMember` es
-  // el miembro de una cuenta ligada (también cuando está inactivo, para poder
-  // decirlo); null para el login compartido o mientras no se sepa.
+  // la persona de la cuenta (también cuando está inactiva, para poder
+  // decirlo); null si la cuenta no tiene persona o mientras no se sepa.
   const bindingStatus = ref<BindingStatus>('unknown')
   const boundMember   = ref<Member | null>(null)
   // Una sola consulta por carga de página (o por login): el guard del router la
@@ -157,10 +156,10 @@ export const useAuthStore = defineStore('auth', () => {
       expiresAt.value = expiry
       username.value  = payload.username
 
-      // Antes de dejar pasar a nadie: ¿esta cuenta es de una persona concreta?
-      // Si sí, esa persona queda fijada en la sesión (pisando lo que hubiera
-      // guardado) y no habrá selector. Nunca lanza: sin respuesta se sigue como
-      // antes (selector) y el servidor igual hace cumplir el vínculo.
+      // Antes de dejar pasar a nadie: ¿de qué persona es esta cuenta? Esa
+      // persona queda fijada en la sesión; no hay nada que elegir. Nunca
+      // lanza: sin respuesta la cuenta queda sin confirmar y el servidor
+      // igual hace cumplir el vínculo.
       useSessionStore().reconcileOwnership()
       resetBinding()
       await ensureBinding()
@@ -192,18 +191,19 @@ export const useAuthStore = defineStore('auth', () => {
     bindingPromise      = null
   }
 
-  /** Aplica lo que se sabe de la cuenta. Con miembro propio, ese miembro MANDA. */
+  /** Aplica lo que se sabe de la cuenta. La persona de la cuenta MANDA. */
   function applyBinding(member: Member | null, memberIdClaimed: string | null = null) {
     const session = useSessionStore()
 
     if (member === null && memberIdClaimed === null) {
-      bindingStatus.value = 'shared'
+      bindingStatus.value = 'unassigned'
       boundMember.value   = null
+      session.clearMember()
       return
     }
 
-    // Cuenta ligada a un miembro. Si el servidor dice que hay uno pero no se
-    // puede leer (o no coincide), se falla CERRADO: nunca se toma por compartida.
+    // Si el servidor dice que hay persona pero no se puede leer (o no
+    // coincide), se falla CERRADO: la cuenta no entra.
     if (!isMember(member) || member.active !== true
         || (memberIdClaimed !== null && memberIdClaimed !== member.id)) {
       bindingStatus.value = 'inactive'
@@ -229,12 +229,9 @@ export const useAuthStore = defineStore('auth', () => {
       if (!isCurrent()) return
       const member = data.member ?? null
       applyBinding(member, data.memberId ?? null)
-      // Solo se guarda una respuesta coherente: compartida (sin miembro ni
-      // memberId) o un miembro legible cuyo id coincide con memberId.
-      const coherent = member === null
-        ? data.memberId == null
-        : isMember(member) && data.memberId === member.id
-      if (username.value && coherent && requestOwner) {
+      // Solo se guarda una respuesta coherente: una persona legible cuyo id
+      // coincide con memberId.
+      if (username.value && requestOwner && isMember(member) && data.memberId === member.id) {
         writeBindingCache({ username: username.value, member, owner: requestOwner })
       }
     } catch (cause) {
@@ -248,16 +245,15 @@ export const useAuthStore = defineStore('auth', () => {
       }
       if (status !== undefined && status < 500) {
         // Una respuesta 4xx (p. ej. un backend sin /auth/me) no es "sin conexión":
-        // no se usa la caché y se sigue como antes.
+        // no se usa la caché y la cuenta queda sin confirmar.
         bindingStatus.value = 'unknown'
         return
       }
       // Sin conexión (o el servidor caído): la última respuesta buena, pero solo
-      // si es del mismo usuario. Sin caché, se sigue como antes (selector); el
-      // servidor igual rechaza cualquier persona que no sea la de la cuenta.
+      // si es del mismo usuario. Sin caché, la cuenta queda sin confirmar.
       const cached = readBindingCache()
       if (cached && cached.username === username.value && sameOwner(cached.owner, requestOwner)) {
-        applyBinding(cached.member, cached.member?.id ?? null)
+        applyBinding(cached.member, cached.member.id)
       } else {
         bindingStatus.value = 'unknown'
       }
@@ -289,10 +285,9 @@ export const useAuthStore = defineStore('auth', () => {
     error.value     = null
     resetBinding()
     clearStorage()
-    // Decisión: la persona seleccionada (member) se limpia con el logout —
-    // debe reconfirmarse quién vende en la siguiente sesión — pero el
-    // dispositivo identificado NO, porque es una propiedad física de la
-    // tablet, independiente de qué cuenta esté abierta en ella.
+    // Decisión: la persona de la sesión se limpia con el logout (la siguiente
+    // cuenta trae la suya), pero el dispositivo identificado NO, porque es una
+    // propiedad física de la tablet, independiente de qué cuenta esté abierta.
     useSessionStore().clearOnLogout()
   }
 

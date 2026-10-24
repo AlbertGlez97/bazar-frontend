@@ -5,6 +5,7 @@ import { createPinia } from 'pinia'
 import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useSessionStore } from '@/stores/session.store'
 import { NAV_ITEMS, getNavItems } from '../nav-items'
 
 /**
@@ -40,7 +41,6 @@ beforeEach(() => {
   localStorage.setItem('access_token', TEST_IDENTITY)
   localStorage.setItem('token_expires_at', String(Date.now() + 60000))
   localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
 })
 
 type Role = 'socio' | 'colaborador'
@@ -48,7 +48,6 @@ type Mode = 'venta' | 'gestion'
 
 async function mountLayout(mode: Mode, role: Role, path = '/app') {
   localStorage.setItem('la-marchanta-ui-mode', mode)
-  sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role, active: true }))
   const stub = { template: '<div />' }
   const router = createRouter({
     history: createMemoryHistory(),
@@ -69,7 +68,10 @@ async function mountLayout(mode: Mode, role: Role, path = '/app') {
   })
   router.push(path)
   await router.isReady()
-  return mount(AppLayout, { global: { plugins: [createPinia(), router] } })
+  // La persona es la de la cuenta (la fija auth.store con /auth/me): aquí se pone directo en la sesión.
+  const pinia = createPinia()
+  useSessionStore(pinia).setMember({ id: 'm-1', name: 'Ana', role, active: true })
+  return mount(AppLayout, { global: { plugins: [pinia, router] } })
 }
 
 const hrefs = (wrapper: Awaited<ReturnType<typeof mountLayout>>) => wrapper.findAll('a').map((a) => a.attributes('href'))

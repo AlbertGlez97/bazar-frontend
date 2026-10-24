@@ -15,7 +15,6 @@ import type {
 type Rec = Record<string, unknown>
 
 const headers = (origin: FinanceOrigin) => ({
-  'x-member-id': origin.memberId,
   'x-device-id': origin.deviceId,
 })
 const requestConfig = (origin: FinanceOrigin) => ({

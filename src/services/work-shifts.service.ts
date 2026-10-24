@@ -5,7 +5,6 @@ import type { FinanceOrigin } from './contributions-records'
 import type { PendingWorkShift } from './work-shift-records'
 
 const headers = (origin: FinanceOrigin) => ({
-  'x-member-id': origin.memberId,
   'x-device-id': origin.deviceId,
 })
 

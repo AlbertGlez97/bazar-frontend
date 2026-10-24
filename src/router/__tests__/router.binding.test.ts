@@ -19,7 +19,7 @@ vi.stubGlobal('scrollTo', vi.fn())
 const colaborador: Member = { id: 'm-col', name: 'Carla', role: 'colaborador', active: true }
 const socio: Member = { id: 'm-soc', name: 'Alberto', role: 'socio', active: true }
 const bound = (member: Member): AccountBinding => ({ username: 'x', memberId: member.id, member })
-const shared: AccountBinding = { username: 'x', memberId: null, member: null }
+const unassigned: AccountBinding = { username: 'x', memberId: null, member: null }
 
 let router: ReturnType<typeof createAppRouter>
 beforeEach(() => {
@@ -40,9 +40,9 @@ function restoreContext(member: Member) {
   session.setMember(member)
 }
 
-describe('a bound colaborador whose member_context was forged to a socio', () => {
+describe('a bound colaborador whose session was left holding a socio', () => {
   beforeEach(() => {
-    restoreContext(socio) // what the forged sessionStorage looks like
+    restoreContext(socio) // a socio left in memory by someone else
     vi.mocked(AuthService.me).mockResolvedValue(bound(colaborador))
   })
 
@@ -102,21 +102,33 @@ describe('a bound account without the context yet', () => {
   })
 })
 
-describe('the shared business login (no bound member)', () => {
-  it('may still hold a socio session and reach the socio screens (legacy behavior untouched)', async () => {
+describe('an account without a person (unassigned)', () => {
+  it('cannot enter even if a socio session was left in memory: the person is cleared and /app goes to select-context', async () => {
     restoreContext(socio)
-    vi.mocked(AuthService.me).mockResolvedValue(shared)
+    vi.mocked(AuthService.me).mockResolvedValue(unassigned)
 
     await router.push('/app/ajustes/equipo')
-    expect(router.currentRoute.value.name).toBe('Team')
+    expect(router.currentRoute.value.name).toBe('SelectContext')
+    expect(useAuthStore().bindingStatus).toBe('unassigned')
+    expect(useSessionStore().member).toBeNull()
   })
 
-  it('without a member yet still lands on select-context to choose one', async () => {
+  it('with the device identified it still lands on select-context (which explains it; there is nothing to choose)', async () => {
     restoreAuth()
     useSessionStore().setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-    vi.mocked(AuthService.me).mockResolvedValue(shared)
+    vi.mocked(AuthService.me).mockResolvedValue(unassigned)
 
     await router.push('/app')
+    expect(router.currentRoute.value.name).toBe('SelectContext')
+    expect(useSessionStore().isContextReady).toBe(false)
+  })
+
+  it('/seleccionar-contexto is NOT skipped for it (no redirect into the app)', async () => {
+    restoreAuth()
+    useSessionStore().setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    vi.mocked(AuthService.me).mockResolvedValue(unassigned)
+
+    await router.push('/seleccionar-contexto')
     expect(router.currentRoute.value.name).toBe('SelectContext')
   })
 })
@@ -140,12 +152,25 @@ describe('deactivated bound member and failures', () => {
     expect(useAuthStore().isAuthenticated).toBe(false)
   })
 
-  it('unreachable server and no cache: the previous behavior (the session member is used, the server still enforces)', async () => {
-    restoreContext(colaborador)
+  it('unreachable server and no cache: the account stays unconfirmed ("unknown") and /app goes to select-context', async () => {
+    restoreAuth()
+    useSessionStore().setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    vi.mocked(AuthService.me).mockRejectedValue(Object.assign(new Error('Network Error'), { response: undefined }))
+
+    await router.push('/app')
+    expect(router.currentRoute.value.name).toBe('SelectContext')
+    expect(useAuthStore().bindingStatus).toBe('unknown')
+  })
+
+  it('unreachable server WITH a cached person: the cache binds the account and the app opens', async () => {
+    restoreAuth()
+    useSessionStore().setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    localStorage.setItem('account_binding', JSON.stringify({ owner: { accountId: 'account-a', apiBase: '/api/v1' }, username: 'x', member: colaborador }))
     vi.mocked(AuthService.me).mockRejectedValue(Object.assign(new Error('Network Error'), { response: undefined }))
 
     await router.push('/app')
     expect(router.currentRoute.value.name).toBe('AppHome')
+    expect(useSessionStore().memberId).toBe('m-col')
   })
 })
 

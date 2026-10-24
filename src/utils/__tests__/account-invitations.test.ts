@@ -100,7 +100,7 @@ describe('origen de la cuenta de quien aprobó', () => {
   })
 
   it('acceso compartido de un solo socio', () => {
-    expect(originText({ kind: 'shared_single_partner' })).toBe('Acceso compartido de un solo socio.')
+    expect(originText({ kind: 'shared_single_partner' })).toBe('Acceso compartido de un solo socio (ya no existe).')
   })
 
   it('cuenta propia, con o sin fecha, y aprobaciones antiguas sin dato', () => {
@@ -112,7 +112,7 @@ describe('origen de la cuenta de quien aprobó', () => {
   it('invitación desde el acceso compartido: lo dice claro y avisa que no se sabe quién invitó', () => {
     expect(originText({
       kind: 'invited_from_shared_login', invitedAt: '2026-10-18T16:00:00.000Z', acceptedAt: '2026-10-18T16:30:00.000Z', recent: false,
-    })).toBe('Cuenta creada por invitación desde el acceso compartido el 18/10/2026, 10:00. No se sabe quién invitó.')
+    })).toBe('Cuenta creada por invitación desde un acceso compartido (ya no existe) el 18/10/2026, 10:00. No se sabe quién invitó.')
   })
 })
 
@@ -130,7 +130,7 @@ describe('recentInviteNotice', () => {
 
   it('una cuenta creada desde el acceso compartido se avisa distinto: sin inventar quién invitó', () => {
     expect(recentInviteNotice([shared('1', 'Beto', '2026-10-18T16:30:00.000Z')])).toBe(
-      'Beto aprobó con una cuenta creada desde el acceso compartido el 18/10/2026. No se sabe quién la invitó.',
+      'Beto aprobó con una cuenta creada desde un acceso compartido (ya no existe) el 18/10/2026. No se sabe quién la invitó.',
     )
   })
 
@@ -138,7 +138,7 @@ describe('recentInviteNotice', () => {
     expect(recentInviteNotice([
       invited('1', 'Beto', '2026-10-18T16:30:00.000Z'),
       shared('2', 'Carla', '2026-01-02T16:30:00.000Z'),
-    ])).toBe('Beto y Carla aprobaron con cuentas invitadas, alguna desde el acceso compartido. Revisa el historial.')
+    ])).toBe('Beto y Carla aprobaron con cuentas invitadas, alguna desde un acceso compartido (ya no existe). Revisa el historial.')
   })
 
   it('sin cuentas invitadas recientes, no hay aviso', () => {

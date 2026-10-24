@@ -23,16 +23,21 @@ describe('current selection recovery', () => {
     expect(config.headers['x-device-id']).toBeUndefined()
     expect(config.headers['x-device-token']).toBeUndefined()
   })
-  it('invalidates the current rejected selection but keeps credentials', async () => {
+  it('never sends x-member-id even when the session holds a person', () => {
+    const config = request({ url: '/products', headers: {} })
+    expect(useSessionStore().memberId).toBe('ma')
+    expect(config.headers['x-member-id']).toBeUndefined()
+    expect(config.headers['x-device-id']).toBe('da')
+  })
+  it('invalidates only the current rejected device but keeps credentials', async () => {
     const config = request({ url: '/products', headers: {} })
     await expect(reject(config)).rejects.toBeDefined()
     expect(useSessionStore().deviceId).toBeNull()
-    expect(useSessionStore().memberId).toBeNull()
     expect(useSessionStore().recoveryReason).toBe('rejected')
     expect(localStorage.getItem('access_token')).toBe(jwt('a'))
   })
   it.each(['permission', 'foreign', 'stale'])('does not invalidate for %s response', async (kind) => {
-    const config = request({ url: '/products', headers: kind === 'foreign' ? { 'x-member-id': 'other' } : {} })
+    const config = request({ url: '/products', headers: kind === 'foreign' ? { 'x-device-id': 'other' } : {} })
     if (kind === 'stale') {
       localStorage.setItem('access_token', jwt('b'))
       useSessionStore().reconcileOwnership()

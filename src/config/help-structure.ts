@@ -26,7 +26,7 @@ const DEFINITIONS: readonly CategoryDefinition[] = [
     title: 'Primeros pasos',
     description: 'Entrar, entender los modos y conocer los límites de la app.',
     topics: [
-      { id: 'primeros-pasos.acceso', title: 'Entrar por primera vez', description: 'Cuenta, dispositivo y persona que atiende.' },
+      { id: 'primeros-pasos.acceso', title: 'Entrar por primera vez', description: 'Tu cuenta personal y el dispositivo.' },
       { id: 'primeros-pasos.modos', title: 'Modos y permisos', description: 'Modo Venta, Modo Gestión y qué puede hacer cada rol.' },
       { id: 'primeros-pasos.instalar', title: 'Instalar la app', description: 'Úsala como aplicación en una tablet o teléfono.' },
       { id: 'primeros-pasos.datos', title: 'Tus datos y los de tus clientes', description: 'Qué datos guardas, cómo avisar a tus clientes y dónde están los textos legales.' },
