@@ -24,7 +24,7 @@ const DeudasService = {
   async createDeuda(payload: CreateDeudaPayload, options: { origin?: QueueOrigin; handleAuthLocally?: boolean } = {}): Promise<Deuda> {
     const config = {
       ...(options.origin ? { debtOrigin: options.origin } : {}),
-      ...(options.origin ? { headers: { 'x-member-id': options.origin.memberId, 'x-device-id': options.origin.deviceId } } : {}),
+      ...(options.origin ? { headers: { 'x-device-id': options.origin.deviceId } } : {}),
       ...(options.handleAuthLocally ? { skipAuthRedirect: true } : {}),
     }
     const response = options.origin || options.handleAuthLocally

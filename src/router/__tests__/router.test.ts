@@ -7,16 +7,21 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
 import { useUiModeStore } from '@/stores/uiMode.store'
 import AuthService from '@/services/auth.service'
-// GET /auth/me: el guard lo consulta al entrar a una ruta protegida. Por defecto el
-// login compartido (sin miembro propio), que deja el comportamiento de estos tests intacto.
+// GET /auth/me: el guard lo consulta al entrar a una ruta protegida. Una cuenta = una persona:
+// cada test deja que /auth/me devuelva la persona que él mismo pone en la sesión (bindAccount).
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn(), me: vi.fn() } }))
+function bindAccount(role: 'socio' | 'colaborador' = 'socio') {
+  const member = { id: 'm-1', name: 'Alberto', role, active: true }
+  vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: member.id, member })
+  return member
+}
 vi.stubGlobal('scrollTo', vi.fn())
 // A new router (with its own in-memory history) per test: the app router is a
 // module singleton whose current route would leak from one test to the next.
 let router: ReturnType<typeof createAppRouter>
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear(); setActivePinia(createPinia())
-  vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
+  bindAccount()
   router = createAppRouter(createMemoryHistory())
 })
 // Helper: deja la sesión de auth "lista" (token válido) sin tocar el contexto
@@ -31,7 +36,7 @@ function restoreFullSession() {
   restoreAuthSession()
   const session = useSessionStore()
   session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-  session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
+  session.setMember(bindAccount('socio'))
 }
 describe('session routing', () => {
   // '/' ahora es la landing pública: un visitante sin sesión debe poder verla
@@ -73,11 +78,40 @@ describe('session routing', () => {
     localStorage.setItem('token_expires_at', String(Date.now() - 1_000))
     await router.push('/app'); expect(router.currentRoute.value.name).toBe('Login')
   })
-  // Nuevo: sesión válida pero SIN device/member elegidos aún — /app debe
-  // mandar a la pantalla de selección de contexto, no dejar entrar directo.
-  it('sends an authenticated visitor without device/member to /seleccionar-contexto', async () => {
+  // Sesión válida pero SIN dispositivo identificado aún — /app debe mandar a la
+  // pantalla de identificación del dispositivo, no dejar entrar directo.
+  it('sends an authenticated visitor whose device is not identified to /seleccionar-contexto', async () => {
     restoreAuthSession()
     await router.push('/app'); expect(router.currentRoute.value.name).toBe('SelectContext')
+    expect(useAuthStore().bindingStatus).toBe('bound')
+  })
+  it('sends an authenticated account WITHOUT a person ("unassigned") from /app to /seleccionar-contexto, even with the device identified', async () => {
+    restoreAuthSession()
+    useSessionStore().setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
+    await router.push('/app'); expect(router.currentRoute.value.name).toBe('SelectContext')
+    expect(useAuthStore().bindingStatus).toBe('unassigned')
+    expect(useSessionStore().isContextReady).toBe(false)
+  })
+  it('sends an unconfirmed account (/auth/me unreachable, no cache) from /app to /seleccionar-contexto', async () => {
+    restoreAuthSession()
+    useSessionStore().setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    vi.mocked(AuthService.me).mockRejectedValue(new Error('Network Error'))
+    await router.push('/app'); expect(router.currentRoute.value.name).toBe('SelectContext')
+    expect(useAuthStore().bindingStatus).toBe('unknown')
+  })
+  it('sends an inactive person from /app to /seleccionar-contexto', async () => {
+    restoreAuthSession()
+    useSessionStore().setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: 'm-1', member: { id: 'm-1', name: 'Alberto', role: 'socio', active: false } })
+    await router.push('/app'); expect(router.currentRoute.value.name).toBe('SelectContext')
+    expect(useAuthStore().bindingStatus).toBe('inactive')
+  })
+  it('lets a bound account with an identified device straight into /app (no person selector in between)', async () => {
+    restoreAuthSession()
+    useSessionStore().setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
+    await router.push('/app'); expect(router.currentRoute.value.name).toBe('AppHome')
+    expect(useSessionStore().memberId).toBe('m-1')
   })
   // Pantalla de venta: alcanzable en cualquier modo (no hay redirecciones sin salida).
   it('allows an authenticated visitor with full context to reach the sale screen /app/venta', async () => {
@@ -124,7 +158,7 @@ describe('session routing', () => {
     const auth = useAuthStore(); auth.token = 't'; auth.expiresAt = Date.now() + 60_000
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-    session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
+    session.setMember(bindAccount('socio'))
     await router.push('/app'); auth.logout(); await router.push('/login'); await router.push('/app')
     expect(router.currentRoute.value.name).toBe('Login')
   })
@@ -136,7 +170,7 @@ describe('reports route /app/reportes', () => {
     restoreAuthSession()
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    session.setMember(bindAccount(role))
     useUiModeStore().setMode(mode)
   }
 
@@ -185,7 +219,7 @@ describe('incidencias route /app/incidencias', () => {
     restoreAuthSession()
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    session.setMember(bindAccount(role))
     useUiModeStore().setMode(mode)
   }
 
@@ -227,7 +261,7 @@ describe('deudas route /app/deudas', () => {
     restoreAuthSession()
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    session.setMember(bindAccount(role))
     useUiModeStore().setMode(mode)
   }
 
@@ -270,7 +304,7 @@ describe('settings routes /app/ajustes', () => {
     restoreAuthSession()
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    session.setMember(bindAccount(role))
     useUiModeStore().setMode(mode)
   }
 
@@ -316,7 +350,7 @@ describe('team route /app/ajustes/equipo', () => {
     restoreAuthSession()
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    session.setMember(bindAccount(role))
     useUiModeStore().setMode(mode)
   }
 
@@ -355,7 +389,7 @@ describe('devices admin route /app/ajustes/dispositivos', () => {
     restoreAuthSession()
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-    session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+    session.setMember(bindAccount(role))
     useUiModeStore().setMode(mode)
   }
 

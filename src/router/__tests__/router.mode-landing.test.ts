@@ -9,14 +9,13 @@ import { useUiModeStore } from '@/stores/uiMode.store'
 import AuthService from '@/services/auth.service'
 import type { UiMode } from '@/types/ui-mode.types'
 
-// GET /auth/me: login compartido (sin miembro propio) para que estos tests solo prueben el aterrizaje por modo.
+// GET /auth/me: la cuenta es de la persona que cada test pone en la sesión (una cuenta = una persona).
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn(), me: vi.fn() } }))
 vi.stubGlobal('scrollTo', vi.fn())
 
 let router: ReturnType<typeof createAppRouter>
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear(); setActivePinia(createPinia())
-  vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
   router = createAppRouter(createMemoryHistory())
 })
 
@@ -25,7 +24,9 @@ function fullSession(role: 'socio' | 'colaborador', mode: UiMode) {
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
   const session = useSessionStore()
   session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
-  session.setMember({ id: 'm-1', name: 'Alberto', role, active: true })
+  const member = { id: 'm-1', name: 'Alberto', role, active: true }
+  vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: member.id, member })
+  session.setMember(member)
   useUiModeStore().setMode(mode)
 }
 

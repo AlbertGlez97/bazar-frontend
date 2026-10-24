@@ -10,7 +10,7 @@ const selection = vi.hoisted(() => ({ current: {} as typeof rulesOrigin }))
 vi.mock('../queue-origin', () => ({ currentQueueOrigin: () => selection.current }))
 vi.mock('../api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn(), defaults: { transformRequest: [] } } }))
 
-const headers = { 'x-member-id': rulesOrigin.memberId, 'x-device-id': rulesOrigin.deviceId }
+const headers = { 'x-device-id': rulesOrigin.deviceId }
 
 beforeEach(() => {
   vi.clearAllMocks()

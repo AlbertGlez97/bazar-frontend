@@ -69,7 +69,7 @@ describe('payment response guards', () => {
 })
 
 describe('payments API adapter', () => {
-  const headers = { 'x-member-id': agreementOrigin.memberId, 'x-device-id': agreementOrigin.deviceId }
+  const headers = { 'x-device-id': agreementOrigin.deviceId }
   it('sends only the strict create fields with identity headers and accepts the 201 receipt', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: paymentReceiptFixture({ note: 'Transferencia' }) })
     const forbidden = { ...payload(), agreedMinor: 1, pendingMinor: 1, contextId: 'x', participantName: 'Mallory', currency: 'USD' } as CreatePaymentPayload

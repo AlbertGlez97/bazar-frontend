@@ -15,7 +15,6 @@ beforeEach(() => {
   localStorage.setItem('token_expires_at', String(Date.now() + 60000))
   const owner = JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' })
   localStorage.setItem('device_context_owner', owner)
-  sessionStorage.setItem('member_context_owner', owner)
   setActivePinia(createPinia())
 })
 
@@ -23,7 +22,7 @@ describe('session.store', () => {
   it('arranca sin dispositivo ni persona cuando el storage está vacío', () => {
     const store = useSessionStore()
     expect(store.isDeviceIdentified).toBe(false)
-    expect(store.isMemberSelected).toBe(false)
+    expect(store.hasPerson).toBe(false)
     expect(store.isContextReady).toBe(false)
     expect(store.deviceToken).toBeNull()
   })
@@ -128,15 +127,36 @@ describe('session.store', () => {
     })
   })
 
-  it('setMember guarda la persona en memoria y en sessionStorage, NO en localStorage', () => {
+  it('setMember guarda la persona solo en memoria: no escribe en sessionStorage ni en localStorage', () => {
     const store = useSessionStore()
     store.setMember(socio)
 
     expect(store.memberId).toBe('m-1')
     expect(store.member).toEqual(socio)
-    expect(store.isMemberSelected).toBe(true)
-    expect(JSON.parse(sessionStorage.getItem('member_context') ?? 'null')).toEqual(socio)
+    expect(store.hasPerson).toBe(true)
+    expect(sessionStorage.getItem('member_context')).toBeNull()
+    expect(sessionStorage.getItem('member_context_owner')).toBeNull()
     expect(localStorage.getItem('member_context')).toBeNull()
+  })
+
+  it('un store nuevo no recupera la persona: no queda nada guardado de la anterior', () => {
+    useSessionStore().setMember(socio)
+
+    setActivePinia(createPinia())
+    const fresh = useSessionStore()
+
+    expect(fresh.member).toBeNull()
+    expect(fresh.memberId).toBeNull()
+    expect(fresh.hasPerson).toBe(false)
+  })
+
+  it('ignora un member_context viejo que haya quedado en sessionStorage', () => {
+    sessionStorage.setItem('member_context', JSON.stringify(socio))
+
+    const store = useSessionStore()
+
+    expect(store.member).toBeNull()
+    expect(store.hasPerson).toBe(false)
   })
 
   it('isContextReady solo es true cuando hay dispositivo Y persona', () => {
@@ -159,7 +179,6 @@ describe('session.store', () => {
 
     expect(store.memberId).toBeNull()
     expect(store.member).toBeNull()
-    expect(sessionStorage.getItem('member_context')).toBeNull()
     expect(store.deviceId).toBeNull()
     expect(store.deviceToken).toBeNull()
     expect(storedDevice().deviceToken).toBe('tok')
@@ -193,6 +212,6 @@ describe('session.store', () => {
     const store = useSessionStore()
 
     expect(store.isDeviceIdentified).toBe(false)
-    expect(store.isMemberSelected).toBe(false)
+    expect(store.hasPerson).toBe(false)
   })
 })

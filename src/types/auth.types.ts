@@ -18,11 +18,9 @@ export interface ChangePasswordPayload {
   newPassword: string
 }
 
-// Contrato de GET /auth/me (solo JWT): a qué persona está ligada la cuenta.
-// Una cuenta creada con POST /members queda ligada a SU miembro: el servidor
-// rechaza cualquier otro x-member-id, así que el frontend no debe ofrecer
-// elegir a nadie más. `member: null` es el inicio de sesión compartido del
-// negocio (la tablet original / el seed), el único donde se elige quién atiende.
+// Contrato de GET /auth/me (solo JWT): a qué persona pertenece la cuenta.
+// Cada cuenta es de UNA persona y el servidor solo reconoce a esa persona.
+// `member: null` es una cuenta sin persona asignada: no puede entrar.
 export interface AccountBinding {
   username: string
   memberId: string | null

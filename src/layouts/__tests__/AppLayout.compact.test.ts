@@ -5,6 +5,8 @@ import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import layoutSource from '../AppLayout.vue?raw'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useSessionStore } from '@/stores/session.store'
+import type { Member } from '@/types/member.types'
 import AppNavDrawer from '@/components/ui/organisms/AppNavDrawer.vue'
 import { SMALL_SCREEN_MAX_WIDTH, SMALL_SCREEN_QUERY } from '@/composables/useDeviceCapabilities'
 
@@ -19,8 +21,8 @@ vi.mock('@/stores/sales-queue.store', () => ({
   }),
 }))
 
-const socio = { id: 'm-1', name: 'Ana', role: 'socio', active: true }
-const colaborador = { id: 'm-2', name: 'Carlos', role: 'colaborador', active: true }
+const socio: Member = { id: 'm-1', name: 'Ana', role: 'socio', active: true }
+const colaborador: Member = { id: 'm-2', name: 'Carlos', role: 'colaborador', active: true }
 
 const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 
@@ -31,7 +33,6 @@ beforeEach(() => {
   localStorage.setItem('access_token', TEST_IDENTITY)
   localStorage.setItem('token_expires_at', String(Date.now() + 60000))
   localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
 })
 
 afterEach(() => {
@@ -40,10 +41,9 @@ afterEach(() => {
 })
 
 /** `small`: el viewport está bajo 900 px (la consulta de pantalla pequeña coincide). */
-async function mountLayout(options: { small: boolean; member?: typeof socio; mode?: 'venta' | 'gestion'; path?: string }) {
+async function mountLayout(options: { small: boolean; member?: Member; mode?: 'venta' | 'gestion'; path?: string }) {
   const { small, member = socio, mode = 'venta', path = '/app/venta' } = options
   localStorage.setItem('la-marchanta-ui-mode', mode)
-  sessionStorage.setItem('member_context', JSON.stringify(member))
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches: small && query === SMALL_SCREEN_QUERY, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn(),
     addListener: vi.fn(), removeListener: vi.fn(), onchange: null, dispatchEvent: vi.fn(),
@@ -67,7 +67,10 @@ async function mountLayout(options: { small: boolean; member?: typeof socio; mod
     ],
   })
   await router.push(path)
-  const wrapper = mount(AppLayout, { attachTo: document.body, global: { plugins: [createPinia(), router] } })
+  // La persona es la de la cuenta (la fija auth.store con /auth/me): aquí se pone directo en la sesión.
+  const pinia = createPinia()
+  useSessionStore(pinia).setMember(member)
+  const wrapper = mount(AppLayout, { attachTo: document.body, global: { plugins: [pinia, router] } })
   await flushPromises()
   return { wrapper, router }
 }

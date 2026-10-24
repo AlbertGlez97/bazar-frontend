@@ -4,14 +4,12 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SelectContextView from '../SelectContextView.vue'
 import DevicesService from '@/services/devices.service'
-import MembersService from '@/services/members.service'
 import AuthService from '@/services/auth.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
 import type { Member } from '@/types/member.types'
 
 vi.mock('@/services/devices.service', () => ({ default: { identify: vi.fn() } }))
-vi.mock('@/services/members.service', () => ({ default: { list: vi.fn() } }))
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn(), me: vi.fn() } }))
 
 const push = vi.fn()
@@ -19,23 +17,18 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
 
 const TOKEN = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 const socio: Member = { id: 'm-soc', name: 'Alberto', role: 'socio', active: true }
-const OWNER = JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' })
 
-/** Abre la pantalla como cuenta compartida (member null) o personal (atada a un miembro). */
-async function openAs(kind: 'shared' | 'bound' | 'inactive', opts: { device?: boolean; people?: Member[] | 'fails' } = {}) {
+type Kind = 'bound' | 'inactive' | 'unassigned' | 'unknown'
+
+/** Abre la pantalla como la dejaría el guard del router, según lo que diga /auth/me. */
+async function openAs(kind: Kind, opts: { device?: boolean } = {}) {
   localStorage.setItem('access_token', TOKEN)
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
   if (opts.device) localStorage.setItem('device_contexts', JSON.stringify({ version: 1, devices: { 'account-a|/api/v1': { deviceId: 'd-1', name: 'Tablet' } } }))
-  sessionStorage.setItem('member_context_owner', OWNER)
   setActivePinia(createPinia())
-  const bound = kind !== 'shared'
-  vi.mocked(AuthService.me).mockResolvedValue(
-    bound
-      ? { username: 'x', memberId: socio.id, member: { ...socio, active: kind !== 'inactive' } }
-      : { username: 'x', memberId: null, member: null },
-  )
-  if (opts.people === 'fails') vi.mocked(MembersService.list).mockRejectedValue(new Error('red'))
-  else vi.mocked(MembersService.list).mockResolvedValue(opts.people ?? [socio])
+  if (kind === 'unknown') vi.mocked(AuthService.me).mockRejectedValue(Object.assign(new Error('Network Error'), { response: undefined }))
+  else if (kind === 'unassigned') vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
+  else vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: socio.id, member: { ...socio, active: kind === 'bound' } })
   await useAuthStore().ensureBinding()
   const wrapper = mount(SelectContextView, { attachTo: document.body })
   await flushPromises()
@@ -48,10 +41,10 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('pantalla "Identifica este dispositivo" (cuenta compartida)', () => {
+describe('pantalla "Falta registrar este dispositivo"', () => {
   it('trae el botón "No lo tengo, salir" con su texto de apoyo, visible y secundario', async () => {
-    const w = await openAs('shared')
-    expect(w.get('h1').text()).toBe('Identifica este dispositivo')
+    const w = await openAs('bound')
+    expect(w.get('h1').text()).toBe('Falta registrar este dispositivo')
     const button = exitButton(w)
     expect(button.exists()).toBe(true)
     expect(button.text()).toBe('No lo tengo, salir')
@@ -63,7 +56,7 @@ describe('pantalla "Identifica este dispositivo" (cuenta compartida)', () => {
   })
 
   it('al tocarlo cierra la sesión, lleva al login y no envía el formulario', async () => {
-    const w = await openAs('shared')
+    const w = await openAs('bound')
     await exitButton(w).trigger('click')
 
     expect(useAuthStore().isAuthenticated).toBe(false)
@@ -73,26 +66,10 @@ describe('pantalla "Identifica este dispositivo" (cuenta compartida)', () => {
   })
 
   it('salir no borra el dispositivo ya guardado de esa cuenta', async () => {
-    const w = await openAs('shared')
+    const w = await openAs('bound')
     useSessionStore().saveDeviceForAccount('account-a', { deviceId: 'd-keep', name: 'Tablet' })
     await exitButton(w).trigger('click')
     expect(localStorage.getItem('device_contexts')).toContain('d-keep')
-  })
-})
-
-describe('pantalla "Falta registrar este dispositivo" (cuenta personal)', () => {
-  it('trae el mismo botón de salida y el mismo texto de apoyo', async () => {
-    const w = await openAs('bound')
-    expect(w.get('h1').text()).toBe('Falta registrar este dispositivo')
-    expect(exitButton(w).text()).toBe('No lo tengo, salir')
-    expect(w.text()).toContain('Puedes volver cuando un socio te dé el código.')
-  })
-
-  it('al tocarlo cierra la sesión y lleva al login', async () => {
-    const w = await openAs('bound')
-    await exitButton(w).trigger('click')
-    expect(useAuthStore().isAuthenticated).toBe(false)
-    expect(push).toHaveBeenCalledWith({ name: 'Login' })
   })
 
   it('sigue habiendo salida después de un error al identificar (403 y 409)', async () => {
@@ -111,10 +88,10 @@ describe('pantalla "Falta registrar este dispositivo" (cuenta personal)', () => 
   })
 })
 
-describe('pantalla "¿Quién atiende hoy?"', () => {
-  it('tiene salida: "Cerrar sesión" (esta persona sí tiene su dispositivo, no falta ningún código)', async () => {
-    const w = await openAs('shared', { device: true, people: [socio] })
-    expect(w.get('h1').text()).toBe('¿Quién atiende hoy?')
+describe('pantalla "Entrando…", cuentas bloqueadas y sin selector de persona', () => {
+  it('"Entrando…" (cuenta con persona y dispositivo) también tiene "Cerrar sesión", por si no avanza', async () => {
+    const w = await openAs('bound', { device: true })
+    expect(w.get('h1').text()).toBe('Entrando…')
     expect(exitButton(w).text()).toBe('Cerrar sesión')
     expect(w.text()).not.toContain('Puedes volver cuando un socio te dé el código.')
     await exitButton(w).trigger('click')
@@ -122,56 +99,49 @@ describe('pantalla "¿Quién atiende hoy?"', () => {
     expect(push).toHaveBeenCalledWith({ name: 'Login' })
   })
 
-  it('sin personas activas para elegir, la salida sigue ahí', async () => {
-    const w = await openAs('shared', { device: true, people: [] })
-    expect(w.text()).toContain('No hay personas activas para elegir')
-    expect(exitButton(w).exists()).toBe(true)
-  })
-
-  it('si la lista de personas no carga, la salida sigue ahí', async () => {
-    const w = await openAs('shared', { device: true, people: 'fails' })
-    expect(exitButton(w).exists()).toBe(true)
-  })
-
-  it('mientras carga a tu equipo, la salida ya está disponible', async () => {
-    let resolve!: (m: Member[]) => void
-    vi.mocked(MembersService.list).mockReturnValue(new Promise((r) => { resolve = r }))
-    localStorage.setItem('access_token', TOKEN)
-    localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
-    localStorage.setItem('device_contexts', JSON.stringify({ version: 1, devices: { 'account-a|/api/v1': { deviceId: 'd-1', name: 'Tablet' } } }))
-    setActivePinia(createPinia())
-    vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
-    await useAuthStore().ensureBinding()
-    const w = mount(SelectContextView, { attachTo: document.body })
-    await flushPromises()
-    expect(w.text()).toContain('Cargando a tu equipo')
-    expect(exitButton(w).exists()).toBe(true)
-    resolve([socio])
-    await flushPromises()
-  })
-})
-
-describe('pantalla "Entrando…" y "Tu acceso está desactivado"', () => {
-  it('"Entrando…" (cuenta personal con dispositivo) también tiene "Cerrar sesión", por si no avanza', async () => {
-    const w = await openAs('bound', { device: true })
-    expect(w.get('h1').text()).toBe('Entrando…')
-    expect(exitButton(w).text()).toBe('Cerrar sesión')
-  })
-
-  it('"Tu acceso está desactivado" ya tenía su salida y sigue funcionando', async () => {
+  it('"Tu acceso está desactivado" tiene su salida y no repite el botón "exit"', async () => {
     const w = await openAs('inactive')
     expect(w.get('h1').text()).toBe('Tu acceso está desactivado')
-    // No hay un segundo botón de salida repetido: el suyo ya es la salida.
     expect(w.findAll('[data-test="exit"]')).toHaveLength(0)
-    const button = w.findAll('button').find((b) => b.text() === 'Cerrar sesión')!
+    const button = w.get('[data-test="sign-out"]')
+    expect(button.text()).toBe('Cerrar sesión')
     await button.trigger('click')
     expect(push).toHaveBeenCalledWith({ name: 'Login' })
+  })
+
+  it('"Tu cuenta no tiene una persona asignada" tiene su salida y no repite el botón "exit"', async () => {
+    const w = await openAs('unassigned', { device: true })
+    expect(w.get('h1').text()).toBe('Tu cuenta no tiene una persona asignada')
+    expect(w.findAll('[data-test="exit"]')).toHaveLength(0)
+    await w.get('[data-test="sign-out"]').trigger('click')
+    expect(useAuthStore().isAuthenticated).toBe(false)
+    expect(push).toHaveBeenCalledWith({ name: 'Login' })
+  })
+
+  it('"No pudimos confirmar tu cuenta" tiene su salida (además de "Reintentar") y no repite el botón "exit"', async () => {
+    const w = await openAs('unknown')
+    expect(w.get('h1').text()).toBe('No pudimos confirmar tu cuenta')
+    expect(w.findAll('[data-test="exit"]')).toHaveLength(0)
+    expect(w.find('[data-test="retry"]').exists()).toBe(true)
+    await w.get('[data-test="sign-out"]').trigger('click')
+    expect(useAuthStore().isAuthenticated).toBe(false)
+    expect(push).toHaveBeenCalledWith({ name: 'Login' })
+  })
+
+  it('ninguna pantalla muestra la pregunta "¿Quién atiende hoy?"', async () => {
+    for (const kind of ['bound', 'inactive', 'unassigned', 'unknown'] as const) {
+      const w = await openAs(kind, { device: true })
+      expect(w.text()).not.toContain('¿Quién atiende hoy?')
+      expect(w.find('[role="list"]').exists()).toBe(false)
+      w.unmount()
+      localStorage.clear(); sessionStorage.clear()
+    }
   })
 })
 
 describe('accesibilidad', () => {
   it('el botón de salida tiene nombre accesible, se alcanza con Tab después del formulario y no se activa solo', async () => {
-    const w = await openAs('shared')
+    const w = await openAs('bound')
     const names = w.findAll('button, input, a').map((e) => e.text() || e.attributes('aria-label') || e.attributes('name'))
     expect(w.get('[data-test="exit"]').element.textContent?.trim()).toBe('No lo tengo, salir')
     // Orden del documento: campos → "Identificar dispositivo" → "No lo tengo, salir".

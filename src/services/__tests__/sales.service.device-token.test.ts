@@ -62,7 +62,7 @@ describe('SalesService.createSale — cabeceras de dispositivo en el envío real
 
     expect(header('x-device-id')).toBe(payload.deviceId)
     expect(header('x-device-token')).toBe(TOKEN)
-    expect(header('x-member-id')).toBe(payload.memberId)
+    expect(header('x-member-id')).toBeUndefined()
   })
 
   it('NO manda el token si la venta es de OTRO dispositivo distinto al de la sesión', async () => {

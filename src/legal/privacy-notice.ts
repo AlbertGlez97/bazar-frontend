@@ -175,7 +175,6 @@ export const PRIVACY_NOTICE: LegalDocumentData = {
       'La Marchanta guarda información en tu dispositivo para funcionar, también sin conexión.',
       list([
         'localStorage: tu sesión, tu usuario, el dispositivo registrado y tus preferencias de pantalla.',
-        'sessionStorage: la persona que atiende en ese equipo, hasta que cierras la pestaña.',
         'IndexedDB: las ventas y otros registros hechos sin conexión que aún no se envían, y una copia del catálogo.',
         'Caché de la app: archivos del sistema y respuestas recientes de unos minutos, para cargar más rápido.',
       ]),

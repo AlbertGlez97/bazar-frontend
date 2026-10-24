@@ -322,7 +322,7 @@ describe('syncPendingSales — fallos que detienen la corrida (no se pierde nada
 })
 
 describe('syncPendingSales — headers por venta', () => {
-  it('cada POST lleva x-member-id/x-device-id de SU venta, aunque las de otras personas estén en la misma cola', async () => {
+  it('cada POST lleva solo x-device-id de SU venta (sin x-member-id) y el memberId de SU venta en el cuerpo', async () => {
     await queueSale('a', '2026-09-25T12:00:01.000Z', 'm-ana')
     await queueSale('b', '2026-09-25T12:00:02.000Z', 'm-luis')
     vi.mocked(api.post).mockImplementation(async (_url, body) => ({ status: 201, data: saleFor(body as CreateSalePayload) }))
@@ -332,8 +332,9 @@ describe('syncPendingSales — headers por venta', () => {
 
     const calls = vi.mocked(api.post).mock.calls
     expect(calls).toHaveLength(2)
-    expect(calls[0][2]).toEqual({ headers: { 'x-member-id': 'm-ana', 'x-device-id': 'd-1' } })
-    expect(calls[1][2]).toEqual({ headers: { 'x-member-id': 'm-luis', 'x-device-id': 'd-1' } })
+    expect(calls[0][2]).toEqual({ headers: { 'x-device-id': 'd-1' } })
+    expect(calls[1][2]).toEqual({ headers: { 'x-device-id': 'd-1' } })
+    expect((calls[1][1] as { memberId: string }).memberId).toBe('m-luis')
     expect(calls[0][1]).toEqual(payloadFor('a', 'm-ana'))
   })
 })

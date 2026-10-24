@@ -8,9 +8,8 @@ import type { PaymentMethod } from '@/types/payment.types'
 
 export const VOICE = {
   contextRecovery: {
-    changed: 'Este acceso cambió. Confirma el dispositivo o la persona que falta para continuar.',
-    legacy: 'La selección guardada necesita confirmación. Confirma el dispositivo o la persona que falta para continuar.',
-    rejected: 'No pudimos validar la selección actual. Confirma el dispositivo y la persona para continuar.',
+    legacy: 'El dispositivo guardado necesita confirmación. Identifícalo de nuevo para continuar.',
+    rejected: 'No pudimos validar este dispositivo. Identifícalo de nuevo para continuar.',
   },
   /** Fallo genérico del servidor o desconocido */
   genericError: 'Algo salió mal de nuestro lado. Intenta de nuevo en un momento.',
@@ -87,6 +86,17 @@ export const VOICE = {
     title: 'Tu acceso está desactivado',
     body: 'Tu usuario existe, pero tu acceso al negocio fue desactivado. Habla con un socio para que lo reactive.',
     signOut: 'Cerrar sesión',
+  },
+  /** La cuenta no tiene una persona asignada (una cuenta es de una sola persona). */
+  accountUnassigned: {
+    title: 'Tu cuenta no tiene una persona asignada',
+    body: 'Habla con un socio para que la revise. Mientras tanto no puedes entrar.',
+  },
+  /** No se pudo saber de quién es la cuenta (sin conexión y sin datos guardados). */
+  accountUnconfirmed: {
+    title: 'No pudimos confirmar tu cuenta',
+    body: 'Revisa tu internet e intenta de nuevo.',
+    retry: 'Reintentar',
   },
   /** Pantalla de ajustes (engrane de la barra lateral). */
   settings: {

@@ -6,6 +6,8 @@ import { h } from 'vue'
 import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { APP_NAME } from '@/config/app'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useSessionStore } from '@/stores/session.store'
+import type { Member } from '@/types/member.types'
 
 // A diferencia de AppLayout.test.ts (que mockea vue-router), aquí se usa un
 // router real: el estado activo de los enlaces depende de cómo vue-router
@@ -28,13 +30,15 @@ vi.mock('@/components', async () => ({
   SyncStatusIndicator: (await import('@/components/ui/organisms/SyncStatusIndicator.vue')).default,
 }))
 
+// La persona es la de la cuenta (la fija auth.store con /auth/me): aquí se pone directo en la sesión al montar.
+let sessionPerson: Member | null = null
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   localStorage.setItem('access_token', TEST_IDENTITY)
   localStorage.setItem('token_expires_at', String(Date.now() + 60000))
   localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
+  sessionPerson = null
 })
 
 async function mountAt(path: string) {
@@ -65,7 +69,9 @@ async function mountAt(path: string) {
   })
   router.push(path)
   await router.isReady()
-  return mount(AppLayout, { global: { plugins: [createPinia(), router] } })
+  const pinia = createPinia()
+  if (sessionPerson) useSessionStore(pinia).setMember(sessionPerson)
+  return mount(AppLayout, { global: { plugins: [pinia, router] } })
 }
 
 const activeLabels = (wrapper: Awaited<ReturnType<typeof mountAt>>) =>
@@ -117,7 +123,7 @@ describe('AppLayout navegación', () => {
   })
 
   it('Reportes: solo un socio en Modo Gestión lo ve, antes de Códigos QR, Incidencias y Deudas', async () => {
-    sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
+    sessionPerson = { id: 'm-1', name: 'Ana', role: 'socio', active: true }
     localStorage.setItem('la-marchanta-ui-mode', 'gestion')
     const wrapper = await mountAt('/app')
     expect(linkLabels(wrapper)).toEqual(['🏠 Inicio', '📦 Productos', '📊 Reportes', '🏷️ Códigos QR', '⚠️ Incidencias', '💰 Deudas', '💼 Finanzas'])
@@ -125,14 +131,14 @@ describe('AppLayout navegación', () => {
   })
 
   it('Reportes no aparece para un socio en Modo Venta', async () => {
-    sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
+    sessionPerson = { id: 'm-1', name: 'Ana', role: 'socio', active: true }
     localStorage.setItem('la-marchanta-ui-mode', 'venta')
     const wrapper = await mountAt('/app')
     expect(wrapper.find('.sidebar__nav').text()).not.toMatch(/Reportes/)
   })
 
   it('Reportes no aparece para un colaborador, ni en Gestión ni en Venta', async () => {
-    sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-2', name: 'Carlos', role: 'colaborador', active: true }))
+    sessionPerson = { id: 'm-2', name: 'Carlos', role: 'colaborador', active: true }
     for (const mode of ['venta', 'gestion']) {
       localStorage.setItem('la-marchanta-ui-mode', mode)
       const wrapper = await mountAt('/app')
@@ -141,7 +147,7 @@ describe('AppLayout navegación', () => {
   })
 
   it('en /app/reportes solo "Reportes" está activo y el título de la barra es "Reportes"', async () => {
-    sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
+    sessionPerson = { id: 'm-1', name: 'Ana', role: 'socio', active: true }
     localStorage.setItem('la-marchanta-ui-mode', 'gestion')
     const wrapper = await mountAt('/app/reportes')
     expect(activeLabels(wrapper)).toHaveLength(1)
@@ -223,7 +229,7 @@ describe('AppLayout engrane de ajustes (junto al nombre)', () => {
   const colaborador = { id: 'm-2', name: 'Carlos', role: 'colaborador', active: true }
 
   it.each([['socio', socio], ['colaborador', colaborador]])('lo ve %s, en el pie junto al nombre y antes de cerrar sesión', async (_role, member) => {
-    sessionStorage.setItem('member_context', JSON.stringify(member))
+    sessionPerson = member as Member
     const wrapper = await mountAt('/app')
     const footer = wrapper.get('.sidebar__footer')
     const gear = footer.get('a.sidebar__settings')

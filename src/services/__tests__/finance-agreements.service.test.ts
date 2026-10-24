@@ -48,7 +48,7 @@ describe('agreement API adapter', () => {
     const result = await FinanceAgreementsService.create(agreementOrigin, { ...payload(), contextId: 'forbidden', pools: {} } as CreateAgreementPayload)
     expect(result.participants[0]?.name).toBe('Alberto')
     expect(api.post).toHaveBeenCalledWith('/finance/distribution-agreements', payload(), expect.objectContaining({
-      headers: { 'x-member-id': agreementOrigin.memberId, 'x-device-id': agreementOrigin.deviceId }, financialOrigin: agreementOrigin,
+      headers: { 'x-device-id': agreementOrigin.deviceId }, financialOrigin: agreementOrigin,
     }))
   })
   it.each([

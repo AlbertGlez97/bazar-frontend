@@ -222,7 +222,6 @@ describe('recuperarse de un dispositivo que ya no existe (403 "Selection is not 
 
     await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('SelectContext'))
     expect(session.isDeviceIdentified).toBe(false)
-    expect(session.isMemberSelected).toBe(false)
     expect(localStorage.getItem('device_context')).toBeNull()
   })
 

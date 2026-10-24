@@ -4,20 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import SelectContextView from '../SelectContextView.vue'
 import DevicesService from '@/services/devices.service'
 import MembersService from '@/services/members.service'
+import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
-import { useToastStore } from '@/stores/toast.store'
-import type { Member } from '@/types/member.types'
 
 vi.mock('@/services/devices.service', () => ({ default: { identify: vi.fn() } }))
 vi.mock('@/services/members.service', () => ({ default: { list: vi.fn() } }))
 
 const push = vi.fn()
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
-
-const members: Member[] = [
-  { id: 'm-1', name: 'Alberto', role: 'socio', active: true },
-  { id: 'm-2', name: 'Carlos', role: 'colaborador', active: true },
-]
 
 // El dispositivo se guarda por cuenta: aquí, el de la cuenta con sesión abierta en estas pruebas.
 const storedDevice = () => JSON.parse(localStorage.getItem('device_contexts') ?? 'null')?.devices?.['account-a|/api/v1'] ?? null
@@ -30,14 +24,20 @@ beforeEach(() => {
   localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   vi.clearAllMocks()
+  // Una cuenta = una persona: la vista siempre ve una cuenta ya ligada a la suya (el guard del
+  // router lo resolvió antes). Los estados bloqueados se prueban en SelectContextView.binding.test.ts.
+  useAuthStore().bindingStatus = 'bound'
 })
 
 describe('SelectContextView', () => {
-  it.each(['changed', 'legacy', 'rejected'] as const)('explains %s recovery without exposing secrets', (reason) => {
+  it.each([
+    ['legacy', 'El dispositivo guardado necesita confirmación. Identifícalo de nuevo para continuar.'],
+    ['rejected', 'No pudimos validar este dispositivo. Identifícalo de nuevo para continuar.'],
+  ] as const)('explains %s recovery without exposing secrets', (reason, text) => {
     useSessionStore().recoveryReason = reason
     const wrapper = mount(SelectContextView)
     expect(wrapper.find('[role="status"]').exists()).toBe(true)
-    expect(wrapper.find('[role="status"]').text()).toContain('Confirma')
+    expect(wrapper.find('[role="status"]').text()).toBe(text)
     expect(wrapper.text()).not.toContain('Selection is not authorized')
   })
   it('sin dispositivo identificado, muestra el formulario de identificación', () => {
@@ -46,9 +46,8 @@ describe('SelectContextView', () => {
     expect(MembersService.list).not.toHaveBeenCalled()
   })
 
-  it('dispositivo heredado: identifica, lo persiste SIN token ni identifier y continúa al selector', async () => {
+  it('dispositivo heredado: identifica, lo persiste SIN token ni identifier y entra a la app', async () => {
     vi.mocked(DevicesService.identify).mockResolvedValue({ deviceId: 'd-1' })
-    vi.mocked(MembersService.list).mockResolvedValue(members)
 
     const wrapper = mount(SelectContextView)
     const inputs = wrapper.findAll('input')
@@ -68,14 +67,15 @@ describe('SelectContextView', () => {
       deviceId: 'd-1', name: 'Shared tablet',
     })
 
-    // Ya identificado el dispositivo, debe mostrar el selector de persona
+    // Ya identificado el dispositivo no hay nada más que elegir: entra directo a la app.
     expect(wrapper.find('form').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Alberto')
+    expect(wrapper.find('[role="list"]').exists()).toBe(false)
+    expect(MembersService.list).not.toHaveBeenCalled()
+    expect(push).toHaveBeenCalledExactlyOnceWith({ name: 'AppHome' })
   })
 
   it('activación nueva: guarda deviceId + deviceToken + nombre y NO el identificador de un solo uso', async () => {
     vi.mocked(DevicesService.identify).mockResolvedValue({ deviceId: 'd-9', deviceToken: 'tok-secreto' })
-    vi.mocked(MembersService.list).mockResolvedValue(members)
 
     const wrapper = mount(SelectContextView)
     const inputs = wrapper.findAll('input')
@@ -96,20 +96,24 @@ describe('SelectContextView', () => {
     // El token nunca se pinta en pantalla.
     expect(wrapper.text()).not.toContain('tok-secreto')
     expect(wrapper.find('form').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Alberto')
+    expect(MembersService.list).not.toHaveBeenCalled()
+    expect(push).toHaveBeenCalledExactlyOnceWith({ name: 'AppHome' })
   })
 
   it('un dispositivo heredado ya guardado con identifier se migra al abrir la vista (sin volver a identificarlo)', async () => {
     localStorage.setItem('device_context', JSON.stringify({
       deviceId: 'd-legacy', identifier: 'shared-tablet', name: 'Shared tablet',
     }))
-    vi.mocked(MembersService.list).mockResolvedValue(members)
+    // El store de sesión migra al crearse: se crea de nuevo, ya con el valor guardado.
+    setActivePinia(createPinia())
+    useAuthStore().bindingStatus = 'bound'
 
     const wrapper = mount(SelectContextView)
     await flushPromises()
 
     expect(wrapper.find('form').exists()).toBe(false)
-    expect(MembersService.list).toHaveBeenCalledOnce()
+    expect(MembersService.list).not.toHaveBeenCalled()
+    expect(push).toHaveBeenCalledExactlyOnceWith({ name: 'AppHome' })
     expect(storedDevice()).toEqual({
       deviceId: 'd-legacy', name: 'Shared tablet',
     })
@@ -133,7 +137,9 @@ describe('SelectContextView', () => {
   })
 
   describe('errores al identificar el dispositivo', () => {
+    // Lo que manda el servidor en un 409 (la pantalla no lo repite: habla de "código", no de "identificador").
     const USED = 'Este identificador ya fue usado. Pide a un socio que te genere uno nuevo.'
+    const CODE_USED = 'Este código ya se usó. Pide a un socio que te registre un dispositivo nuevo.'
     const NOT_REGISTERED = 'Este dispositivo no está registrado con nosotros todavía. Contacta a soporte.'
 
     async function submit(wrapper: ReturnType<typeof mount>, identifier = 'codigo', name = 'Tablet') {
@@ -144,7 +150,7 @@ describe('SelectContextView', () => {
       await flushPromises()
     }
 
-    it('409 con mensaje del servidor: lo muestra (aviso, no error) y NO usa el texto del 403', async () => {
+    it('409 con mensaje del servidor: avisa con el texto de "código ya usado" (aviso, no error) y NO usa el texto del 403', async () => {
       vi.mocked(DevicesService.identify).mockRejectedValue({
         response: { status: 409, data: { message: USED } },
       })
@@ -153,14 +159,15 @@ describe('SelectContextView', () => {
       await submit(wrapper)
 
       const alert = wrapper.find('[role="alert"]')
-      expect(alert.text()).toContain(USED)
+      expect(alert.text()).toContain(CODE_USED)
+      expect(alert.text()).not.toContain('identificador')
       expect(alert.classes()).toContain('app-alert--warning')
       expect(wrapper.text()).not.toContain(NOT_REGISTERED)
       expect(useSessionStore().isDeviceIdentified).toBe(false)
       expect(MembersService.list).not.toHaveBeenCalled()
     })
 
-    it('409 de un dispositivo revocado: muestra el mensaje propio del servidor', async () => {
+    it('409 de un dispositivo revocado: también pide un código nuevo a un socio', async () => {
       const REVOKED = 'Este dispositivo fue revocado. Pide a un socio que te genere un identificador nuevo.'
       vi.mocked(DevicesService.identify).mockRejectedValue({
         response: { status: 409, data: { message: REVOKED } },
@@ -169,7 +176,7 @@ describe('SelectContextView', () => {
       const wrapper = mount(SelectContextView)
       await submit(wrapper)
 
-      expect(wrapper.find('[role="alert"]').text()).toContain(REVOKED)
+      expect(wrapper.find('[role="alert"]').text()).toContain(CODE_USED)
     })
 
     it.each([
@@ -178,13 +185,13 @@ describe('SelectContextView', () => {
       ['message vacío', { status: 409, data: { message: '' } }],
       ['message en blanco', { status: 409, data: { message: '   ' } }],
       ['message que no es texto', { status: 409, data: { message: ['a'] } }],
-    ])('409 %s: usa el mensaje de respaldo', async (_label, response) => {
+    ])('409 %s: el aviso es el mismo', async (_label, response) => {
       vi.mocked(DevicesService.identify).mockRejectedValue({ response })
 
       const wrapper = mount(SelectContextView)
       await submit(wrapper)
 
-      expect(wrapper.find('[role="alert"]').text()).toContain(USED)
+      expect(wrapper.find('[role="alert"]').text()).toContain(CODE_USED)
     })
 
     it('403 conserva su texto de siempre y se ve como error (distinto del 409)', async () => {
@@ -214,7 +221,6 @@ describe('SelectContextView', () => {
       vi.mocked(DevicesService.identify)
         .mockRejectedValueOnce({ response: { status: 409, data: { message: USED } } })
         .mockResolvedValueOnce({ deviceId: 'd-7', deviceToken: 'tok-7' })
-      vi.mocked(MembersService.list).mockResolvedValue(members)
 
       const wrapper = mount(SelectContextView)
       await submit(wrapper, 'viejo', 'Tablet')
@@ -241,7 +247,7 @@ describe('SelectContextView', () => {
 
       await submit(wrapper)
       const alert = wrapper.find('[role="alert"]')
-      expect(alert.text()).toContain(USED)
+      expect(alert.text()).toContain(CODE_USED)
       expect(alert.text()).not.toContain(NOT_REGISTERED)
     })
 
@@ -257,52 +263,32 @@ describe('SelectContextView', () => {
     })
   })
 
-  it('con dispositivo ya identificado, carga y muestra la lista de members', async () => {
+  it('con el dispositivo ya identificado no hay selector de persona ni se pide la lista: entra directo a /app', async () => {
     localStorage.setItem('device_context', JSON.stringify({
       deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet',
     }))
-    vi.mocked(MembersService.list).mockResolvedValue(members)
+    setActivePinia(createPinia())
+    useAuthStore().bindingStatus = 'bound'
 
     const wrapper = mount(SelectContextView)
     await flushPromises()
 
-    expect(MembersService.list).toHaveBeenCalledOnce()
-    expect(wrapper.find('form').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Alberto')
-    expect(wrapper.text()).toContain('Carlos')
-  })
-
-  it('al elegir una persona, la guarda en el session store y redirige a /app', async () => {
-    localStorage.setItem('device_context', JSON.stringify({
-      deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet',
-    }))
-    vi.mocked(MembersService.list).mockResolvedValue(members)
-
-    const wrapper = mount(SelectContextView)
-    await flushPromises()
-
-    const cards = wrapper.findAll('[role="listitem"]')
-    await cards[0].trigger('click')
-
-    const session = useSessionStore()
-    expect(session.memberId).toBe('m-1')
-    expect(JSON.parse(sessionStorage.getItem('member_context') ?? 'null')).toEqual(members[0])
+    expect(MembersService.list).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="list"]').exists()).toBe(false)
+    expect(wrapper.find('[role="listitem"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('¿Quién atiende hoy?')
     expect(push).toHaveBeenCalledExactlyOnceWith({ name: 'AppHome' })
   })
 
-  it('si falla la carga de members, notifica por toast', async () => {
-    localStorage.setItem('device_context', JSON.stringify({
-      deviceId: 'd-1', identifier: 'shared-tablet', name: 'Shared tablet',
-    }))
-    vi.mocked(MembersService.list).mockRejectedValue(new Error('offline'))
-
-    mount(SelectContextView)
+  it('no hay nada en sessionStorage: la vista no guarda ninguna persona', async () => {
+    vi.mocked(DevicesService.identify).mockResolvedValue({ deviceId: 'd-3', deviceToken: 'tok' })
+    const wrapper = mount(SelectContextView)
+    const inputs = wrapper.findAll('input')
+    await inputs[0].setValue('codigo')
+    await inputs[1].setValue('Tablet')
+    await wrapper.find('form').trigger('submit')
     await flushPromises()
 
-    const toast = useToastStore()
-    expect(toast.toasts).toHaveLength(1)
-    expect(toast.toasts[0]).toMatchObject({
-      type: 'error', message: 'No pudimos cargar la lista de personas. Intenta de nuevo.',
-    })
+    expect(sessionStorage.length).toBe(0)
   })
 })

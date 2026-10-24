@@ -55,7 +55,7 @@ describe('SalesService.createSale', () => {
     await SalesService.createSale(payload)
 
     expect(api.post).toHaveBeenCalledExactlyOnceWith('/sales', payload, {
-      headers: { 'x-member-id': payload.memberId, 'x-device-id': payload.deviceId },
+      headers: { 'x-device-id': payload.deviceId },
     })
   })
 
@@ -65,7 +65,7 @@ describe('SalesService.createSale', () => {
     await SalesService.createSale(payload, { handleAuthLocally: true })
 
     expect(api.post).toHaveBeenCalledExactlyOnceWith('/sales', payload, {
-      headers: { 'x-member-id': payload.memberId, 'x-device-id': payload.deviceId },
+      headers: { 'x-device-id': payload.deviceId },
       skipAuthRedirect: true,
     })
   })

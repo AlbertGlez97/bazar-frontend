@@ -4,7 +4,7 @@ import type { AccountBinding, AuthResponse, ChangePasswordPayload, LoginPayload 
 const AuthService = {
   /**
    * Quién es la cuenta de la sesión y a qué miembro está ligada (solo JWT, sin
-   * x-member-id ni x-device-id). Los errores se propagan tal cual para que quien
+   * x-device-id). Los errores se propagan tal cual para que quien
    * llama distinga 401 (sesión vencida), sin respuesta / 5xx (sin conexión) y
    * los demás.
    */

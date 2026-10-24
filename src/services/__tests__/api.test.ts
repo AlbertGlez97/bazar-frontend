@@ -56,7 +56,7 @@ describe('api — interceptores Axios', () => {
     expect(result.headers.Authorization).toBeUndefined()
   })
 
-  it('agrega x-member-id y x-device-id si el session store ya los tiene', () => {
+  it('agrega x-device-id pero NUNCA x-member-id, aunque el session store tenga una persona', () => {
     const session = useSessionStore()
     session.setDevice({ deviceId: 'd-1', name: 'Shared tablet' })
     session.setMember({ id: 'm-1', name: 'Alberto', role: 'socio', active: true })
@@ -65,7 +65,7 @@ describe('api — interceptores Axios', () => {
     const handler = (api.interceptors.request as unknown as RequestHandlers).handlers[0]
     const result = handler.fulfilled(config)
 
-    expect(result.headers['x-member-id']).toBe('m-1')
+    expect(result.headers['x-member-id']).toBeUndefined()
     expect(result.headers['x-device-id']).toBe('d-1')
   })
 

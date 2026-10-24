@@ -1,7 +1,8 @@
 const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
-// Security regression: for an account bound to a member the person selector
-// must not exist at all. Only the shared business login (no bound member) picks
-// who is attending.
+// ONE ACCOUNT PER PERSON: nobody picks a person. The account's person comes from
+// GET /auth/me (set by the router guard), so this screen has no selector and never
+// asks for the list of members. It only identifies the device, or explains why an
+// account (inactive, unassigned, unconfirmed) cannot enter.
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -22,39 +23,34 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
 
 const socio: Member = { id: 'm-soc', name: 'Alberto', role: 'socio', active: true }
 const colaborador: Member = { id: 'm-col', name: 'Carla', role: 'colaborador', active: true }
-const everyone = [socio, colaborador]
+const networkError = () => Object.assign(new Error('Network Error'), { response: undefined })
 
-async function signInAs(member: Member | null, opts: { deviceIdentified?: boolean } = {}) {
+type Account = Member | 'unassigned' | 'offline'
+
+/** Inicia la pantalla como la dejaría el guard del router: sesión abierta y /auth/me ya consultado. */
+async function signInAs(account: Account, opts: { deviceIdentified?: boolean } = {}) {
   localStorage.setItem('access_token', TEST_IDENTITY)
   localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
   localStorage.setItem('auth_username', 'x')
+  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   if (opts.deviceIdentified) {
     localStorage.setItem('device_context', JSON.stringify({ deviceId: 'd-1', name: 'Shared tablet' }))
   }
-  localStorage.setItem('access_token', TEST_IDENTITY)
-  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
-  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
-  vi.mocked(AuthService.me).mockResolvedValue(
-    member ? { username: 'x', memberId: member.id, member } : { username: 'x', memberId: null, member: null },
-  )
+  if (account === 'offline') vi.mocked(AuthService.me).mockRejectedValue(networkError())
+  else if (account === 'unassigned') vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
+  else vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: account.id, member: account })
   await useAuthStore().ensureBinding()
 }
 
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
-  localStorage.setItem('access_token', TEST_IDENTITY)
-  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
-  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
   setActivePinia(createPinia())
   vi.clearAllMocks()
-  vi.mocked(MembersService.list).mockResolvedValue(everyone)
 })
 
-describe('SelectContextView with an account bound to a member', () => {
+describe('SelectContextView with an account bound to a person', () => {
   it('device already identified: NO selector, no members request, straight into the app', async () => {
     await signInAs(colaborador, { deviceIdentified: true })
 
@@ -62,7 +58,7 @@ describe('SelectContextView with an account bound to a member', () => {
     await flushPromises()
 
     expect(wrapper.find('[role="list"]').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('Alberto')
+    expect(wrapper.text()).not.toContain('¿Quién atiende hoy?')
     expect(MembersService.list).not.toHaveBeenCalled()
     expect(push).toHaveBeenCalledWith({ name: 'AppHome' })
     expect(useSessionStore().member).toEqual(colaborador)
@@ -74,6 +70,7 @@ describe('SelectContextView with an account bound to a member', () => {
 
     const wrapper = mount(SelectContextView)
     expect(wrapper.find('form').exists()).toBe(true)
+    expect(push).not.toHaveBeenCalled()
 
     const inputs = wrapper.findAll('input')
     await inputs[0].setValue('codigo')
@@ -100,7 +97,15 @@ describe('SelectContextView with an account bound to a member', () => {
     expect(push).toHaveBeenCalledWith({ name: 'AppHome' })
   })
 
-  it('a deactivated bound member sees a clear message, no selector and no way into the app', async () => {
+  it('the section is labeled as the device identification (not as a person selector)', async () => {
+    await signInAs(colaborador)
+    const wrapper = mount(SelectContextView)
+    expect(wrapper.get('section').attributes('aria-label')).toBe('Identificación del dispositivo')
+  })
+})
+
+describe('SelectContextView with a deactivated person', () => {
+  it('shows a clear message, no selector and no way into the app', async () => {
     await signInAs({ ...colaborador, active: false }, { deviceIdentified: true })
 
     const wrapper = mount(SelectContextView)
@@ -114,7 +119,7 @@ describe('SelectContextView with an account bound to a member', () => {
     expect(useSessionStore().member).toBeNull()
   })
 
-  it('the deactivated screen offers to sign out, which clears the session and goes to login', async () => {
+  it('offers to sign out, which clears the session and goes to login', async () => {
     await signInAs({ ...colaborador, active: false }, { deviceIdentified: true })
 
     const wrapper = mount(SelectContextView)
@@ -128,37 +133,121 @@ describe('SelectContextView with an account bound to a member', () => {
   })
 })
 
-describe('SelectContextView with the shared business login', () => {
-  it('still shows the selector with everybody and lets the person choose (legacy flow untouched)', async () => {
-    await signInAs(null, { deviceIdentified: true })
+describe('SelectContextView with an account without a person (unassigned)', () => {
+  it.each([false, true])('explains it, offers to sign out and never shows a selector (device identified: %s)', async (deviceIdentified) => {
+    await signInAs('unassigned', { deviceIdentified })
 
     const wrapper = mount(SelectContextView)
     await flushPromises()
 
-    expect(MembersService.list).toHaveBeenCalledOnce()
-    const cards = wrapper.findAll('[role="listitem"]')
-    expect(cards).toHaveLength(2)
-
-    await cards[0].trigger('click')
-    expect(useSessionStore().member).toEqual(socio)
-    expect(push).toHaveBeenCalledWith({ name: 'AppHome' })
+    expect(wrapper.get('h1').text()).toBe('Tu cuenta no tiene una persona asignada')
+    expect(wrapper.text()).toContain('Habla con un socio para que la revise. Mientras tanto no puedes entrar.')
+    expect(wrapper.find('[role="list"]').exists()).toBe(false)
+    expect(wrapper.find('[role="listitem"]').exists()).toBe(false)
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.find('[data-test="retry"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="sign-out"]').text()).toBe('Cerrar sesión')
+    expect(MembersService.list).not.toHaveBeenCalled()
+    expect(push).not.toHaveBeenCalled()
+    expect(useSessionStore().isContextReady).toBe(false)
   })
 
-  it('an unknown binding (server unreachable at startup) behaves as before: the selector is shown', async () => {
-    localStorage.setItem('access_token', TEST_IDENTITY)
-    localStorage.setItem('token_expires_at', String(Date.now() + 60_000))
-    localStorage.setItem('device_context', JSON.stringify({ deviceId: 'd-1', name: 'Shared tablet' }))
-    localStorage.setItem('access_token', TEST_IDENTITY)
-  localStorage.setItem('token_expires_at', String(Date.now() + 60000))
-  localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  setActivePinia(createPinia())
+  it('"Cerrar sesión" clears the session and goes to login', async () => {
+    await signInAs('unassigned', { deviceIdentified: true })
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+
+    await wrapper.get('[data-test="sign-out"]').trigger('click')
+
+    expect(useAuthStore().isAuthenticated).toBe(false)
+    expect(push).toHaveBeenCalledWith({ name: 'Login' })
+  })
+})
+
+describe('SelectContextView with an unconfirmed account (unknown)', () => {
+  it('explains it, offers "Reintentar" and "Cerrar sesión", and shows no selector', async () => {
+    await signInAs('offline', { deviceIdentified: true })
 
     const wrapper = mount(SelectContextView)
     await flushPromises()
 
     expect(useAuthStore().bindingStatus).toBe('unknown')
-    expect(wrapper.findAll('[role="listitem"]')).toHaveLength(2)
+    expect(wrapper.get('h1').text()).toBe('No pudimos confirmar tu cuenta')
+    expect(wrapper.text()).toContain('Revisa tu internet e intenta de nuevo.')
+    expect(wrapper.get('[data-test="retry"]').text()).toBe('Reintentar')
+    expect(wrapper.get('[data-test="sign-out"]').text()).toBe('Cerrar sesión')
+    expect(wrapper.find('[role="list"]').exists()).toBe(false)
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(MembersService.list).not.toHaveBeenCalled()
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it('retry that succeeds binds the account and reaches the app', async () => {
+    await signInAs('offline', { deviceIdentified: true })
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+    vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: colaborador.id, member: colaborador })
+
+    await wrapper.get('[data-test="retry"]').trigger('click')
+    await flushPromises()
+
+    expect(AuthService.me).toHaveBeenCalledTimes(2)
+    expect(useAuthStore().bindingStatus).toBe('bound')
+    expect(useSessionStore().member).toEqual(colaborador)
+    expect(push).toHaveBeenCalledExactlyOnceWith({ name: 'AppHome' })
+  })
+
+  it('retry that fails stays on the same screen, without entering the app, and can be tried again', async () => {
+    await signInAs('offline', { deviceIdentified: true })
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+
+    await wrapper.get('[data-test="retry"]').trigger('click')
+    await flushPromises()
+
+    expect(AuthService.me).toHaveBeenCalledTimes(2)
+    expect(useAuthStore().bindingStatus).toBe('unknown')
+    expect(wrapper.get('h1').text()).toBe('No pudimos confirmar tu cuenta')
+    expect(wrapper.find('[data-test="retry"]').attributes('disabled')).toBeUndefined()
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it('retry that succeeds on an account that still lacks the device keeps asking only for the device', async () => {
+    await signInAs('offline')
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+    vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: socio.id, member: socio })
+
+    await wrapper.get('[data-test="retry"]').trigger('click')
+    await flushPromises()
+
+    expect(push).not.toHaveBeenCalled()
+    expect(wrapper.get('h1').text()).toBe('Falta registrar este dispositivo')
+    expect(wrapper.find('form').exists()).toBe(true)
+  })
+
+  it('retry that turns out to be an unassigned account shows that explanation', async () => {
+    await signInAs('offline', { deviceIdentified: true })
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+    vi.mocked(AuthService.me).mockResolvedValue({ username: 'x', memberId: null, member: null })
+
+    await wrapper.get('[data-test="retry"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('h1').text()).toBe('Tu cuenta no tiene una persona asignada')
+    expect(push).not.toHaveBeenCalled()
+  })
+
+  it('"Cerrar sesión" clears the session and goes to login', async () => {
+    await signInAs('offline')
+    const wrapper = mount(SelectContextView)
+    await flushPromises()
+
+    await wrapper.get('[data-test="sign-out"]').trigger('click')
+
+    expect(useAuthStore().isAuthenticated).toBe(false)
+    expect(push).toHaveBeenCalledWith({ name: 'Login' })
   })
 })
 
@@ -212,17 +301,5 @@ describe('cuenta atada que llega sin dispositivo (aceptó en otra computadora y 
 
     expect(push).toHaveBeenCalledWith({ name: 'AppHome' })
     expect(MembersService.list).not.toHaveBeenCalled()
-  })
-
-  it('el login compartido sigue viendo el texto de siempre', async () => {
-    await signInAs(null)
-    const wrapper = mount(SelectContextView)
-    await flushPromises()
-
-    expect(wrapper.get('h1').text()).toBe('Identifica este dispositivo')
-    expect(wrapper.text()).toContain('Solo lo haces una vez por dispositivo.')
-    expect(wrapper.text()).toContain('el identificador')
-    expect(wrapper.text()).not.toContain('Falta registrar')
-    expect(wrapper.findAll('label').map((l) => l.text())).toEqual(['Identificador del dispositivo', 'Nombre del dispositivo'])
   })
 })

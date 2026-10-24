@@ -28,7 +28,7 @@ const IncidenciasService = {
 
   /**
    * PATCH /incidencias/:id/resolver — ruta en español, no `/resolve`. El
-   * resolutor es siempre `x-member-id`; nunca se manda en el cuerpo. 409 si
+   * resolutor es siempre la persona de la cuenta; nunca se manda en el cuerpo. 409 si
    * ya estaba resuelta (no existe "des-resolver").
    */
   async resolverIncidencia(id: string, resolutionNotes: string): Promise<Incidencia> {

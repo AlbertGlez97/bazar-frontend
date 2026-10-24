@@ -6,6 +6,8 @@ import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
 import { mockDevice, type MockDevice } from '@/test/mockDevice'
 import { UI_MODE_STORAGE_KEY, useUiModeStore } from '@/stores/uiMode.store'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useSessionStore } from '@/stores/session.store'
+import type { Member } from '@/types/member.types'
 
 // Selector de modo dentro del layout: el switch y el indicador usan los
 // componentes reales; solo se stubean los ajenos al tema (avatar, instalar).
@@ -29,9 +31,12 @@ let device: MockDevice | null = null
 
 const TEST_IDENTITY = 'a.' + btoa(JSON.stringify({ sub: 'account-a' })) + '.z'
 
+// La persona es la de la cuenta (la fija auth.store con /auth/me): aquí se pone directo en la sesión al montar.
+let sessionPerson: Member | null = null
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
+  sessionPerson = null
 })
 
 /** Un socio con sesión en este dispositivo (el menú del celular es solo de socios). */
@@ -39,8 +44,7 @@ function loginAsSocio() {
   localStorage.setItem('access_token', TEST_IDENTITY)
   localStorage.setItem('token_expires_at', String(Date.now() + 60000))
   localStorage.setItem('device_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  sessionStorage.setItem('member_context_owner', JSON.stringify({ accountId: 'account-a', apiBase: '/api/v1' }))
-  sessionStorage.setItem('member_context', JSON.stringify({ id: 'm-1', name: 'Ana', role: 'socio', active: true }))
+  sessionPerson = { id: 'm-1', name: 'Ana', role: 'socio', active: true }
 }
 afterEach(() => {
   device?.restore()
@@ -63,6 +67,7 @@ async function mountLayout() {
   router.push('/app')
   await router.isReady()
   const pinia = createPinia()
+  if (sessionPerson) useSessionStore(pinia).setMember(sessionPerson)
   const wrapper = mount(AppLayout, {
     global: { plugins: [pinia, router], stubs: { teleport: true } },
   })

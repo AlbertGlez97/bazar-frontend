@@ -9,7 +9,7 @@ vi.mock('../api', () => ({ default: { get: vi.fn(), post: vi.fn() } }))
 
 const TOKEN = 'dG9rZW4tZGUtcHJ1ZWJhLWRlLTMyLWJ5dGVzLWJhc2U2NHVybA'
 const MEMBER = '0190aaaa-0000-7000-8000-000000000002'
-const headers = { 'x-member-id': rulesOrigin.memberId, 'x-device-id': rulesOrigin.deviceId }
+const headers = { 'x-device-id': rulesOrigin.deviceId }
 const info = { email: 'beto@example.test', sentAt: '2026-10-20T17:59:00.000Z', expiresAt: '2026-10-23T17:59:00.000Z', canResendAt: '2026-10-20T18:00:00.000Z', resendsLeftToday: 2 }
 const statusRow = (over = {}) => ({ memberId: MEMBER, name: 'Beto', hasPersonalAccount: false, invite: { allowed: true, reason: null }, invitation: info, ...over })
 

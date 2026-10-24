@@ -28,6 +28,7 @@ const api = axios.create({
 // (main.ts instala Pinia antes del router/mount). Si falta memberId/deviceId
 // simplemente no se agregan los headers: el backend responde 403 para las
 // rutas que los exigen (ContextGuard/SocioGuard), no hace falta anticiparlo aquí.
+// Solo el dispositivo viaja en headers; la persona sale de la cuenta del token.
 api.interceptors.request.use((config) => {
   const session = useSessionStore()
   session.reconcileOwnership()
@@ -52,14 +53,11 @@ api.interceptors.request.use((config) => {
   }
   ;(config as typeof config & { requestContext: RequestContext }).requestContext = snapshot
   if (jwtOnly(config.url ?? '')) {
-    delete config.headers['x-member-id']
     delete config.headers['x-device-id']
     delete config.headers['x-device-token']
     return config
   }
-  if (session.memberId && !config.headers['x-member-id']) {
-    config.headers['x-member-id'] = session.memberId
-  }
+  // La persona NO viaja en un header: la dicta la cuenta del token.
   if (session.deviceId && !config.headers['x-device-id']) {
     config.headers['x-device-id'] = session.deviceId
   }
@@ -98,12 +96,11 @@ api.interceptors.response.use(
         && sameRequest && !jwtOnly(url)) {
       const session = useSessionStore()
       const headers = error.config?.headers
-      if (sameOwner(snapshot.owner, currentSessionOwner()) && snapshot.memberId && snapshot.deviceId
-          && snapshot.memberId === session.memberId && snapshot.deviceId === session.deviceId
+      if (sameOwner(snapshot.owner, currentSessionOwner()) && snapshot.deviceId
+          && snapshot.deviceId === session.deviceId
           && snapshot.deviceToken === session.deviceToken
-          && headers?.['x-member-id'] === session.memberId && headers?.['x-device-id'] === session.deviceId
+          && headers?.['x-device-id'] === session.deviceId
           && (headers?.['x-device-token'] ?? null) === session.deviceToken) {
-        session.clearMember()
         session.clearDevice()
         session.recoveryReason = 'rejected'
       }

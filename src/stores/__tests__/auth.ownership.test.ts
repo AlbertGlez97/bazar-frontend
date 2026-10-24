@@ -7,6 +7,7 @@ import AuthService from '@/services/auth.service'
 vi.mock('@/services/auth.service', () => ({ default: { login: vi.fn(), me: vi.fn() } }))
 const jwt = (sub: string) => 'a.' + btoa(JSON.stringify({ sub })) + '.z'
 const owner = { accountId: 'a', apiBase: '/api/v1' }
+const memberB = { id: 'mb', name: 'Beto', role: 'colaborador' as const, active: true }
 const member = { id: 'ma', name: 'Ana', role: 'socio' as const, active: true }
 beforeEach(() => { localStorage.clear(); sessionStorage.clear(); setActivePinia(createPinia()); vi.clearAllMocks(); localStorage.setItem('access_token', jwt('a')); localStorage.setItem('token_expires_at', String(Date.now() + 60000)); localStorage.setItem('auth_username', 'same') })
 describe('account-owned binding lifecycle', () => {
@@ -34,12 +35,12 @@ describe('account-owned binding lifecycle', () => {
     vi.mocked(AuthService.me).mockImplementationOnce(() => new Promise((yes, no) => { resolve = yes; reject = no }))
     const auth = useAuthStore(); const old = auth.ensureBinding()
     vi.mocked(AuthService.login).mockResolvedValue({ accessToken: jwt('b'), expiresIn: 3600, tokenType: 'Bearer' })
-    vi.mocked(AuthService.me).mockResolvedValue({ username: 'b', memberId: null, member: null })
+    vi.mocked(AuthService.me).mockResolvedValue({ username: 'b', memberId: 'mb', member: memberB })
     await auth.login({ username: 'b', password: 'synthetic' })
     if (result === 'success') resolve({ username: 'a', memberId: member.id, member }); else reject({ response: { status: 401 } })
     await old
-    expect(auth.token).toBe(jwt('b')); expect(auth.bindingStatus).toBe('shared')
-    expect(useSessionStore().memberId).toBeNull()
+    expect(auth.token).toBe(jwt('b')); expect(auth.bindingStatus).toBe('bound')
+    expect(useSessionStore().memberId).toBe('mb')
     expect(JSON.parse(localStorage.getItem('account_binding')!).owner.accountId).toBe('b')
   })
 })

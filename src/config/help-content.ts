@@ -27,15 +27,16 @@ export const COBRO_HELP: HelpArticle = {
 
 export const HELP_ARTICLES: readonly HelpArticle[] = [
   {
-    id: 'acceso', topic: 'primeros-pasos.acceso', title: 'Entrar por primera vez y elegir quién atiende', category: 'Primeros pasos', audience: 'all',
+    id: 'acceso', topic: 'primeros-pasos.acceso', title: 'Entrar por primera vez', category: 'Primeros pasos', audience: 'all',
     keywords: ['login', 'contraseña', 'registro', 'solicitud', 'dispositivo', 'miembro'],
-    intro: 'Para operar necesitas una cuenta aprobada y un dispositivo y una persona identificados. La solicitud de un negocio nuevo no inicia una sesión automáticamente.',
+    intro: 'Para operar necesitas tu cuenta personal y un dispositivo identificado. La solicitud de un negocio nuevo no inicia una sesión automáticamente.',
     steps: [
       'Si el negocio aún no está registrado, envía su solicitud desde la página de registro y espera la aprobación. No repitas la solicitud para intentar saltar la espera.',
-      'En la pantalla de inicio de sesión, introduce las credenciales autorizadas del negocio.',
+      'En la pantalla de inicio de sesión, escribe el usuario y la contraseña de tu cuenta.',
       'Si se solicita, identifica la tablet o teléfono con su acceso de dispositivo. Un socio administra estos accesos en Ajustes → Dispositivos.',
-      'En un acceso compartido, elige la persona que realmente atiende en esa sesión. Una cuenta ligada a una persona usa su identidad asignada.',
-      'Si el acceso o la persona está inactivo, pide al responsable que revise la situación. No selecciones otra identidad para eludir el bloqueo.',
+      'Entras directo como tú. Cada cuenta es de una sola persona y no se comparte.',
+      'Para cambiar de persona en un dispositivo, cierra sesión y entra con la otra cuenta.',
+      'Si tu acceso está desactivado, pide a un socio que lo revise.',
     ],
     tips: ['No hay recuperación de contraseña desde una opción Olvidé mi contraseña. Consulta al responsable si no puedes entrar; Cambiar mi contraseña requiere una sesión abierta.'],
   },
@@ -439,7 +440,7 @@ export const HELP_ARTICLES: readonly HelpArticle[] = [
       'Abre el engrane de Ajustes y entra a Mi equipo.',
       'Revisa la lista para evitar agregar a la misma persona otra vez.',
       'Pulsa Agregar persona y captura los datos y la comisión que corresponda.',
-      'Guarda y verifica la nueva persona en la lista. En accesos compartidos, elige a quien realmente atiende al iniciar su sesión.',
+      'Guarda y verifica la nueva persona en la lista. Cada persona entra con su propia cuenta.',
     ],
     tips: ['La pantalla permite agregar y consultar; no ofrece editar un miembro existente ni un perfil general de la cuenta.'],
   },

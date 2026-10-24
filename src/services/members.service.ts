@@ -4,11 +4,10 @@ import type { CreatedMember, CreateMemberPayload, Member } from '@/types/member.
 const MembersService = {
   /**
    * Lista los members del negocio.
-   * Solo exige AuthGuard (Bearer token) — no requiere x-member-id/x-device-id,
-   * ya que este endpoint se usa precisamente ANTES de tenerlos elegidos (selector
-   * de persona). Con `includeInactive` también pide a las personas desactivadas;
-   * el servidor solo lo respeta cuando `x-member-id` es un socio activo (la
-   * pantalla "Mi equipo", que ya tiene su persona elegida) y si no lo ignora.
+   * Solo exige AuthGuard (Bearer token) — no requiere x-device-id. Con
+   * `includeInactive` también pide a las personas desactivadas; el servidor
+   * solo lo respeta cuando la cuenta es de un socio activo (la pantalla
+   * "Mi equipo") y si no lo ignora.
    */
   async list(options: { includeInactive?: boolean } = {}): Promise<Member[]> {
     const { data } = options.includeInactive

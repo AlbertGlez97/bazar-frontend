@@ -1,22 +1,31 @@
 <template>
   <section
     class="select-context"
-    aria-label="Selección de dispositivo y persona"
+    aria-label="Identificación del dispositivo"
   >
     <div class="select-context__inner container">
-      <!-- Cuenta ligada a una persona que ya no puede entrar (miembro
-           desactivado): se explica y no hay nada más que hacer aquí — ni
-           dispositivo, ni selector. -->
-      <template v-if="isInactive">
+      <!-- La cuenta no puede entrar: su persona está desactivada, la cuenta no
+           tiene persona asignada o no se pudo confirmar. Se explica y no hay
+           nada más que hacer aquí — ni dispositivo. -->
+      <template v-if="blocked">
         <h1 class="select-context__title">
-          {{ VOICE.accountInactive.title }}
+          {{ blocked.title }}
         </h1>
         <p class="select-context__subtitle">
-          {{ VOICE.accountInactive.body }}
+          {{ blocked.body }}
         </p>
         <div class="select-context__actions">
           <AppButton
+            v-if="isUnknown"
+            data-test="retry"
+            :loading="retrying"
+            @click="handleRetry"
+          >
+            {{ VOICE.accountUnconfirmed.retry }}
+          </AppButton>
+          <AppButton
             variant="secondary"
+            data-test="sign-out"
             @click="handleSignOut"
           >
             {{ VOICE.accountInactive.signOut }}
@@ -43,9 +52,10 @@
           {{ VOICE.contextRecovery[sessionStore.recoveryReason] }}
         </p>
 
-        <!-- Paso 1: identificar el dispositivo (solo si aún no está guardado
-             en localStorage — el dispositivo es físico/fijo, no se repite en
-             cada apertura de la app). -->
+        <!-- Identificar el dispositivo (solo si aún no está guardado en
+             localStorage — el dispositivo es físico/fijo, no se repite en
+             cada apertura de la app). La persona no se elige: es la de la
+             cuenta. -->
         <DeviceIdentifyForm
           v-if="!sessionStore.isDeviceIdentified"
           :bound="isBound"
@@ -54,26 +64,6 @@
           :error-type="deviceErrorType"
           @submit="handleDeviceSubmit"
         />
-
-        <!-- Paso 2: elegir quién atiende (se repite en cada sesión, aunque el
-             dispositivo ya esté identificado — tablet compartida). SOLO para el
-             login compartido: una cuenta ligada a un miembro no elige a nadie,
-             ya es esa persona (el servidor rechaza a cualquier otra). -->
-        <template v-else-if="showSelector">
-          <p
-            v-if="membersLoading"
-            class="select-context__loading"
-          >
-            Cargando a tu equipo…
-          </p>
-          <MemberSelector
-            v-else
-            :members="members"
-            :loading="selectingMember"
-            :locked-member-id="null"
-            @select="handleMemberSelect"
-          />
-        </template>
 
         <!-- Salida SIEMPRE disponible: el router devuelve aquí a quien no tiene contexto, así que
              sin esto, quien no tiene el código quedaría atrapado. Cierra la sesión y va al login. -->
@@ -100,57 +90,53 @@
 </template>
 
 <script setup lang="ts">
-// Vista: única responsable de las llamadas reales (POST /devices/identify,
-// GET /members) y de escribir en session.store — las moléculas de ui/ solo
-// validan/renderizan y emiten eventos (ver reglas del barrel @/components).
+// Vista: única responsable de la llamada real (POST /devices/identify) y de
+// escribir en session.store — las moléculas de ui/ solo validan/renderizan y
+// emiten eventos (ver reglas del barrel @/components).
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { AppButton, DeviceIdentifyForm, MemberSelector } from '@/components'
+import { AppButton, DeviceIdentifyForm } from '@/components'
 import { VOICE, deviceIdentifyError } from '@/config/voice'
 import DevicesService from '@/services/devices.service'
-import MembersService from '@/services/members.service'
 import { useAuthStore } from '@/stores/auth.store'
 import { useSessionStore } from '@/stores/session.store'
-import { useToastStore } from '@/stores/toast.store'
 import type { DeviceIdentifyPayload } from '@/types/device.types'
-import type { Member } from '@/types/member.types'
 
 const router = useRouter()
-const toast = useToastStore()
 const sessionStore = useSessionStore()
 const authStore = useAuthStore()
 
 const deviceLoading = ref(false)
 const deviceError = ref<string | null>(null)
 const deviceErrorType = ref<'error' | 'warning'>('error')
+const retrying = ref(false)
 
-const members = ref<Member[]>([])
-const membersLoading = ref(false)
-const selectingMember = ref(false)
-
-// Seguridad: una cuenta ligada a un miembro (creada con POST /members) es SIEMPRE
-// esa persona; la sesión ya la fijó el guard (GET /auth/me). Aquí solo se decide
-// qué mostrar: nunca el selector para ella.
+// Seguridad: la cuenta es de UNA persona y la sesión ya la fijó el guard del
+// router (GET /auth/me). Aquí solo se decide qué mostrar.
 const isBound = computed(() => authStore.bindingStatus === 'bound')
-const isInactive = computed(() => authStore.bindingStatus === 'inactive')
-// El selector existe solo para el login compartido (o cuando no se pudo saber:
-// se conserva el flujo de siempre y el servidor igual hace cumplir el vínculo).
-const showSelector = computed(
-  () => sessionStore.isDeviceIdentified && !isBound.value && !isInactive.value,
-)
+const isUnknown = computed(() => authStore.bindingStatus === 'unknown')
+
+// Cuentas que no pueden seguir: persona desactivada, sin persona o sin confirmar.
+const blocked = computed(() => {
+  switch (authStore.bindingStatus) {
+    case 'inactive': return VOICE.accountInactive
+    case 'unassigned': return VOICE.accountUnassigned
+    case 'unknown': return VOICE.accountUnconfirmed
+    default: return null
+  }
+})
 
 // Falta el dispositivo: la persona puede no tener el código, y necesita poder irse sin él.
 const needsDevice = computed(() => !sessionStore.isDeviceIdentified)
 
 const heading = computed(() => {
-  if (showSelector.value) return { title: '¿Quién atiende hoy?', subtitle: 'Toca tu nombre para seguir.' }
   if (!sessionStore.isDeviceIdentified) {
-    // Cuenta personal sin dispositivo (p. ej. aceptó la invitación en otra computadora): se le
+    // Cuenta sin dispositivo (p. ej. aceptó la invitación en otra computadora): se le
     // explica qué hacer; el texto del formulario ya lo dice, aquí no se repite.
     if (isBound.value) return { title: 'Falta registrar este dispositivo', subtitle: '' }
     return { title: 'Identifica este dispositivo', subtitle: 'Solo lo haces una vez por dispositivo.' }
   }
-  // Cuenta ligada con el dispositivo ya identificado: la vista solo redirige.
+  // Cuenta lista con el dispositivo ya identificado: la vista solo redirige.
   return { title: 'Entrando…', subtitle: '' }
 })
 
@@ -158,10 +144,6 @@ onMounted(() => {
   if (isBound.value && sessionStore.isDeviceIdentified) {
     // Ya es esa persona y el dispositivo ya está identificado: directo a la app.
     router.push({ name: 'AppHome' })
-    return
-  }
-  if (showSelector.value) {
-    loadMembers()
   }
 })
 
@@ -171,16 +153,11 @@ async function handleDeviceSubmit(payload: DeviceIdentifyPayload) {
   try {
     const { deviceId, deviceToken } = await DevicesService.identify(payload)
     // Éxito: se guarda en localStorage (session.store) y ya no se vuelve a
-    // pedir en este dispositivo — continúa automáticamente al selector.
-    // Se guarda el token (si el servidor lo entregó), NO el identificador: era
-    // un código de un solo uso y ya quedó quemado.
+    // pedir en este dispositivo. Se guarda el token (si el servidor lo
+    // entregó), NO el identificador: era un código de un solo uso y ya quedó
+    // quemado.
     sessionStore.setDevice({ deviceId, name: payload.name, deviceToken })
-    if (isBound.value) {
-      // Cuenta ligada: no hay a quién elegir, la persona ya está en la sesión.
-      router.push({ name: 'AppHome' })
-      return
-    }
-    await loadMembers()
+    router.push({ name: 'AppHome' })
   } catch (cause) {
     // 409 (identificador ya usado / dispositivo revocado) se explica aparte de
     // 403 (datos que no coinciden): son problemas distintos con salidas
@@ -193,25 +170,14 @@ async function handleDeviceSubmit(payload: DeviceIdentifyPayload) {
   }
 }
 
-async function loadMembers() {
-  membersLoading.value = true
+async function handleRetry() {
+  retrying.value = true
   try {
-    members.value = await MembersService.list()
-  } catch {
-    toast.error('No pudimos cargar la lista de personas. Intenta de nuevo.')
+    await authStore.refreshBindingForRecovery()
+    if (sessionStore.isContextReady) await router.push({ name: 'AppHome' })
   } finally {
-    membersLoading.value = false
+    retrying.value = false
   }
-}
-
-function handleMemberSelect(member: Member) {
-  // Defensa en profundidad: una cuenta ligada a un miembro no elige a nadie.
-  if (isBound.value || isInactive.value) return
-  selectingMember.value = true
-  // "Quién atiende" vive en sessionStorage (no localStorage): debe
-  // reconfirmarse en cada apertura de la app, a diferencia del dispositivo.
-  sessionStore.setMember(member)
-  router.push({ name: 'AppHome' })
 }
 
 function handleSignOut() {
@@ -237,12 +203,10 @@ function handleSignOut() {
   color:      var(--color-text-muted);
   text-align: center;
 }
-.select-context__loading {
-  color: var(--color-text-muted);
-  text-align: center;
-}
 .select-context__actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
   justify-content: center;
 }
 </style>

@@ -6,7 +6,6 @@ import type {
 } from './contributions-records'
 import { validContributionPage } from './contributions-sync'
 const headers = (origin: FinanceOrigin) => ({
-  'x-member-id': origin.memberId,
   'x-device-id': origin.deviceId,
 })
 export const ContributionsService = {

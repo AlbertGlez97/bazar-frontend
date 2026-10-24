@@ -64,7 +64,7 @@ export interface CreateSaleItemPayload {
 export interface CreateSalePayload {
   /** UUID generado por el cliente (v7): es la clave de idempotencia. */
   id: string
-  /** Debe coincidir con el header `x-member-id`. */
+  /** Debe ser la persona de la cuenta que envía la venta. */
   memberId: string
   /** Debe coincidir con el header `x-device-id`. */
   deviceId: string
